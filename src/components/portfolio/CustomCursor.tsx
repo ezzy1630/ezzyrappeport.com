@@ -41,11 +41,11 @@ export default function CustomCursor({
         raf = requestAnimationFrame(() => {
           x.set(pendingX);
           y.set(pendingY);
+          if (dotRef.current) {
+            dotRef.current.style.transform = `translate(${pendingX - 4}px, ${pendingY - 4}px)`;
+          }
           raf = 0;
         });
-      }
-      if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${pendingX - 5.5}px, ${pendingY - 5.5}px)`;
       }
     };
 
@@ -54,13 +54,13 @@ export default function CustomCursor({
       const interactive = t.closest('a, button, [data-cursor="hover"], input, textarea, [tabindex]');
       if (ringRef.current) {
         if (interactive) {
-          ringRef.current.style.width = "60px";
-          ringRef.current.style.height = "60px";
-          ringRef.current.style.opacity = "0.62";
+          ringRef.current.style.width = "48px";
+          ringRef.current.style.height = "48px";
+          ringRef.current.style.opacity = "0.36";
         } else {
-          ringRef.current.style.width = "88px";
-          ringRef.current.style.height = "88px";
-          ringRef.current.style.opacity = "0.34";
+          ringRef.current.style.width = "68px";
+          ringRef.current.style.height = "68px";
+          ringRef.current.style.opacity = "0.18";
         }
       }
     };
@@ -71,7 +71,7 @@ export default function CustomCursor({
     };
     const onEnter = () => {
       if (dotRef.current) dotRef.current.style.opacity = "1";
-      if (ringRef.current) ringRef.current.style.opacity = "0.34";
+      if (ringRef.current) ringRef.current.style.opacity = "0.18";
     };
 
     document.body.classList.add("custom-cursor-active");

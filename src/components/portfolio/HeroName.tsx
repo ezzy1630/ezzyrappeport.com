@@ -26,14 +26,23 @@ import { useRef } from "react";
  */
 export default function HeroName() {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef(0);
+  const pointerRef = useRef({ x: 0, y: 0 });
 
   // Track cursor proximity to scale the displacement + blue glow
   const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = wrapRef.current;
     if (!el) return;
+    pointerRef.current = { x: e.clientX, y: e.clientY };
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const el = wrapRef.current;
+      if (!el) return;
+      const { x: clientX, y: clientY } = pointerRef.current;
     const rect = el.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
     el.style.setProperty("--cursor-x", `${x}px`);
     el.style.setProperty("--cursor-y", `${y}px`);
     const cx = rect.width / 2;
@@ -41,11 +50,16 @@ export default function HeroName() {
     const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
     const proximity = Math.max(0, 1 - dist / (rect.width * 0.5));
     el.style.setProperty("--proximity", proximity.toFixed(3));
+    });
   };
 
   const handleLeave = () => {
     const el = wrapRef.current;
     if (!el) return;
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
     el.style.setProperty("--proximity", "0");
   };
 
@@ -66,10 +80,10 @@ export default function HeroName() {
       aria-label="Eliezer Rappeport"
     >
       <span className="hero-name-line" aria-hidden="true">
-        ELIEZER
+        <span data-text="ELIEZER">ELIEZER</span>
       </span>
       <span className="hero-name-line" aria-hidden="true">
-        RAPPEPORT
+        <span data-text="RAPPEPORT">RAPPEPORT</span>
       </span>
 
       {/* Cursor-following blue glow */}
@@ -78,8 +92,8 @@ export default function HeroName() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            "radial-gradient(220px 140px at var(--cursor-x) var(--cursor-y), rgba(0,102,255,0.28), transparent 70%)",
-          opacity: "calc(0.4 + var(--proximity) * 0.6)",
+            "radial-gradient(240px 150px at var(--cursor-x) var(--cursor-y), rgba(0,102,255,0.20), rgba(102,168,255,0.08) 44%, transparent 72%)",
+          opacity: "calc(0.28 + var(--proximity) * 0.45)",
           mixBlendMode: "screen",
           transition: "opacity 220ms ease",
         }}

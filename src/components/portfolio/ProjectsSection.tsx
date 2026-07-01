@@ -43,7 +43,7 @@ export default function ProjectsSection() {
 
       {/* Detailed project write-ups */}
       <div className="max-w-6xl mx-auto flex flex-col gap-32 md:gap-44">
-        {projects.map((project, i) => (
+        {projects.map((project) => (
           <article
             key={project.slug}
             id={`project-${project.slug}`}

@@ -1,10 +1,10 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
 import SmoothScrollProvider from "@/components/portfolio/SmoothScrollProvider";
 import CustomCursor from "@/components/portfolio/CustomCursor";
+import FluidBackground from "@/components/portfolio/FluidBackground";
 import Navigation from "@/components/portfolio/Navigation";
 import HeroName from "@/components/portfolio/HeroName";
 import HeroIntro from "@/components/portfolio/HeroIntro";
@@ -17,23 +17,6 @@ import ExperienceSection from "@/components/portfolio/ExperienceSection";
 import AboutSection from "@/components/portfolio/AboutSection";
 import ContactSection from "@/components/portfolio/ContactSection";
 import SvgFilters from "@/components/portfolio/SvgFilters";
-
-// WebGPU canvas must be client-only — never SSR'd.
-// The dynamic import itself defers mounting to the client, so we don't need
-// a separate `mounted` flag — the component only renders after hydration.
-const FluidBackground = dynamic(
-  () => import("@/components/portfolio/FluidBackground"),
-  {
-    ssr: false,
-    loading: () => (
-      <div
-        className="fluid-canvas"
-        style={{ background: "linear-gradient(180deg, #f7f9fc 0%, #edf1f7 100%)" }}
-        aria-hidden="true"
-      />
-    ),
-  }
-);
 
 export default function Home() {
   const reducedMotion = useReducedMotion();
@@ -54,7 +37,7 @@ export default function Home() {
         {/* Custom cursor (desktop + motion-allowed only) */}
         <CustomCursor disabled={!cursorEnabled} />
 
-        {/* WebGPU fluid background */}
+        {/* Fluid canvas background */}
         <FluidBackground reducedMotion={reducedMotion} />
 
         {/* Content layer */}

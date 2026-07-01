@@ -92,17 +92,6 @@ html.lenis body {
   isolation: isolate;
 }
 
-.portfolio-root::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(245, 248, 253, 0.08)),
-    url("/assets/pearl-liquid-background.png") center / cover no-repeat;
-}
-
 .fluid-canvas {
   position: fixed;
   inset: 0;
@@ -110,8 +99,6 @@ html.lenis body {
   height: 100vh;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.16;
-  mix-blend-mode: multiply;
 }
 
 .fluid-canvas canvas {
@@ -171,8 +158,8 @@ html.lenis body {
   background:
     linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(232, 241, 255, 0.23)),
     rgba(255, 255, 255, 0.24);
-  backdrop-filter: blur(26px) saturate(150%);
-  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(135%);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
   border: 1px solid rgba(255, 255, 255, 0.42);
   box-shadow:
     0 1px 1px rgba(255, 255, 255, 0.72) inset,
@@ -184,8 +171,8 @@ html.lenis body {
   background:
     linear-gradient(155deg, rgba(255, 255, 255, 0.68), rgba(232, 242, 255, 0.22) 58%, rgba(164, 207, 255, 0.12)),
     rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(30px) saturate(165%);
-  -webkit-backdrop-filter: blur(30px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow:
     0 1px 2px rgba(255, 255, 255, 0.86) inset,
@@ -200,8 +187,8 @@ html.lenis body {
     radial-gradient(76% 120% at 18% 110%, rgba(0, 102, 255, 0.32), transparent 64%),
     radial-gradient(64% 90% at 92% 112%, rgba(0, 102, 255, 0.24), transparent 60%),
     rgba(255, 255, 255, 0.22);
-  backdrop-filter: blur(28px) saturate(165%);
-  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
   border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow:
     0 1px 2px rgba(255, 255, 255, 0.95) inset,
@@ -210,7 +197,7 @@ html.lenis body {
 }
 
 .project-capsule-card {
-  filter: url(#liquidBlobFilter);
+  filter: drop-shadow(0 12px 22px rgba(10, 45, 100, 0.10));
 }
 
 .project-card-button:focus-visible .project-capsule {
@@ -247,7 +234,7 @@ html.lenis body {
   height: 34px;
   border-radius: 999px;
   background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.82) 18%, rgba(84, 159, 255, 0.78) 52%, rgba(0, 102, 255, 0.70) 82%, transparent);
-  filter: blur(13px);
+  filter: blur(9px);
   opacity: 0.82;
   pointer-events: none;
 }
@@ -265,13 +252,13 @@ html.lenis body {
 .hero-name::before {
   content: "";
   position: absolute;
-  inset: -7% -3%;
+  inset: -9% -4%;
   background:
-    radial-gradient(34% 34% at 69% 76%, rgba(0, 102, 255, 0.28), transparent 70%),
-    radial-gradient(62% 22% at 53% 3%, rgba(255, 255, 255, 0.92), transparent 70%);
+    radial-gradient(34% 28% at 68% 75%, rgba(0, 102, 255, 0.20), transparent 72%),
+    radial-gradient(64% 24% at 52% 4%, rgba(255, 255, 255, 0.80), transparent 72%);
   pointer-events: none;
   z-index: -1;
-  filter: blur(20px);
+  filter: blur(16px);
 }
 
 /* Per-line styling — frosted silver glass with bright edge highlights.
@@ -280,32 +267,72 @@ html.lenis body {
 .hero-name-line {
   display: block;
   font-size: clamp(4.9rem, 13.05vw, 13.9rem);
+  position: relative;
+  isolation: isolate;
   background:
-    radial-gradient(52% 76% at 53% 24%, rgba(255, 255, 255, 0.72), transparent 63%),
+    radial-gradient(58% 84% at 52% 18%, rgba(255, 255, 255, 0.78), transparent 62%),
+    radial-gradient(66% 70% at 68% 78%, rgba(0, 102, 255, 0.26), transparent 72%),
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.38) 0%,
-      rgba(230, 237, 249, 0.34) 30%,
-      rgba(119, 141, 177, 0.42) 64%,
-      rgba(255, 255, 255, 0.34) 100%);
+      rgba(255, 255, 255, 0.58) 0%,
+      rgba(220, 229, 243, 0.48) 31%,
+      rgba(74, 96, 132, 0.58) 63%,
+      rgba(255, 255, 255, 0.54) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
   /* Strong white stroke = bright rim/refraction edge */
-  -webkit-text-stroke: clamp(1px, 0.11vw, 1.8px) rgba(70, 94, 132, 0.42);
+  -webkit-text-stroke: clamp(1.6px, 0.17vw, 3px) rgba(52, 76, 112, 0.58);
   /* Layered shadows: top highlight + bottom depth */
   text-shadow:
-    0 -2px 1px rgba(255, 255, 255, 0.86),
-    0 2px 1px rgba(54, 77, 114, 0.27),
-    2px 0 1px rgba(255, 255, 255, 0.52),
-    -2px 0 1px rgba(70, 93, 128, 0.14),
-    0 5px 12px rgba(25, 49, 89, 0.22),
-    0 18px 36px rgba(10, 59, 145, 0.12);
+    0 -4px 2px rgba(255, 255, 255, 0.98),
+    0 3px 1px rgba(31, 53, 87, 0.44),
+    3px 0 1px rgba(255, 255, 255, 0.70),
+    -3px 0 1px rgba(53, 78, 116, 0.28),
+    0 9px 18px rgba(15, 35, 70, 0.34),
+    0 26px 48px rgba(0, 83, 210, 0.17);
   filter:
-    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.76))
-    drop-shadow(0 7px 18px rgba(31, 72, 142, 0.16));
-  opacity: 0.92;
+    drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.84))
+    drop-shadow(0 8px 16px rgba(31, 72, 142, 0.18));
+  opacity: 0.98;
   mix-blend-mode: multiply;
+}
+
+.hero-name-line > span {
+  position: relative;
+  display: inline-block;
+}
+
+.hero-name-line > span::before,
+.hero-name-line > span::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-name-line > span::before {
+  transform: translate(-0.7px, -1.7px);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.18) 52%, transparent 72%);
+  -webkit-text-stroke: clamp(0.8px, 0.08vw, 1.4px) rgba(255, 255, 255, 0.70);
+  opacity: 0.72;
+  mix-blend-mode: screen;
+  z-index: 1;
+}
+
+.hero-name-line > span::after {
+  transform: translate(1.4px, 2.5px);
+  background-image:
+    radial-gradient(64% 58% at 72% 74%, rgba(0, 102, 255, 0.20), transparent 78%),
+    linear-gradient(180deg, transparent 18%, rgba(48, 70, 105, 0.28) 66%, rgba(255, 255, 255, 0.18));
+  -webkit-text-stroke: clamp(1.2px, 0.12vw, 2px) rgba(49, 71, 106, 0.28);
+  opacity: 0.82;
+  mix-blend-mode: multiply;
+  z-index: -1;
 }
 
 /* Custom cursor (when enabled) */
@@ -313,12 +340,12 @@ html.lenis body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 11px;
-  height: 11px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%,
-      rgba(0, 102, 255, 0.9) 0%,
-      rgba(0, 102, 255, 0.42) 38%,
+      rgba(0, 102, 255, 0.82) 0%,
+      rgba(0, 102, 255, 0.34) 38%,
       rgba(0, 102, 255, 0) 70%);
   pointer-events: none;
   z-index: 9999;
@@ -331,15 +358,13 @@ html.lenis body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 88px;
-  height: 88px;
-  border: 1px solid rgba(0, 102, 255, 0.12);
+  width: 68px;
+  height: 68px;
+  border: 1px solid rgba(0, 102, 255, 0.08);
   border-radius: 50%;
   background:
-    radial-gradient(circle, rgba(0, 102, 255, 0.10), transparent 42%),
-    radial-gradient(circle, rgba(255, 255, 255, 0.26), transparent 68%);
-  backdrop-filter: blur(2px) saturate(115%);
-  -webkit-backdrop-filter: blur(2px) saturate(115%);
+    radial-gradient(circle, rgba(0, 102, 255, 0.055), transparent 44%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.20), transparent 68%);
   pointer-events: none;
   z-index: 9998;
   transition: width 0.25s ease, height 0.25s ease, opacity 0.3s ease;
@@ -348,7 +373,7 @@ html.lenis body {
 
 /* Liquid blob card edge — organic SVG filter applied via CSS */
 .blob-edge {
-  filter: url(#liquidBlobFilter);
+  filter: drop-shadow(0 10px 18px rgba(10, 45, 100, 0.10));
 }
 
 /* Hide scrollbar but keep scroll */
