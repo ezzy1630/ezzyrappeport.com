@@ -172,7 +172,7 @@ export const bio = {
   name: "Eliezer Rappeport",
   taglineParts: ["Engineer", "AI Builder", "Founder"],
   bodyParagraphs: [
-    "I build at the intersection of engineering and intelligence. For the last six years I've been shipping AI systems that have to work in the real world — medical imaging that needs FDA clearance, security agents that need to find what humans miss, learning systems that need to actually help students learn.",
+    "I build at the intersection of engineering and intelligence. Exploring multi-agent systems, humane AI, and tools that create real impact.",
     "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. Most of my work sits in the awkward space between research and production — taking ideas that work in a paper and making them work under a pager.",
     "I'm currently based between Los Angeles and Santa Cruz, splitting time between independent founder work and advising a small number of AI companies on agent architecture and evaluation.",
   ],

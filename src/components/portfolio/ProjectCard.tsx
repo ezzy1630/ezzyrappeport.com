@@ -5,24 +5,6 @@ import { ArrowUpRight } from "lucide-react";
 import { useRef } from "react";
 import type { Project } from "@/lib/portfolio/content";
 
-/**
- * ProjectCard
- * -----------
- * A "liquid blob" project card. Default state: organic uneven border-radius
- * to suggest a viscous liquid puddle. On hover: edges tighten into a cleaner
- * geometric rectangle. Click is a navigation affordance (#projects slug).
- *
- * Each card gets a per-accent blue caustic intensity under its bottom rim:
- *  - blue-strong: most intense blue under-edges (cards 1 and 4)
- *  - blue-medium: moderate (used sparingly here)
- *  - blue-low: thin restrained line (card 2)
- *  - blue-flow: soft flowing curve (card 3)
- *
- * The card uses a per-card organic border-radius array. On hover the values
- * interpolate to a uniform "geometric" radius (tightened). The micro
- * tilt-on-pointer-move gives a tactile 3D feel.
- */
-
 const ACCENT_PRESETS = {
   "blue-strong": {
     causticOpacity: 0.55,
@@ -49,13 +31,13 @@ const ACCENT_PRESETS = {
 type Props = {
   project: Project;
   index: number;
+  onOpen: (project: Project) => void;
 };
 
-export default function ProjectCard({ project, index }: Props) {
-  const ref = useRef<HTMLAnchorElement>(null);
+export default function ProjectCard({ project, index, onOpen }: Props) {
+  const ref = useRef<HTMLButtonElement>(null);
   const accent = ACCENT_PRESETS[project.accent];
 
-  // Pointer-driven micro tilt
   const mvX = useMotionValue(0);
   const mvY = useMotionValue(0);
   const rotX = useSpring(useTransform(mvY, [-0.5, 0.5], [4, -4]), {
@@ -67,7 +49,7 @@ export default function ProjectCard({ project, index }: Props) {
     damping: 20,
   });
 
-  const onMove = (e: React.PointerEvent<HTMLAnchorElement>) => {
+  const onMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
@@ -83,75 +65,52 @@ export default function ProjectCard({ project, index }: Props) {
   };
 
   return (
-    <motion.a
+    <motion.button
       ref={ref}
-      href={`#project-${project.slug}`}
+      type="button"
+      onClick={() => onOpen(project)}
       onPointerMove={onMove}
       onPointerLeave={onLeave}
       data-cursor="hover"
+      data-no-focus-ring
       initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      whileTap={{ scale: 0.985 }}
       viewport={{ once: true, margin: "-10% 0px" }}
       transition={{
         duration: 0.9,
         delay: index * 0.08,
         ease: [0.22, 1, 0.36, 1],
       }}
-      whileHover="hover"
-      className="group relative block h-[200px] md:h-[220px] [perspective:1200px]"
-      aria-label={`${project.title} — ${project.subtitle}`}
+      className="project-card-button group relative block h-[122px] w-full text-left md:h-[132px] [perspective:1200px]"
+      aria-label={`Open ${project.title} details`}
     >
       <motion.div
         style={{ rotateX: rotX, rotateY: rotY, transformStyle: "preserve-3d" }}
         className="relative h-full w-full"
       >
-        {/* Outer container — morphs border-radius on hover */}
         <motion.div
-          variants={{
-            rest: {
-              borderRadius: [
-                "38% 62% 56% 44% / 48% 38% 62% 52%",
-                "56% 44% 38% 62% / 56% 62% 38% 44%",
-                "44% 56% 62% 38% / 38% 52% 48% 62%",
-                "62% 38% 44% 56% / 44% 56% 62% 38%",
-                "38% 62% 56% 44% / 48% 38% 62% 52%",
-              ],
-            },
-            hover: {
-              borderRadius: "20px",
-            },
-          }}
+          layoutId={`project-shell-${project.slug}`}
           transition={{
-            rest: {
-              borderRadius: {
-                duration: 14,
-                ease: "linear",
-                repeat: Infinity,
-                repeatType: "mirror",
-              },
-            },
-            hover: {
-              borderRadius: { duration: 0.7, ease: [0.22, 1, 0.36, 1] },
-            },
+            type: "spring",
+            stiffness: 280,
+            damping: 28,
           }}
-          initial="rest"
-          animate="rest"
-          className="absolute inset-0 glass-strong overflow-hidden"
+          className="project-capsule project-capsule-card absolute inset-0 overflow-hidden"
         >
-          {/* Top specular streak */}
           <span
             aria-hidden="true"
-            className="absolute top-0 left-0 right-0 h-1/3 pointer-events-none"
+            className="pointer-events-none absolute top-0 left-[8%] right-[10%] h-[46%]"
             style={{
               background:
-                "linear-gradient(180deg, rgba(255,255,255,0.45) 0%, transparent 100%)",
+                "linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(255,255,255,0.20) 56%, transparent 100%)",
+              filter: "blur(10px)",
             }}
           />
 
-          {/* Bottom blue caustic underglow */}
           <span
             aria-hidden="true"
-            className="absolute -bottom-6 left-0 right-0 h-1/2 pointer-events-none"
+            className="pointer-events-none absolute -bottom-5 left-[4%] right-[4%] h-[56%]"
             style={{
               background: `radial-gradient(120% 100% at 50% 100%, rgba(0,102,255,${accent.causticOpacity}) 0%, transparent ${accent.glowSize})`,
               filter: `blur(${accent.blur}px)`,
@@ -159,55 +118,48 @@ export default function ProjectCard({ project, index }: Props) {
             }}
           />
 
-          {/* Inner content */}
           <div
-            className="relative h-full w-full flex items-center justify-between px-7 md:px-9 py-7"
-            style={{ transform: "translateZ(40px)" }}
+            className="relative flex h-full w-full items-center justify-between px-7 py-5 md:px-8"
+            style={{ transform: "translateZ(34px)" }}
           >
-            {/* Left text block */}
-            <div className="flex flex-col gap-1.5 min-w-0">
-              <span className="text-[11px] font-mono tracking-[0.15em] text-ink-soft/45">
+            <div className="flex min-w-0 flex-col gap-1.5 pr-4">
+              <span className="text-[11px] font-medium text-ink-soft/58">
                 {project.index}
               </span>
-              <h3
-                className="text-[20px] md:text-[22px] font-bold tracking-[-0.01em] text-ink truncate"
+              <motion.h3
+                layoutId={`project-title-${project.slug}`}
+                className="truncate text-[16px] font-semibold tracking-normal text-ink md:text-[17px]"
                 style={{ fontFamily: "var(--font-inter-tight), sans-serif" }}
               >
                 {project.title}
-              </h3>
-              <p className="text-[12px] md:text-[13px] text-ink-soft/65 leading-[1.4]">
+              </motion.h3>
+              <motion.p
+                layoutId={`project-subtitle-${project.slug}`}
+                className="text-[12px] leading-[1.4] text-ink-soft/65 md:text-[13px]"
+              >
                 {project.subtitle}
-              </p>
+              </motion.p>
             </div>
 
-            {/* Right arrow control */}
             <motion.span
-              variants={{
-                rest: { scale: 1, backgroundColor: "rgba(255,255,255,0.85)" },
-                hover: {
-                  scale: 1.12,
-                  backgroundColor: "rgba(255,255,255,1)",
-                },
+              layoutId={`project-arrow-${project.slug}`}
+              whileHover={{
+                scale: 1.08,
+                backgroundColor: "rgba(255,255,255,1)",
               }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="grid place-items-center w-11 h-11 md:w-12 md:h-12 rounded-full border border-white/70 shadow-[0_4px_18px_-4px_rgba(20,35,70,0.2)]"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/88 text-ink shadow-[0_10px_28px_-18px_rgba(8,35,82,0.45),0_1px_1px_rgba(255,255,255,0.8)_inset] md:h-12 md:w-12"
             >
-              <ArrowUpRight
-                className="w-[18px] h-[18px] text-ink"
-                strokeWidth={2.2}
-              />
+              <ArrowUpRight className="h-[18px] w-[18px] text-ink" strokeWidth={2.2} />
             </motion.span>
           </div>
 
-          {/* Hover ripple */}
           <motion.span
             aria-hidden="true"
-            variants={{
-              rest: { opacity: 0, scale: 0.6 },
-              hover: { opacity: 1, scale: 1.4 },
-            }}
+            initial={{ opacity: 0, scale: 0.75 }}
+            whileHover={{ opacity: 1, scale: 1.25 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="absolute top-1/2 right-[20%] w-24 h-24 -translate-y-1/2 rounded-full pointer-events-none"
+            className="pointer-events-none absolute top-1/2 right-[20%] h-24 w-24 -translate-y-1/2 rounded-full"
             style={{
               background:
                 "radial-gradient(circle, rgba(0,102,255,0.18), transparent 70%)",
@@ -215,6 +167,6 @@ export default function ProjectCard({ project, index }: Props) {
           />
         </motion.div>
       </motion.div>
-    </motion.a>
+    </motion.button>
   );
 }

@@ -17,11 +17,11 @@ import { bio } from "@/lib/portfolio/content";
 export default function LocationCard() {
   return (
     <motion.aside
-      initial={{ opacity: 0, y: 20, scale: 0.96 }}
+      initial={{ opacity: 1, y: 0, scale: 1 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 1.0, delay: 1.5, ease: [0.22, 1, 0.36, 1] }}
       whileHover={{ y: -2 }}
-      className="glass rounded-3xl p-6 w-[280px] md:w-[320px] relative"
+      className="glass rounded-[30px] p-4 md:p-5 w-[280px] md:w-[300px] relative"
       aria-label={bio.location.title}
     >
       {/* Blue status dot */}
@@ -30,8 +30,8 @@ export default function LocationCard() {
         className="absolute top-5 right-5 w-2 h-2 rounded-full bg-electric"
       />
 
-      <div className="flex items-start gap-4">
-        <span className="grid place-items-center w-10 h-10 rounded-full bg-ink/[0.06] text-ink">
+      <div className="flex items-start gap-4 pr-5">
+        <span className="grid place-items-center w-9 h-9 rounded-full bg-ink/[0.055] text-ink">
           <MapPin className="w-[18px] h-[18px]" strokeWidth={1.6} />
         </span>
         <div className="flex-1 min-w-0">
@@ -44,9 +44,9 @@ export default function LocationCard() {
         </div>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-white/40">
+      <div className="mt-3 pt-2 border-t border-white/24">
         <p
-          className="text-[10px] md:text-[11px] tracking-[0.08em] text-ink-soft/45 uppercase font-mono"
+          className="text-[10px] md:text-[11px] tracking-[0.08em] text-ink-soft/45 font-mono"
           style={{ fontFeatureSettings: "'tnum'" }}
         >
           {bio.location.coordinates}

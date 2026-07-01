@@ -92,13 +92,26 @@ html.lenis body {
   isolation: isolate;
 }
 
+.portfolio-root::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(245, 248, 253, 0.08)),
+    url("/assets/pearl-liquid-background.png") center / cover no-repeat;
+}
+
 .fluid-canvas {
   position: fixed;
   inset: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
+  opacity: 0.16;
+  mix-blend-mode: multiply;
 }
 
 .fluid-canvas canvas {
@@ -112,34 +125,139 @@ html.lenis body {
   z-index: 10;
 }
 
+.hero-shell {
+  position: relative;
+  min-height: 100svh;
+  padding: 0 clamp(1.5rem, 3.1vw, 3.5rem);
+  overflow: clip;
+}
+
+.hero-name-stage {
+  position: absolute;
+  top: clamp(7.25rem, 14.4vh, 8.55rem);
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 82.5rem);
+  margin-inline: auto;
+  z-index: 5;
+}
+
+.hero-copy-row {
+  position: absolute;
+  left: max(7.6rem, 12.5vw);
+  right: max(5rem, 7vw);
+  top: min(52vh, 31rem);
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: clamp(1.5rem, 5vw, 6rem);
+  align-items: end;
+  width: auto;
+  margin-inline: auto;
+}
+
+.hero-projects {
+  position: absolute;
+  left: clamp(2rem, 5.3vw, 5rem);
+  right: clamp(2rem, 5.3vw, 5rem);
+  bottom: clamp(4.7rem, 10vh, 6.7rem);
+  z-index: 18;
+  width: min(100%, 94rem);
+  margin-inline: auto;
+}
+
 /* Glassmorphism utility */
 .glass {
-  background: rgba(255, 255, 255, 0.32);
-  backdrop-filter: blur(22px) saturate(140%);
-  -webkit-backdrop-filter: blur(22px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.55);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(232, 241, 255, 0.23)),
+    rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  border: 1px solid rgba(255, 255, 255, 0.42);
   box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.65) inset,
-    0 8px 30px -8px rgba(20, 35, 70, 0.12),
-    0 2px 8px -2px rgba(20, 35, 70, 0.08);
+    0 1px 1px rgba(255, 255, 255, 0.72) inset,
+    0 -1px 2px rgba(59, 111, 190, 0.08) inset,
+    0 10px 24px -18px rgba(17, 45, 92, 0.28);
 }
 
 .glass-strong {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.7);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.68), rgba(232, 242, 255, 0.22) 58%, rgba(164, 207, 255, 0.12)),
+    rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(30px) saturate(165%);
+  -webkit-backdrop-filter: blur(30px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.8) inset,
-    0 12px 40px -10px rgba(20, 35, 70, 0.15);
+    0 1px 2px rgba(255, 255, 255, 0.86) inset,
+    0 -1px 4px rgba(0, 102, 255, 0.12) inset,
+    0 14px 28px -22px rgba(12, 43, 92, 0.36);
+}
+
+.project-capsule {
+  border-radius: 48px 55px 42px 58px / 50px 42px 54px 44px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(245, 250, 255, 0.31) 50%, rgba(223, 239, 255, 0.30)),
+    radial-gradient(76% 120% at 18% 110%, rgba(0, 102, 255, 0.32), transparent 64%),
+    radial-gradient(64% 90% at 92% 112%, rgba(0, 102, 255, 0.24), transparent 60%),
+    rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.95) inset,
+    0 -2px 6px rgba(0, 102, 255, 0.30) inset,
+    0 18px 38px -30px rgba(9, 40, 95, 0.50);
+}
+
+.project-capsule-card {
+  filter: url(#liquidBlobFilter);
+}
+
+.project-card-button:focus-visible .project-capsule {
+  box-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.95) inset,
+    0 -2px 7px rgba(0, 102, 255, 0.36) inset,
+    0 0 0 1px rgba(0, 102, 255, 0.36),
+    0 18px 42px -30px rgba(0, 102, 255, 0.72);
+}
+
+.project-card-button:focus,
+.project-card-button:focus-visible {
+  outline: none;
+}
+
+.project-capsule::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 0 18px rgba(255, 255, 255, 0.54) inset,
+    0 9px 22px rgba(0, 102, 255, 0.13) inset;
+  pointer-events: none;
+}
+
+.project-capsule::after {
+  content: "";
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  bottom: -16px;
+  height: 34px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.82) 18%, rgba(84, 159, 255, 0.78) 52%, rgba(0, 102, 255, 0.70) 82%, transparent);
+  filter: blur(13px);
+  opacity: 0.82;
+  pointer-events: none;
 }
 
 /* Embedded liquid-glass hero name */
 .hero-name {
   font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
   font-weight: 900;
-  letter-spacing: -0.04em;
-  line-height: 0.82;
+  letter-spacing: 0;
+  line-height: 0.80;
   text-transform: uppercase;
   position: relative;
 }
@@ -147,13 +265,13 @@ html.lenis body {
 .hero-name::before {
   content: "";
   position: absolute;
-  inset: -8% -4%;
-  background: radial-gradient(60% 50% at 70% 80%,
-      rgba(0, 102, 255, 0.22) 0%,
-      transparent 60%);
+  inset: -7% -3%;
+  background:
+    radial-gradient(34% 34% at 69% 76%, rgba(0, 102, 255, 0.28), transparent 70%),
+    radial-gradient(62% 22% at 53% 3%, rgba(255, 255, 255, 0.92), transparent 70%);
   pointer-events: none;
   z-index: -1;
-  filter: blur(24px);
+  filter: blur(20px);
 }
 
 /* Per-line styling — frosted silver glass with bright edge highlights.
@@ -161,30 +279,33 @@ html.lenis body {
    bright white rims, dark depth shadow underneath. */
 .hero-name-line {
   display: block;
-  font-size: clamp(3.2rem, 14vw, 14rem);
+  font-size: clamp(4.9rem, 13.05vw, 13.9rem);
   background:
+    radial-gradient(52% 76% at 53% 24%, rgba(255, 255, 255, 0.72), transparent 63%),
     linear-gradient(180deg,
-      #f4f7fb 0%,
-      #c8d3e3 30%,
-      #94a5bf 60%,
-      #5e7197 100%);
+      rgba(255, 255, 255, 0.38) 0%,
+      rgba(230, 237, 249, 0.34) 30%,
+      rgba(119, 141, 177, 0.42) 64%,
+      rgba(255, 255, 255, 0.34) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
   /* Strong white stroke = bright rim/refraction edge */
-  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.9);
+  -webkit-text-stroke: clamp(1px, 0.11vw, 1.8px) rgba(70, 94, 132, 0.42);
   /* Layered shadows: top highlight + bottom depth */
   text-shadow:
-    0 1px 0 rgba(255, 255, 255, 1),
-    0 -1px 0 rgba(255, 255, 255, 0.6),
-    1px 0 0 rgba(255, 255, 255, 0.7),
-    -1px 0 0 rgba(255, 255, 255, 0.7),
-    0 3px 5px rgba(15, 30, 60, 0.3),
-    0 8px 20px rgba(15, 30, 60, 0.22);
+    0 -2px 1px rgba(255, 255, 255, 0.86),
+    0 2px 1px rgba(54, 77, 114, 0.27),
+    2px 0 1px rgba(255, 255, 255, 0.52),
+    -2px 0 1px rgba(70, 93, 128, 0.14),
+    0 5px 12px rgba(25, 49, 89, 0.22),
+    0 18px 36px rgba(10, 59, 145, 0.12);
   filter:
-    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.7))
-    drop-shadow(0 12px 32px rgba(15, 30, 60, 0.28));
+    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.76))
+    drop-shadow(0 7px 18px rgba(31, 72, 142, 0.16));
+  opacity: 0.92;
+  mix-blend-mode: multiply;
 }
 
 /* Custom cursor (when enabled) */
@@ -192,12 +313,12 @@ html.lenis body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 18px;
-  height: 18px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: radial-gradient(circle at 30% 30%,
-      rgba(0, 102, 255, 0.95) 0%,
-      rgba(0, 102, 255, 0.55) 40%,
+      rgba(0, 102, 255, 0.9) 0%,
+      rgba(0, 102, 255, 0.42) 38%,
       rgba(0, 102, 255, 0) 70%);
   pointer-events: none;
   z-index: 9999;
@@ -210,10 +331,15 @@ html.lenis body {
   position: fixed;
   top: 0;
   left: 0;
-  width: 40px;
-  height: 40px;
-  border: 1px solid rgba(0, 102, 255, 0.35);
+  width: 88px;
+  height: 88px;
+  border: 1px solid rgba(0, 102, 255, 0.12);
   border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(0, 102, 255, 0.10), transparent 42%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.26), transparent 68%);
+  backdrop-filter: blur(2px) saturate(115%);
+  -webkit-backdrop-filter: blur(2px) saturate(115%);
   pointer-events: none;
   z-index: 9998;
   transition: width 0.25s ease, height 0.25s ease, opacity 0.3s ease;
@@ -236,7 +362,7 @@ html.lenis body {
 }
 
 /* Focus ring */
-:where(a, button, input, textarea, [tabindex]):focus-visible {
+:where(a, button, input, textarea, [tabindex]):not([data-no-focus-ring]):focus-visible {
   outline: 2px solid var(--color-electric);
   outline-offset: 3px;
   border-radius: 6px;
@@ -267,10 +393,95 @@ html.lenis body {
 
 /* Hero name responsive scaling — mobile */
 @media (max-width: 768px) {
+  .hero-shell {
+    min-height: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    padding: 6.5rem 1.25rem 7rem;
+    overflow: visible;
+  }
+
+  .hero-name {
+    padding-inline: 0 !important;
+    width: 100%;
+  }
+
+  .hero-name-stage,
+  .hero-copy-row,
+  .hero-projects {
+    position: static;
+    transform: none;
+    left: auto;
+    right: auto;
+    top: auto;
+    bottom: auto;
+    width: 100%;
+  }
+
+  .hero-copy-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: 0;
+    max-width: 100%;
+  }
+
+  .hero-copy-row > * {
+    max-width: 100%;
+  }
+
   .hero-name-line {
-    font-size: clamp(2.4rem, 13vw, 6rem);
+    font-size: clamp(2.5rem, 11.4vw, 4.2rem);
     line-height: 0.88;
-    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
+    background: none;
+    color: rgba(65, 84, 116, 0.72);
+    -webkit-text-fill-color: rgba(65, 84, 116, 0.55);
+    -webkit-text-stroke: 1px rgba(55, 75, 108, 0.62);
+    text-shadow:
+      0 -1px 0 rgba(255, 255, 255, 0.85),
+      0 4px 12px rgba(21, 54, 112, 0.18);
+  }
+
+  .site-nav {
+    width: 100vw;
+    max-width: 100vw;
+    padding-inline: 1rem;
+  }
+
+  .site-nav-cta {
+    position: absolute;
+    right: 1rem;
+    top: 1.25rem;
+    max-width: calc(100vw - 5.25rem);
+  }
+
+  .hero-projects {
+    margin-top: 0.5rem;
+  }
+
+  .hero-projects > div {
+    gap: 1rem;
+  }
+
+  .hero-projects a {
+    height: 108px;
+  }
+
+  .hero-copy-row p {
+    max-width: 100%;
+  }
+
+  .portfolio-root,
+  .content-layer {
+    max-width: 100vw;
+    overflow-x: clip;
+  }
+}
+
+@media (max-width: 430px) {
+  .site-nav-cta {
+    display: none;
   }
 }
 

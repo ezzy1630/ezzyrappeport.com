@@ -45,7 +45,7 @@ export default function CustomCursor({
         });
       }
       if (dotRef.current) {
-        dotRef.current.style.transform = `translate(${pendingX - 9}px, ${pendingY - 9}px)`;
+        dotRef.current.style.transform = `translate(${pendingX - 5.5}px, ${pendingY - 5.5}px)`;
       }
     };
 
@@ -56,11 +56,11 @@ export default function CustomCursor({
         if (interactive) {
           ringRef.current.style.width = "60px";
           ringRef.current.style.height = "60px";
-          ringRef.current.style.opacity = "0.9";
+          ringRef.current.style.opacity = "0.62";
         } else {
-          ringRef.current.style.width = "40px";
-          ringRef.current.style.height = "40px";
-          ringRef.current.style.opacity = "0.55";
+          ringRef.current.style.width = "88px";
+          ringRef.current.style.height = "88px";
+          ringRef.current.style.opacity = "0.34";
         }
       }
     };
@@ -71,7 +71,7 @@ export default function CustomCursor({
     };
     const onEnter = () => {
       if (dotRef.current) dotRef.current.style.opacity = "1";
-      if (ringRef.current) ringRef.current.style.opacity = "0.55";
+      if (ringRef.current) ringRef.current.style.opacity = "0.34";
     };
 
     document.body.classList.add("custom-cursor-active");

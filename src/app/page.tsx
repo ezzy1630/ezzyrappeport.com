@@ -11,6 +11,7 @@ import HeroIntro from "@/components/portfolio/HeroIntro";
 import LocationCard from "@/components/portfolio/LocationCard";
 import ScrollIndicator from "@/components/portfolio/ScrollIndicator";
 import SectionAnchors from "@/components/portfolio/SectionAnchors";
+import ProjectGrid from "@/components/portfolio/ProjectGrid";
 import ProjectsSection from "@/components/portfolio/ProjectsSection";
 import ExperienceSection from "@/components/portfolio/ExperienceSection";
 import AboutSection from "@/components/portfolio/AboutSection";
@@ -62,21 +63,22 @@ export default function Home() {
           <ScrollIndicator />
 
           {/* HERO */}
-          <section
-            aria-label="Hero"
-            className="relative min-h-screen flex flex-col justify-between pt-32 md:pt-36 pb-28 md:pb-32 px-6 md:px-10 lg:px-14"
-          >
+          <section aria-label="Hero" className="hero-shell">
             {/* Hero name — dominates upper-middle */}
-            <div className="mt-6 md:mt-10">
+            <div className="hero-name-stage">
               <HeroName />
             </div>
 
             {/* Lower hero — intro on left, location card on right */}
-            <div className="mt-12 md:mt-16 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-8 items-end max-w-7xl mx-auto w-full">
+            <div className="hero-copy-row">
               <HeroIntro />
               <div className="flex md:justify-end">
                 <LocationCard />
               </div>
+            </div>
+
+            <div className="hero-projects">
+              <ProjectGrid />
             </div>
 
             {/* Bottom anchors */}

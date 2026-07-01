@@ -2,14 +2,12 @@
 
 import { motion } from "framer-motion";
 import { projects } from "@/lib/portfolio/content";
-import ProjectGrid from "./ProjectGrid";
 
 /**
  * ProjectsSection
  * ---------------
- * Full projects detail section. Two parts:
- *  1. Featured project card grid (4 liquid blob cards)
- *  2. Per-project detail blocks with problem / approach / outcome / stack
+ * Full projects detail section with per-project problem / approach / outcome
+ * write-ups. The featured glass capsules live in the first viewport.
  */
 export default function ProjectsSection() {
   return (
@@ -42,11 +40,6 @@ export default function ProjectsSection() {
           and tools that compound impact. Each one shipped to users — not a demo.
         </p>
       </motion.div>
-
-      {/* Featured project card grid */}
-      <div className="max-w-7xl mx-auto mb-32 md:mb-44">
-        <ProjectGrid />
-      </div>
 
       {/* Detailed project write-ups */}
       <div className="max-w-6xl mx-auto flex flex-col gap-32 md:gap-44">

@@ -15,13 +15,13 @@ import { bio } from "@/lib/portfolio/content";
 export default function HeroIntro() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1.2, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col gap-7 max-w-xl"
+      className="flex flex-col gap-5 max-w-[430px]"
     >
       {/* Tagline */}
-      <div className="flex items-center gap-3 text-[15px] md:text-[17px] font-medium text-ink">
+      <div className="flex items-center gap-3 text-[18px] md:text-[20px] font-medium text-ink">
         {bio.taglineParts.map((part, i) => (
           <span key={part} className="flex items-center gap-3">
             {i > 0 && (
@@ -36,7 +36,7 @@ export default function HeroIntro() {
       </div>
 
       {/* Body copy */}
-      <p className="text-[14px] md:text-[15px] leading-[1.65] text-ink-soft/80 max-w-[440px]">
+      <p className="text-[13px] md:text-[14px] leading-[1.55] text-ink-soft/78 max-w-[410px]">
         {bio.bodyParagraphs[0]}
       </p>
 
