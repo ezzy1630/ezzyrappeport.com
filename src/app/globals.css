@@ -121,10 +121,10 @@ html.lenis body {
 
 .hero-name-stage {
   position: absolute;
-  top: clamp(7.25rem, 14.4vh, 8.55rem);
+  top: clamp(6.65rem, 13.45vh, 7.9rem);
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 82.5rem);
+  width: min(100%, 85.5rem);
   margin-inline: auto;
   z-index: 5;
 }
@@ -247,6 +247,7 @@ html.lenis body {
   line-height: 0.80;
   text-transform: uppercase;
   position: relative;
+  filter: url("#textDisplace");
 }
 
 .hero-name::before {
@@ -254,8 +255,8 @@ html.lenis body {
   position: absolute;
   inset: -9% -4%;
   background:
-    radial-gradient(34% 28% at 68% 75%, rgba(0, 102, 255, 0.20), transparent 72%),
-    radial-gradient(64% 24% at 52% 4%, rgba(255, 255, 255, 0.80), transparent 72%);
+    radial-gradient(34% 28% at 68% 75%, rgba(0, 102, 255, 0.13), transparent 72%),
+    radial-gradient(64% 24% at 52% 4%, rgba(255, 255, 255, 0.48), transparent 72%);
   pointer-events: none;
   z-index: -1;
   filter: blur(16px);
@@ -266,35 +267,33 @@ html.lenis body {
    bright white rims, dark depth shadow underneath. */
 .hero-name-line {
   display: block;
-  font-size: clamp(4.9rem, 13.05vw, 13.9rem);
+  font-size: clamp(4.9rem, 13.42vw, 14.25rem);
   position: relative;
   isolation: isolate;
   background:
-    radial-gradient(58% 84% at 52% 18%, rgba(255, 255, 255, 0.78), transparent 62%),
-    radial-gradient(66% 70% at 68% 78%, rgba(0, 102, 255, 0.26), transparent 72%),
+    radial-gradient(58% 84% at 52% 18%, rgba(255, 255, 255, 0.18), transparent 62%),
+    radial-gradient(66% 70% at 68% 78%, rgba(0, 102, 255, 0.08), transparent 72%),
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.58) 0%,
-      rgba(220, 229, 243, 0.48) 31%,
-      rgba(74, 96, 132, 0.58) 63%,
-      rgba(255, 255, 255, 0.54) 100%);
+      rgba(255, 255, 255, 0.07) 0%,
+      rgba(221, 231, 248, 0.09) 34%,
+      rgba(45, 66, 100, 0.18) 66%,
+      rgba(255, 255, 255, 0.09) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  /* Strong white stroke = bright rim/refraction edge */
-  -webkit-text-stroke: clamp(1.6px, 0.17vw, 3px) rgba(52, 76, 112, 0.58);
-  /* Layered shadows: top highlight + bottom depth */
+  -webkit-text-stroke: clamp(1.35px, 0.15vw, 2.5px) rgba(36, 58, 92, 0.24);
   text-shadow:
-    0 -4px 2px rgba(255, 255, 255, 0.98),
-    0 3px 1px rgba(31, 53, 87, 0.44),
-    3px 0 1px rgba(255, 255, 255, 0.70),
-    -3px 0 1px rgba(53, 78, 116, 0.28),
-    0 9px 18px rgba(15, 35, 70, 0.34),
-    0 26px 48px rgba(0, 83, 210, 0.17);
+    0 -1px 1px rgba(255, 255, 255, 0.68),
+    0 1px 1px rgba(25, 46, 78, 0.18),
+    1px 0 1px rgba(255, 255, 255, 0.26),
+    -1px 0 1px rgba(42, 67, 104, 0.12),
+    0 3px 5px rgba(14, 35, 72, 0.14),
+    0 8px 16px rgba(0, 83, 210, 0.055);
   filter:
-    drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.84))
-    drop-shadow(0 8px 16px rgba(31, 72, 142, 0.18));
-  opacity: 0.98;
+    drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.72))
+    drop-shadow(0 4px 7px rgba(31, 72, 142, 0.08));
+  opacity: 0.58;
   mix-blend-mode: multiply;
 }
 
@@ -316,21 +315,21 @@ html.lenis body {
 }
 
 .hero-name-line > span::before {
-  transform: translate(-0.7px, -1.7px);
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.18) 52%, transparent 72%);
-  -webkit-text-stroke: clamp(0.8px, 0.08vw, 1.4px) rgba(255, 255, 255, 0.70);
-  opacity: 0.72;
+  transform: translate(-1.1px, -1.4px);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.18) 48%, transparent 74%);
+  -webkit-text-stroke: clamp(1.2px, 0.11vw, 1.9px) rgba(255, 255, 255, 0.76);
+  opacity: 0.64;
   mix-blend-mode: screen;
   z-index: 1;
 }
 
 .hero-name-line > span::after {
-  transform: translate(1.4px, 2.5px);
+  transform: translate(1.2px, 2.3px);
   background-image:
-    radial-gradient(64% 58% at 72% 74%, rgba(0, 102, 255, 0.20), transparent 78%),
-    linear-gradient(180deg, transparent 18%, rgba(48, 70, 105, 0.28) 66%, rgba(255, 255, 255, 0.18));
-  -webkit-text-stroke: clamp(1.2px, 0.12vw, 2px) rgba(49, 71, 106, 0.28);
-  opacity: 0.82;
+    radial-gradient(64% 58% at 72% 74%, rgba(0, 102, 255, 0.12), transparent 78%),
+    linear-gradient(180deg, transparent 24%, rgba(24, 47, 82, 0.22) 68%, rgba(255, 255, 255, 0.08));
+  -webkit-text-stroke: clamp(1.35px, 0.13vw, 2.25px) rgba(34, 57, 92, 0.26);
+  opacity: 0.66;
   mix-blend-mode: multiply;
   z-index: -1;
 }
