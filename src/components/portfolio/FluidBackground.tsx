@@ -180,17 +180,55 @@ async function initFluid(container: HTMLDivElement, initialReducedMotion: boolea
 
   // Compute height field at a UV coordinate (plain JS, returns TSL node)
   const computeHeight = (p: any, t: any) => {
-    // Base ambient flow — slow horizontal swirls with vertical eddies.
-    // Multi-octave: large slow waves + medium ripples + tiny ripples.
-    const flowUv1 = p.mul(vec2(2.0, 3.0)).add(vec2(t.mul(0.05), t.mul(0.025)));
-    const flowUv2 = p.mul(vec2(5.5, 7.0)).add(vec2(t.mul(-0.04), t.mul(0.06)));
-    const flow1 = fbm(flowUv1).sub(0.5).mul(0.32);
-    const flow2 = fbm(flowUv2).sub(0.5).mul(0.14);
-    const flow = flow1.add(flow2);
+    // Art-directed pearl relief: broad shallow waves plus long horizontal
+    // refractive folds. The reference reads as pooled glass, not fine noise.
+    const warpA = fbm(p.mul(vec2(1.35, 1.05)).add(vec2(t.mul(0.006), t.mul(0.004)))).sub(0.5);
+    const warpB = fbm(p.mul(vec2(3.8, 2.9)).sub(vec2(t.mul(0.010), t.mul(0.005)))).sub(0.5);
+    const q = p.add(vec2(warpA.mul(0.085).add(warpB.mul(0.026)), warpA.mul(0.048).sub(warpB.mul(0.020))));
+    const broad1 = sin(q.x.mul(3.0).add(q.y.mul(5.8)).add(t.mul(0.030))).mul(0.052);
+    const broad2 = sin(q.x.mul(-2.6).add(q.y.mul(3.2)).sub(t.mul(0.026))).mul(0.044);
+    const broad3 = sin(q.x.mul(7.6).sub(q.y.mul(1.4)).add(warpA.mul(3.4))).mul(0.018);
+
+    const ridge = (
+      baseY: number,
+      waveAmp: number,
+      freq: number,
+      phase: number,
+      width: number,
+      strength: number
+    ) => {
+      const line = float(baseY)
+        .add(sin(q.x.mul(freq).add(phase).add(t.mul(0.026))).mul(waveAmp))
+        .add(fbm(q.mul(vec2(2.2, 4.2)).add(vec2(phase, phase * 0.37))).sub(0.5).mul(0.040));
+      const d = abs(q.y.sub(line));
+      return exp(d.mul(d).mul(-1 / (width * width))).mul(strength);
+    };
+
+    let h: any = broad1
+      .add(broad2)
+      .add(broad3)
+      .add(ridge(0.92, 0.034, 7.1, 0.5, 0.070, 0.074))
+      .add(ridge(0.62, 0.040, 6.4, 5.2, 0.084, 0.068))
+      .add(ridge(0.28, 0.038, 6.9, 4.2, 0.078, 0.070));
+
+    const droplet = (cx: number, cy: number, sx: number, sy: number, amp: number) => {
+      const d = p.sub(vec2(cx, cy)).mul(vec2(sx, sy));
+      const r2 = dot(d, d);
+      const core = exp(r2.mul(-1.0)).mul(amp);
+      const rim = smoothstep(0.18, 0.33, r2).mul(float(1.0).sub(smoothstep(0.33, 0.52, r2))).mul(amp * 0.55);
+      return core.add(rim);
+    };
+
+    h = h
+      .add(droplet(0.955, 0.82, 31.0, 40.0, 0.090))
+      .add(droplet(0.865, 0.89, 25.0, 35.0, 0.068))
+      .add(droplet(0.065, 0.67, 27.0, 35.0, 0.074))
+      .add(droplet(0.42, 0.37, 30.0, 40.0, 0.056))
+      .add(droplet(0.94, 0.56, 32.0, 42.0, 0.062))
+      .add(fbm(p.mul(vec2(7.0, 8.5)).add(vec2(t.mul(0.010), 0.0))).sub(0.5).mul(0.026));
 
     // Sum ripple contributions — each ripple is read from its own uniform
     // (updated dynamically when pushRipple is called).
-    let h: any = flow;
     for (let i = 0; i < RIPPLE_CAPACITY; i++) {
       const u = rippleUniforms[i];
       const rx = u.x;
@@ -199,14 +237,21 @@ async function initFluid(container: HTMLDivElement, initialReducedMotion: boolea
       const rInt = u.intensity;
 
       const age = t.sub(rStart);
-      const alive = max(float(0.0), float(1.0).sub(age.mul(0.45))); // ~2.2s lifetime
+      const alive = max(float(0.0), float(1.0).sub(age.mul(0.62))); // ~1.6s lifetime
       const valid = rStart.greaterThan(0.0).and(alive.greaterThan(0.01));
 
-      const d = length(p.sub(vec2(rx, ry)).mul(vec2(1.6, 1.0)));
-      const wavefront = age.mul(0.55);
-      const ring = sin(d.mul(34.0).sub(wavefront.mul(11.0)));
-      const envelope = exp(d.mul(d).mul(-7.0)).mul(exp(age.mul(-0.9)));
-      const contribution = ring.mul(envelope).mul(alive).mul(rInt).mul(0.55);
+      const d = length(p.sub(vec2(rx, ry)).mul(vec2(1.68, 1.0)));
+      const wavefront = age.mul(0.52);
+      const frontDelta = d.sub(wavefront);
+      const frontEnvelope = exp(frontDelta.mul(frontDelta).mul(-145.0)).mul(exp(age.mul(-0.92)));
+      const innerEnvelope = exp(d.mul(d).mul(-25.0)).mul(exp(age.mul(-1.18)));
+      const bowl = exp(d.mul(d).mul(-14.0)).mul(-0.135);
+      const primaryRing = sin(d.mul(102.0).sub(age.mul(42.0))).mul(frontEnvelope).mul(0.34);
+      const secondaryRings = sin(d.mul(168.0).sub(age.mul(74.0))).mul(innerEnvelope).mul(0.12);
+      const glassRim = smoothstep(0.045, 0.10, d)
+        .mul(float(1.0).sub(smoothstep(0.30, 0.54, d)))
+        .mul(0.13);
+      const contribution = bowl.add(primaryRing).add(secondaryRings).add(glassRim).mul(alive).mul(rInt);
       h = h.add(contribution.mul(valid));
     }
     return h;
@@ -227,54 +272,73 @@ async function initFluid(container: HTMLDivElement, initialReducedMotion: boolea
     const dy = hY.sub(hC).div(eps);
     const normal = normalize(vec3(float(0.0).sub(dx), float(0.0).sub(dy), float(1.0)));
 
-    // Lighting — soft studio HDRI-like
-    const lightDir = normalize(vec3(0.35, 0.55, 0.85));
+    // Lighting — soft studio HDRI-like with hard white ribbon glints
+    const lightDir = normalize(vec3(-0.28, 0.60, 0.82));
     const ndl = max(dot(normal, lightDir), float(0.0));
     const halfDir = normalize(add(lightDir, vec3(0.0, 0.0, 1.0)));
     const ndh = max(dot(normal, halfDir), float(0.0));
-    const specular = pow(ndh, float(56.0)).mul(2.4);
+    const specular = pow(ndh, float(132.0)).mul(4.8);
+    const grazingLight = normalize(vec3(0.72, -0.18, 0.66));
+    const grazing = pow(max(dot(normal, grazingLight), float(0.0)), float(240.0)).mul(7.0);
 
     // Rim light — cool backlight
-    const rim = pow(float(1.0).sub(max(normal.z, float(0.0))), float(2.2)).mul(0.5);
+    const rim = pow(float(1.0).sub(max(normal.z, float(0.0))), float(1.65)).mul(0.74);
 
-    // Pearl-white base color modulated by height — deepen shadows for visible relief
-    const baseColor = vec3(0.969, 0.976, 0.988); // #f7f9fc
-    const deepColor = vec3(0.780, 0.810, 0.870); // cool shadow (deeper for visible relief)
-    const tinted = mix(baseColor, deepColor, smoothstep(-0.08, 0.20, hC).mul(0.7));
-
-    // Blue caustic — appears where curvature is high (ripple edges)
     const curvature = abs(dx).add(abs(dy));
-    const caustic = smoothstep(0.04, 0.40, curvature).mul(0.55);
-    const blueCaustic = vec3(0.0, 0.4, 1.0).mul(caustic);
 
-    // Blue underglow near bottom-right of viewport for depth
-    const underGlow = smoothstep(0.65, 1.0, p.x.add(p.y.mul(0.4))).mul(0.22);
-    const blueUnder = vec3(0.18, 0.45, 1.0).mul(underGlow);
+    // Pearl-white base color modulated by height and slope for visible relief.
+    const baseColor = vec3(0.996, 0.998, 1.0);
+    const midColor = vec3(0.900, 0.928, 0.982);
+    const deepColor = vec3(0.600, 0.690, 0.855);
+    const heightShade = smoothstep(-0.075, 0.26, hC);
+    const slopeShade = smoothstep(0.26, 1.10, curvature);
+    let tinted = mix(baseColor, midColor, heightShade.mul(0.50));
+    tinted = mix(tinted, deepColor, slopeShade.mul(0.30));
+
+    // Blue caustics collect on ripple/fold edges and around the liquid frame.
+    const edgeDistance = min(min(p.x, float(1.0).sub(p.x)), min(p.y, float(1.0).sub(p.y)));
+    const edgeCaustic = float(1.0).sub(smoothstep(0.0, 0.18, edgeDistance)).mul(0.16);
+    const rippleCaustic = smoothstep(0.34, 1.16, curvature).mul(0.30);
+    const blueCaustic = vec3(0.0, 0.34, 1.0).mul(edgeCaustic.add(rippleCaustic));
+
+    // Stronger lower/right underglow keeps the WebGPU layer legible over the PNG.
+    const underGlow = smoothstep(0.78, 1.22, p.x.add(p.y.mul(0.34))).mul(0.13);
+    const blueUnder = vec3(0.10, 0.42, 1.0).mul(underGlow);
 
     // Tiny droplet highlights — high-frequency sparkle
-    const droplet = smoothstep(0.96, 1.0, valueNoise(p.mul(80.0).add(t.mul(0.3)))).mul(0.35);
+    const droplet = smoothstep(0.988, 1.0, valueNoise(p.mul(118.0).add(t.mul(0.12)))).mul(0.18);
 
-    // Soft white streaks — specular ribbons across surface (stronger)
-    const streakNoise = fbm(p.mul(vec2(3.0, 8.0)).add(vec2(t.mul(0.05), 0.0)));
-    const streak = smoothstep(0.50, 0.85, streakNoise).mul(0.32);
+    // Crisp white streaks — long specular ribbons across folds.
+    const ribbonFlow = p.y
+      .mul(18.0)
+      .add(p.x.mul(6.4))
+      .add(fbm(p.mul(vec2(2.4, 4.2)).add(vec2(0.0, t.mul(0.010)))).mul(5.2))
+      .add(t.mul(0.026));
+    const ribbon = smoothstep(0.925, 0.996, abs(sin(ribbonFlow)))
+      .mul(smoothstep(0.18, 0.96, curvature))
+      .mul(0.62);
+    const streakNoise = fbm(p.mul(vec2(5.4, 10.5)).add(vec2(t.mul(0.012), 0.0)));
+    const softStreak = smoothstep(0.58, 0.90, streakNoise).mul(0.24);
 
     // Compose
     let color = tinted;
-    color = color.mul(float(0.60).add(ndl.mul(0.45)));
-    color = color.add(vec3(specular).mul(0.95));
-    color = color.add(vec3(0.85, 0.90, 0.98).mul(streak));
+    color = color.mul(float(0.76).add(ndl.mul(0.46)));
+    color = color.add(vec3(specular).mul(1.08));
+    color = color.add(vec3(grazing).mul(0.72));
+    color = color.add(vec3(0.96, 0.985, 1.0).mul(ribbon));
+    color = color.add(vec3(0.88, 0.93, 1.0).mul(softStreak));
     color = color.add(blueCaustic);
     color = color.add(blueUnder);
     color = color.add(vec3(1.0).mul(droplet));
-    color = color.add(vec3(0.40, 0.55, 0.85).mul(rim));
+    color = color.add(vec3(0.46, 0.64, 1.0).mul(rim));
 
     // Slight vignette for focus
     const vUv = p.sub(0.5);
-    const vignette = float(1.0).sub(dot(vUv, vUv).mul(0.45));
+    const vignette = float(1.0).sub(dot(vUv, vUv).mul(0.16));
     color = color.mul(vignette);
 
     // Reduced motion — fade toward static pearl
-    const staticColor = mix(baseColor, deepColor, 0.1).mul(1.05);
+    const staticColor = mix(baseColor, midColor, 0.18).mul(1.06);
     color = mix(color, staticColor, uReducedMotion);
 
     return vec4(color, 1.0);
@@ -303,8 +367,8 @@ async function initFluid(container: HTMLDivElement, initialReducedMotion: boolea
     const dx = x - lastCursorX;
     const dy = y - lastCursorY;
     const speed = Math.sqrt(dx * dx + dy * dy) / dt;
-    const intensity = Math.min(3.5, 1.2 + speed * 14);
-    if (now - lastCursorTime > 0.018 || speed > 0.05) {
+    const intensity = Math.min(1.65, 0.55 + speed * 4.2);
+    if (now - lastCursorTime > 0.035 || speed > 0.08) {
       pushRipple(x, y, intensity);
       lastCursorX = x;
       lastCursorY = y;
@@ -314,7 +378,7 @@ async function initFluid(container: HTMLDivElement, initialReducedMotion: boolea
   function onPointerDown(e: PointerEvent) {
     const x = e.clientX / window.innerWidth;
     const y = 1.0 - e.clientY / window.innerHeight;
-    pushRipple(x, y, 3.5);
+    pushRipple(x, y, 1.8);
   }
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("pointerdown", onPointerDown, { passive: true });
