@@ -1,0 +1,327 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-display: var(--font-inter-tight);
+  --font-mono: var(--font-geist-mono);
+
+  /* Portfolio palette */
+  --color-pearl: #f7f9fc;
+  --color-pearl-deep: #edf1f7;
+  --color-pearl-shadow: #dde4ee;
+  --color-ink: #0a0f1a;
+  --color-ink-soft: #1c2433;
+  --color-slate-cool: #5c6573;
+  --color-slate-faint: #9aa3b2;
+  --color-electric: #0066ff;
+  --color-electric-soft: #4d9fff;
+  --color-electric-glow: #7ab8ff;
+  --color-glass-edge: rgba(255, 255, 255, 0.55);
+  --color-glass-fill: rgba(255, 255, 255, 0.32);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 24px);
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(0.985 0.002 240);
+  --foreground: oklch(0.18 0.02 240);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: clip;
+}
+
+/* Portfolio-specific layers */
+.portfolio-root {
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+}
+
+.fluid-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.fluid-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+.content-layer {
+  position: relative;
+  z-index: 10;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(255, 255, 255, 0.32);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.65) inset,
+    0 8px 30px -8px rgba(20, 35, 70, 0.12),
+    0 2px 8px -2px rgba(20, 35, 70, 0.08);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.8) inset,
+    0 12px 40px -10px rgba(20, 35, 70, 0.15);
+}
+
+/* Embedded liquid-glass hero name */
+.hero-name {
+  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 0.82;
+  text-transform: uppercase;
+  position: relative;
+}
+
+.hero-name::before {
+  content: "";
+  position: absolute;
+  inset: -8% -4%;
+  background: radial-gradient(60% 50% at 70% 80%,
+      rgba(0, 102, 255, 0.22) 0%,
+      transparent 60%);
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(24px);
+}
+
+/* Per-line styling — frosted silver glass with bright edge highlights.
+   The letters read as carved/extruded from liquid: silver-gray body,
+   bright white rims, dark depth shadow underneath. */
+.hero-name-line {
+  display: block;
+  font-size: clamp(3.2rem, 14vw, 14rem);
+  background:
+    linear-gradient(180deg,
+      #f4f7fb 0%,
+      #c8d3e3 30%,
+      #94a5bf 60%,
+      #5e7197 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  /* Strong white stroke = bright rim/refraction edge */
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.9);
+  /* Layered shadows: top highlight + bottom depth */
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 1),
+    0 -1px 0 rgba(255, 255, 255, 0.6),
+    1px 0 0 rgba(255, 255, 255, 0.7),
+    -1px 0 0 rgba(255, 255, 255, 0.7),
+    0 3px 5px rgba(15, 30, 60, 0.3),
+    0 8px 20px rgba(15, 30, 60, 0.22);
+  filter:
+    drop-shadow(0 1px 1px rgba(255, 255, 255, 0.7))
+    drop-shadow(0 12px 32px rgba(15, 30, 60, 0.28));
+}
+
+/* Custom cursor (when enabled) */
+.custom-cursor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%,
+      rgba(0, 102, 255, 0.95) 0%,
+      rgba(0, 102, 255, 0.55) 40%,
+      rgba(0, 102, 255, 0) 70%);
+  pointer-events: none;
+  z-index: 9999;
+  mix-blend-mode: multiply;
+  transition: width 0.18s ease, height 0.18s ease, opacity 0.25s ease;
+  will-change: transform;
+}
+
+.custom-cursor-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(0, 102, 255, 0.35);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transition: width 0.25s ease, height 0.25s ease, opacity 0.3s ease;
+  will-change: transform;
+}
+
+/* Liquid blob card edge — organic SVG filter applied via CSS */
+.blob-edge {
+  filter: url(#liquidBlobFilter);
+}
+
+/* Hide scrollbar but keep scroll */
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Focus ring */
+:where(a, button, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-electric);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 102, 255, 0.2);
+  color: var(--color-ink);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .custom-cursor,
+  .custom-cursor-ring {
+    display: none !important;
+  }
+}
+
+/* Hero name responsive scaling — mobile */
+@media (max-width: 768px) {
+  .hero-name-line {
+    font-size: clamp(2.4rem, 13vw, 6rem);
+    line-height: 0.88;
+    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.7);
+  }
+}
+
+/* Subtle animated gradient sheen on glass */
+@keyframes glass-sheen {
+  0%, 100% { opacity: 0.4; transform: translateX(-100%); }
+  50% { opacity: 0.7; transform: translateX(100%); }
+}
+
+.glass-sheen {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.45) 50%,
+      transparent 70%);
+  animation: glass-sheen 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Vertical scroll indicator pulse */
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 2.2s ease-in-out infinite;
+}
+
+/* Slow drift for ambient fluid feel */
+@keyframes drift-x {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(8px); }
+}
+
+.drift {
+  animation: drift-x 8s ease-in-out infinite;
+}
+
+/* Hide native cursor on devices that support custom cursor (only on hover-capable + fine pointer) */
+@media (hover: hover) and (pointer: fine) {
+  body.custom-cursor-active,
+  body.custom-cursor-active * {
+    cursor: none;
+  }
+}
+/* force recompile 1782931931 */
