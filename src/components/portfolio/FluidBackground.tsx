@@ -20,6 +20,13 @@ type Ripple = {
   intensity: number;
 };
 
+type CoverRect = {
+  sx: number;
+  sy: number;
+  sw: number;
+  sh: number;
+};
+
 type PointerState = {
   x: number;
   y: number;
@@ -34,6 +41,29 @@ type PointerState = {
   energy: number;
   active: boolean;
 };
+
+function getCoverRect(image: HTMLImageElement, width: number, height: number): CoverRect {
+  const imageRatio = image.naturalWidth / image.naturalHeight;
+  const canvasRatio = width / height;
+
+  if (canvasRatio > imageRatio) {
+    const sh = image.naturalWidth / canvasRatio;
+    return {
+      sx: 0,
+      sy: (image.naturalHeight - sh) / 2,
+      sw: image.naturalWidth,
+      sh,
+    };
+  }
+
+  const sw = image.naturalHeight * canvasRatio;
+  return {
+    sx: (image.naturalWidth - sw) / 2,
+    sy: 0,
+    sw,
+    sh: image.naturalHeight,
+  };
+}
 
 const SHADER = /* wgsl */ `
 struct VertexOut {
@@ -184,27 +214,27 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     vec3<f32>(1.0, 1.0, 0.995),
     smoothstep(-0.32, 0.42, p.y) * 0.58 + flowA * 0.28
   );
-  let coolShadow = vec3<f32>(0.72, 0.80, 0.92) * (0.105 + flowB * 0.105);
-  var color = pearl - coolShadow;
-  color = mix(color, material, 0.48);
+  let coolShadow = vec3<f32>(0.66, 0.76, 0.92) * (0.115 + flowB * 0.125);
+  let materialLift = material + vec3<f32>(0.020, 0.030, 0.045);
+  var color = mix(pearl - coolShadow, materialLift, 0.82);
 
-  color = color - vec3<f32>(0.20, 0.30, 0.48) * sheetShadow * 0.42;
-  color = color - vec3<f32>(0.13, 0.22, 0.36) * (river1 + river2 + river3) * 0.13;
-  color = color + vec3<f32>(1.0) * (sheetTop * 0.26 + sheetCenter * 0.18 + sheetBottom * 0.24);
-  color = color + vec3<f32>(0.34, 0.63, 1.0) * (sheetTop * 0.22 + sheetCenter * 0.14 + sheetBottom * 0.25);
-  color = color + vec3<f32>(1.0) * (river1 * 0.86 + river2 * 0.70 + river3 * 0.76);
-  color = color + vec3<f32>(0.0, 0.42, 1.0) * (river1 * 0.36 + river2 * 0.25 + river3 * 0.38);
-  color = color + vec3<f32>(0.20, 0.55, 1.0) * (thin1 * 0.52 + thin2 * 0.48);
-  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.25;
-  color = color + vec3<f32>(0.0, 0.34, 1.0) * blueCaustic * 0.18;
+  color = color - vec3<f32>(0.20, 0.30, 0.48) * sheetShadow * 0.34;
+  color = color - vec3<f32>(0.12, 0.21, 0.35) * (river1 + river2 + river3) * 0.09;
+  color = color + vec3<f32>(1.0) * (sheetTop * 0.21 + sheetCenter * 0.14 + sheetBottom * 0.20);
+  color = color + vec3<f32>(0.25, 0.57, 1.0) * (sheetTop * 0.17 + sheetCenter * 0.11 + sheetBottom * 0.20);
+  color = color + vec3<f32>(1.0) * (river1 * 0.58 + river2 * 0.46 + river3 * 0.52);
+  color = color + vec3<f32>(0.0, 0.42, 1.0) * (river1 * 0.26 + river2 * 0.18 + river3 * 0.28);
+  color = color + vec3<f32>(0.08, 0.48, 1.0) * (thin1 * 0.42 + thin2 * 0.38);
+  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.18;
+  color = color + vec3<f32>(0.0, 0.34, 1.0) * blueCaustic * 0.12;
   color = color + vec3<f32>(1.0) * cell * 0.15;
   color = color + vec3<f32>(0.52, 0.72, 1.0) * droplets * 0.26;
   color = color + vec3<f32>(1.0) * dropletRings * 0.36 + vec3<f32>(0.0, 0.38, 1.0) * dropletRings * 0.18;
-  color = color + vec3<f32>(0.0, 0.36, 1.0) * ripple.x + vec3<f32>(1.0) * ripple.y;
+  color = color + vec3<f32>(0.0, 0.36, 1.0) * ripple.x * 0.82 + vec3<f32>(1.0) * ripple.y * 0.88;
 
   let pointerDistance = distance(uv, pointer);
   let wake = exp(-pointerDistance * 7.5) * u.energy;
-  color = color + vec3<f32>(0.18, 0.48, 1.0) * wake * 0.16 + vec3<f32>(1.0) * wake * 0.12;
+  color = color + vec3<f32>(0.18, 0.48, 1.0) * wake * 0.10 + vec3<f32>(1.0) * wake * 0.09;
 
   let vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2<f32>(aspect, 1.0), vec2<f32>(0.0)));
   color = mix(color * vec3<f32>(0.92, 0.95, 1.0), color, vignette);
@@ -280,6 +310,321 @@ function createFallbackPointerBus() {
   };
 }
 
+function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.MutableRefObject<boolean>) {
+  const context = canvas.getContext("2d", { alpha: false });
+  if (!context) return createFallbackPointerBus();
+
+  const ctx = context;
+  const image = new Image();
+  image.decoding = "async";
+  image.src = FLUID_TEXTURE_SRC;
+
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let frame = 0;
+  let running = true;
+  let imageReady = false;
+  let lastRenderTime = 0;
+  let lastInputTime = performance.now();
+  let nextIdleRipple = 1.2;
+  const startedAt = performance.now();
+  const ripples: Ripple[] = [];
+  const pointer: PointerState = {
+    x: window.innerWidth * 0.62,
+    y: window.innerHeight * 0.54,
+    targetX: window.innerWidth * 0.62,
+    targetY: window.innerHeight * 0.54,
+    lastX: 0,
+    lastY: 0,
+    lastMoveTime: 0,
+    lastRipple: 0,
+    vx: 0,
+    vy: 0,
+    energy: 0.04,
+    active: false,
+  };
+
+  function configure() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function pushRipple(x: number, y: number, intensity: number) {
+    const time = performance.now();
+    ripples.push({ x, y, start: time, intensity });
+    if (ripples.length > RIPPLE_COUNT) ripples.shift();
+    emitLiquidRipple({ x, y, intensity, time });
+  }
+
+  function rippleOffset(x: number, y: number, now: number) {
+    let offset = 0;
+    for (const ripple of ripples) {
+      const age = (now - ripple.start) / 1000;
+      if (age <= 0 || age > 2.4) continue;
+      const distance = Math.hypot(x - ripple.x, y - ripple.y);
+      const radius = 18 + age * 215;
+      const wave = Math.sin((distance - radius) * 0.108);
+      const envelope = Math.exp(-Math.abs(distance - radius) / 52) * (1 - age / 2.4);
+      offset += wave * envelope * ripple.intensity * 26;
+    }
+    return offset;
+  }
+
+  function pointerOffset(x: number, y: number, t: number) {
+    const distance = Math.hypot(x - pointer.x, y - pointer.y);
+    const wake = Math.sin(distance * 0.043 - t * 8.5) * Math.exp(-distance / 230) * pointer.energy * 18;
+    return wake + ((x - pointer.x) * pointer.vx + (y - pointer.y) * pointer.vy) / Math.max(distance, 1) * 0.012 * Math.exp(-distance / 190);
+  }
+
+  function drawTexture(t: number, now: number) {
+    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    gradient.addColorStop(0, "#f8fbff");
+    gradient.addColorStop(0.38, "#edf4ff");
+    gradient.addColorStop(0.70, "#fbfdff");
+    gradient.addColorStop(1, "#e7f0fb");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    if (!imageReady) return;
+    const cover = getCoverRect(image, width, height);
+    const strips = Math.max(70, Math.min(150, Math.round(width / 13)));
+    const sliceWidth = width / strips;
+
+    ctx.save();
+    ctx.globalAlpha = 0.88;
+    for (let i = 0; i < strips; i++) {
+      const progress = i / strips;
+      const dx = i * sliceWidth;
+      const sampleX = dx + sliceWidth * 0.5;
+      const sampleY = height * (0.42 + Math.sin(progress * 9.2 + t * 0.18) * 0.18);
+      const warpX =
+        Math.sin(progress * 18.5 + t * 0.52) * 4.4 +
+        Math.sin(progress * 47 - t * 0.33) * 2.2 +
+        rippleOffset(sampleX, sampleY, now) * 0.15 +
+        pointerOffset(sampleX, sampleY, t) * 0.34;
+      const warpY =
+        Math.cos(progress * 12.0 - t * 0.30) * 3.0 +
+        rippleOffset(sampleX, sampleY, now) * 0.05 +
+        pointerOffset(sampleX, sampleY, t) * 0.10;
+      ctx.drawImage(
+        image,
+        cover.sx + cover.sw * progress,
+        cover.sy,
+        cover.sw / strips + 1,
+        cover.sh,
+        dx + warpX - 2,
+        warpY - 2,
+        sliceWidth + 4,
+        height + 4
+      );
+    }
+    ctx.restore();
+  }
+
+  function drawRidge(y: number, amplitude: number, phase: number, blue: boolean, t: number, now: number) {
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.globalCompositeOperation = blue ? "multiply" : "screen";
+    ctx.filter = blue ? "blur(2.6px)" : "blur(2px)";
+    for (let pass = 0; pass < 3; pass++) {
+      ctx.beginPath();
+      for (let x = -90; x <= width + 90; x += 18) {
+        const yy =
+          y +
+          Math.sin(x * 0.0058 + t * 0.25 + phase) * amplitude +
+          Math.sin(x * 0.018 - t * 0.17 + phase) * amplitude * 0.28 +
+          rippleOffset(x, y, now) * 0.05 +
+          pointerOffset(x, y, t) * 0.08;
+        if (x === -90) ctx.moveTo(x, yy + pass * 3.2);
+        else ctx.lineTo(x, yy + pass * 3.2);
+      }
+      ctx.strokeStyle = blue
+        ? `rgba(0,82,255,${0.19 - pass * 0.035})`
+        : `rgba(255,255,255,${0.78 - pass * 0.13})`;
+      ctx.lineWidth = blue ? 2.6 - pass * 0.45 : 8.5 - pass * 1.4;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawDroplets(t: number) {
+    ctx.save();
+    for (const [px, py, rx, ry, phase] of [
+      [0.045, 0.38, 25, 9, 0.3],
+      [0.405, 0.63, 18, 8, 1.5],
+      [0.705, 0.18, 14, 7, 2.4],
+      [0.895, 0.44, 15, 7, 3.2],
+      [0.842, 0.84, 18, 8, 4.2],
+    ] as const) {
+      const x = width * px + Math.sin(t * 0.18 + phase) * 5;
+      const y = height * py + Math.cos(t * 0.16 + phase) * 4;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.sin(phase) * 0.3);
+      ctx.globalCompositeOperation = "screen";
+      ctx.filter = "blur(0.7px)";
+      ctx.strokeStyle = "rgba(255,255,255,0.82)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.strokeStyle = "rgba(0,86,255,0.16)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rx * 0.78, ry * 0.55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  function drawRipples(now: number) {
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const ripple = ripples[i];
+      const age = (now - ripple.start) / 1000;
+      if (age > 2.4) {
+        ripples.splice(i, 1);
+        continue;
+      }
+      const alpha = (1 - age / 2.4) * ripple.intensity;
+      const radius = 18 + age * 215;
+      for (let ring = 0; ring < 4; ring++) {
+        ctx.beginPath();
+        ctx.arc(ripple.x, ripple.y, radius + ring * 15, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(0,80,255,${0.16 * alpha * (1 - ring * 0.15)})`;
+        ctx.lineWidth = ring === 0 ? 2.0 : 1.05;
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  function draw(now = performance.now()) {
+    if (!running) return;
+    if (!reducedMotionRef.current && now - lastRenderTime < 1000 / 48) {
+      frame = requestAnimationFrame(draw);
+      return;
+    }
+    lastRenderTime = now;
+    const t = reducedMotionRef.current ? 0 : (now - startedAt) / 1000;
+
+    if (!pointer.active && now - lastInputTime > 1300 && t > nextIdleRipple) {
+      pushRipple(
+        width * (0.18 + ((Math.sin(t * 0.37) + 1) * 0.5) * 0.64),
+        height * (0.18 + ((Math.cos(t * 0.29 + 1.2) + 1) * 0.5) * 0.56),
+        0.20
+      );
+      nextIdleRipple = t + 1.8 + ((Math.sin(t * 1.7) + 1) * 0.5) * 1.1;
+    }
+
+    pointer.x += (pointer.targetX - pointer.x) * 0.18;
+    pointer.y += (pointer.targetY - pointer.y) * 0.18;
+    pointer.energy += ((pointer.active ? 0.48 : 0.06) - pointer.energy) * 0.05;
+
+    ctx.clearRect(0, 0, width, height);
+    drawTexture(t, now);
+    drawRidge(height * 0.18, height * 0.038, 0.2, false, t, now);
+    drawRidge(height * 0.29, height * 0.028, 1.6, true, t, now);
+    drawRidge(height * 0.64, height * 0.035, 3.1, false, t, now);
+    drawRidge(height * 0.79, height * 0.034, 4.9, true, t, now);
+    drawDroplets(t);
+    drawRipples(now);
+
+    if (!reducedMotionRef.current) frame = requestAnimationFrame(draw);
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    const now = performance.now();
+    lastInputTime = now;
+    const first = pointer.lastMoveTime === 0;
+    const dt = first ? 0.016 : Math.max((now - pointer.lastMoveTime) / 1000, 0.001);
+    const dx = first ? 0 : e.clientX - pointer.lastX;
+    const dy = first ? 0 : e.clientY - pointer.lastY;
+    const speed = Math.hypot(dx, dy) / Math.max(width, height) / dt;
+
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    pointer.vx += (dx / dt - pointer.vx) * 0.18;
+    pointer.vy += (dy / dt - pointer.vy) * 0.18;
+    pointer.active = true;
+    pointer.energy = Math.min(1.2, Math.max(pointer.energy, 0.22 + speed * 0.38));
+    emitPointer(pointer, speed);
+
+    if (now - pointer.lastRipple > 155) {
+      pushRipple(e.clientX, e.clientY, Math.min(0.90, 0.18 + speed * 0.54));
+      pointer.lastRipple = now;
+    }
+
+    pointer.lastX = e.clientX;
+    pointer.lastY = e.clientY;
+    pointer.lastMoveTime = now;
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    lastInputTime = performance.now();
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    pointer.lastX = e.clientX;
+    pointer.lastY = e.clientY;
+    pointer.lastMoveTime = performance.now();
+    pointer.active = true;
+    pointer.energy = Math.max(pointer.energy, 0.74);
+    emitPointer(pointer, 0.5);
+    pushRipple(e.clientX, e.clientY, 1);
+  }
+
+  function onPointerEnd() {
+    pointer.active = false;
+    pointer.vx *= 0.35;
+    pointer.vy *= 0.35;
+    emitPointer(pointer, 0);
+  }
+
+  function onVisibility() {
+    running = !document.hidden;
+    if (running) frame = requestAnimationFrame(draw);
+    else cancelAnimationFrame(frame);
+  }
+
+  image.addEventListener("load", () => {
+    imageReady = true;
+  });
+  configure();
+  window.addEventListener("resize", configure);
+  window.addEventListener("pointermove", onPointerMove, { passive: true });
+  window.addEventListener("pointerdown", onPointerDown, { passive: true });
+  window.addEventListener("pointerup", onPointerEnd, { passive: true });
+  window.addEventListener("pointercancel", onPointerEnd, { passive: true });
+  window.addEventListener("pointerleave", onPointerEnd);
+  document.addEventListener("visibilitychange", onVisibility);
+  frame = requestAnimationFrame(draw);
+
+  return () => {
+    running = false;
+    cancelAnimationFrame(frame);
+    window.removeEventListener("resize", configure);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerdown", onPointerDown);
+    window.removeEventListener("pointerup", onPointerEnd);
+    window.removeEventListener("pointercancel", onPointerEnd);
+    window.removeEventListener("pointerleave", onPointerEnd);
+    document.removeEventListener("visibilitychange", onVisibility);
+  };
+}
+
 async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.MutableRefObject<boolean>) {
   const gpu = (navigator as Navigator & { gpu?: unknown }).gpu as
     | {
@@ -325,6 +670,7 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
       }
     | null;
   if (!context) throw new Error("WebGPU context is not available");
+  const gpuContext = context;
 
   const format = gpu.getPreferredCanvasFormat();
   const shaderModule = device.createShaderModule({ label: "portfolio-fluid-shader", code: SHADER });
@@ -407,7 +753,7 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
     canvas.height = Math.max(1, Math.floor(height * dpr));
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    context.configure({
+    gpuContext.configure({
       device,
       format,
       alphaMode: "opaque",
@@ -525,7 +871,7 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
     const pass = encoder.beginRenderPass({
       colorAttachments: [
         {
-          view: context.getCurrentTexture().createView(),
+          view: gpuContext.getCurrentTexture().createView(),
           loadOp: "clear",
           clearValue: { r: 0.98, g: 0.99, b: 1.0, a: 1.0 },
           storeOp: "store",
@@ -576,37 +922,47 @@ export default function FluidBackground({ reducedMotion = false, className }: Pr
     const container = mountRef.current;
     if (!container) return;
 
-    const canvas = document.createElement("canvas");
-    canvas.dataset.renderer = "webgpu-fluid";
-    container.appendChild(canvas);
-
     let disposed = false;
     let cleanup = createFallbackPointerBus();
+    let fallbackCanvas: HTMLCanvasElement | null = null;
+    let webgpuCanvas: HTMLCanvasElement | null = null;
 
     if (!reducedMotionRef.current) {
-      startWebGpuRenderer(canvas, reducedMotionRef)
+      fallbackCanvas = document.createElement("canvas");
+      fallbackCanvas.dataset.renderer = "canvas-fluid-fallback";
+      container.appendChild(fallbackCanvas);
+      cleanup();
+      cleanup = startCanvasFallbackRenderer(fallbackCanvas, reducedMotionRef);
+      container.dataset.webgpu = "fallback";
+
+      webgpuCanvas = document.createElement("canvas");
+      webgpuCanvas.dataset.renderer = "webgpu-fluid";
+      startWebGpuRenderer(webgpuCanvas, reducedMotionRef)
         .then((rendererCleanup) => {
           if (disposed) {
             rendererCleanup();
+            webgpuCanvas?.remove();
             return;
           }
           cleanup();
           cleanup = rendererCleanup;
+          fallbackCanvas?.remove();
+          container.appendChild(webgpuCanvas as HTMLCanvasElement);
           container.dataset.webgpu = "ready";
         })
         .catch(() => {
-          canvas.remove();
           container.dataset.webgpu = "fallback";
+          webgpuCanvas?.remove();
         });
     } else {
-      canvas.remove();
       container.dataset.webgpu = "reduced-motion";
     }
 
     return () => {
       disposed = true;
       cleanup();
-      canvas.remove();
+      fallbackCanvas?.remove();
+      webgpuCanvas?.remove();
       delete container.dataset.webgpu;
     };
   }, []);

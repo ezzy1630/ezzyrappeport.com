@@ -158,7 +158,11 @@ html.lenis body {
 }
 
 .fluid-canvas[data-webgpu="ready"] canvas {
-  filter: saturate(1.28) contrast(1.14) brightness(0.985);
+  filter: saturate(1.20) contrast(1.24) brightness(0.952);
+}
+
+.fluid-canvas[data-webgpu="fallback"] canvas {
+  filter: saturate(1.14) contrast(1.16) brightness(0.962);
 }
 
 @keyframes fluid-air-sheet {
@@ -271,6 +275,10 @@ html.lenis body {
     -10px 0 18px rgba(255, 255, 255, 0.42) inset,
     0 18px 40px -30px rgba(9, 40, 95, 0.56);
   transform: translateZ(0);
+  animation: project-capsule-breathe 12s ease-in-out infinite;
+  animation-delay: var(--project-phase);
+  will-change: transform, filter;
+  contain: layout paint;
 }
 
 .project-capsule-card {
@@ -420,6 +428,9 @@ html.lenis body {
   stroke-linecap: round;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
+  stroke-dasharray: 18 46;
+  animation: project-thread-drift 9s ease-in-out infinite;
+  animation-delay: var(--project-phase);
 }
 
 .project-caustic-threads path:nth-child(1) {
@@ -500,6 +511,17 @@ html.lenis body {
   opacity: 1;
 }
 
+.project-card-button:hover .project-caustic-threads,
+.project-card-button:focus-visible .project-caustic-threads {
+  opacity: 0.98;
+  filter: blur(0.2px) drop-shadow(0 1px 5px rgba(0, 102, 255, 0.24));
+}
+
+.project-card-button:hover .project-caustic-threads path,
+.project-card-button:focus-visible .project-caustic-threads path {
+  animation-duration: 4.6s;
+}
+
 .project-card-button:hover .project-capsule,
 .project-card-button:focus-visible .project-capsule {
   box-shadow:
@@ -508,6 +530,37 @@ html.lenis body {
     9px 0 19px rgba(0, 102, 255, 0.18) inset,
     -10px 0 18px rgba(255, 255, 255, 0.46) inset,
     0 22px 44px -28px rgba(0, 86, 255, 0.42);
+}
+
+.project-card-button:active .project-capsule {
+  animation: none;
+  transform: translateY(3px) scaleY(0.976) translateZ(0);
+  box-shadow:
+    0 1px 2px rgba(255, 255, 255, 1) inset,
+    0 -2px 8px rgba(0, 102, 255, 0.54) inset,
+    9px 0 19px rgba(0, 102, 255, 0.20) inset,
+    -10px 0 18px rgba(255, 255, 255, 0.42) inset,
+    0 28px 52px -30px rgba(0, 86, 255, 0.58);
+}
+
+@keyframes project-capsule-breathe {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: saturate(1);
+  }
+  50% {
+    transform: translate3d(0, -1.5px, 0) scale(1.008, 1.014);
+    filter: saturate(1.05);
+  }
+}
+
+@keyframes project-thread-drift {
+  0%, 100% {
+    stroke-dashoffset: 0;
+  }
+  50% {
+    stroke-dashoffset: -42;
+  }
 }
 
 @keyframes project-caustic-drift {
@@ -540,8 +593,10 @@ html.lenis body {
   position: relative;
   filter:
     url("#textDisplace")
-    drop-shadow(0 9px 14px rgba(20, 52, 104, 0.075))
-    drop-shadow(0 -2px 2px rgba(255, 255, 255, 0.62));
+    drop-shadow(0 10px 15px rgba(20, 52, 104, 0.13))
+    drop-shadow(0 -2px 2px rgba(255, 255, 255, 0.76));
+  contain: layout paint;
+  will-change: filter, transform;
 }
 
 .hero-name::before {
@@ -596,10 +651,11 @@ html.lenis body {
 
 .hero-name-caustic-field {
   background:
-    radial-gradient(34% 30% at 68% 75%, rgba(0, 102, 255, 0.31), transparent 74%),
-    linear-gradient(92deg, transparent 9%, rgba(255, 255, 255, 0.42) 22%, transparent 37%, rgba(0, 102, 255, 0.18) 59%, transparent 78%);
-  filter: blur(4px);
-  opacity: calc(0.55 + var(--proximity) * 0.22);
+    radial-gradient(31% 28% at 69% 73%, rgba(0, 102, 255, 0.38), transparent 72%),
+    radial-gradient(35% 22% at 47% 42%, rgba(255, 255, 255, 0.30), transparent 75%),
+    linear-gradient(92deg, transparent 8%, rgba(255, 255, 255, 0.52) 22%, transparent 38%, rgba(0, 102, 255, 0.22) 59%, transparent 79%);
+  filter: blur(3.2px);
+  opacity: calc(0.68 + var(--proximity) * 0.20);
   mix-blend-mode: screen;
   animation: hero-caustic-drift 9s ease-in-out infinite;
   z-index: 2;
@@ -611,31 +667,33 @@ html.lenis body {
   position: relative;
   isolation: isolate;
   background:
+    radial-gradient(56% 72% at 66% 70%, rgba(0, 102, 255, 0.18), transparent 74%),
+    url("/assets/pearl-liquid-background.png") center / 118% auto no-repeat,
     radial-gradient(58% 84% at 52% 18%, rgba(255, 255, 255, 0.16), transparent 62%),
-    radial-gradient(46% 62% at 69% 76%, rgba(0, 102, 255, 0.13), transparent 76%),
     linear-gradient(180deg,
-      rgba(255, 255, 255, 0.025) 0%,
-      rgba(221, 231, 248, 0.035) 34%,
-      rgba(35, 57, 92, 0.155) 66%,
-      rgba(255, 255, 255, 0.05) 100%);
+      rgba(255, 255, 255, 0.24) 0%,
+      rgba(223, 233, 249, 0.20) 36%,
+      rgba(36, 59, 96, 0.20) 67%,
+      rgba(255, 255, 255, 0.18) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: clamp(1.45px, 0.155vw, 2.65px) rgba(35, 57, 92, 0.23);
+  -webkit-text-stroke: clamp(1.65px, 0.17vw, 2.95px) rgba(34, 57, 92, 0.31);
   text-shadow:
-    0 -1px 1px rgba(255, 255, 255, 0.92),
-    0 1px 1px rgba(25, 46, 78, 0.14),
-    1px 0 1px rgba(255, 255, 255, 0.48),
-    -1px 0 1px rgba(42, 67, 104, 0.13),
-    0 3px 5px rgba(14, 35, 72, 0.10),
-    0 8px 15px rgba(0, 83, 210, 0.055);
+    0 -1px 1px rgba(255, 255, 255, 0.98),
+    0 1px 1px rgba(25, 46, 78, 0.20),
+    1px 0 1px rgba(255, 255, 255, 0.58),
+    -1px 0 1px rgba(42, 67, 104, 0.18),
+    0 4px 7px rgba(14, 35, 72, 0.13),
+    0 11px 19px rgba(0, 83, 210, 0.07);
   filter:
     drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.78))
     drop-shadow(0 4px 7px rgba(31, 72, 142, 0.075));
-  opacity: 0.58;
-  mix-blend-mode: multiply;
+  opacity: 0.67;
+  mix-blend-mode: normal;
   z-index: 5;
+  animation: hero-text-material-drift 11s ease-in-out infinite alternate;
 }
 
 .hero-name-line > span {
@@ -656,25 +714,36 @@ html.lenis body {
 }
 
 .hero-name-line > span::before {
-  transform: translate(-1.75px, -1.8px);
+  transform: translate(-2.35px, -2.2px);
   background-image:
-    radial-gradient(50% 48% at 48% 12%, rgba(255, 255, 255, 0.62), transparent 68%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.18) 50%, transparent 75%);
-  -webkit-text-stroke: clamp(1.65px, 0.16vw, 2.65px) rgba(255, 255, 255, 0.94);
-  opacity: 0.90;
+    radial-gradient(50% 48% at 48% 12%, rgba(255, 255, 255, 0.48), transparent 68%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(255, 255, 255, 0.13) 50%, transparent 75%);
+  -webkit-text-stroke: clamp(2px, 0.19vw, 3.25px) rgba(255, 255, 255, 0.96);
+  opacity: 0.82;
   mix-blend-mode: screen;
   z-index: 1;
 }
 
 .hero-name-line > span::after {
-  transform: translate(1.9px, 2.9px);
+  transform: translate(2.75px, 3.65px);
   background-image:
     radial-gradient(64% 58% at 72% 74%, rgba(0, 102, 255, 0.135), transparent 78%),
     linear-gradient(180deg, transparent 24%, rgba(22, 44, 78, 0.205) 69%, rgba(255, 255, 255, 0.08));
-  -webkit-text-stroke: clamp(1.45px, 0.145vw, 2.35px) rgba(32, 55, 90, 0.24);
-  opacity: 0.64;
+  -webkit-text-stroke: clamp(1.9px, 0.18vw, 3px) rgba(28, 51, 87, 0.34);
+  opacity: 0.86;
   mix-blend-mode: multiply;
   z-index: -1;
+}
+
+@keyframes hero-text-material-drift {
+  0% {
+    background-position: 50% 48%, 48% 42%, 50% 18%, 0 0;
+    transform: translate3d(0, -1px, 0);
+  }
+  100% {
+    background-position: 54% 52%, 53% 46%, 48% 20%, 0 0;
+    transform: translate3d(0, 2px, 0);
+  }
 }
 
 @keyframes hero-caustic-drift {
@@ -810,19 +879,27 @@ html.lenis body {
   }
 
   .hero-copy-row > * {
+    min-width: 0;
     max-width: 100%;
   }
 
   .hero-name-line {
-    font-size: clamp(2.5rem, 11.4vw, 4.2rem);
+    font-size: clamp(2rem, 9.2vw, 3.7rem);
     line-height: 0.88;
-    background: none;
-    color: rgba(65, 84, 116, 0.72);
-    -webkit-text-fill-color: rgba(65, 84, 116, 0.55);
-    -webkit-text-stroke: 1px rgba(55, 75, 108, 0.62);
+    background:
+      radial-gradient(56% 72% at 66% 70%, rgba(0, 102, 255, 0.18), transparent 74%),
+      url("/assets/pearl-liquid-background.png") center / 132% auto no-repeat,
+      linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(48, 72, 108, 0.22) 70%, rgba(255, 255, 255, 0.18));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1px rgba(45, 68, 104, 0.50);
     text-shadow:
       0 -1px 0 rgba(255, 255, 255, 0.85),
-      0 4px 12px rgba(21, 54, 112, 0.18);
+      0 1px 1px rgba(25, 46, 78, 0.22),
+      0 4px 12px rgba(21, 54, 112, 0.16);
+    opacity: 0.78;
   }
 
   .site-nav {
@@ -851,7 +928,9 @@ html.lenis body {
   }
 
   .hero-copy-row p {
-    max-width: 100%;
+    width: 100%;
+    max-width: min(100%, 20rem) !important;
+    overflow-wrap: anywhere;
   }
 
   .portfolio-root,

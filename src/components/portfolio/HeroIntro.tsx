@@ -18,10 +18,10 @@ export default function HeroIntro() {
       initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1.2, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col gap-5 max-w-[430px]"
+      className="hero-intro flex w-full min-w-0 max-w-[430px] max-md:max-w-[calc(100vw-2.5rem)] flex-col gap-5"
     >
       {/* Tagline */}
-      <div className="flex items-center gap-3 text-[18px] md:text-[20px] font-medium text-ink">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[18px] md:text-[20px] font-medium text-ink">
         {bio.taglineParts.map((part, i) => (
           <span key={part} className="flex items-center gap-3">
             {i > 0 && (
@@ -36,7 +36,7 @@ export default function HeroIntro() {
       </div>
 
       {/* Body copy */}
-      <p className="text-[13px] md:text-[14px] leading-[1.55] text-ink-soft/78 max-w-[410px]">
+      <p className="hero-intro-copy w-full min-w-0 max-w-[410px] max-md:max-w-[20rem] text-[13px] md:text-[14px] leading-[1.55] text-ink-soft/78">
         {bio.bodyParagraphs[0]}
       </p>
 
