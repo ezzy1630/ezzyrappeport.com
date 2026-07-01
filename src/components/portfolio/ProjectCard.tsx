@@ -2,35 +2,62 @@
 
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Project } from "@/lib/portfolio/content";
+import {
+  subscribeLiquidPointer,
+  subscribeLiquidRipple,
+} from "@/lib/portfolio/liquid-interaction";
 
 const ACCENT_PRESETS = {
   "blue-strong": {
-    causticOpacity: 0.34,
+    causticOpacity: 0.24,
     causticScale: 1.08,
     causticBlur: "16px",
-    edgeOpacity: 0.84,
+    edgeOpacity: 0.66,
   },
   "blue-medium": {
-    causticOpacity: 0.25,
+    causticOpacity: 0.18,
     causticScale: 0.92,
     causticBlur: "14px",
-    edgeOpacity: 0.68,
+    edgeOpacity: 0.52,
   },
   "blue-low": {
-    causticOpacity: 0.16,
+    causticOpacity: 0.12,
     causticScale: 0.78,
     causticBlur: "12px",
-    edgeOpacity: 0.54,
+    edgeOpacity: 0.42,
   },
   "blue-flow": {
-    causticOpacity: 0.26,
+    causticOpacity: 0.19,
     causticScale: 0.96,
     causticBlur: "14px",
-    edgeOpacity: 0.70,
+    edgeOpacity: 0.54,
   },
 } as const;
+
+const SHAPE_PRESETS = [
+  {
+    radius: "66px 54px 60px 72px / 52px 50px 62px 58px",
+    innerRadius: "54px 45px 50px 60px / 42px 39px 52px 47px",
+    threadShift: "-3px",
+  },
+  {
+    radius: "58px 72px 54px 64px / 48px 55px 50px 60px",
+    innerRadius: "48px 60px 44px 54px / 38px 45px 40px 50px",
+    threadShift: "5px",
+  },
+  {
+    radius: "68px 60px 70px 54px / 56px 48px 60px 48px",
+    innerRadius: "56px 50px 58px 44px / 46px 39px 50px 39px",
+    threadShift: "-7px",
+  },
+  {
+    radius: "62px 76px 58px 68px / 50px 58px 54px 60px",
+    innerRadius: "51px 63px 48px 57px / 40px 48px 44px 50px",
+    threadShift: "3px",
+  },
+] as const;
 
 type Props = {
   project: Project;
@@ -41,6 +68,7 @@ type Props = {
 export default function ProjectCard({ project, index, onOpen }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
   const accent = ACCENT_PRESETS[project.accent];
+  const shape = SHAPE_PRESETS[index % SHAPE_PRESETS.length];
 
   const mvX = useMotionValue(0);
   const mvY = useMotionValue(0);
@@ -52,6 +80,51 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
     stiffness: 150,
     damping: 20,
   });
+
+  useEffect(() => {
+    const unsubscribePointer = subscribeLiquidPointer((state) => {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = state.x - rect.left;
+      const y = state.y - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      const proximity = Math.max(0, 1 - dist / (rect.width * 0.9));
+
+      el.style.setProperty("--card-cursor-x", `${x}px`);
+      el.style.setProperty("--card-cursor-y", `${y}px`);
+      el.style.setProperty("--card-proximity", proximity.toFixed(3));
+      el.style.setProperty("--card-speed", Math.min(state.speed, 1.6).toFixed(3));
+    });
+
+    const unsubscribeRipple = subscribeLiquidRipple((state) => {
+      const el = ref.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = state.x - rect.left;
+      const y = state.y - rect.top;
+      const inside =
+        x > -rect.width * 0.35 &&
+        x < rect.width * 1.35 &&
+        y > -rect.height * 1.0 &&
+        y < rect.height * 1.8;
+
+      if (!inside) return;
+      el.style.setProperty("--card-ripple-x", `${x}px`);
+      el.style.setProperty("--card-ripple-y", `${y}px`);
+      el.style.setProperty("--card-ripple-strength", Math.min(1, state.intensity).toFixed(3));
+      window.setTimeout(() => {
+        if (ref.current === el) el.style.setProperty("--card-ripple-strength", "0");
+      }, 620);
+    });
+
+    return () => {
+      unsubscribePointer();
+      unsubscribeRipple();
+    };
+  }, []);
 
   const onMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const el = ref.current;
@@ -77,7 +150,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
       onPointerLeave={onLeave}
       data-cursor="hover"
       data-no-focus-ring
-      initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       whileTap={{ scale: 0.985 }}
       viewport={{ once: true, margin: "-10% 0px" }}
@@ -95,6 +168,16 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
           "--project-caustic-scale": accent.causticScale,
           "--project-caustic-blur": accent.causticBlur,
           "--project-edge-opacity": accent.edgeOpacity,
+          "--project-radius": shape.radius,
+          "--project-inner-radius": shape.innerRadius,
+          "--project-thread-shift": shape.threadShift,
+          "--card-cursor-x": "50%",
+          "--card-cursor-y": "50%",
+          "--card-proximity": "0",
+          "--card-speed": "0",
+          "--card-ripple-x": "50%",
+          "--card-ripple-y": "50%",
+          "--card-ripple-strength": "0",
         } as React.CSSProperties
       }
     >
@@ -115,7 +198,19 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
           <span aria-hidden="true" className="project-top-sheen" />
           <span aria-hidden="true" className="project-edge-caustics" />
           <span aria-hidden="true" className="project-blue-rim" />
+          <svg
+            aria-hidden="true"
+            className="project-caustic-threads"
+            viewBox="0 0 420 132"
+            preserveAspectRatio="none"
+          >
+            <path d="M8 98 C68 122 118 92 174 108 S286 126 410 94" />
+            <path d="M18 112 C78 127 124 103 186 116 S300 130 402 106" />
+            <path d="M20 28 C84 10 126 28 174 18 S292 3 404 24" />
+            <path d="M5 76 C62 64 112 84 160 72 S270 51 414 78" />
+          </svg>
           <span aria-hidden="true" className="project-inner-contour" />
+          <span aria-hidden="true" className="project-ripple-field" />
 
           <div
             className="relative flex h-full w-full items-center justify-between px-7 py-5 md:px-8"

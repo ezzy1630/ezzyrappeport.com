@@ -17,7 +17,7 @@ import { ArrowUpRight } from "lucide-react";
 export default function Navigation() {
   return (
     <motion.header
-      initial={{ y: -20, opacity: 0 }}
+      initial={false}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 1.0, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
       className="site-nav fixed top-0 left-0 right-0 z-50 px-6 md:px-10 lg:px-14 py-5 md:py-6 flex items-center justify-between pointer-events-none"

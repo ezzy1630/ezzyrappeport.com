@@ -1,7 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
+import {
+  subscribeLiquidPointer,
+  subscribeLiquidRipple,
+} from "@/lib/portfolio/liquid-interaction";
 
 /**
  * HeroName
@@ -25,12 +29,56 @@ import { useRef } from "react";
  * the text accessible and crisp.
  */
 export default function HeroName() {
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const wrapRef = useRef<HTMLHeadingElement>(null);
   const rafRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0 });
 
-  // Track cursor proximity to scale the displacement + blue glow
-  const handleMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  useEffect(() => {
+    const unsubscribePointer = subscribeLiquidPointer((state) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = state.x - rect.left;
+      const y = state.y - rect.top;
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      const proximity = Math.max(0, 1 - dist / (rect.width * 0.62));
+
+      el.style.setProperty("--cursor-x", `${x}px`);
+      el.style.setProperty("--cursor-y", `${y}px`);
+      el.style.setProperty("--proximity", proximity.toFixed(3));
+      el.style.setProperty("--liquid-local-speed", Math.min(state.speed, 1.6).toFixed(3));
+    });
+
+    const unsubscribeRipple = subscribeLiquidRipple((state) => {
+      const el = wrapRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = state.x - rect.left;
+      const y = state.y - rect.top;
+      const inside =
+        x > -rect.width * 0.1 &&
+        x < rect.width * 1.1 &&
+        y > -rect.height * 0.25 &&
+        y < rect.height * 1.25;
+
+      if (!inside) return;
+      el.style.setProperty("--ripple-x", `${x}px`);
+      el.style.setProperty("--ripple-y", `${y}px`);
+      el.style.setProperty("--ripple-strength", Math.min(1, state.intensity).toFixed(3));
+      window.setTimeout(() => {
+        if (wrapRef.current === el) el.style.setProperty("--ripple-strength", "0");
+      }, 700);
+    });
+
+    return () => {
+      unsubscribePointer();
+      unsubscribeRipple();
+    };
+  }, []);
+
+  const handleMove = (e: React.PointerEvent<HTMLHeadingElement>) => {
     const el = wrapRef.current;
     if (!el) return;
     pointerRef.current = { x: e.clientX, y: e.clientY };
@@ -40,16 +88,16 @@ export default function HeroName() {
       const el = wrapRef.current;
       if (!el) return;
       const { x: clientX, y: clientY } = pointerRef.current;
-    const rect = el.getBoundingClientRect();
+      const rect = el.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
-    el.style.setProperty("--cursor-x", `${x}px`);
-    el.style.setProperty("--cursor-y", `${y}px`);
-    const cx = rect.width / 2;
-    const cy = rect.height / 2;
-    const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-    const proximity = Math.max(0, 1 - dist / (rect.width * 0.5));
-    el.style.setProperty("--proximity", proximity.toFixed(3));
+      el.style.setProperty("--cursor-x", `${x}px`);
+      el.style.setProperty("--cursor-y", `${y}px`);
+      const cx = rect.width / 2;
+      const cy = rect.height / 2;
+      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
+      const proximity = Math.max(0, 1 - dist / (rect.width * 0.58));
+      el.style.setProperty("--proximity", proximity.toFixed(3));
     });
   };
 
@@ -73,12 +121,18 @@ export default function HeroName() {
         "--cursor-x": "50%",
         "--cursor-y": "50%",
         "--proximity": "0",
+        "--ripple-x": "50%",
+        "--ripple-y": "50%",
+        "--ripple-strength": "0",
+        "--liquid-local-speed": "0",
       } as React.CSSProperties}
-      initial={{ opacity: 0, y: 30, filter: "blur(20px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={false}
+      animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 1.8, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
       aria-label="Eliezer Rappeport"
     >
+      <span aria-hidden="true" className="hero-name-ripple-field" />
+      <span aria-hidden="true" className="hero-name-caustic-field" />
       <span className="hero-name-line" aria-hidden="true">
         <span data-text="ELIEZER">ELIEZER</span>
       </span>
@@ -87,17 +141,7 @@ export default function HeroName() {
       </span>
 
       {/* Cursor-following blue glow */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(240px 150px at var(--cursor-x) var(--cursor-y), rgba(0,102,255,0.20), rgba(102,168,255,0.08) 44%, transparent 72%)",
-          opacity: "calc(0.28 + var(--proximity) * 0.45)",
-          mixBlendMode: "screen",
-          transition: "opacity 220ms ease",
-        }}
-      />
+      <span aria-hidden="true" className="hero-name-pointer-glow" />
     </motion.h1>
   );
 }
