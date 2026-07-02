@@ -7,28 +7,28 @@ import type { Project } from "@/lib/portfolio/content";
 
 const ACCENT_PRESETS = {
   "blue-strong": {
-    causticOpacity: 0.24,
+    causticOpacity: 0.30,
     causticScale: 1.08,
-    causticBlur: "16px",
-    edgeOpacity: 0.66,
+    causticBlur: "15px",
+    edgeOpacity: 0.82,
   },
   "blue-medium": {
-    causticOpacity: 0.18,
+    causticOpacity: 0.24,
     causticScale: 0.92,
-    causticBlur: "14px",
-    edgeOpacity: 0.52,
+    causticBlur: "13px",
+    edgeOpacity: 0.68,
   },
   "blue-low": {
-    causticOpacity: 0.12,
+    causticOpacity: 0.18,
     causticScale: 0.78,
-    causticBlur: "12px",
-    edgeOpacity: 0.42,
+    causticBlur: "11px",
+    edgeOpacity: 0.56,
   },
   "blue-flow": {
-    causticOpacity: 0.19,
+    causticOpacity: 0.25,
     causticScale: 0.96,
-    causticBlur: "14px",
-    edgeOpacity: 0.54,
+    causticBlur: "13px",
+    edgeOpacity: 0.70,
   },
 } as const;
 
@@ -187,6 +187,14 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
             <path d="M18 112 C78 127 124 103 186 116 S300 130 402 106" />
             <path d="M20 28 C84 10 126 28 174 18 S292 3 404 24" />
             <path d="M5 76 C62 64 112 84 160 72 S270 51 414 78" />
+            <path
+              className="project-perimeter-blue"
+              d="M9 70 C10 25 42 12 88 18 C132 24 151 11 198 14 C249 18 282 18 322 13 C372 7 412 23 413 68 C414 113 377 121 326 116 C279 112 258 124 211 121 C163 118 134 125 91 118 C43 111 10 108 9 70"
+            />
+            <path
+              className="project-perimeter-white"
+              d="M15 42 C55 22 96 31 130 25 C165 18 196 25 232 23 C271 21 307 16 348 22 C382 27 403 42 407 69 M20 89 C63 112 111 98 151 106 C194 114 222 102 266 108 C315 115 362 112 402 88"
+            />
           </svg>
           <span aria-hidden="true" className="project-inner-contour" />
           <span aria-hidden="true" className="project-ripple-field" />

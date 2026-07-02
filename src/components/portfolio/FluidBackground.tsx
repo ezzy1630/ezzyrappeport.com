@@ -911,6 +911,378 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
   };
 }
 
+function createShader(gl: WebGL2RenderingContext, type: number, source: string) {
+  const shader = gl.createShader(type);
+  if (!shader) throw new Error("Unable to create WebGL shader");
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(shader) ?? "unknown shader error";
+    gl.deleteShader(shader);
+    throw new Error(log);
+  }
+  return shader;
+}
+
+function createProgram(gl: WebGL2RenderingContext, vertexSource: string, fragmentSource: string) {
+  const program = gl.createProgram();
+  if (!program) throw new Error("Unable to create WebGL program");
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource);
+  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(program) ?? "unknown program link error";
+    gl.deleteProgram(program);
+    throw new Error(log);
+  }
+  return program;
+}
+
+function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.MutableRefObject<boolean>) {
+  const gl = canvas.getContext("webgl2", {
+    alpha: false,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    premultipliedAlpha: false,
+    preserveDrawingBuffer: false,
+    powerPreference: "high-performance",
+  });
+  if (!gl) throw new Error("WebGL2 is not available");
+
+  const vertexSource = `#version 300 es
+    in vec2 a_position;
+    out vec2 v_uv;
+    void main() {
+      v_uv = a_position * 0.5 + 0.5;
+      gl_Position = vec4(a_position, 0.0, 1.0);
+    }
+  `;
+
+  const fragmentSource = `#version 300 es
+    precision highp float;
+    uniform vec2 u_resolution;
+    uniform float u_time;
+    uniform float u_energy;
+    uniform vec2 u_pointer;
+    uniform vec4 u_ripples[8];
+    uniform sampler2D u_texture;
+    in vec2 v_uv;
+    out vec4 outColor;
+
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+    }
+
+    float noise(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      float a = hash(i);
+      float b = hash(i + vec2(1.0, 0.0));
+      float c = hash(i + vec2(0.0, 1.0));
+      float d = hash(i + vec2(1.0, 1.0));
+      vec2 m = f * f * (3.0 - 2.0 * f);
+      return mix(mix(a, b, m.x), mix(c, d, m.x), m.y);
+    }
+
+    float fbm(vec2 p) {
+      float value = 0.0;
+      float amp = 0.5;
+      for (int i = 0; i < 5; i++) {
+        value += noise(p) * amp;
+        p = mat2(1.62, 1.08, -1.08, 1.62) * p + 9.7;
+        amp *= 0.52;
+      }
+      return value;
+    }
+
+    float ridge(float v, float width) {
+      return 1.0 - smoothstep(0.0, width, abs(v));
+    }
+
+    float ellipseRing(vec2 uv, vec2 center, float radius, vec2 squash, float width) {
+      float d = length((uv - center) * squash);
+      return ridge(d - radius, width);
+    }
+
+    vec3 rippleField(vec2 uv, vec2 pointer, float t) {
+      float blue = 0.0;
+      float white = 0.0;
+      float warp = 0.0;
+      float dp = distance(uv, pointer);
+      float pointerRing = sin(dp * 78.0 - t * 8.0);
+      float pointerEnv = exp(-dp * 5.2) * u_energy;
+      blue += max(pointerRing, 0.0) * pointerEnv * 0.23;
+      white += ridge(dp - 0.052 - sin(t * 1.8) * 0.006, 0.006) * pointerEnv * 0.44;
+      warp += pointerRing * pointerEnv * 0.024;
+
+      for (int i = 0; i < 8; i++) {
+        vec4 r = u_ripples[i];
+        float age = t - r.z;
+        if (age > 0.0 && age < 2.35 && r.w > 0.001) {
+          float d = distance(uv * u_resolution, r.xy);
+          float radius = 18.0 + age * 210.0;
+          float ring = sin((d - radius) * 0.105);
+          float env = exp(-abs(d - radius) / 54.0) * (1.0 - age / 2.35) * r.w;
+          blue += max(ring, 0.0) * env * 0.27;
+          white += max(-ring, 0.0) * env * 0.34;
+          warp += ring * env * 0.031;
+        }
+      }
+      return vec3(blue, white, warp);
+    }
+
+    void main() {
+      float aspect = u_resolution.x / max(u_resolution.y, 1.0);
+      float t = u_time;
+      vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
+      vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
+      vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
+      float flowA = fbm(p * 2.2 + vec2(t * 0.035, -t * 0.018));
+      float flowB = fbm(p * 4.8 + vec2(-t * 0.052, t * 0.026));
+      float flowC = fbm(p * 9.0 + vec2(t * 0.082, t * 0.042));
+      vec3 ripple = rippleField(uv, pointer, t);
+
+      p.x += (flowA - 0.5) * 0.028 + ripple.z;
+      p.y += (flowB - 0.5) * 0.020 + ripple.z * 0.42;
+      vec2 sampleWarp = vec2(
+        (flowA - 0.5) * 0.045 + sin(uv.y * 9.0 + t * 0.18) * 0.010 + ripple.z * 0.46,
+        (flowB - 0.5) * 0.035 + cos(uv.x * 7.0 - t * 0.16) * 0.008 + ripple.z * 0.20
+      );
+      vec3 material = texture(u_texture, clamp(uv + sampleWarp, vec2(0.0), vec2(1.0))).rgb;
+
+      float river1 = ridge(p.y - 0.285 - sin(p.x * 5.2 + t * 0.24) * 0.045 - sin(p.x * 13.0 - t * 0.16) * 0.016, 0.034);
+      float river2 = ridge(p.y + 0.040 - sin(p.x * 4.4 - t * 0.18) * 0.036 - sin(p.x * 16.0 + t * 0.12) * 0.012, 0.030);
+      float river3 = ridge(p.y + 0.315 - sin(p.x * 5.8 + t * 0.20) * 0.050, 0.040);
+      float sheetTop = ridge(p.y - 0.352 - sin(p.x * 4.8 + t * 0.20) * 0.050, 0.070);
+      float sheetCenter = ridge(p.y + 0.060 - sin(p.x * 3.6 - t * 0.16) * 0.044, 0.088);
+      float sheetBottom = ridge(p.y + 0.360 - sin(p.x * 5.4 + t * 0.18) * 0.052, 0.078);
+      float sheetShadow = max(sheetTop - river1 * 0.74, 0.0) + max(sheetCenter - river2 * 0.68, 0.0) + max(sheetBottom - river3 * 0.72, 0.0);
+      float caustic = pow(max(0.0, sin(flowA * 12.0 + flowB * 7.5 + p.x * 3.0 - t * 0.55)), 3.2);
+      float blueCaustic = pow(max(0.0, sin(flowB * 15.0 - p.y * 8.0 + t * 0.7)), 4.6);
+      float droplets = smoothstep(0.74, 0.91, flowC) * (1.0 - smoothstep(0.89, 0.99, flowA));
+      float rings =
+        ellipseRing(uv, vec2(0.045, 0.38), 0.020, vec2(1.0, 2.7), 0.004) +
+        ellipseRing(uv, vec2(0.405, 0.63), 0.018, vec2(1.0, 2.15), 0.0035) +
+        ellipseRing(uv, vec2(0.705, 0.18), 0.014, vec2(1.0, 1.9), 0.003) +
+        ellipseRing(uv, vec2(0.895, 0.44), 0.015, vec2(1.0, 2.1), 0.003) +
+        ellipseRing(uv, vec2(0.842, 0.84), 0.017, vec2(1.0, 2.15), 0.0035);
+
+      vec3 pearl = mix(vec3(0.925, 0.948, 0.982), vec3(1.0, 1.0, 0.995), smoothstep(-0.32, 0.42, p.y) * 0.58 + flowA * 0.28);
+      vec3 color = mix(pearl - vec3(0.66, 0.76, 0.92) * (0.115 + flowB * 0.125), material + vec3(0.020, 0.030, 0.045), 0.82);
+      color -= vec3(0.20, 0.30, 0.48) * sheetShadow * 0.34;
+      color += vec3(1.0) * (sheetTop * 0.21 + sheetCenter * 0.14 + sheetBottom * 0.20);
+      color += vec3(0.25, 0.57, 1.0) * (sheetTop * 0.17 + sheetCenter * 0.11 + sheetBottom * 0.20);
+      color += vec3(1.0) * (river1 * 0.58 + river2 * 0.46 + river3 * 0.52);
+      color += vec3(0.0, 0.42, 1.0) * (river1 * 0.26 + river2 * 0.18 + river3 * 0.28);
+      color += vec3(1.0) * caustic * 0.18 + vec3(0.0, 0.34, 1.0) * blueCaustic * 0.12;
+      color += vec3(0.52, 0.72, 1.0) * droplets * 0.26;
+      color += vec3(1.0) * rings * 0.36 + vec3(0.0, 0.38, 1.0) * rings * 0.18;
+      color += vec3(0.0, 0.36, 1.0) * ripple.x * 0.82 + vec3(1.0) * ripple.y * 0.88;
+      float vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
+      color = mix(color * vec3(0.92, 0.95, 1.0), color, vignette);
+      outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.92)), 1.0);
+    }
+  `;
+
+  const program = createProgram(gl, vertexSource, fragmentSource);
+  const positionLocation = gl.getAttribLocation(program, "a_position");
+  const resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+  const timeLocation = gl.getUniformLocation(program, "u_time");
+  const energyLocation = gl.getUniformLocation(program, "u_energy");
+  const pointerLocation = gl.getUniformLocation(program, "u_pointer");
+  const textureLocation = gl.getUniformLocation(program, "u_texture");
+  const rippleLocations = Array.from({ length: RIPPLE_COUNT }, (_, i) => gl.getUniformLocation(program, `u_ripples[${i}]`));
+  const vao = gl.createVertexArray();
+  const positionBuffer = gl.createBuffer();
+  const texture = gl.createTexture();
+  if (!vao || !positionBuffer || !texture) throw new Error("Unable to allocate WebGL resources");
+
+  gl.bindVertexArray(vao);
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([248, 251, 255, 255]));
+
+  const image = new Image();
+  image.decoding = "async";
+  image.src = FLUID_TEXTURE_SRC;
+  image.addEventListener("load", () => {
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  });
+
+  const pointer: PointerState = {
+    x: window.innerWidth * 0.62,
+    y: window.innerHeight * 0.54,
+    targetX: window.innerWidth * 0.62,
+    targetY: window.innerHeight * 0.54,
+    lastX: 0,
+    lastY: 0,
+    lastMoveTime: 0,
+    lastRipple: 0,
+    vx: 0,
+    vy: 0,
+    energy: 0,
+    active: false,
+  };
+  const ripples: Ripple[] = [];
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
+  let frame = 0;
+  let running = true;
+  let lastRenderTime = 0;
+  let lastInputTime = performance.now();
+  let nextIdleRipple = 1.4;
+  const startedAt = performance.now();
+
+  function configure() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
+    canvas.width = Math.max(1, Math.floor(width * dpr));
+    canvas.height = Math.max(1, Math.floor(height * dpr));
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  }
+
+  function pushRipple(x: number, y: number, intensity: number) {
+    const time = (performance.now() - startedAt) / 1000;
+    ripples.push({ x: x * dpr, y: y * dpr, start: time, intensity });
+    if (ripples.length > RIPPLE_COUNT) ripples.shift();
+    emitLiquidRipple({ x, y, intensity, time: performance.now() });
+  }
+
+  function onPointerMove(e: PointerEvent) {
+    const now = performance.now();
+    lastInputTime = now;
+    const first = pointer.lastMoveTime === 0;
+    const dt = first ? 0.016 : Math.max((now - pointer.lastMoveTime) / 1000, 0.001);
+    const dx = first ? 0 : e.clientX - pointer.lastX;
+    const dy = first ? 0 : e.clientY - pointer.lastY;
+    const speed = Math.hypot(dx, dy) / Math.max(width, height) / dt;
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    pointer.vx += (dx / dt - pointer.vx) * 0.2;
+    pointer.vy += (dy / dt - pointer.vy) * 0.2;
+    pointer.energy = Math.min(1.25, Math.max(pointer.energy, 0.18 + speed * 0.42));
+    pointer.active = true;
+    emitPointer(pointer, speed);
+    if (now - pointer.lastRipple > 145) {
+      pushRipple(e.clientX, e.clientY, Math.min(0.95, 0.18 + speed * 0.58));
+      pointer.lastRipple = now;
+    }
+    pointer.lastX = e.clientX;
+    pointer.lastY = e.clientY;
+    pointer.lastMoveTime = now;
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    lastInputTime = performance.now();
+    pointer.x = e.clientX;
+    pointer.y = e.clientY;
+    pointer.targetX = e.clientX;
+    pointer.targetY = e.clientY;
+    pointer.lastX = e.clientX;
+    pointer.lastY = e.clientY;
+    pointer.lastMoveTime = performance.now();
+    pointer.energy = Math.max(pointer.energy, 0.68);
+    pointer.active = true;
+    emitPointer(pointer, 0.5);
+    pushRipple(e.clientX, e.clientY, 1.05);
+  }
+
+  function onPointerEnd() {
+    pointer.active = false;
+    pointer.vx *= 0.35;
+    pointer.vy *= 0.35;
+    emitPointer(pointer, 0);
+  }
+
+  function render(now = performance.now()) {
+    if (!running || reducedMotionRef.current) return;
+    if (now - lastRenderTime < 1000 / 45) {
+      frame = requestAnimationFrame(render);
+      return;
+    }
+    lastRenderTime = now;
+    const t = (now - startedAt) / 1000;
+    const idleFor = now - lastInputTime;
+    if (!pointer.active && idleFor > 1400 && t > nextIdleRipple) {
+      pushRipple(
+        width * (0.18 + ((Math.sin(t * 0.37) + 1) * 0.5) * 0.64),
+        height * (0.18 + ((Math.cos(t * 0.29 + 1.2) + 1) * 0.5) * 0.56),
+        0.18
+      );
+      nextIdleRipple = t + 1.9 + ((Math.sin(t * 1.7) + 1) * 0.5) * 1.1;
+    }
+
+    pointer.x += (pointer.targetX - pointer.x) * 0.16;
+    pointer.y += (pointer.targetY - pointer.y) * 0.16;
+    pointer.energy += ((pointer.active ? 0.38 : 0.03) - pointer.energy) * 0.04;
+
+    gl.useProgram(program);
+    gl.bindVertexArray(vao);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.uniform1i(textureLocation, 0);
+    gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+    gl.uniform1f(timeLocation, t);
+    gl.uniform1f(energyLocation, pointer.energy);
+    gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
+    for (let i = 0; i < RIPPLE_COUNT; i++) {
+      const ripple = ripples[i];
+      gl.uniform4f(rippleLocations[i], ripple?.x ?? -9999, ripple?.y ?? -9999, ripple?.start ?? -9999, ripple?.intensity ?? 0);
+    }
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    frame = requestAnimationFrame(render);
+  }
+
+  function onVisibility() {
+    running = !document.hidden;
+    if (running) frame = requestAnimationFrame(render);
+    else cancelAnimationFrame(frame);
+  }
+
+  configure();
+  window.addEventListener("resize", configure);
+  window.addEventListener("pointermove", onPointerMove, { passive: true });
+  window.addEventListener("pointerdown", onPointerDown, { passive: true });
+  window.addEventListener("pointerup", onPointerEnd, { passive: true });
+  window.addEventListener("pointercancel", onPointerEnd, { passive: true });
+  window.addEventListener("pointerleave", onPointerEnd);
+  document.addEventListener("visibilitychange", onVisibility);
+  frame = requestAnimationFrame(render);
+
+  return () => {
+    running = false;
+    cancelAnimationFrame(frame);
+    window.removeEventListener("resize", configure);
+    window.removeEventListener("pointermove", onPointerMove);
+    window.removeEventListener("pointerdown", onPointerDown);
+    window.removeEventListener("pointerup", onPointerEnd);
+    window.removeEventListener("pointercancel", onPointerEnd);
+    window.removeEventListener("pointerleave", onPointerEnd);
+    document.removeEventListener("visibilitychange", onVisibility);
+    gl.deleteTexture(texture);
+    gl.deleteBuffer(positionBuffer);
+    gl.deleteVertexArray(vao);
+    gl.deleteProgram(program);
+  };
+}
+
 export default function FluidBackground({ reducedMotion = false, staticMode = false, className }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const reducedMotionRef = useRef(reducedMotion);
@@ -927,61 +1299,80 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
 
     let disposed = false;
     let cleanup = () => {};
-    let idleId: number | null = null;
-    let fallbackTimer = 0;
-    let started = false;
-    let webgpuCanvas: HTMLCanvasElement | null = null;
+    let rendererCanvas: HTMLCanvasElement | null = null;
 
-    const startInteractiveRenderer = () => {
-      if (started || disposed || reducedMotionRef.current || staticModeRef.current) return;
-      started = true;
-      webgpuCanvas = document.createElement("canvas");
+    const attachRenderer = (canvas: HTMLCanvasElement, rendererCleanup: () => void, state: "ready" | "webgl2") => {
+      if (disposed) {
+        rendererCleanup();
+        canvas.remove();
+        return;
+      }
+
+      cleanup();
+      cleanup = rendererCleanup;
+      rendererCanvas = canvas;
+      container.appendChild(canvas);
+      container.dataset.webgpu = state;
+    };
+
+    const startInteractiveRenderer = async () => {
+      if (reducedMotionRef.current || staticModeRef.current) {
+        container.dataset.webgpu = "static";
+        return;
+      }
+
+      container.dataset.webgpu = "starting";
+
+      const webgpuCanvas = document.createElement("canvas");
       webgpuCanvas.dataset.renderer = "webgpu-fluid";
-      startWebGpuRenderer(webgpuCanvas, reducedMotionRef)
-        .then((rendererCleanup) => {
-          if (disposed) {
-            rendererCleanup();
-            webgpuCanvas?.remove();
-            return;
-          }
-          cleanup();
-          cleanup = rendererCleanup;
-          container.appendChild(webgpuCanvas as HTMLCanvasElement);
-          container.dataset.webgpu = "ready";
-        })
-        .catch(() => {
-          container.dataset.webgpu = "static";
-          webgpuCanvas?.remove();
+      let webgpuTimedOut = false;
+      let webgpuTimeout = 0;
+      let webgpuPromise: Promise<() => void> | null = null;
+
+      try {
+        webgpuPromise = startWebGpuRenderer(webgpuCanvas, reducedMotionRef);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          webgpuTimeout = window.setTimeout(() => {
+            webgpuTimedOut = true;
+            reject(new Error("WebGPU startup timed out"));
+          }, 1800);
         });
+
+        const rendererCleanup = await Promise.race([webgpuPromise, timeoutPromise]);
+        window.clearTimeout(webgpuTimeout);
+        attachRenderer(webgpuCanvas, rendererCleanup, "ready");
+        return;
+      } catch {
+        window.clearTimeout(webgpuTimeout);
+        if (webgpuTimedOut) {
+          void webgpuPromise?.then((rendererCleanup) => rendererCleanup()).catch(() => {});
+        }
+        webgpuCanvas.remove();
+      }
+
+      const webglCanvas = document.createElement("canvas");
+      webglCanvas.dataset.renderer = "webgl2-fluid";
+
+      try {
+        const rendererCleanup = startWebGlRenderer(webglCanvas, reducedMotionRef);
+        attachRenderer(webglCanvas, rendererCleanup, "webgl2");
+      } catch {
+        webglCanvas.remove();
+        container.dataset.webgpu = "static";
+        cleanup = createFallbackPointerBus();
+      }
     };
 
     if (reducedMotionRef.current || staticModeRef.current) {
       container.dataset.webgpu = "static";
     } else {
-      container.dataset.webgpu = "static";
-      const startOnInput = () => startInteractiveRenderer();
-      window.addEventListener("pointerdown", startOnInput, { once: true, passive: true });
-      window.addEventListener("wheel", startOnInput, { once: true, passive: true });
-
-      const requestIdle = window.requestIdleCallback;
-      if (requestIdle) {
-        idleId = requestIdle(() => startInteractiveRenderer(), { timeout: 1800 });
-      } else {
-        fallbackTimer = window.setTimeout(startInteractiveRenderer, 900);
-      }
-
-      cleanup = () => {
-        window.removeEventListener("pointerdown", startOnInput);
-        window.removeEventListener("wheel", startOnInput);
-      };
+      void startInteractiveRenderer();
     }
 
     return () => {
       disposed = true;
-      if (idleId !== null) window.cancelIdleCallback?.(idleId);
-      if (fallbackTimer) window.clearTimeout(fallbackTimer);
       cleanup();
-      webgpuCanvas?.remove();
+      rendererCanvas?.remove();
       delete container.dataset.webgpu;
     };
   }, []);
