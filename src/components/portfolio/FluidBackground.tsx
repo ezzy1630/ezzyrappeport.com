@@ -143,9 +143,9 @@ fn ripple_field(pos: vec2<f32>, pointer: vec2<f32>, time: f32) -> vec3<f32> {
       let radius = 24.0 + age * 145.0;
       let ring = sin((d - radius) * 0.058);
       let env = exp(-abs(d - radius) / 86.0) * (1.0 - age / 2.9) * r.w;
-      blue = blue + max(ring, 0.0) * env * 0.18;
-      white = white + max(-ring, 0.0) * env * 0.26;
-      warp = warp + ring * env * 0.022;
+      blue = blue + max(ring, 0.0) * env * 0.29;
+      white = white + max(-ring, 0.0) * env * 0.38;
+      warp = warp + ring * env * 0.031;
     }
   }
 
@@ -202,14 +202,17 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
 
   let cell = smoothstep(0.58, 0.93, flowA) * (1.0 - smoothstep(0.84, 1.0, flowB));
   let caustic = pow(max(0.0, sin((flowA * 8.5 + flowB * 5.2 + p.x * 2.4 - t * 0.36))), 1.8);
-  let blueCaustic = pow(max(0.0, sin((flowB * 9.2 - p.y * 4.8 + t * 0.44))), 2.4);
+  let blueCaustic = pow(max(0.0, sin((flowB * 9.2 - p.y * 4.8 + t * 0.44))), 2.1);
+  let textPressure = smoothstep(0.10, 0.62, uv.x) * (1.0 - smoothstep(0.55, 0.94, uv.y)) * smoothstep(0.25, 0.86, uv.y);
+  let rappeportPool = exp(-distance(uv, vec2<f32>(0.72, 0.53)) * 5.0);
+  let cardPool = smoothstep(0.58, 0.84, uv.y) * smoothstep(0.04, 0.28, uv.x) * (1.0 - smoothstep(0.70, 0.98, uv.x));
   let droplets = smoothstep(0.74, 0.91, flowC) * (1.0 - smoothstep(0.89, 0.99, flowA));
   let dropletRings =
-    ellipse_ring(uv, vec2<f32>(0.045, 0.38), 0.020, vec2<f32>(1.0, 2.7), 0.004) +
-    ellipse_ring(uv, vec2<f32>(0.405, 0.63), 0.018, vec2<f32>(1.0, 2.15), 0.0035) +
-    ellipse_ring(uv, vec2<f32>(0.705, 0.18), 0.014, vec2<f32>(1.0, 1.9), 0.003) +
-    ellipse_ring(uv, vec2<f32>(0.895, 0.44), 0.015, vec2<f32>(1.0, 2.1), 0.003) +
-    ellipse_ring(uv, vec2<f32>(0.842, 0.84), 0.017, vec2<f32>(1.0, 2.15), 0.0035);
+    ellipse_ring(uv, vec2<f32>(0.045, 0.38), 0.034, vec2<f32>(1.0, 2.35), 0.006) +
+    ellipse_ring(uv, vec2<f32>(0.405, 0.63), 0.030, vec2<f32>(1.0, 2.00), 0.0055) +
+    ellipse_ring(uv, vec2<f32>(0.705, 0.18), 0.024, vec2<f32>(1.0, 1.75), 0.0048) +
+    ellipse_ring(uv, vec2<f32>(0.895, 0.44), 0.026, vec2<f32>(1.0, 1.95), 0.0048) +
+    ellipse_ring(uv, vec2<f32>(0.842, 0.84), 0.029, vec2<f32>(1.0, 2.00), 0.0055);
 
   let pearl = mix(
     vec3<f32>(0.810, 0.875, 0.955),
@@ -221,23 +224,24 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let materialLift = material * vec3<f32>(0.960, 0.982, 1.0) + vec3<f32>(0.010, 0.014, 0.026);
   var color = mix(pearl - coolShadow, materialLift, 0.55);
 
-  color = color - vec3<f32>(0.38, 0.48, 0.62) * sheetShadow * 0.26;
-  color = color - vec3<f32>(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.055;
-  color = color + vec3<f32>(1.0) * (sheetTop * 0.16 + sheetCenter * 0.10 + sheetBottom * 0.16);
-  color = color + pearlBlue * (sheetTop * 0.070 + sheetCenter * 0.050 + sheetBottom * 0.078);
-  color = color + vec3<f32>(1.0) * (river1 * 0.30 + river2 * 0.24 + river3 * 0.28);
-  color = color + pearlBlue * (river1 * 0.085 + river2 * 0.060 + river3 * 0.090);
+  color = color - vec3<f32>(0.38, 0.48, 0.62) * sheetShadow * 0.31;
+  color = color - vec3<f32>(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.065;
+  color = color + vec3<f32>(1.0) * (sheetTop * 0.19 + sheetCenter * 0.13 + sheetBottom * 0.19);
+  color = color + pearlBlue * (sheetTop * 0.086 + sheetCenter * 0.064 + sheetBottom * 0.098);
+  color = color + vec3<f32>(1.0) * (river1 * 0.36 + river2 * 0.29 + river3 * 0.34);
+  color = color + pearlBlue * (river1 * 0.105 + river2 * 0.076 + river3 * 0.112);
   color = color + vec3<f32>(0.64, 0.82, 1.0) * (thin1 * 0.18 + thin2 * 0.16);
-  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.115;
-  color = color + pearlBlue * blueCaustic * 0.070;
+  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.132;
+  color = color + pearlBlue * blueCaustic * (0.070 + textPressure * 0.050 + cardPool * 0.038);
+  color = color + pearlBlue * rappeportPool * 0.060;
   color = color + vec3<f32>(1.0) * cell * 0.075;
   color = color + vec3<f32>(0.66, 0.82, 1.0) * droplets * 0.16;
-  color = color + vec3<f32>(1.0) * dropletRings * 0.24 + pearlBlue * dropletRings * 0.080;
+  color = color + vec3<f32>(1.0) * dropletRings * 0.32 + pearlBlue * dropletRings * 0.120;
   color = color + pearlBlue * ripple.x * 0.42 + vec3<f32>(1.0) * ripple.y * 0.58;
 
   let pointerDistance = distance(uv, pointer);
-  let wake = exp(-pointerDistance * 7.5) * u.energy;
-  color = color + pearlBlue * wake * 0.070 + vec3<f32>(1.0) * wake * 0.09;
+  let wake = exp(-pointerDistance * 5.1) * u.energy;
+  color = color + pearlBlue * wake * 0.090 + vec3<f32>(1.0) * wake * 0.115;
 
   let vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2<f32>(aspect, 1.0), vec2<f32>(0.0)));
   color = mix(color * vec3<f32>(0.95, 0.97, 1.0), color, vignette);
@@ -460,9 +464,9 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
         else ctx.lineTo(x, yy + pass * 3.2);
       }
       ctx.strokeStyle = blue
-        ? `rgba(112,166,235,${0.090 - pass * 0.018})`
-        : `rgba(255,255,255,${0.78 - pass * 0.13})`;
-      ctx.lineWidth = blue ? 2.2 - pass * 0.35 : 9.5 - pass * 1.6;
+        ? `rgba(100,162,235,${0.120 - pass * 0.020})`
+        : `rgba(255,255,255,${0.84 - pass * 0.13})`;
+      ctx.lineWidth = blue ? 2.8 - pass * 0.35 : 11.4 - pass * 1.7;
       ctx.stroke();
     }
     ctx.restore();
@@ -471,11 +475,11 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
   function drawDroplets(t: number) {
     ctx.save();
     for (const [px, py, rx, ry, phase] of [
-      [0.045, 0.38, 25, 9, 0.3],
-      [0.405, 0.63, 18, 8, 1.5],
-      [0.705, 0.18, 14, 7, 2.4],
-      [0.895, 0.44, 15, 7, 3.2],
-      [0.842, 0.84, 18, 8, 4.2],
+      [0.045, 0.38, 39, 14, 0.3],
+      [0.405, 0.63, 30, 12, 1.5],
+      [0.705, 0.18, 24, 10, 2.4],
+      [0.895, 0.44, 26, 11, 3.2],
+      [0.842, 0.84, 30, 12, 4.2],
     ] as const) {
       const x = width * px + Math.sin(t * 0.18 + phase) * 5;
       const y = height * py + Math.cos(t * 0.16 + phase) * 4;
@@ -515,8 +519,8 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
       for (let ring = 0; ring < 4; ring++) {
         ctx.beginPath();
         ctx.arc(ripple.x, ripple.y, radius + ring * 24, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(112,166,235,${0.080 * alpha * (1 - ring * 0.16)})`;
-        ctx.lineWidth = ring === 0 ? 1.7 : 0.9;
+        ctx.strokeStyle = `rgba(100,162,235,${0.120 * alpha * (1 - ring * 0.16)})`;
+        ctx.lineWidth = ring === 0 ? 2.1 : 1.15;
         ctx.stroke();
       }
     }
@@ -969,6 +973,7 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
     powerPreference: "high-performance",
   });
   if (!gl) throw new Error("WebGL2 is not available");
+  const glContext = gl;
 
   const vertexSource = `#version 300 es
     in vec2 a_position;
@@ -1045,9 +1050,9 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
           float radius = 24.0 + age * 145.0;
           float ring = sin((d - radius) * 0.058);
           float env = exp(-abs(d - radius) / 86.0) * (1.0 - age / 2.9) * r.w;
-          blue += max(ring, 0.0) * env * 0.18;
-          white += max(-ring, 0.0) * env * 0.26;
-          warp += ring * env * 0.022;
+          blue += max(ring, 0.0) * env * 0.29;
+          white += max(-ring, 0.0) * env * 0.38;
+          warp += ring * env * 0.031;
         }
       }
       return vec3(blue, white, warp);
@@ -1082,34 +1087,38 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
       float thin1 = ridge(p.y - 0.200 - sin(p.x * 11.0 + t * 0.46) * 0.014, 0.006);
       float thin2 = ridge(p.y + 0.205 - sin(p.x * 9.5 - t * 0.38) * 0.016, 0.006);
       float caustic = pow(max(0.0, sin(flowA * 8.5 + flowB * 5.2 + p.x * 2.4 - t * 0.36)), 1.8);
-      float blueCaustic = pow(max(0.0, sin(flowB * 9.2 - p.y * 4.8 + t * 0.44)), 2.4);
+      float blueCaustic = pow(max(0.0, sin(flowB * 9.2 - p.y * 4.8 + t * 0.44)), 2.1);
+      float textPressure = smoothstep(0.10, 0.62, uv.x) * (1.0 - smoothstep(0.55, 0.94, uv.y)) * smoothstep(0.25, 0.86, uv.y);
+      float rappeportPool = exp(-distance(uv, vec2(0.72, 0.53)) * 5.0);
+      float cardPool = smoothstep(0.58, 0.84, uv.y) * smoothstep(0.04, 0.28, uv.x) * (1.0 - smoothstep(0.70, 0.98, uv.x));
       float droplets = smoothstep(0.74, 0.91, flowC) * (1.0 - smoothstep(0.89, 0.99, flowA));
       float rings =
-        ellipseRing(uv, vec2(0.045, 0.38), 0.020, vec2(1.0, 2.7), 0.004) +
-        ellipseRing(uv, vec2(0.405, 0.63), 0.018, vec2(1.0, 2.15), 0.0035) +
-        ellipseRing(uv, vec2(0.705, 0.18), 0.014, vec2(1.0, 1.9), 0.003) +
-        ellipseRing(uv, vec2(0.895, 0.44), 0.015, vec2(1.0, 2.1), 0.003) +
-        ellipseRing(uv, vec2(0.842, 0.84), 0.017, vec2(1.0, 2.15), 0.0035);
+        ellipseRing(uv, vec2(0.045, 0.38), 0.034, vec2(1.0, 2.35), 0.006) +
+        ellipseRing(uv, vec2(0.405, 0.63), 0.030, vec2(1.0, 2.00), 0.0055) +
+        ellipseRing(uv, vec2(0.705, 0.18), 0.024, vec2(1.0, 1.75), 0.0048) +
+        ellipseRing(uv, vec2(0.895, 0.44), 0.026, vec2(1.0, 1.95), 0.0048) +
+        ellipseRing(uv, vec2(0.842, 0.84), 0.029, vec2(1.0, 2.00), 0.0055);
 
       vec3 pearl = mix(vec3(0.810, 0.875, 0.955), vec3(0.942, 0.974, 1.0), smoothstep(-0.32, 0.42, p.y) * 0.52 + flowA * 0.24);
       vec3 pearlBlue = vec3(0.55, 0.76, 0.96);
       vec3 coolShadow = vec3(0.70, 0.78, 0.88) * (0.082 + flowB * 0.088);
       vec3 materialLift = material * vec3(0.960, 0.982, 1.0) + vec3(0.010, 0.014, 0.026);
       vec3 color = mix(pearl - coolShadow, materialLift, 0.55);
-      color -= vec3(0.38, 0.48, 0.62) * sheetShadow * 0.26;
-      color -= vec3(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.055;
-      color += vec3(1.0) * (sheetTop * 0.16 + sheetCenter * 0.10 + sheetBottom * 0.16);
-      color += pearlBlue * (sheetTop * 0.070 + sheetCenter * 0.050 + sheetBottom * 0.078);
-      color += vec3(1.0) * (river1 * 0.30 + river2 * 0.24 + river3 * 0.28);
-      color += pearlBlue * (river1 * 0.085 + river2 * 0.060 + river3 * 0.090);
+      color -= vec3(0.38, 0.48, 0.62) * sheetShadow * 0.31;
+      color -= vec3(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.065;
+      color += vec3(1.0) * (sheetTop * 0.19 + sheetCenter * 0.13 + sheetBottom * 0.19);
+      color += pearlBlue * (sheetTop * 0.086 + sheetCenter * 0.064 + sheetBottom * 0.098);
+      color += vec3(1.0) * (river1 * 0.36 + river2 * 0.29 + river3 * 0.34);
+      color += pearlBlue * (river1 * 0.105 + river2 * 0.076 + river3 * 0.112);
       color += vec3(0.64, 0.82, 1.0) * (thin1 * 0.18 + thin2 * 0.16);
-      color += vec3(1.0) * caustic * 0.115 + pearlBlue * blueCaustic * 0.070;
+      color += vec3(1.0) * caustic * 0.132 + pearlBlue * blueCaustic * (0.070 + textPressure * 0.050 + cardPool * 0.038);
+      color += pearlBlue * rappeportPool * 0.060;
       color += vec3(0.66, 0.82, 1.0) * droplets * 0.16;
-      color += vec3(1.0) * rings * 0.24 + pearlBlue * rings * 0.080;
+      color += vec3(1.0) * rings * 0.32 + pearlBlue * rings * 0.120;
       color += pearlBlue * ripple.x * 0.42 + vec3(1.0) * ripple.y * 0.58;
       float pointerDistance = distance(uv, pointer);
-      float wake = exp(-pointerDistance * 7.5) * u_energy;
-      color += pearlBlue * wake * 0.070 + vec3(1.0) * wake * 0.09;
+      float wake = exp(-pointerDistance * 5.1) * u_energy;
+      color += pearlBlue * wake * 0.090 + vec3(1.0) * wake * 0.115;
       float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
       color = mix(color * vec3(0.95, 0.97, 1.0), color, vignette);
       outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.98)), 1.0);
@@ -1182,7 +1191,7 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
     canvas.height = Math.max(1, Math.floor(height * dpr));
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
-    gl.viewport(0, 0, canvas.width, canvas.height);
+    glContext.viewport(0, 0, canvas.width, canvas.height);
   }
 
   function pushRipple(x: number, y: number, intensity: number) {
@@ -1260,20 +1269,20 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
     pointer.y += (pointer.targetY - pointer.y) * 0.16;
     pointer.energy += ((pointer.active ? 0.38 : 0.03) - pointer.energy) * 0.04;
 
-    gl.useProgram(program);
-    gl.bindVertexArray(vao);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.uniform1i(textureLocation, 0);
-    gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
-    gl.uniform1f(timeLocation, t);
-    gl.uniform1f(energyLocation, pointer.energy);
-    gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
+    glContext.useProgram(program);
+    glContext.bindVertexArray(vao);
+    glContext.activeTexture(glContext.TEXTURE0);
+    glContext.bindTexture(glContext.TEXTURE_2D, texture);
+    glContext.uniform1i(textureLocation, 0);
+    glContext.uniform2f(resolutionLocation, canvas.width, canvas.height);
+    glContext.uniform1f(timeLocation, t);
+    glContext.uniform1f(energyLocation, pointer.energy);
+    glContext.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     for (let i = 0; i < RIPPLE_COUNT; i++) {
       const ripple = ripples[i];
-      gl.uniform4f(rippleLocations[i], ripple?.x ?? -9999, ripple?.y ?? -9999, ripple?.start ?? -9999, ripple?.intensity ?? 0);
+      glContext.uniform4f(rippleLocations[i], ripple?.x ?? -9999, ripple?.y ?? -9999, ripple?.start ?? -9999, ripple?.intensity ?? 0);
     }
-    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    glContext.drawArrays(glContext.TRIANGLES, 0, 3);
     frame = requestAnimationFrame(render);
   }
 
@@ -1303,10 +1312,10 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
     window.removeEventListener("pointercancel", onPointerEnd);
     window.removeEventListener("pointerleave", onPointerEnd);
     document.removeEventListener("visibilitychange", onVisibility);
-    gl.deleteTexture(texture);
-    gl.deleteBuffer(positionBuffer);
-    gl.deleteVertexArray(vao);
-    gl.deleteProgram(program);
+    glContext.deleteTexture(texture);
+    glContext.deleteBuffer(positionBuffer);
+    glContext.deleteVertexArray(vao);
+    glContext.deleteProgram(program);
   };
 }
 

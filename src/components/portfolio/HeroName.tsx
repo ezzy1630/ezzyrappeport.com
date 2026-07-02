@@ -33,6 +33,9 @@ function WaterLetter({
   const width = LETTER_WIDTH[char] ?? 84;
   const ratio = width / 126;
   const id = `hero-water-${lineIndex}-${charIndex}-${char}`;
+  const line = HERO_LINES[lineIndex];
+  const progress = line.length <= 1 ? 0 : charIndex / (line.length - 1);
+  const blueBias = lineIndex === 1 ? Math.max(0.18, progress ** 1.55) : Math.max(0, progress - 0.62) * 0.35;
 
   return (
     <span
@@ -41,8 +44,12 @@ function WaterLetter({
         {
           "--letter-ratio": ratio.toFixed(4),
           "--letter-phase": `${(lineIndex * 7 + charIndex) * -0.42}s`,
+          "--letter-blue": blueBias.toFixed(3),
+          "--letter-line-weight": lineIndex === 1 ? "1" : "0",
           "--letter-hot": "0",
           "--letter-ripple": "0",
+          "--letter-push-x": "0px",
+          "--letter-push-y": "0px",
         } as React.CSSProperties
       }
       aria-hidden="true"
@@ -56,24 +63,26 @@ function WaterLetter({
       >
         <defs>
           <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#f8fbff" stopOpacity="0.92" />
-            <stop offset="42%" stopColor="#cbd6e6" stopOpacity="0.84" />
-            <stop offset="74%" stopColor="#a7b5ca" stopOpacity="0.74" />
-            <stop offset="100%" stopColor="#e6f0fb" stopOpacity="0.84" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.96" />
+            <stop offset="18%" stopColor="#eef6ff" stopOpacity="0.90" />
+            <stop offset="46%" stopColor="#aebdd2" stopOpacity="0.82" />
+            <stop offset="70%" stopColor="#d7e5f4" stopOpacity="0.86" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0.92" />
           </linearGradient>
           <linearGradient id={`${id}-specular`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.72" />
-            <stop offset="35%" stopColor="#ffffff" stopOpacity="0.34" />
-            <stop offset="58%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
+            <stop offset="24%" stopColor="#ffffff" stopOpacity="0.50" />
+            <stop offset="54%" stopColor="#ffffff" stopOpacity="0.05" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </linearGradient>
           <linearGradient id={`${id}-edge`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.82" />
-            <stop offset="43%" stopColor="#a8d0ff" stopOpacity="0.58" />
-            <stop offset="78%" stopColor="#ffffff" stopOpacity="0.70" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
+            <stop offset="43%" stopColor="#8ec6ff" stopOpacity="0.66" />
+            <stop offset="78%" stopColor="#ffffff" stopOpacity="0.78" />
           </linearGradient>
           <radialGradient id={`${id}-lens`} cx="68%" cy="67%" r="62%">
-            <stop offset="0%" stopColor="#8fc3f8" stopOpacity="0.18" />
-            <stop offset="48%" stopColor="#f3f8ff" stopOpacity="0.11" />
+            <stop offset="0%" stopColor="#73b5ff" stopOpacity={0.18 + blueBias * 0.18} />
+            <stop offset="48%" stopColor="#f3f8ff" stopOpacity="0.14" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
           <filter id={`${id}-swim`} x="-18%" y="-18%" width="136%" height="136%">
@@ -95,7 +104,7 @@ function WaterLetter({
             <feDisplacementMap
               in="inflated"
               in2="noise"
-              scale="3.4"
+              scale="5.1"
               xChannelSelector="R"
               yChannelSelector="G"
             />
@@ -165,16 +174,30 @@ export default function HeroName() {
       const rect = letter.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
-      const dist = Math.hypot(clientX - cx, clientY - cy);
-      const radius = Math.max(rect.width, rect.height) * (source === "ripple" ? 1.35 : 1.05);
+      const dx = cx - clientX;
+      const dy = cy - clientY;
+      const dist = Math.hypot(dx, dy);
+      const radius = Math.max(rect.width, rect.height) * (source === "ripple" ? 1.75 : 1.28);
       const value = Math.max(0, 1 - dist / radius);
       letter.style.setProperty(source === "ripple" ? "--letter-ripple" : "--letter-hot", value.toFixed(3));
+      if (source === "pointer") {
+        const safeDist = Math.max(dist, 1);
+        const push = value ** 1.45;
+        letter.style.setProperty("--letter-push-x", `${((dx / safeDist) * push * 5.8).toFixed(2)}px`);
+        letter.style.setProperty("--letter-push-y", `${((dy / safeDist) * push * 3.8 - push * 1.2).toFixed(2)}px`);
+      }
     }
   };
 
   const resetLetters = (el: HTMLElement, property: "--letter-hot" | "--letter-ripple") => {
     const letters = el.querySelectorAll<HTMLElement>(".hero-letter");
-    for (const letter of letters) letter.style.setProperty(property, "0");
+    for (const letter of letters) {
+      letter.style.setProperty(property, "0");
+      if (property === "--letter-hot") {
+        letter.style.setProperty("--letter-push-x", "0px");
+        letter.style.setProperty("--letter-push-y", "0px");
+      }
+    }
   };
 
   useEffect(() => {
@@ -285,7 +308,7 @@ export default function HeroName() {
       <span aria-hidden="true" className="hero-name-ripple-field" />
       <span aria-hidden="true" className="hero-name-caustic-field" />
       {HERO_LINES.map((line, lineIndex) => (
-        <span className="hero-name-line" aria-hidden="true" key={line}>
+        <span className={`hero-name-line hero-name-line-${lineIndex + 1}`} aria-hidden="true" key={line}>
           {Array.from(line).map((char, charIndex) => (
             <WaterLetter
               key={`${line}-${charIndex}-${char}`}

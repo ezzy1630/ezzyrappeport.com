@@ -43,6 +43,10 @@ export default function CustomCursor({
           y.set(pendingY);
           if (dotRef.current) {
             dotRef.current.style.transform = `translate(${pendingX - 4}px, ${pendingY - 4}px)`;
+            dotRef.current.style.opacity = "1";
+          }
+          if (ringRef.current && ringRef.current.style.opacity === "0") {
+            ringRef.current.style.opacity = "0.18";
           }
           raf = 0;
         });
