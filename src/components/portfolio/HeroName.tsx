@@ -41,6 +41,8 @@ function WaterLetter({
         {
           "--letter-ratio": ratio.toFixed(4),
           "--letter-phase": `${(lineIndex * 7 + charIndex) * -0.42}s`,
+          "--letter-hot": "0",
+          "--letter-ripple": "0",
         } as React.CSSProperties
       }
       aria-hidden="true"
@@ -133,6 +135,24 @@ export default function HeroName() {
   const rafRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0 });
 
+  const updateLetters = (el: HTMLElement, clientX: number, clientY: number, source: "pointer" | "ripple") => {
+    const letters = el.querySelectorAll<HTMLElement>(".hero-letter");
+    for (const letter of letters) {
+      const rect = letter.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dist = Math.hypot(clientX - cx, clientY - cy);
+      const radius = Math.max(rect.width, rect.height) * (source === "ripple" ? 1.35 : 1.05);
+      const value = Math.max(0, 1 - dist / radius);
+      letter.style.setProperty(source === "ripple" ? "--letter-ripple" : "--letter-hot", value.toFixed(3));
+    }
+  };
+
+  const resetLetters = (el: HTMLElement, property: "--letter-hot" | "--letter-ripple") => {
+    const letters = el.querySelectorAll<HTMLElement>(".hero-letter");
+    for (const letter of letters) letter.style.setProperty(property, "0");
+  };
+
   useEffect(() => {
     const unsubscribePointer = subscribeLiquidPointer((state) => {
       const el = wrapRef.current;
@@ -149,6 +169,7 @@ export default function HeroName() {
       el.style.setProperty("--cursor-y", `${y}px`);
       el.style.setProperty("--proximity", proximity.toFixed(3));
       el.style.setProperty("--liquid-local-speed", Math.min(state.speed, 1.6).toFixed(3));
+      updateLetters(el, state.x, state.y, "pointer");
     });
 
     const unsubscribeRipple = subscribeLiquidRipple((state) => {
@@ -167,8 +188,12 @@ export default function HeroName() {
       el.style.setProperty("--ripple-x", `${x}px`);
       el.style.setProperty("--ripple-y", `${y}px`);
       el.style.setProperty("--ripple-strength", Math.min(1, state.intensity).toFixed(3));
+      updateLetters(el, state.x, state.y, "ripple");
       window.setTimeout(() => {
-        if (wrapRef.current === el) el.style.setProperty("--ripple-strength", "0");
+        if (wrapRef.current === el) {
+          el.style.setProperty("--ripple-strength", "0");
+          resetLetters(el, "--letter-ripple");
+        }
       }, 700);
     });
 
@@ -198,6 +223,7 @@ export default function HeroName() {
       const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
       const proximity = Math.max(0, 1 - dist / (rect.width * 0.58));
       el.style.setProperty("--proximity", proximity.toFixed(3));
+      updateLetters(el, clientX, clientY, "pointer");
     });
   };
 
@@ -209,6 +235,7 @@ export default function HeroName() {
       rafRef.current = 0;
     }
     el.style.setProperty("--proximity", "0");
+    resetLetters(el, "--letter-hot");
   };
 
   return (
