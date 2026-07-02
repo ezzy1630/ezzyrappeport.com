@@ -2,7 +2,7 @@
 
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Project } from "@/lib/portfolio/content";
 
 const ACCENT_PRESETS = {
@@ -34,26 +34,35 @@ const ACCENT_PRESETS = {
 
 const SHAPE_PRESETS = [
   {
-    radius: "66px 54px 60px 72px / 52px 50px 62px 58px",
-    innerRadius: "54px 45px 50px 60px / 42px 39px 52px 47px",
+    radius: "72px 48px 66px 84px / 44px 58px 72px 52px",
+    innerRadius: "60px 39px 54px 70px / 35px 47px 58px 42px",
     threadShift: "-3px",
   },
   {
-    radius: "58px 72px 54px 64px / 48px 55px 50px 60px",
-    innerRadius: "48px 60px 44px 54px / 38px 45px 40px 50px",
+    radius: "54px 86px 60px 70px / 54px 43px 63px 71px",
+    innerRadius: "44px 72px 49px 58px / 44px 34px 51px 58px",
     threadShift: "5px",
   },
   {
-    radius: "68px 60px 70px 54px / 56px 48px 60px 48px",
-    innerRadius: "56px 50px 58px 44px / 46px 39px 50px 39px",
+    radius: "82px 58px 76px 52px / 60px 42px 68px 46px",
+    innerRadius: "68px 48px 63px 42px / 48px 34px 54px 37px",
     threadShift: "-7px",
   },
   {
-    radius: "62px 76px 58px 68px / 50px 58px 54px 60px",
-    innerRadius: "51px 63px 48px 57px / 40px 48px 44px 50px",
+    radius: "60px 92px 56px 78px / 48px 66px 54px 72px",
+    innerRadius: "50px 76px 46px 64px / 38px 52px 43px 58px",
     threadShift: "3px",
   },
 ] as const;
+
+type PointerSample = {
+  x: number;
+  y: number;
+  localX: number;
+  localY: number;
+  proximity: number;
+  speed: number;
+};
 
 type Props = {
   project: Project;
@@ -63,6 +72,9 @@ type Props = {
 
 export default function ProjectCard({ project, index, onOpen }: Props) {
   const ref = useRef<HTMLButtonElement>(null);
+  const pointerSampleRef = useRef<PointerSample | null>(null);
+  const pointerFrameRef = useRef(0);
+  const rippleTimeoutRef = useRef(0);
   const accent = ACCENT_PRESETS[project.accent];
   const shape = SHAPE_PRESETS[index % SHAPE_PRESETS.length];
 
@@ -77,6 +89,27 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
     damping: 20,
   });
 
+  useEffect(() => {
+    return () => {
+      if (pointerFrameRef.current) window.cancelAnimationFrame(pointerFrameRef.current);
+      if (rippleTimeoutRef.current) window.clearTimeout(rippleTimeoutRef.current);
+    };
+  }, []);
+
+  const flushPointerSample = () => {
+    pointerFrameRef.current = 0;
+    const el = ref.current;
+    const sample = pointerSampleRef.current;
+    if (!el || !sample) return;
+
+    el.style.setProperty("--card-cursor-x", `${sample.localX}px`);
+    el.style.setProperty("--card-cursor-y", `${sample.localY}px`);
+    el.style.setProperty("--card-proximity", sample.proximity.toFixed(3));
+    el.style.setProperty("--card-speed", sample.speed.toFixed(3));
+    mvX.set(sample.x);
+    mvY.set(sample.y);
+  };
+
   const onMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const el = ref.current;
     if (!el) return;
@@ -87,17 +120,21 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
     const localY = e.clientY - rect.top;
     const dist = Math.hypot(localX - rect.width / 2, localY - rect.height / 2);
     const proximity = Math.max(0, 1 - dist / (rect.width * 0.84));
+    const speed = Math.min(Math.hypot(x, y) * 1.5, 1);
 
-    el.style.setProperty("--card-cursor-x", `${localX}px`);
-    el.style.setProperty("--card-cursor-y", `${localY}px`);
-    el.style.setProperty("--card-proximity", proximity.toFixed(3));
-    el.style.setProperty("--card-speed", Math.min(Math.hypot(x, y) * 1.5, 1).toFixed(3));
-    mvX.set(x);
-    mvY.set(y);
+    pointerSampleRef.current = { x, y, localX, localY, proximity, speed };
+    if (!pointerFrameRef.current) {
+      pointerFrameRef.current = window.requestAnimationFrame(flushPointerSample);
+    }
   };
 
   const onLeave = () => {
     const el = ref.current;
+    if (pointerFrameRef.current) {
+      window.cancelAnimationFrame(pointerFrameRef.current);
+      pointerFrameRef.current = 0;
+    }
+    pointerSampleRef.current = null;
     if (el) {
       el.style.setProperty("--card-proximity", "0");
       el.style.setProperty("--card-speed", "0");
@@ -114,7 +151,8 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
     el.style.setProperty("--card-ripple-x", `${e.clientX - rect.left}px`);
     el.style.setProperty("--card-ripple-y", `${e.clientY - rect.top}px`);
     el.style.setProperty("--card-ripple-strength", "0.82");
-    window.setTimeout(() => {
+    if (rippleTimeoutRef.current) window.clearTimeout(rippleTimeoutRef.current);
+    rippleTimeoutRef.current = window.setTimeout(() => {
       if (ref.current === el) el.style.setProperty("--card-ripple-strength", "0");
     }, 560);
   };
@@ -175,6 +213,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
         >
           <span aria-hidden="true" className="project-liquid-surface" />
           <span aria-hidden="true" className="project-top-sheen" />
+          <span aria-hidden="true" className="project-volume-glow" />
           <span aria-hidden="true" className="project-edge-caustics" />
           <span aria-hidden="true" className="project-blue-rim" />
           <svg
@@ -195,7 +234,16 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
               className="project-perimeter-white"
               d="M15 42 C55 22 96 31 130 25 C165 18 196 25 232 23 C271 21 307 16 348 22 C382 27 403 42 407 69 M20 89 C63 112 111 98 151 106 C194 114 222 102 266 108 C315 115 362 112 402 88"
             />
+            <path
+              className="project-bottom-wave"
+              d="M15 103 C56 125 93 116 134 119 C174 122 194 130 240 119 C283 108 311 125 356 116 C383 111 402 101 410 88"
+            />
+            <path
+              className="project-side-prism"
+              d="M18 52 C4 76 9 99 34 111 M392 31 C416 51 421 84 395 105"
+            />
           </svg>
+          <span aria-hidden="true" className="project-bottom-pool" />
           <span aria-hidden="true" className="project-inner-contour" />
           <span aria-hidden="true" className="project-ripple-field" />
 

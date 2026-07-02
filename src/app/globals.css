@@ -277,27 +277,27 @@ html.lenis body {
 }
 
 .project-capsule {
-  border-radius: var(--project-radius, 58px 68px 48px 72px / 45px 42px 61px 53px);
+  border-radius: var(--project-radius, 72px 48px 66px 84px / 44px 58px 72px 52px);
   background:
-    radial-gradient(84% 122% at 16% 8%, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.23) 52%, transparent 78%),
-    radial-gradient(43% 58% at 93% 116%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.34)), transparent 76%),
-    radial-gradient(44% 50% at 8% 112%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.32)), transparent 73%),
-    radial-gradient(84% 40% at 50% 118%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.18)), transparent 80%),
-    linear-gradient(181deg, rgba(255, 255, 255, 0.82), rgba(248, 252, 255, 0.21) 43%, rgba(224, 240, 255, 0.30)),
-    rgba(255, 255, 255, 0.17);
-  backdrop-filter: blur(22px) saturate(168%) contrast(1.14);
-  -webkit-backdrop-filter: blur(22px) saturate(168%) contrast(1.14);
+    radial-gradient(82% 118% at 15% 6%, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.19) 50%, transparent 78%),
+    radial-gradient(50% 70% at 93% 111%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.42)), transparent 74%),
+    radial-gradient(50% 64% at 6% 109%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.39)), transparent 71%),
+    radial-gradient(92% 45% at 50% 113%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.23)), transparent 80%),
+    linear-gradient(181deg, rgba(255, 255, 255, 0.78), rgba(248, 252, 255, 0.17) 40%, rgba(220, 238, 255, 0.33)),
+    rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px) saturate(164%) contrast(1.12);
+  -webkit-backdrop-filter: blur(20px) saturate(164%) contrast(1.12);
   border: 1px solid rgba(255, 255, 255, 0.88);
   box-shadow:
     0 1px 2px rgba(255, 255, 255, 0.98) inset,
     0 -2px 5px rgba(0, 102, 255, 0.32) inset,
-    10px 0 21px rgba(0, 102, 255, 0.13) inset,
+    12px 0 25px rgba(0, 102, 255, 0.15) inset,
     -12px 0 22px rgba(255, 255, 255, 0.50) inset,
-    0 21px 46px -30px rgba(9, 40, 95, 0.58);
+    0 24px 52px -32px rgba(9, 40, 95, 0.60);
   transform: translateZ(0);
   animation: project-capsule-breathe 16s ease-in-out infinite;
   animation-delay: var(--project-phase);
-  will-change: transform, filter;
+  will-change: transform;
   contain: layout paint;
 }
 
@@ -321,15 +321,15 @@ html.lenis body {
 .project-capsule::before {
   content: "";
   position: absolute;
-  inset: -4px;
+  inset: -5px;
   border-radius: inherit;
   border: 1px solid rgba(255, 255, 255, 0.86);
   box-shadow:
-    0 0 24px rgba(255, 255, 255, 0.78) inset,
-    0 9px 22px rgba(255, 255, 255, 0.42) inset,
-    0 -12px 26px rgba(0, 102, 255, 0.20) inset,
-    -4px 4px 13px rgba(0, 102, 255, 0.13);
-  filter: url("#liquidBlobFilter") blur(0.15px);
+    0 0 28px rgba(255, 255, 255, 0.80) inset,
+    0 10px 24px rgba(255, 255, 255, 0.43) inset,
+    0 -14px 30px rgba(0, 102, 255, 0.24) inset,
+    -5px 4px 14px rgba(0, 102, 255, 0.15);
+  filter: url("#liquidBlobFilter") blur(0.08px);
   opacity: 0.98;
   pointer-events: none;
 }
@@ -348,7 +348,7 @@ html.lenis body {
     radial-gradient(26% 58% at 48% 30%, rgba(126, 187, 255, 0.56), transparent 82%),
     linear-gradient(90deg, transparent 1%, rgba(0, 102, 255, 0.31) 15%, rgba(255, 255, 255, 0.60) 36%, rgba(0, 102, 255, 0.31) 64%, transparent 97%);
   filter: blur(10px);
-  opacity: calc(var(--project-edge-opacity) * 0.74);
+  opacity: calc(var(--project-edge-opacity) * 0.84);
   pointer-events: none;
   transform: translateY(6px) scaleX(var(--project-caustic-scale));
   animation: project-caustic-drift 8s ease-in-out infinite;
@@ -357,9 +357,11 @@ html.lenis body {
 
 .project-liquid-surface,
 .project-top-sheen,
+.project-volume-glow,
 .project-edge-caustics,
 .project-blue-rim,
 .project-caustic-threads,
+.project-bottom-pool,
 .project-inner-contour,
 .project-ripple-field,
 .project-hover-lens {
@@ -368,15 +370,16 @@ html.lenis body {
 }
 
 .project-liquid-surface {
-  inset: -28px;
+  inset: -32px;
   border-radius: inherit;
   background:
     radial-gradient(170px 88px at var(--card-cursor-x) var(--card-cursor-y), rgba(255, 255, 255, calc(0.14 + var(--card-proximity) * 0.28)), transparent 68%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.48), transparent 39%, rgba(0, 102, 255, 0.060)),
+    radial-gradient(72% 44% at 50% 112%, rgba(0, 102, 255, 0.075), transparent 74%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.46), transparent 38%, rgba(0, 102, 255, 0.068)),
     url("/assets/pearl-liquid-background.png");
   background-size: 620px auto;
   background-position: center, 42% 66%;
-  opacity: calc(0.38 + var(--card-proximity) * 0.13);
+  opacity: calc(0.42 + var(--card-proximity) * 0.13);
   mix-blend-mode: screen;
   filter: blur(0.9px) saturate(calc(1.28 + var(--card-speed) * 0.20)) contrast(1.08);
   transform: scale(1.055);
@@ -398,11 +401,24 @@ html.lenis body {
   transform: rotate(-1.4deg);
 }
 
+.project-volume-glow {
+  inset: 5px 12px 11px;
+  border-radius: var(--project-inner-radius, 60px 39px 54px 70px / 35px 47px 58px 42px);
+  background:
+    radial-gradient(58% 86% at 74% 38%, rgba(141, 184, 255, 0.23), transparent 68%),
+    radial-gradient(52% 90% at 18% 66%, rgba(255, 255, 255, 0.34), transparent 72%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(0, 102, 255, 0.045));
+  filter: blur(10px);
+  opacity: calc(0.68 + var(--card-proximity) * 0.18);
+  mix-blend-mode: screen;
+  transform: translate3d(calc(var(--card-speed) * 2px), 0, 0);
+}
+
 .project-edge-caustics {
-  left: -1%;
-  right: -1%;
-  bottom: -18%;
-  height: 43%;
+  left: -2%;
+  right: -2%;
+  bottom: -20%;
+  height: 48%;
   border-radius: 999px;
   background:
     radial-gradient(24% 78% at 7% 42%, rgba(0, 92, 255, 0.66), transparent 68%),
@@ -410,7 +426,7 @@ html.lenis body {
     radial-gradient(42% 52% at 50% 68%, rgba(121, 184, 255, 0.30), transparent 76%),
     linear-gradient(177deg, transparent 46%, rgba(255, 255, 255, 0.54) 65%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.68)) 91%, transparent 100%);
   filter: blur(var(--project-caustic-blur));
-  opacity: 0.88;
+  opacity: 0.94;
   transform: translateY(13px);
   mix-blend-mode: multiply;
   animation: project-caustic-drift 7.5s ease-in-out infinite alternate;
@@ -418,7 +434,7 @@ html.lenis body {
 }
 
 .project-blue-rim {
-  inset: 0 0 -3px;
+  inset: -1px -1px -4px;
   border-radius: inherit;
   background:
     radial-gradient(92px 78px at var(--card-cursor-x) var(--card-cursor-y), rgba(0, 102, 255, calc(var(--card-proximity) * 0.19)), transparent 72%),
@@ -428,7 +444,7 @@ html.lenis body {
   mask-image: linear-gradient(180deg, transparent 60%, #000 86%);
   -webkit-mask-image: linear-gradient(180deg, transparent 60%, #000 86%);
   filter: blur(1px);
-  opacity: calc(var(--project-edge-opacity) * 0.92);
+  opacity: calc(var(--project-edge-opacity) * 0.98);
   mix-blend-mode: multiply;
 }
 
@@ -450,7 +466,7 @@ html.lenis body {
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
   stroke-dasharray: 18 46;
-  animation: project-thread-drift 9s ease-in-out infinite;
+  animation: none;
   animation-delay: var(--project-phase);
 }
 
@@ -476,10 +492,10 @@ html.lenis body {
 
 .project-caustic-threads .project-perimeter-blue {
   stroke: rgba(0, 102, 255, calc(0.48 + var(--project-edge-opacity) * 0.42));
-  stroke-width: 1.9;
+  stroke-width: 1.65;
   stroke-dasharray: none;
-  opacity: 0.84;
-  filter: drop-shadow(0 1px 5px rgba(0, 102, 255, 0.26));
+  opacity: 0.76;
+  filter: drop-shadow(0 1px 4px rgba(0, 102, 255, 0.20));
 }
 
 .project-caustic-threads .project-perimeter-white {
@@ -489,8 +505,39 @@ html.lenis body {
   opacity: 0.74;
 }
 
+.project-caustic-threads .project-bottom-wave {
+  stroke: rgba(0, 102, 255, calc(0.46 + var(--project-edge-opacity) * 0.48));
+  stroke-width: 2.6;
+  stroke-dasharray: 82 18 36 28;
+  opacity: 0.84;
+  filter: drop-shadow(0 2px 6px rgba(0, 102, 255, 0.28));
+}
+
+.project-caustic-threads .project-side-prism {
+  stroke: rgba(0, 102, 255, calc(0.18 + var(--project-edge-opacity) * 0.24));
+  stroke-width: 1.25;
+  stroke-dasharray: 42 30;
+  opacity: 0.72;
+}
+
+.project-bottom-pool {
+  left: 7%;
+  right: 8%;
+  bottom: -8px;
+  height: 30px;
+  border-radius: 999px;
+  background:
+    radial-gradient(36% 80% at 11% 44%, rgba(0, 102, 255, 0.46), transparent 75%),
+    radial-gradient(34% 92% at 88% 50%, rgba(0, 102, 255, 0.34), transparent 76%),
+    linear-gradient(92deg, transparent, rgba(0, 102, 255, 0.32) 18%, rgba(255, 255, 255, 0.42) 48%, rgba(0, 102, 255, 0.26) 78%, transparent);
+  filter: blur(6px);
+  opacity: calc(var(--project-edge-opacity) * 0.78);
+  mix-blend-mode: multiply;
+  transform: translate3d(0, calc(var(--card-proximity) * -2px), 0) scaleX(var(--project-caustic-scale));
+}
+
 .project-inner-contour {
-  inset: 9px 12px 10px;
+  inset: 10px 13px 12px;
   border-radius: var(--project-inner-radius, 50px 59px 42px 61px / 38px 36px 52px 45px);
   border: 1px solid rgba(255, 255, 255, 0.55);
   box-shadow:
@@ -498,7 +545,7 @@ html.lenis body {
     0 -1px 8px rgba(0, 102, 255, 0.15) inset,
     0 0 0 1px rgba(56, 94, 151, 0.035);
   filter: url("#liquidBlobFilter");
-  opacity: 0.88;
+  opacity: 0.82;
 }
 
 .project-ripple-field {
@@ -555,6 +602,7 @@ html.lenis body {
 
 .project-card-button:hover .project-caustic-threads path,
 .project-card-button:focus-visible .project-caustic-threads path {
+  animation: project-thread-drift 4.6s ease-in-out infinite;
   animation-duration: 4.6s;
 }
 

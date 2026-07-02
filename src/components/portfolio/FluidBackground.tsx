@@ -311,6 +311,16 @@ function createFallbackPointerBus() {
   };
 }
 
+function destroyGpuResource(resource: unknown) {
+  const destroy = (resource as { destroy?: () => void } | null)?.destroy;
+  if (!destroy) return;
+  try {
+    destroy.call(resource);
+  } catch {
+    // WebGPU cleanup support varies by browser implementation.
+  }
+}
+
 function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.MutableRefObject<boolean>) {
   const context = canvas.getContext("2d", { alpha: false });
   if (!context) return createFallbackPointerBus();
@@ -646,7 +656,7 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
     createRenderPipeline: (descriptor: unknown) => unknown;
     createBuffer: (descriptor: unknown) => unknown;
     createSampler: (descriptor: unknown) => unknown;
-    createTexture: (descriptor: unknown) => { createView: () => unknown };
+    createTexture: (descriptor: unknown) => { createView: () => unknown; destroy?: () => void };
     createBindGroup: (descriptor: unknown) => unknown;
     createCommandEncoder: () => {
       beginRenderPass: (descriptor: unknown) => {
@@ -901,6 +911,10 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
   return () => {
     running = false;
     cancelAnimationFrame(frame);
+    destroyGpuResource(uniformBuffer);
+    destroyGpuResource(fluidTexture);
+    textureBitmap.close?.();
+    destroyGpuResource(device);
     window.removeEventListener("resize", configure);
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerdown", onPointerDown);
@@ -1297,6 +1311,9 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
     const container = mountRef.current;
     if (!container) return;
 
+    reducedMotionRef.current = reducedMotion;
+    staticModeRef.current = staticMode;
+
     let disposed = false;
     let cleanup = () => {};
     let rendererCanvas: HTMLCanvasElement | null = null;
@@ -1318,6 +1335,7 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
     const startInteractiveRenderer = async () => {
       if (reducedMotionRef.current || staticModeRef.current) {
         container.dataset.webgpu = "static";
+        if (!reducedMotionRef.current) cleanup = createFallbackPointerBus();
         return;
       }
 
@@ -1340,6 +1358,11 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
 
         const rendererCleanup = await Promise.race([webgpuPromise, timeoutPromise]);
         window.clearTimeout(webgpuTimeout);
+        if (webgpuTimedOut || disposed) {
+          rendererCleanup();
+          webgpuCanvas.remove();
+          return;
+        }
         attachRenderer(webgpuCanvas, rendererCleanup, "ready");
         return;
       } catch {
@@ -1365,6 +1388,7 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
 
     if (reducedMotionRef.current || staticModeRef.current) {
       container.dataset.webgpu = "static";
+      if (!reducedMotionRef.current) cleanup = createFallbackPointerBus();
     } else {
       void startInteractiveRenderer();
     }
@@ -1375,7 +1399,7 @@ export default function FluidBackground({ reducedMotion = false, staticMode = fa
       rendererCanvas?.remove();
       delete container.dataset.webgpu;
     };
-  }, []);
+  }, [reducedMotion, staticMode]);
 
   return <div ref={mountRef} className={`fluid-canvas ${className ?? ""}`} aria-hidden="true" />;
 }
