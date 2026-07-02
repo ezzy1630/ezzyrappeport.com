@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
 import SmoothScrollProvider from "@/components/portfolio/SmoothScrollProvider";
@@ -12,11 +13,12 @@ import LocationCard from "@/components/portfolio/LocationCard";
 import ScrollIndicator from "@/components/portfolio/ScrollIndicator";
 import SectionAnchors from "@/components/portfolio/SectionAnchors";
 import ProjectGrid from "@/components/portfolio/ProjectGrid";
-import ProjectsSection from "@/components/portfolio/ProjectsSection";
-import ExperienceSection from "@/components/portfolio/ExperienceSection";
-import AboutSection from "@/components/portfolio/AboutSection";
-import ContactSection from "@/components/portfolio/ContactSection";
 import SvgFilters from "@/components/portfolio/SvgFilters";
+
+const ProjectsSection = dynamic(() => import("@/components/portfolio/ProjectsSection"));
+const ExperienceSection = dynamic(() => import("@/components/portfolio/ExperienceSection"));
+const AboutSection = dynamic(() => import("@/components/portfolio/AboutSection"));
+const ContactSection = dynamic(() => import("@/components/portfolio/ContactSection"));
 
 export default function Home() {
   const reducedMotion = useReducedMotion();
@@ -38,7 +40,7 @@ export default function Home() {
         <CustomCursor disabled={!cursorEnabled} />
 
         {/* Fluid canvas background */}
-        <FluidBackground reducedMotion={reducedMotion} />
+        <FluidBackground reducedMotion={reducedMotion} staticMode={coarsePointer} />
 
         {/* Content layer */}
         <div className="content-layer">

@@ -20,9 +20,9 @@ export default function SectionAnchors() {
       initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.9, delay: 1.6, ease: [0.22, 1, 0.36, 1] }}
-      className="absolute bottom-0 left-0 right-0 z-30 px-6 md:px-10 lg:px-14 py-4 md:py-5"
+      className="absolute bottom-0 left-0 right-0 z-30 px-6 md:px-10 lg:px-14 py-3 md:py-4"
     >
-      <div className="grid grid-cols-3 gap-0 max-w-4xl mx-auto">
+      <div className="grid grid-cols-3 gap-0 max-w-[52rem] mx-auto">
         {sectionAnchors.map((anchor, i) => (
           <a
             key={anchor.href}
@@ -41,7 +41,7 @@ export default function SectionAnchors() {
                 />
               )}
             </span>
-            <span className="hidden md:inline text-[11px] text-ink-soft/55">
+            <span className="hidden md:inline text-[11px] text-ink-soft/62">
               {anchor.subtitle}
             </span>
           </a>

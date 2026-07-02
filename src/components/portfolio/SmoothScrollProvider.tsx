@@ -25,22 +25,33 @@ export default function SmoothScrollProvider({
       return;
     }
 
-    const lenis = new Lenis({
+    let rafId = 0;
+
+    const startLenis = () => {
+      if (lenisRef.current) return lenisRef.current;
+
+      const lenis = new Lenis({
       duration: 1.15,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
       wheelMultiplier: 0.9,
       touchMultiplier: 1.5,
       lerp: 0.08,
-    });
-    lenisRef.current = lenis;
+      });
+      lenisRef.current = lenis;
 
-    let rafId = 0;
-    function raf(time: number) {
-      lenis.raf(time);
+      function raf(time: number) {
+        lenis.raf(time);
+        rafId = requestAnimationFrame(raf);
+      }
       rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
+
+      return lenis;
+    };
+
+    const onFirstScrollIntent = () => {
+      startLenis();
+    };
 
     // Smooth anchor scrolling
     const onClick = (e: MouseEvent) => {
@@ -52,14 +63,22 @@ export default function SmoothScrollProvider({
       const el = document.querySelector(href);
       if (!el) return;
       e.preventDefault();
+      const lenis = startLenis();
       lenis.scrollTo(el as HTMLElement, { offset: -40, duration: 1.4 });
     };
+
+    window.addEventListener("wheel", onFirstScrollIntent, { once: true, passive: true });
+    window.addEventListener("touchmove", onFirstScrollIntent, { once: true, passive: true });
+    window.addEventListener("keydown", onFirstScrollIntent, { once: true });
     document.addEventListener("click", onClick);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("wheel", onFirstScrollIntent);
+      window.removeEventListener("touchmove", onFirstScrollIntent);
+      window.removeEventListener("keydown", onFirstScrollIntent);
       document.removeEventListener("click", onClick);
-      lenis.destroy();
+      lenisRef.current?.destroy();
       lenisRef.current = null;
     };
   }, [reducedMotion]);

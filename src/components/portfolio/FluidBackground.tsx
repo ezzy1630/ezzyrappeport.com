@@ -10,6 +10,7 @@ const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.png";
 
 type Props = {
   reducedMotion?: boolean;
+  staticMode?: boolean;
   className?: string;
 };
 
@@ -910,31 +911,30 @@ async function startWebGpuRenderer(canvas: HTMLCanvasElement, reducedMotionRef: 
   };
 }
 
-export default function FluidBackground({ reducedMotion = false, className }: Props) {
+export default function FluidBackground({ reducedMotion = false, staticMode = false, className }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const reducedMotionRef = useRef(reducedMotion);
+  const staticModeRef = useRef(staticMode);
 
   useEffect(() => {
     reducedMotionRef.current = reducedMotion;
-  }, [reducedMotion]);
+    staticModeRef.current = staticMode;
+  }, [reducedMotion, staticMode]);
 
   useEffect(() => {
     const container = mountRef.current;
     if (!container) return;
 
     let disposed = false;
-    let cleanup = createFallbackPointerBus();
-    let fallbackCanvas: HTMLCanvasElement | null = null;
+    let cleanup = () => {};
+    let idleId: number | null = null;
+    let fallbackTimer = 0;
+    let started = false;
     let webgpuCanvas: HTMLCanvasElement | null = null;
 
-    if (!reducedMotionRef.current) {
-      fallbackCanvas = document.createElement("canvas");
-      fallbackCanvas.dataset.renderer = "canvas-fluid-fallback";
-      container.appendChild(fallbackCanvas);
-      cleanup();
-      cleanup = startCanvasFallbackRenderer(fallbackCanvas, reducedMotionRef);
-      container.dataset.webgpu = "fallback";
-
+    const startInteractiveRenderer = () => {
+      if (started || disposed || reducedMotionRef.current || staticModeRef.current) return;
+      started = true;
       webgpuCanvas = document.createElement("canvas");
       webgpuCanvas.dataset.renderer = "webgpu-fluid";
       startWebGpuRenderer(webgpuCanvas, reducedMotionRef)
@@ -946,22 +946,41 @@ export default function FluidBackground({ reducedMotion = false, className }: Pr
           }
           cleanup();
           cleanup = rendererCleanup;
-          fallbackCanvas?.remove();
           container.appendChild(webgpuCanvas as HTMLCanvasElement);
           container.dataset.webgpu = "ready";
         })
         .catch(() => {
-          container.dataset.webgpu = "fallback";
+          container.dataset.webgpu = "static";
           webgpuCanvas?.remove();
         });
+    };
+
+    if (reducedMotionRef.current || staticModeRef.current) {
+      container.dataset.webgpu = "static";
     } else {
-      container.dataset.webgpu = "reduced-motion";
+      container.dataset.webgpu = "static";
+      const startOnInput = () => startInteractiveRenderer();
+      window.addEventListener("pointerdown", startOnInput, { once: true, passive: true });
+      window.addEventListener("wheel", startOnInput, { once: true, passive: true });
+
+      const requestIdle = window.requestIdleCallback;
+      if (requestIdle) {
+        idleId = requestIdle(() => startInteractiveRenderer(), { timeout: 1800 });
+      } else {
+        fallbackTimer = window.setTimeout(startInteractiveRenderer, 900);
+      }
+
+      cleanup = () => {
+        window.removeEventListener("pointerdown", startOnInput);
+        window.removeEventListener("wheel", startOnInput);
+      };
     }
 
     return () => {
       disposed = true;
+      if (idleId !== null) window.cancelIdleCallback?.(idleId);
+      if (fallbackTimer) window.clearTimeout(fallbackTimer);
       cleanup();
-      fallbackCanvas?.remove();
       webgpuCanvas?.remove();
       delete container.dataset.webgpu;
     };

@@ -1,10 +1,12 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { LayoutGroup } from "framer-motion";
 import { useCallback, useState } from "react";
 import { projects, type Project } from "@/lib/portfolio/content";
 import ProjectCard from "./ProjectCard";
-import ProjectModal from "./ProjectModal";
+
+const ProjectModal = dynamic(() => import("./ProjectModal"));
 
 export default function ProjectGrid() {
   const [activeProject, setActiveProject] = useState<Project | null>(null);

@@ -34,7 +34,7 @@ export default function Navigation() {
         >
           {nav.brand}
         </span>
-        <span className="hidden sm:inline text-[13px] md:text-[14px] font-medium text-ink/86 tracking-normal">
+        <span className="hidden sm:inline text-[13px] md:text-[14px] font-medium text-ink/92 tracking-normal">
           {nav.fullName}
         </span>
       </a>
@@ -48,7 +48,7 @@ export default function Navigation() {
           <a
             key={link.href}
             href={link.href}
-            className="relative text-[13px] tracking-normal font-medium text-ink/75 hover:text-ink transition-colors duration-300"
+            className="relative text-[13px] tracking-normal font-medium text-ink/82 hover:text-ink transition-colors duration-300"
           >
             {link.label}
             <span className="pointer-events-none absolute -bottom-1.5 left-0 right-0 h-px bg-electric scale-x-0 hover:scale-x-100 transition-transform origin-left duration-500" />

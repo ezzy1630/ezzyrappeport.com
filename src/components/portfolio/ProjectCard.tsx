@@ -2,12 +2,8 @@
 
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import type { Project } from "@/lib/portfolio/content";
-import {
-  subscribeLiquidPointer,
-  subscribeLiquidRipple,
-} from "@/lib/portfolio/liquid-interaction";
 
 const ACCENT_PRESETS = {
   "blue-strong": {
@@ -81,64 +77,46 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
     damping: 20,
   });
 
-  useEffect(() => {
-    const unsubscribePointer = subscribeLiquidPointer((state) => {
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = state.x - rect.left;
-      const y = state.y - rect.top;
-      const cx = rect.width / 2;
-      const cy = rect.height / 2;
-      const dist = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2);
-      const proximity = Math.max(0, 1 - dist / (rect.width * 0.9));
-
-      el.style.setProperty("--card-cursor-x", `${x}px`);
-      el.style.setProperty("--card-cursor-y", `${y}px`);
-      el.style.setProperty("--card-proximity", proximity.toFixed(3));
-      el.style.setProperty("--card-speed", Math.min(state.speed, 1.6).toFixed(3));
-    });
-
-    const unsubscribeRipple = subscribeLiquidRipple((state) => {
-      const el = ref.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const x = state.x - rect.left;
-      const y = state.y - rect.top;
-      const inside =
-        x > -rect.width * 0.35 &&
-        x < rect.width * 1.35 &&
-        y > -rect.height * 1.0 &&
-        y < rect.height * 1.8;
-
-      if (!inside) return;
-      el.style.setProperty("--card-ripple-x", `${x}px`);
-      el.style.setProperty("--card-ripple-y", `${y}px`);
-      el.style.setProperty("--card-ripple-strength", Math.min(1, state.intensity).toFixed(3));
-      window.setTimeout(() => {
-        if (ref.current === el) el.style.setProperty("--card-ripple-strength", "0");
-      }, 620);
-    });
-
-    return () => {
-      unsubscribePointer();
-      unsubscribeRipple();
-    };
-  }, []);
-
   const onMove = (e: React.PointerEvent<HTMLButtonElement>) => {
     const el = ref.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5;
     const y = (e.clientY - rect.top) / rect.height - 0.5;
+    const localX = e.clientX - rect.left;
+    const localY = e.clientY - rect.top;
+    const dist = Math.hypot(localX - rect.width / 2, localY - rect.height / 2);
+    const proximity = Math.max(0, 1 - dist / (rect.width * 0.84));
+
+    el.style.setProperty("--card-cursor-x", `${localX}px`);
+    el.style.setProperty("--card-cursor-y", `${localY}px`);
+    el.style.setProperty("--card-proximity", proximity.toFixed(3));
+    el.style.setProperty("--card-speed", Math.min(Math.hypot(x, y) * 1.5, 1).toFixed(3));
     mvX.set(x);
     mvY.set(y);
   };
 
   const onLeave = () => {
+    const el = ref.current;
+    if (el) {
+      el.style.setProperty("--card-proximity", "0");
+      el.style.setProperty("--card-speed", "0");
+      el.style.setProperty("--card-ripple-strength", "0");
+    }
     mvX.set(0);
     mvY.set(0);
+  };
+
+  const onPointerDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    el.style.setProperty("--card-ripple-x", `${e.clientX - rect.left}px`);
+    el.style.setProperty("--card-ripple-y", `${e.clientY - rect.top}px`);
+    el.style.setProperty("--card-ripple-strength", "0.82");
+    window.setTimeout(() => {
+      if (ref.current === el) el.style.setProperty("--card-ripple-strength", "0");
+    }, 560);
   };
 
   return (
@@ -147,6 +125,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
       type="button"
       onClick={() => onOpen(project)}
       onPointerMove={onMove}
+      onPointerDown={onPointerDown}
       onPointerLeave={onLeave}
       data-cursor="hover"
       data-no-focus-ring
@@ -217,7 +196,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
             style={{ transform: "translateZ(34px)" }}
           >
             <div className="flex min-w-0 flex-col gap-1.5 pr-4">
-              <span className="text-[11px] font-medium text-ink-soft/58">
+              <span className="text-[11px] font-medium text-ink-soft/62">
                 {project.index}
               </span>
               <motion.h3
@@ -229,7 +208,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
               </motion.h3>
               <motion.p
                 layoutId={`project-subtitle-${project.slug}`}
-                className="text-[12px] leading-[1.4] text-ink-soft/65 md:text-[13px]"
+                className="text-[12px] leading-[1.35] text-ink-soft/72 md:text-[13px]"
               >
                 {project.subtitle}
               </motion.p>
@@ -242,7 +221,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
                 backgroundColor: "rgba(255,255,255,1)",
               }}
               transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white/88 text-ink shadow-[0_10px_28px_-18px_rgba(8,35,82,0.45),0_1px_1px_rgba(255,255,255,0.8)_inset] md:h-12 md:w-12"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/90 text-ink shadow-[0_10px_28px_-18px_rgba(8,35,82,0.45),0_1px_1px_rgba(255,255,255,0.8)_inset] md:h-11 md:w-11"
             >
               <ArrowUpRight className="h-[18px] w-[18px] text-ink" strokeWidth={2.2} />
             </motion.span>
