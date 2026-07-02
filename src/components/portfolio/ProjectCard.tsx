@@ -36,21 +36,29 @@ const SHAPE_PRESETS = [
   {
     radius: "72px 48px 66px 84px / 44px 58px 72px 52px",
     innerRadius: "60px 39px 54px 70px / 35px 47px 58px 42px",
+    clip:
+      "polygon(1% 46%, 2% 28%, 7% 15%, 18% 9%, 31% 11%, 43% 5%, 58% 8%, 72% 6%, 86% 10%, 96% 23%, 99% 44%, 98% 66%, 92% 84%, 80% 92%, 63% 88%, 51% 95%, 35% 90%, 18% 92%, 6% 78%)",
     threadShift: "-3px",
   },
   {
     radius: "54px 86px 60px 70px / 54px 43px 63px 71px",
     innerRadius: "44px 72px 49px 58px / 44px 34px 51px 58px",
+    clip:
+      "polygon(1% 38%, 4% 19%, 14% 9%, 29% 8%, 44% 12%, 57% 5%, 73% 9%, 88% 8%, 97% 22%, 99% 44%, 98% 68%, 91% 86%, 76% 92%, 61% 89%, 46% 95%, 28% 90%, 12% 91%, 3% 74%)",
     threadShift: "5px",
   },
   {
     radius: "82px 58px 76px 52px / 60px 42px 68px 46px",
     innerRadius: "68px 48px 63px 42px / 48px 34px 54px 37px",
+    clip:
+      "polygon(2% 34%, 8% 14%, 22% 8%, 36% 11%, 51% 6%, 67% 8%, 82% 6%, 94% 16%, 99% 35%, 98% 61%, 94% 79%, 84% 91%, 67% 91%, 53% 96%, 38% 89%, 22% 93%, 8% 83%, 1% 60%)",
     threadShift: "-7px",
   },
   {
     radius: "60px 92px 56px 78px / 48px 66px 54px 72px",
     innerRadius: "50px 76px 46px 64px / 38px 52px 43px 58px",
+    clip:
+      "polygon(1% 42%, 5% 20%, 18% 10%, 32% 9%, 46% 6%, 60% 11%, 75% 7%, 90% 12%, 98% 28%, 99% 52%, 96% 73%, 86% 89%, 70% 91%, 55% 94%, 41% 89%, 24% 93%, 9% 84%, 2% 64%)",
     threadShift: "3px",
   },
 ] as const;
@@ -187,6 +195,7 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
           "--project-edge-opacity": accent.edgeOpacity,
           "--project-radius": shape.radius,
           "--project-inner-radius": shape.innerRadius,
+          "--project-clip": shape.clip,
           "--project-thread-shift": shape.threadShift,
           "--card-cursor-x": "50%",
           "--card-cursor-y": "50%",
@@ -211,6 +220,25 @@ export default function ProjectCard({ project, index, onOpen }: Props) {
           }}
           className="project-capsule project-capsule-card absolute inset-0 overflow-hidden"
         >
+          <svg
+            aria-hidden="true"
+            className="project-water-shell"
+            viewBox="0 0 420 132"
+            preserveAspectRatio="none"
+          >
+            <path
+              className="project-water-body"
+              d="M6 62 C7 36 17 20 41 13 C70 4 96 14 123 12 C153 10 173 3 203 9 C236 15 260 9 294 8 C341 7 386 11 407 38 C424 61 412 101 377 114 C342 127 309 114 274 118 C238 123 220 132 184 121 C152 112 125 126 91 119 C48 111 5 101 6 62 Z"
+            />
+            <path
+              className="project-water-top"
+              d="M22 36 C63 13 100 27 136 20 C173 12 194 19 230 18 C273 17 303 9 343 18 C376 25 397 35 406 52"
+            />
+            <path
+              className="project-water-bottom"
+              d="M15 91 C52 120 91 111 129 116 C170 122 198 129 238 116 C276 104 308 123 353 115 C380 111 401 99 410 83"
+            />
+          </svg>
           <span aria-hidden="true" className="project-liquid-surface" />
           <span aria-hidden="true" className="project-top-sheen" />
           <span aria-hidden="true" className="project-volume-glow" />

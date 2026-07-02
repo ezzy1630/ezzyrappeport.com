@@ -128,11 +128,12 @@ fn ripple_field(pos: vec2<f32>, pointer: vec2<f32>, time: f32) -> vec3<f32> {
   var warp = 0.0;
 
   let dp = distance(pos, pointer);
-  let pointerRing = sin(dp * 78.0 - time * 8.0);
-  let pointerEnv = exp(-dp * 5.0) * u.energy;
-  blue = blue + max(pointerRing, 0.0) * pointerEnv * 0.22;
-  white = white + ridge(dp - 0.052 - sin(time * 1.8) * 0.006, 0.006) * pointerEnv * 0.42;
-  warp = warp + pointerRing * pointerEnv * 0.022;
+  let pointerRing = sin(dp * 96.0 - time * 10.5);
+  let pointerEnv = exp(-dp * 6.1) * u.energy;
+  let pointerHalo = exp(-dp * 3.8) * u.energy;
+  blue = blue + max(pointerRing, 0.0) * pointerEnv * 0.34 + pointerHalo * 0.06;
+  white = white + ridge(dp - 0.052 - sin(time * 2.0) * 0.006, 0.006) * pointerEnv * 0.58;
+  warp = warp + pointerRing * pointerEnv * 0.037;
 
   for (var i = 0; i < 8; i = i + 1) {
     let r = u.ripples[i];
@@ -211,31 +212,31 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     ellipse_ring(uv, vec2<f32>(0.842, 0.84), 0.017, vec2<f32>(1.0, 2.15), 0.0035);
 
   let pearl = mix(
-    vec3<f32>(0.925, 0.948, 0.982),
-    vec3<f32>(1.0, 1.0, 0.995),
+    vec3<f32>(0.875, 0.913, 0.970),
+    vec3<f32>(0.972, 0.986, 1.0),
     smoothstep(-0.32, 0.42, p.y) * 0.58 + flowA * 0.28
   );
-  let coolShadow = vec3<f32>(0.66, 0.76, 0.92) * (0.115 + flowB * 0.125);
-  let materialLift = material + vec3<f32>(0.020, 0.030, 0.045);
+  let coolShadow = vec3<f32>(0.56, 0.68, 0.88) * (0.145 + flowB * 0.155);
+  let materialLift = material * vec3<f32>(0.945, 0.972, 1.015) + vec3<f32>(0.004, 0.012, 0.030);
   var color = mix(pearl - coolShadow, materialLift, 0.82);
 
-  color = color - vec3<f32>(0.20, 0.30, 0.48) * sheetShadow * 0.34;
-  color = color - vec3<f32>(0.12, 0.21, 0.35) * (river1 + river2 + river3) * 0.09;
-  color = color + vec3<f32>(1.0) * (sheetTop * 0.21 + sheetCenter * 0.14 + sheetBottom * 0.20);
+  color = color - vec3<f32>(0.20, 0.30, 0.48) * sheetShadow * 0.44;
+  color = color - vec3<f32>(0.12, 0.21, 0.35) * (river1 + river2 + river3) * 0.12;
+  color = color + vec3<f32>(1.0) * (sheetTop * 0.15 + sheetCenter * 0.10 + sheetBottom * 0.15);
   color = color + vec3<f32>(0.25, 0.57, 1.0) * (sheetTop * 0.17 + sheetCenter * 0.11 + sheetBottom * 0.20);
-  color = color + vec3<f32>(1.0) * (river1 * 0.58 + river2 * 0.46 + river3 * 0.52);
+  color = color + vec3<f32>(1.0) * (river1 * 0.45 + river2 * 0.36 + river3 * 0.42);
   color = color + vec3<f32>(0.0, 0.42, 1.0) * (river1 * 0.26 + river2 * 0.18 + river3 * 0.28);
   color = color + vec3<f32>(0.08, 0.48, 1.0) * (thin1 * 0.42 + thin2 * 0.38);
-  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.18;
+  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.13;
   color = color + vec3<f32>(0.0, 0.34, 1.0) * blueCaustic * 0.12;
   color = color + vec3<f32>(1.0) * cell * 0.15;
   color = color + vec3<f32>(0.52, 0.72, 1.0) * droplets * 0.26;
   color = color + vec3<f32>(1.0) * dropletRings * 0.36 + vec3<f32>(0.0, 0.38, 1.0) * dropletRings * 0.18;
-  color = color + vec3<f32>(0.0, 0.36, 1.0) * ripple.x * 0.82 + vec3<f32>(1.0) * ripple.y * 0.88;
+  color = color + vec3<f32>(0.0, 0.36, 1.0) * ripple.x * 0.96 + vec3<f32>(1.0) * ripple.y * 0.98;
 
   let pointerDistance = distance(uv, pointer);
   let wake = exp(-pointerDistance * 7.5) * u.energy;
-  color = color + vec3<f32>(0.18, 0.48, 1.0) * wake * 0.10 + vec3<f32>(1.0) * wake * 0.09;
+  color = color + vec3<f32>(0.18, 0.48, 1.0) * wake * 0.16 + vec3<f32>(1.0) * wake * 0.11;
 
   let vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2<f32>(aspect, 1.0), vec2<f32>(0.0)));
   color = mix(color * vec3<f32>(0.92, 0.95, 1.0), color, vignette);
@@ -1028,11 +1029,12 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
       float white = 0.0;
       float warp = 0.0;
       float dp = distance(uv, pointer);
-      float pointerRing = sin(dp * 78.0 - t * 8.0);
-      float pointerEnv = exp(-dp * 5.2) * u_energy;
-      blue += max(pointerRing, 0.0) * pointerEnv * 0.23;
-      white += ridge(dp - 0.052 - sin(t * 1.8) * 0.006, 0.006) * pointerEnv * 0.44;
-      warp += pointerRing * pointerEnv * 0.024;
+      float pointerRing = sin(dp * 96.0 - t * 10.5);
+      float pointerEnv = exp(-dp * 6.1) * u_energy;
+      float pointerHalo = exp(-dp * 3.8) * u_energy;
+      blue += max(pointerRing, 0.0) * pointerEnv * 0.34 + pointerHalo * 0.06;
+      white += ridge(dp - 0.052 - sin(t * 2.0) * 0.006, 0.006) * pointerEnv * 0.58;
+      warp += pointerRing * pointerEnv * 0.037;
 
       for (int i = 0; i < 8; i++) {
         vec4 r = u_ripples[i];
@@ -1086,17 +1088,20 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
         ellipseRing(uv, vec2(0.895, 0.44), 0.015, vec2(1.0, 2.1), 0.003) +
         ellipseRing(uv, vec2(0.842, 0.84), 0.017, vec2(1.0, 2.15), 0.0035);
 
-      vec3 pearl = mix(vec3(0.925, 0.948, 0.982), vec3(1.0, 1.0, 0.995), smoothstep(-0.32, 0.42, p.y) * 0.58 + flowA * 0.28);
-      vec3 color = mix(pearl - vec3(0.66, 0.76, 0.92) * (0.115 + flowB * 0.125), material + vec3(0.020, 0.030, 0.045), 0.82);
-      color -= vec3(0.20, 0.30, 0.48) * sheetShadow * 0.34;
-      color += vec3(1.0) * (sheetTop * 0.21 + sheetCenter * 0.14 + sheetBottom * 0.20);
+      vec3 pearl = mix(vec3(0.875, 0.913, 0.970), vec3(0.972, 0.986, 1.0), smoothstep(-0.32, 0.42, p.y) * 0.58 + flowA * 0.28);
+      vec3 color = mix(pearl - vec3(0.56, 0.68, 0.88) * (0.145 + flowB * 0.155), material * vec3(0.945, 0.972, 1.015) + vec3(0.004, 0.012, 0.030), 0.82);
+      color -= vec3(0.20, 0.30, 0.48) * sheetShadow * 0.44;
+      color += vec3(1.0) * (sheetTop * 0.15 + sheetCenter * 0.10 + sheetBottom * 0.15);
       color += vec3(0.25, 0.57, 1.0) * (sheetTop * 0.17 + sheetCenter * 0.11 + sheetBottom * 0.20);
-      color += vec3(1.0) * (river1 * 0.58 + river2 * 0.46 + river3 * 0.52);
+      color += vec3(1.0) * (river1 * 0.45 + river2 * 0.36 + river3 * 0.42);
       color += vec3(0.0, 0.42, 1.0) * (river1 * 0.26 + river2 * 0.18 + river3 * 0.28);
-      color += vec3(1.0) * caustic * 0.18 + vec3(0.0, 0.34, 1.0) * blueCaustic * 0.12;
+      color += vec3(1.0) * caustic * 0.13 + vec3(0.0, 0.34, 1.0) * blueCaustic * 0.12;
       color += vec3(0.52, 0.72, 1.0) * droplets * 0.26;
       color += vec3(1.0) * rings * 0.36 + vec3(0.0, 0.38, 1.0) * rings * 0.18;
-      color += vec3(0.0, 0.36, 1.0) * ripple.x * 0.82 + vec3(1.0) * ripple.y * 0.88;
+      color += vec3(0.0, 0.36, 1.0) * ripple.x * 0.96 + vec3(1.0) * ripple.y * 0.98;
+      float pointerDistance = distance(uv, pointer);
+      float wake = exp(-pointerDistance * 7.5) * u_energy;
+      color += vec3(0.18, 0.48, 1.0) * wake * 0.16 + vec3(1.0) * wake * 0.11;
       float vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
       color = mix(color * vec3(0.92, 0.95, 1.0), color, vignette);
       outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.92)), 1.0);
