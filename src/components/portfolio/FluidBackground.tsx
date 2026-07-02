@@ -128,24 +128,24 @@ fn ripple_field(pos: vec2<f32>, pointer: vec2<f32>, time: f32) -> vec3<f32> {
   var warp = 0.0;
 
   let dp = distance(pos, pointer);
-  let pointerRing = sin(dp * 96.0 - time * 10.5);
-  let pointerEnv = exp(-dp * 6.1) * u.energy;
-  let pointerHalo = exp(-dp * 3.8) * u.energy;
-  blue = blue + max(pointerRing, 0.0) * pointerEnv * 0.34 + pointerHalo * 0.06;
-  white = white + ridge(dp - 0.052 - sin(time * 2.0) * 0.006, 0.006) * pointerEnv * 0.58;
-  warp = warp + pointerRing * pointerEnv * 0.037;
+  let pointerRing = sin(dp * 38.0 - time * 6.5);
+  let pointerEnv = exp(-dp * 3.4) * u.energy;
+  let pointerHalo = exp(-dp * 2.45) * u.energy;
+  blue = blue + max(pointerRing, 0.0) * pointerEnv * 0.20 + pointerHalo * 0.035;
+  white = white + ridge(dp - 0.076 - sin(time * 1.4) * 0.008, 0.014) * pointerEnv * 0.42;
+  warp = warp + pointerRing * pointerEnv * 0.026;
 
   for (var i = 0; i < 8; i = i + 1) {
     let r = u.ripples[i];
     let age = time - r.z;
-    if (age > 0.0 && age < 2.35 && r.w > 0.001) {
+    if (age > 0.0 && age < 2.9 && r.w > 0.001) {
       let d = distance(pos * u.resolution, r.xy);
-      let radius = 18.0 + age * 210.0;
-      let ring = sin((d - radius) * 0.105);
-      let env = exp(-abs(d - radius) / 54.0) * (1.0 - age / 2.35) * r.w;
-      blue = blue + max(ring, 0.0) * env * 0.26;
-      white = white + max(-ring, 0.0) * env * 0.34;
-      warp = warp + ring * env * 0.030;
+      let radius = 24.0 + age * 145.0;
+      let ring = sin((d - radius) * 0.058);
+      let env = exp(-abs(d - radius) / 86.0) * (1.0 - age / 2.9) * r.w;
+      blue = blue + max(ring, 0.0) * env * 0.18;
+      white = white + max(-ring, 0.0) * env * 0.26;
+      warp = warp + ring * env * 0.022;
     }
   }
 
@@ -176,9 +176,9 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   var uv = vec2<f32>(in.uv.x, 1.0 - in.uv.y);
   var p = vec2<f32>((uv.x - 0.5) * aspect, uv.y - 0.5);
 
-  let flowA = fbm(p * 2.2 + vec2<f32>(t * 0.035, -t * 0.018));
-  let flowB = fbm(p * 4.8 + vec2<f32>(-t * 0.052, t * 0.026));
-  let flowC = fbm(p * 9.0 + vec2<f32>(t * 0.082, t * 0.042));
+  let flowA = fbm(p * 1.9 + vec2<f32>(t * 0.026, -t * 0.014));
+  let flowB = fbm(p * 3.6 + vec2<f32>(-t * 0.038, t * 0.020));
+  let flowC = fbm(p * 6.2 + vec2<f32>(t * 0.052, t * 0.030));
   let ripple = ripple_field(uv, pointer, t);
 
   p.x = p.x + (flowA - 0.5) * 0.028 + ripple.z;
@@ -201,8 +201,8 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
   let thin2 = ridge(p.y + 0.205 - sin(p.x * 9.5 - t * 0.38) * 0.016, 0.006);
 
   let cell = smoothstep(0.58, 0.93, flowA) * (1.0 - smoothstep(0.84, 1.0, flowB));
-  let caustic = pow(max(0.0, sin((flowA * 12.0 + flowB * 7.5 + p.x * 3.0 - t * 0.55))), 3.2);
-  let blueCaustic = pow(max(0.0, sin((flowB * 15.0 - p.y * 8.0 + t * 0.7))), 4.6);
+  let caustic = pow(max(0.0, sin((flowA * 8.5 + flowB * 5.2 + p.x * 2.4 - t * 0.36))), 1.8);
+  let blueCaustic = pow(max(0.0, sin((flowB * 9.2 - p.y * 4.8 + t * 0.44))), 2.4);
   let droplets = smoothstep(0.74, 0.91, flowC) * (1.0 - smoothstep(0.89, 0.99, flowA));
   let dropletRings =
     ellipse_ring(uv, vec2<f32>(0.045, 0.38), 0.020, vec2<f32>(1.0, 2.7), 0.004) +
@@ -216,30 +216,31 @@ fn fs(in: VertexOut) -> @location(0) vec4<f32> {
     vec3<f32>(0.942, 0.974, 1.0),
     smoothstep(-0.32, 0.42, p.y) * 0.52 + flowA * 0.24
   );
-  let coolShadow = vec3<f32>(0.49, 0.62, 0.84) * (0.205 + flowB * 0.205);
-  let materialLift = material * vec3<f32>(0.905, 0.948, 0.995) + vec3<f32>(0.0, 0.006, 0.020);
-  var color = mix(pearl - coolShadow, materialLift, 0.74);
+  let pearlBlue = vec3<f32>(0.55, 0.76, 0.96);
+  let coolShadow = vec3<f32>(0.70, 0.78, 0.88) * (0.082 + flowB * 0.088);
+  let materialLift = material * vec3<f32>(0.960, 0.982, 1.0) + vec3<f32>(0.010, 0.014, 0.026);
+  var color = mix(pearl - coolShadow, materialLift, 0.55);
 
-  color = color - vec3<f32>(0.22, 0.33, 0.52) * sheetShadow * 0.64;
-  color = color - vec3<f32>(0.13, 0.23, 0.38) * (river1 + river2 + river3) * 0.18;
-  color = color + vec3<f32>(1.0) * (sheetTop * 0.11 + sheetCenter * 0.075 + sheetBottom * 0.11);
-  color = color + vec3<f32>(0.20, 0.50, 1.0) * (sheetTop * 0.20 + sheetCenter * 0.13 + sheetBottom * 0.23);
-  color = color + vec3<f32>(1.0) * (river1 * 0.34 + river2 * 0.27 + river3 * 0.32);
-  color = color + vec3<f32>(0.0, 0.38, 1.0) * (river1 * 0.31 + river2 * 0.22 + river3 * 0.33);
-  color = color + vec3<f32>(0.08, 0.48, 1.0) * (thin1 * 0.42 + thin2 * 0.38);
-  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.18;
-  color = color + vec3<f32>(0.0, 0.34, 1.0) * blueCaustic * 0.16;
-  color = color + vec3<f32>(1.0) * cell * 0.10;
-  color = color + vec3<f32>(0.46, 0.67, 1.0) * droplets * 0.30;
-  color = color + vec3<f32>(1.0) * dropletRings * 0.30 + vec3<f32>(0.0, 0.36, 1.0) * dropletRings * 0.22;
-  color = color + vec3<f32>(0.0, 0.36, 1.0) * ripple.x * 0.96 + vec3<f32>(1.0) * ripple.y * 0.98;
+  color = color - vec3<f32>(0.38, 0.48, 0.62) * sheetShadow * 0.26;
+  color = color - vec3<f32>(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.055;
+  color = color + vec3<f32>(1.0) * (sheetTop * 0.16 + sheetCenter * 0.10 + sheetBottom * 0.16);
+  color = color + pearlBlue * (sheetTop * 0.070 + sheetCenter * 0.050 + sheetBottom * 0.078);
+  color = color + vec3<f32>(1.0) * (river1 * 0.30 + river2 * 0.24 + river3 * 0.28);
+  color = color + pearlBlue * (river1 * 0.085 + river2 * 0.060 + river3 * 0.090);
+  color = color + vec3<f32>(0.64, 0.82, 1.0) * (thin1 * 0.18 + thin2 * 0.16);
+  color = color + vec3<f32>(1.0, 1.0, 1.0) * caustic * 0.115;
+  color = color + pearlBlue * blueCaustic * 0.070;
+  color = color + vec3<f32>(1.0) * cell * 0.075;
+  color = color + vec3<f32>(0.66, 0.82, 1.0) * droplets * 0.16;
+  color = color + vec3<f32>(1.0) * dropletRings * 0.24 + pearlBlue * dropletRings * 0.080;
+  color = color + pearlBlue * ripple.x * 0.42 + vec3<f32>(1.0) * ripple.y * 0.58;
 
   let pointerDistance = distance(uv, pointer);
   let wake = exp(-pointerDistance * 7.5) * u.energy;
-  color = color + vec3<f32>(0.18, 0.48, 1.0) * wake * 0.16 + vec3<f32>(1.0) * wake * 0.11;
+  color = color + pearlBlue * wake * 0.070 + vec3<f32>(1.0) * wake * 0.09;
 
-  let vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2<f32>(aspect, 1.0), vec2<f32>(0.0)));
-  color = mix(color * vec3<f32>(0.84, 0.90, 0.985), color, vignette);
+  let vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2<f32>(aspect, 1.0), vec2<f32>(0.0)));
+  color = mix(color * vec3<f32>(0.95, 0.97, 1.0), color, vignette);
   color = pow(max(color, vec3<f32>(0.0)), vec3<f32>(0.98));
 
   return vec4<f32>(color, 1.0);
@@ -379,28 +380,28 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
     let offset = 0;
     for (const ripple of ripples) {
       const age = (now - ripple.start) / 1000;
-      if (age <= 0 || age > 2.4) continue;
+      if (age <= 0 || age > 2.9) continue;
       const distance = Math.hypot(x - ripple.x, y - ripple.y);
-      const radius = 18 + age * 215;
-      const wave = Math.sin((distance - radius) * 0.108);
-      const envelope = Math.exp(-Math.abs(distance - radius) / 52) * (1 - age / 2.4);
-      offset += wave * envelope * ripple.intensity * 26;
+      const radius = 24 + age * 145;
+      const wave = Math.sin((distance - radius) * 0.058);
+      const envelope = Math.exp(-Math.abs(distance - radius) / 86) * (1 - age / 2.9);
+      offset += wave * envelope * ripple.intensity * 18;
     }
     return offset;
   }
 
   function pointerOffset(x: number, y: number, t: number) {
     const distance = Math.hypot(x - pointer.x, y - pointer.y);
-    const wake = Math.sin(distance * 0.043 - t * 8.5) * Math.exp(-distance / 230) * pointer.energy * 18;
-    return wake + ((x - pointer.x) * pointer.vx + (y - pointer.y) * pointer.vy) / Math.max(distance, 1) * 0.012 * Math.exp(-distance / 190);
+    const wake = Math.sin(distance * 0.024 - t * 5.7) * Math.exp(-distance / 360) * pointer.energy * 13;
+    return wake + ((x - pointer.x) * pointer.vx + (y - pointer.y) * pointer.vy) / Math.max(distance, 1) * 0.008 * Math.exp(-distance / 280);
   }
 
   function drawTexture(t: number, now: number) {
     const gradient = ctx.createLinearGradient(0, 0, width, height);
-    gradient.addColorStop(0, "#f1f7fd");
-    gradient.addColorStop(0.38, "#dfeafa");
-    gradient.addColorStop(0.70, "#f4f9ff");
-    gradient.addColorStop(1, "#d7e5f5");
+    gradient.addColorStop(0, "#f7fbff");
+    gradient.addColorStop(0.38, "#edf6ff");
+    gradient.addColorStop(0.70, "#f9fcff");
+    gradient.addColorStop(1, "#e8f2fb");
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
@@ -410,21 +411,21 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
     const sliceWidth = width / strips;
 
     ctx.save();
-    ctx.globalAlpha = 0.82;
+    ctx.globalAlpha = 0.62;
     for (let i = 0; i < strips; i++) {
       const progress = i / strips;
       const dx = i * sliceWidth;
       const sampleX = dx + sliceWidth * 0.5;
       const sampleY = height * (0.42 + Math.sin(progress * 9.2 + t * 0.18) * 0.18);
       const warpX =
-        Math.sin(progress * 18.5 + t * 0.52) * 4.4 +
-        Math.sin(progress * 47 - t * 0.33) * 2.2 +
-        rippleOffset(sampleX, sampleY, now) * 0.15 +
-        pointerOffset(sampleX, sampleY, t) * 0.34;
+        Math.sin(progress * 14.5 + t * 0.34) * 3.2 +
+        Math.sin(progress * 31 - t * 0.22) * 1.4 +
+        rippleOffset(sampleX, sampleY, now) * 0.10 +
+        pointerOffset(sampleX, sampleY, t) * 0.22;
       const warpY =
-        Math.cos(progress * 12.0 - t * 0.30) * 3.0 +
-        rippleOffset(sampleX, sampleY, now) * 0.05 +
-        pointerOffset(sampleX, sampleY, t) * 0.10;
+        Math.cos(progress * 9.0 - t * 0.22) * 2.2 +
+        rippleOffset(sampleX, sampleY, now) * 0.035 +
+        pointerOffset(sampleX, sampleY, t) * 0.07;
       ctx.drawImage(
         image,
         cover.sx + cover.sw * progress,
@@ -445,7 +446,7 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.globalCompositeOperation = blue ? "multiply" : "screen";
-    ctx.filter = blue ? "blur(2.6px)" : "blur(2px)";
+      ctx.filter = blue ? "blur(4px)" : "blur(3px)";
     for (let pass = 0; pass < 3; pass++) {
       ctx.beginPath();
       for (let x = -90; x <= width + 90; x += 18) {
@@ -453,15 +454,15 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
           y +
           Math.sin(x * 0.0058 + t * 0.25 + phase) * amplitude +
           Math.sin(x * 0.018 - t * 0.17 + phase) * amplitude * 0.28 +
-          rippleOffset(x, y, now) * 0.05 +
-          pointerOffset(x, y, t) * 0.08;
+          rippleOffset(x, y, now) * 0.035 +
+          pointerOffset(x, y, t) * 0.055;
         if (x === -90) ctx.moveTo(x, yy + pass * 3.2);
         else ctx.lineTo(x, yy + pass * 3.2);
       }
       ctx.strokeStyle = blue
-        ? `rgba(0,82,255,${0.19 - pass * 0.035})`
+        ? `rgba(112,166,235,${0.090 - pass * 0.018})`
         : `rgba(255,255,255,${0.78 - pass * 0.13})`;
-      ctx.lineWidth = blue ? 2.6 - pass * 0.45 : 8.5 - pass * 1.4;
+      ctx.lineWidth = blue ? 2.2 - pass * 0.35 : 9.5 - pass * 1.6;
       ctx.stroke();
     }
     ctx.restore();
@@ -489,7 +490,7 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
       ctx.ellipse(0, 0, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalCompositeOperation = "multiply";
-      ctx.strokeStyle = "rgba(0,86,255,0.16)";
+      ctx.strokeStyle = "rgba(112,166,235,0.075)";
       ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.ellipse(0, 0, rx * 0.78, ry * 0.55, 0, 0, Math.PI * 2);
@@ -505,17 +506,17 @@ function startCanvasFallbackRenderer(canvas: HTMLCanvasElement, reducedMotionRef
     for (let i = ripples.length - 1; i >= 0; i--) {
       const ripple = ripples[i];
       const age = (now - ripple.start) / 1000;
-      if (age > 2.4) {
+      if (age > 2.9) {
         ripples.splice(i, 1);
         continue;
       }
-      const alpha = (1 - age / 2.4) * ripple.intensity;
-      const radius = 18 + age * 215;
+      const alpha = (1 - age / 2.9) * ripple.intensity;
+      const radius = 24 + age * 145;
       for (let ring = 0; ring < 4; ring++) {
         ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, radius + ring * 15, 0, Math.PI * 2);
-        ctx.strokeStyle = `rgba(0,80,255,${0.16 * alpha * (1 - ring * 0.15)})`;
-        ctx.lineWidth = ring === 0 ? 2.0 : 1.05;
+        ctx.arc(ripple.x, ripple.y, radius + ring * 24, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(112,166,235,${0.080 * alpha * (1 - ring * 0.16)})`;
+        ctx.lineWidth = ring === 0 ? 1.7 : 0.9;
         ctx.stroke();
       }
     }
@@ -1029,24 +1030,24 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
       float white = 0.0;
       float warp = 0.0;
       float dp = distance(uv, pointer);
-      float pointerRing = sin(dp * 96.0 - t * 10.5);
-      float pointerEnv = exp(-dp * 6.1) * u_energy;
-      float pointerHalo = exp(-dp * 3.8) * u_energy;
-      blue += max(pointerRing, 0.0) * pointerEnv * 0.34 + pointerHalo * 0.06;
-      white += ridge(dp - 0.052 - sin(t * 2.0) * 0.006, 0.006) * pointerEnv * 0.58;
-      warp += pointerRing * pointerEnv * 0.037;
+      float pointerRing = sin(dp * 38.0 - t * 6.5);
+      float pointerEnv = exp(-dp * 3.4) * u_energy;
+      float pointerHalo = exp(-dp * 2.45) * u_energy;
+      blue += max(pointerRing, 0.0) * pointerEnv * 0.20 + pointerHalo * 0.035;
+      white += ridge(dp - 0.076 - sin(t * 1.4) * 0.008, 0.014) * pointerEnv * 0.42;
+      warp += pointerRing * pointerEnv * 0.026;
 
       for (int i = 0; i < 8; i++) {
         vec4 r = u_ripples[i];
         float age = t - r.z;
-        if (age > 0.0 && age < 2.35 && r.w > 0.001) {
+        if (age > 0.0 && age < 2.9 && r.w > 0.001) {
           float d = distance(uv * u_resolution, r.xy);
-          float radius = 18.0 + age * 210.0;
-          float ring = sin((d - radius) * 0.105);
-          float env = exp(-abs(d - radius) / 54.0) * (1.0 - age / 2.35) * r.w;
-          blue += max(ring, 0.0) * env * 0.27;
-          white += max(-ring, 0.0) * env * 0.34;
-          warp += ring * env * 0.031;
+          float radius = 24.0 + age * 145.0;
+          float ring = sin((d - radius) * 0.058);
+          float env = exp(-abs(d - radius) / 86.0) * (1.0 - age / 2.9) * r.w;
+          blue += max(ring, 0.0) * env * 0.18;
+          white += max(-ring, 0.0) * env * 0.26;
+          warp += ring * env * 0.022;
         }
       }
       return vec3(blue, white, warp);
@@ -1058,9 +1059,9 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
       vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
       vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
       vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
-      float flowA = fbm(p * 2.2 + vec2(t * 0.035, -t * 0.018));
-      float flowB = fbm(p * 4.8 + vec2(-t * 0.052, t * 0.026));
-      float flowC = fbm(p * 9.0 + vec2(t * 0.082, t * 0.042));
+      float flowA = fbm(p * 1.9 + vec2(t * 0.026, -t * 0.014));
+      float flowB = fbm(p * 3.6 + vec2(-t * 0.038, t * 0.020));
+      float flowC = fbm(p * 6.2 + vec2(t * 0.052, t * 0.030));
       vec3 ripple = rippleField(uv, pointer, t);
 
       p.x += (flowA - 0.5) * 0.028 + ripple.z;
@@ -1078,8 +1079,10 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
       float sheetCenter = ridge(p.y + 0.060 - sin(p.x * 3.6 - t * 0.16) * 0.044, 0.088);
       float sheetBottom = ridge(p.y + 0.360 - sin(p.x * 5.4 + t * 0.18) * 0.052, 0.078);
       float sheetShadow = max(sheetTop - river1 * 0.74, 0.0) + max(sheetCenter - river2 * 0.68, 0.0) + max(sheetBottom - river3 * 0.72, 0.0);
-      float caustic = pow(max(0.0, sin(flowA * 12.0 + flowB * 7.5 + p.x * 3.0 - t * 0.55)), 3.2);
-      float blueCaustic = pow(max(0.0, sin(flowB * 15.0 - p.y * 8.0 + t * 0.7)), 4.6);
+      float thin1 = ridge(p.y - 0.200 - sin(p.x * 11.0 + t * 0.46) * 0.014, 0.006);
+      float thin2 = ridge(p.y + 0.205 - sin(p.x * 9.5 - t * 0.38) * 0.016, 0.006);
+      float caustic = pow(max(0.0, sin(flowA * 8.5 + flowB * 5.2 + p.x * 2.4 - t * 0.36)), 1.8);
+      float blueCaustic = pow(max(0.0, sin(flowB * 9.2 - p.y * 4.8 + t * 0.44)), 2.4);
       float droplets = smoothstep(0.74, 0.91, flowC) * (1.0 - smoothstep(0.89, 0.99, flowA));
       float rings =
         ellipseRing(uv, vec2(0.045, 0.38), 0.020, vec2(1.0, 2.7), 0.004) +
@@ -1089,22 +1092,26 @@ function startWebGlRenderer(canvas: HTMLCanvasElement, reducedMotionRef: React.M
         ellipseRing(uv, vec2(0.842, 0.84), 0.017, vec2(1.0, 2.15), 0.0035);
 
       vec3 pearl = mix(vec3(0.810, 0.875, 0.955), vec3(0.942, 0.974, 1.0), smoothstep(-0.32, 0.42, p.y) * 0.52 + flowA * 0.24);
-      vec3 color = mix(pearl - vec3(0.49, 0.62, 0.84) * (0.205 + flowB * 0.205), material * vec3(0.905, 0.948, 0.995) + vec3(0.0, 0.006, 0.020), 0.74);
-      color -= vec3(0.22, 0.33, 0.52) * sheetShadow * 0.64;
-      color -= vec3(0.13, 0.23, 0.38) * (river1 + river2 + river3) * 0.18;
-      color += vec3(1.0) * (sheetTop * 0.11 + sheetCenter * 0.075 + sheetBottom * 0.11);
-      color += vec3(0.20, 0.50, 1.0) * (sheetTop * 0.20 + sheetCenter * 0.13 + sheetBottom * 0.23);
-      color += vec3(1.0) * (river1 * 0.34 + river2 * 0.27 + river3 * 0.32);
-      color += vec3(0.0, 0.38, 1.0) * (river1 * 0.31 + river2 * 0.22 + river3 * 0.33);
-      color += vec3(1.0) * caustic * 0.18 + vec3(0.0, 0.34, 1.0) * blueCaustic * 0.16;
-      color += vec3(0.46, 0.67, 1.0) * droplets * 0.30;
-      color += vec3(1.0) * rings * 0.30 + vec3(0.0, 0.36, 1.0) * rings * 0.22;
-      color += vec3(0.0, 0.36, 1.0) * ripple.x * 0.96 + vec3(1.0) * ripple.y * 0.98;
+      vec3 pearlBlue = vec3(0.55, 0.76, 0.96);
+      vec3 coolShadow = vec3(0.70, 0.78, 0.88) * (0.082 + flowB * 0.088);
+      vec3 materialLift = material * vec3(0.960, 0.982, 1.0) + vec3(0.010, 0.014, 0.026);
+      vec3 color = mix(pearl - coolShadow, materialLift, 0.55);
+      color -= vec3(0.38, 0.48, 0.62) * sheetShadow * 0.26;
+      color -= vec3(0.48, 0.58, 0.72) * (river1 + river2 + river3) * 0.055;
+      color += vec3(1.0) * (sheetTop * 0.16 + sheetCenter * 0.10 + sheetBottom * 0.16);
+      color += pearlBlue * (sheetTop * 0.070 + sheetCenter * 0.050 + sheetBottom * 0.078);
+      color += vec3(1.0) * (river1 * 0.30 + river2 * 0.24 + river3 * 0.28);
+      color += pearlBlue * (river1 * 0.085 + river2 * 0.060 + river3 * 0.090);
+      color += vec3(0.64, 0.82, 1.0) * (thin1 * 0.18 + thin2 * 0.16);
+      color += vec3(1.0) * caustic * 0.115 + pearlBlue * blueCaustic * 0.070;
+      color += vec3(0.66, 0.82, 1.0) * droplets * 0.16;
+      color += vec3(1.0) * rings * 0.24 + pearlBlue * rings * 0.080;
+      color += pearlBlue * ripple.x * 0.42 + vec3(1.0) * ripple.y * 0.58;
       float pointerDistance = distance(uv, pointer);
       float wake = exp(-pointerDistance * 7.5) * u_energy;
-      color += vec3(0.18, 0.48, 1.0) * wake * 0.16 + vec3(1.0) * wake * 0.11;
-      float vignette = smoothstep(0.85, 0.08, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
-      color = mix(color * vec3(0.84, 0.90, 0.985), color, vignette);
+      color += pearlBlue * wake * 0.070 + vec3(1.0) * wake * 0.09;
+      float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
+      color = mix(color * vec3(0.95, 0.97, 1.0), color, vignette);
       outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.98)), 1.0);
     }
   `;

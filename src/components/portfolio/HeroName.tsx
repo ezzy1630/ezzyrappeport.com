@@ -56,28 +56,46 @@ function WaterLetter({
       >
         <defs>
           <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
-            <stop offset="34%" stopColor="#eef5ff" stopOpacity="0.78" />
-            <stop offset="70%" stopColor="#afc2df" stopOpacity="0.54" />
-            <stop offset="100%" stopColor="#f8fbff" stopOpacity="0.80" />
+            <stop offset="0%" stopColor="#f8fbff" stopOpacity="0.92" />
+            <stop offset="42%" stopColor="#cbd6e6" stopOpacity="0.84" />
+            <stop offset="74%" stopColor="#a7b5ca" stopOpacity="0.74" />
+            <stop offset="100%" stopColor="#e6f0fb" stopOpacity="0.84" />
+          </linearGradient>
+          <linearGradient id={`${id}-specular`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.72" />
+            <stop offset="35%" stopColor="#ffffff" stopOpacity="0.34" />
+            <stop offset="58%" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${id}-edge`} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.82" />
+            <stop offset="43%" stopColor="#a8d0ff" stopOpacity="0.58" />
+            <stop offset="78%" stopColor="#ffffff" stopOpacity="0.70" />
           </linearGradient>
           <radialGradient id={`${id}-lens`} cx="68%" cy="67%" r="62%">
-            <stop offset="0%" stopColor="#5b97ff" stopOpacity="0.20" />
-            <stop offset="48%" stopColor="#d9e8ff" stopOpacity="0.08" />
+            <stop offset="0%" stopColor="#8fc3f8" stopOpacity="0.18" />
+            <stop offset="48%" stopColor="#f3f8ff" stopOpacity="0.11" />
             <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
           </radialGradient>
-          <filter id={`${id}-swim`} x="-8%" y="-8%" width="116%" height="116%">
+          <filter id={`${id}-swim`} x="-18%" y="-18%" width="136%" height="136%">
             <feTurbulence
               type="fractalNoise"
-              baseFrequency="0.012 0.018"
+              baseFrequency="0.010 0.016"
               numOctaves="2"
               seed={`${lineIndex * 11 + charIndex + 5}`}
               result="noise"
-            />
+            >
+              <animate
+                attributeName="baseFrequency"
+                values="0.009 0.014;0.013 0.019;0.009 0.014"
+                dur="12s"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
+            <feMorphology in="SourceGraphic" operator="dilate" radius="0.45" result="inflated" />
             <feDisplacementMap
-              in="SourceGraphic"
+              in="inflated"
               in2="noise"
-              scale="0.7"
+              scale="3.4"
               xChannelSelector="R"
               yChannelSelector="G"
             />
@@ -88,19 +106,25 @@ function WaterLetter({
           filter={`url(#${id}-swim)`}
           style={{ animationDelay: `var(--letter-phase)` }}
         >
-          <text className="hero-letter-depth" x="50%" y="92">
+          <text className="hero-letter-ridge" x="50%" y="92">
+            {char}
+          </text>
+          <text className="hero-letter-volume" x="50%" y="92">
             {char}
           </text>
           <text className="hero-letter-body" x="50%" y="92" fill={`url(#${id}-body)`}>
             {char}
           </text>
-          <text className="hero-letter-lens" x="50%" y="92" fill={`url(#${id}-lens)`}>
+          <text className="hero-letter-caustic" x="50%" y="92" fill={`url(#${id}-lens)`}>
+            {char}
+          </text>
+          <text className="hero-letter-specular" x="50%" y="92" fill={`url(#${id}-specular)`}>
             {char}
           </text>
           <text className="hero-letter-meniscus" x="50%" y="92">
             {char}
           </text>
-          <text className="hero-letter-trough" x="50%" y="92">
+          <text className="hero-letter-edge" x="50%" y="92" stroke={`url(#${id}-edge)`}>
             {char}
           </text>
         </g>
