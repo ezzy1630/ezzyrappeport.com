@@ -54,10 +54,10 @@ function WaterLetter({
       >
         <defs>
           <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.78" />
-            <stop offset="36%" stopColor="#eef5ff" stopOpacity="0.62" />
-            <stop offset="70%" stopColor="#afc2df" stopOpacity="0.42" />
-            <stop offset="100%" stopColor="#f8fbff" stopOpacity="0.64" />
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.92" />
+            <stop offset="34%" stopColor="#eef5ff" stopOpacity="0.78" />
+            <stop offset="70%" stopColor="#afc2df" stopOpacity="0.54" />
+            <stop offset="100%" stopColor="#f8fbff" stopOpacity="0.80" />
           </linearGradient>
           <radialGradient id={`${id}-lens`} cx="68%" cy="67%" r="62%">
             <stop offset="0%" stopColor="#5b97ff" stopOpacity="0.20" />

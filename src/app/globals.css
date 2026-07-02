@@ -792,7 +792,7 @@ html.lenis body {
   gap: 0;
   color: transparent;
   filter: drop-shadow(0 10px 14px rgba(32, 68, 126, 0.105));
-  opacity: 0.96;
+  opacity: 1;
   mix-blend-mode: normal;
   z-index: 5;
   animation: hero-text-material-drift 11s ease-in-out infinite alternate;
@@ -859,7 +859,7 @@ html.lenis body {
 
 .hero-letter-svg text {
   font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
-  font-size: 116px;
+  font-size: 118px;
   font-weight: 900;
   line-height: 1;
   text-anchor: middle;
@@ -868,48 +868,45 @@ html.lenis body {
 }
 
 .hero-letter-depth {
-  fill: rgba(156, 178, 212, 0.14);
-  stroke: rgba(45, 76, 124, 0.27);
-  stroke-width: 6.2;
+  fill: transparent;
+  stroke: rgba(45, 76, 124, 0.30);
+  stroke-width: 6.6;
   paint-order: stroke fill;
-  transform: translate(2.5px, 3.5px);
-  filter: blur(0.25px);
-  opacity: 0.82;
+  filter: blur(0.55px);
+  opacity: 0.78;
   mix-blend-mode: multiply;
 }
 
 .hero-letter-body {
-  stroke: rgba(88, 114, 154, 0.36);
-  stroke-width: 1.75;
+  stroke: rgba(78, 104, 146, 0.48);
+  stroke-width: 2.25;
   paint-order: stroke fill;
   opacity: 1;
 }
 
 .hero-letter-lens {
-  stroke: rgba(255, 255, 255, 0.16);
-  stroke-width: 0.9;
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1.1;
   paint-order: stroke fill;
-  opacity: 0.72;
+  opacity: 0.78;
   mix-blend-mode: screen;
 }
 
 .hero-letter-meniscus {
   fill: transparent;
-  stroke: rgba(255, 255, 255, 0.76);
+  stroke: rgba(255, 255, 255, 0.82);
   stroke-width: 3.2;
   paint-order: stroke;
-  transform: translate(-1.1px, -1.35px);
-  opacity: 0.68;
+  opacity: 0.64;
   mix-blend-mode: screen;
 }
 
 .hero-letter-trough {
   fill: transparent;
-  stroke: rgba(44, 78, 132, 0.31);
+  stroke: rgba(44, 78, 132, 0.38);
   stroke-width: 4.2;
   paint-order: stroke;
-  transform: translate(1.4px, 2.2px);
-  opacity: 0.58;
+  opacity: 0.60;
   mix-blend-mode: multiply;
 }
 
