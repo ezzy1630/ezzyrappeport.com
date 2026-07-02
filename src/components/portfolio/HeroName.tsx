@@ -7,6 +7,106 @@ import {
   subscribeLiquidRipple,
 } from "@/lib/portfolio/liquid-interaction";
 
+const HERO_LINES = ["ELIEZER", "RAPPEPORT"] as const;
+
+const LETTER_WIDTH: Record<string, number> = {
+  A: 86,
+  E: 82,
+  I: 42,
+  L: 74,
+  O: 92,
+  P: 82,
+  R: 88,
+  T: 78,
+  Z: 84,
+};
+
+function WaterLetter({
+  char,
+  lineIndex,
+  charIndex,
+}: {
+  char: string;
+  lineIndex: number;
+  charIndex: number;
+}) {
+  const width = LETTER_WIDTH[char] ?? 84;
+  const ratio = width / 126;
+  const id = `hero-water-${lineIndex}-${charIndex}-${char}`;
+
+  return (
+    <span
+      className="hero-letter"
+      style={
+        {
+          "--letter-ratio": ratio.toFixed(4),
+          "--letter-phase": `${(lineIndex * 7 + charIndex) * -0.42}s`,
+        } as React.CSSProperties
+      }
+      aria-hidden="true"
+    >
+      <svg
+        className="hero-letter-svg"
+        viewBox={`0 0 ${width} 126`}
+        preserveAspectRatio="xMidYMid meet"
+        focusable="false"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.78" />
+            <stop offset="36%" stopColor="#eef5ff" stopOpacity="0.62" />
+            <stop offset="70%" stopColor="#afc2df" stopOpacity="0.42" />
+            <stop offset="100%" stopColor="#f8fbff" stopOpacity="0.64" />
+          </linearGradient>
+          <radialGradient id={`${id}-lens`} cx="68%" cy="67%" r="62%">
+            <stop offset="0%" stopColor="#5b97ff" stopOpacity="0.20" />
+            <stop offset="48%" stopColor="#d9e8ff" stopOpacity="0.08" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </radialGradient>
+          <filter id={`${id}-swim`} x="-8%" y="-8%" width="116%" height="116%">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.012 0.018"
+              numOctaves="2"
+              seed={`${lineIndex * 11 + charIndex + 5}`}
+              result="noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="noise"
+              scale="0.7"
+              xChannelSelector="R"
+              yChannelSelector="G"
+            />
+          </filter>
+        </defs>
+        <g
+          className="hero-letter-glyph"
+          filter={`url(#${id}-swim)`}
+          style={{ animationDelay: `var(--letter-phase)` }}
+        >
+          <text className="hero-letter-depth" x="50%" y="92">
+            {char}
+          </text>
+          <text className="hero-letter-body" x="50%" y="92" fill={`url(#${id}-body)`}>
+            {char}
+          </text>
+          <text className="hero-letter-lens" x="50%" y="92" fill={`url(#${id}-lens)`}>
+            {char}
+          </text>
+          <text className="hero-letter-meniscus" x="50%" y="92">
+            {char}
+          </text>
+          <text className="hero-letter-trough" x="50%" y="92">
+            {char}
+          </text>
+        </g>
+      </svg>
+    </span>
+  );
+}
+
 /**
  * HeroName
  * --------
@@ -133,12 +233,18 @@ export default function HeroName() {
     >
       <span aria-hidden="true" className="hero-name-ripple-field" />
       <span aria-hidden="true" className="hero-name-caustic-field" />
-      <span className="hero-name-line" aria-hidden="true">
-        <span data-text="ELIEZER">ELIEZER</span>
-      </span>
-      <span className="hero-name-line" aria-hidden="true">
-        <span data-text="RAPPEPORT">RAPPEPORT</span>
-      </span>
+      {HERO_LINES.map((line, lineIndex) => (
+        <span className="hero-name-line" aria-hidden="true" key={line}>
+          {Array.from(line).map((char, charIndex) => (
+            <WaterLetter
+              key={`${line}-${charIndex}-${char}`}
+              char={char}
+              lineIndex={lineIndex}
+              charIndex={charIndex}
+            />
+          ))}
+        </span>
+      ))}
 
       {/* Cursor-following blue glow */}
       <span aria-hidden="true" className="hero-name-pointer-glow" />

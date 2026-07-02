@@ -784,66 +784,133 @@ html.lenis body {
 }
 
 .hero-name-line {
-  display: block;
-  font-size: clamp(4.7rem, 13.08vw, 14rem);
+  display: flex;
+  align-items: center;
+  font-size: clamp(4.7rem, 13vw, 13.9rem);
   position: relative;
   isolation: isolate;
-  color: rgba(225, 236, 251, 0.34);
-  -webkit-text-fill-color: rgba(230, 240, 253, 0.34);
-  -webkit-text-stroke: clamp(1.2px, 0.125vw, 2.15px) rgba(82, 106, 145, 0.42);
-  text-shadow:
-    0 -1px 1px rgba(255, 255, 255, 0.64),
-    0 2px 2px rgba(46, 70, 110, 0.19),
-    0 9px 14px rgba(20, 54, 110, 0.085);
-  filter:
-    drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.46))
-    drop-shadow(0 5px 8px rgba(29, 66, 126, 0.10));
+  gap: 0;
+  color: transparent;
+  filter: drop-shadow(0 10px 14px rgba(32, 68, 126, 0.105));
   opacity: 0.96;
   mix-blend-mode: normal;
   z-index: 5;
   animation: hero-text-material-drift 11s ease-in-out infinite alternate;
 }
 
-.hero-name-line > span {
+.hero-letter {
   position: relative;
   display: inline-block;
+  width: calc(1em * var(--letter-ratio));
+  height: 1em;
+  flex: 0 0 auto;
+  filter:
+    drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.52))
+    drop-shadow(0 4px 6px rgba(31, 65, 118, 0.12));
+  transform: translateZ(0);
 }
 
-.hero-name-line > span {
-  background:
-    radial-gradient(48% 62% at 72% 70%, rgba(0, 102, 255, 0.12), transparent 74%),
-    radial-gradient(68% 54% at 42% 16%, rgba(255, 255, 255, 0.42), transparent 70%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(88, 122, 180, 0.10) 68%, rgba(255, 255, 255, 0.10));
-  -webkit-background-clip: text;
-  background-clip: text;
+.hero-letter + .hero-letter {
+  margin-left: -0.032em;
 }
 
-.hero-name-line > span::before,
-.hero-name-line > span::after {
-  content: attr(data-text);
+.hero-letter::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-name-line > span::before {
-  transform: translate(-1.25px, -1.15px);
-  -webkit-text-stroke: clamp(2.25px, 0.20vw, 3.6px) rgba(255, 255, 255, 0.64);
-  opacity: 0.66;
-  filter: blur(0.12px);
+  inset: 8% 1% 5%;
+  border-radius: 34% 42% 38% 36% / 18% 22% 20% 24%;
+  background:
+    radial-gradient(52% 46% at 38% 16%, rgba(255, 255, 255, 0.30), transparent 70%),
+    radial-gradient(48% 44% at 72% 70%, rgba(0, 102, 255, 0.10), transparent 72%);
+  filter: blur(7px);
+  opacity: 0.45;
   mix-blend-mode: screen;
-  z-index: 1;
+  pointer-events: none;
 }
 
-.hero-name-line > span::after {
-  transform: translate(2.05px, 2.95px);
-  -webkit-text-stroke: clamp(2.9px, 0.25vw, 4.5px) rgba(48, 78, 126, 0.40);
-  opacity: 0.68;
-  filter: blur(0.18px);
+.hero-letter::after {
+  content: "";
+  position: absolute;
+  left: 4%;
+  right: 3%;
+  bottom: 4%;
+  height: 18%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.16), rgba(255, 255, 255, 0.18), transparent);
+  filter: blur(5px);
+  opacity: 0.48;
   mix-blend-mode: multiply;
-  z-index: -1;
+  pointer-events: none;
+}
+
+.hero-letter-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.hero-letter-glyph {
+  animation: hero-letter-swim 8.5s ease-in-out infinite alternate;
+  transform-origin: center;
+}
+
+.hero-letter-svg text {
+  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
+  font-size: 116px;
+  font-weight: 900;
+  line-height: 1;
+  text-anchor: middle;
+  letter-spacing: 0;
+  dominant-baseline: alphabetic;
+}
+
+.hero-letter-depth {
+  fill: rgba(156, 178, 212, 0.14);
+  stroke: rgba(45, 76, 124, 0.27);
+  stroke-width: 6.2;
+  paint-order: stroke fill;
+  transform: translate(2.5px, 3.5px);
+  filter: blur(0.25px);
+  opacity: 0.82;
+  mix-blend-mode: multiply;
+}
+
+.hero-letter-body {
+  stroke: rgba(88, 114, 154, 0.36);
+  stroke-width: 1.75;
+  paint-order: stroke fill;
+  opacity: 1;
+}
+
+.hero-letter-lens {
+  stroke: rgba(255, 255, 255, 0.16);
+  stroke-width: 0.9;
+  paint-order: stroke fill;
+  opacity: 0.72;
+  mix-blend-mode: screen;
+}
+
+.hero-letter-meniscus {
+  fill: transparent;
+  stroke: rgba(255, 255, 255, 0.76);
+  stroke-width: 3.2;
+  paint-order: stroke;
+  transform: translate(-1.1px, -1.35px);
+  opacity: 0.68;
+  mix-blend-mode: screen;
+}
+
+.hero-letter-trough {
+  fill: transparent;
+  stroke: rgba(44, 78, 132, 0.31);
+  stroke-width: 4.2;
+  paint-order: stroke;
+  transform: translate(1.4px, 2.2px);
+  opacity: 0.58;
+  mix-blend-mode: multiply;
 }
 
 @keyframes hero-text-material-drift {
@@ -863,6 +930,15 @@ html.lenis body {
   }
   50% {
     transform: translate3d(1.5%, 1%, 0) skewX(1deg);
+  }
+}
+
+@keyframes hero-letter-swim {
+  0% {
+    transform: translate3d(-0.25px, -0.18px, 0) scaleX(0.998);
+  }
+  100% {
+    transform: translate3d(0.25px, 0.2px, 0) scaleX(1.002);
   }
 }
 
@@ -997,21 +1073,13 @@ html.lenis body {
   .hero-name-line {
     font-size: clamp(2rem, 9.2vw, 3.7rem);
     line-height: 0.88;
-  background:
-    radial-gradient(46% 58% at 71% 70%, rgba(0, 102, 255, 0.14), transparent 74%),
-    url("/assets/pearl-liquid-background.png") center / 132% auto no-repeat,
-    radial-gradient(74% 70% at 40% 18%, rgba(255, 255, 255, 0.48), rgba(237, 244, 253, 0.16) 54%, transparent 76%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.50), rgba(154, 174, 207, 0.32) 70%, rgba(241, 247, 255, 0.34));
-    background-blend-mode: screen, soft-light, screen, normal;
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    -webkit-text-fill-color: transparent;
-    -webkit-text-stroke: 1px rgba(62, 89, 130, 0.48);
-    text-shadow:
-      0 -1px 1px rgba(255, 255, 255, 0.50),
-      0 1px 1px rgba(38, 62, 103, 0.16);
-    opacity: 0.90;
+    gap: 0.01em;
+  }
+
+  .hero-letter {
+    filter:
+      drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.42))
+      drop-shadow(0 3px 5px rgba(31, 65, 118, 0.10));
   }
 
   .site-nav {
