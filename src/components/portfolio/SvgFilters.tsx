@@ -40,14 +40,14 @@ export default function SvgFilters() {
         <filter id="textDisplace" x="-10%" y="-10%" width="120%" height="120%">
           <feTurbulence
             type="fractalNoise"
-            baseFrequency="0.018 0.026"
+            baseFrequency="0.010 0.015"
             numOctaves="2"
             seed="3"
             result="noise"
           >
             <animate
               attributeName="baseFrequency"
-              values="0.016 0.024;0.021 0.030;0.016 0.024"
+              values="0.009 0.014;0.012 0.017;0.009 0.014"
               dur="9s"
               repeatCount="indefinite"
             />
@@ -55,7 +55,7 @@ export default function SvgFilters() {
           <feDisplacementMap
             in="SourceGraphic"
             in2="noise"
-            scale="4.4"
+            scale="1.8"
             xChannelSelector="R"
             yChannelSelector="G"
           />
