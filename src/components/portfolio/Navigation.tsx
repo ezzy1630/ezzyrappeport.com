@@ -1,8 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { nav } from "@/lib/portfolio/content";
-import { ArrowUpRight } from "lucide-react";
 
 /**
  * Navigation
@@ -15,6 +15,9 @@ import { ArrowUpRight } from "lucide-react";
  * Appears after a small delay on mount (cinematic).
  */
 export default function Navigation() {
+  const pathname = usePathname();
+  const onHome = pathname === "/";
+
   return (
     <motion.header
       initial={false}
@@ -24,7 +27,7 @@ export default function Navigation() {
     >
       {/* Left — Brand */}
       <a
-        href="#top"
+        href={onHome ? "#top" : "/"}
         className="site-nav-brand pointer-events-auto flex items-center gap-3 md:gap-4 group"
         aria-label={`${nav.fullName} — back to top`}
       >
@@ -47,7 +50,7 @@ export default function Navigation() {
         {nav.links.map((link) => (
           <a
             key={link.href}
-            href={link.href}
+            href={onHome ? link.href : `/${link.href}`}
             className="relative text-[13px] tracking-normal font-medium text-ink/82 hover:text-ink transition-colors duration-300"
           >
             {link.label}
@@ -58,8 +61,8 @@ export default function Navigation() {
 
       {/* Right — CTA */}
       <a
-        href={nav.cta.href}
-        className="site-nav-cta pointer-events-auto glass rounded-full pl-5 pr-4 py-2.5 md:pl-6 md:pr-4 md:py-3 flex items-center gap-3 md:gap-4 text-[13px] font-medium text-ink hover:scale-[1.02] active:scale-[0.98] transition-transform duration-300"
+        href={onHome ? nav.cta.href : `/${nav.cta.href}`}
+        className="site-nav-cta pointer-events-auto liquid-button glass rounded-full pl-5 pr-4 py-2.5 md:pl-6 md:pr-4 md:py-3 flex items-center gap-3 md:gap-4 text-[13px] font-medium text-ink hover:scale-[1.02] active:scale-[0.98] transition-transform duration-300"
       >
         <span className="hidden sm:inline">{nav.cta.label}</span>
         <span className="sm:hidden">Contact</span>
@@ -70,6 +73,3 @@ export default function Navigation() {
     </motion.header>
   );
 }
-
-// Re-export the icon usage so tree-shaking keeps it
-void ArrowUpRight;

@@ -53,6 +53,24 @@ export default function SmoothScrollProvider({
       startLenis();
     };
 
+    // Only wake Lenis on actual scroll keys (not Tab / Cmd / etc.)
+    const SCROLL_KEYS = new Set([
+      "ArrowUp",
+      "ArrowDown",
+      "ArrowLeft",
+      "ArrowRight",
+      "PageUp",
+      "PageDown",
+      "Home",
+      "End",
+      " ",
+    ]);
+    const onFirstKey = (e: KeyboardEvent) => {
+      if (!SCROLL_KEYS.has(e.key)) return;
+      startLenis();
+      window.removeEventListener("keydown", onFirstKey);
+    };
+
     // Smooth anchor scrolling
     const onClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
@@ -69,14 +87,14 @@ export default function SmoothScrollProvider({
 
     window.addEventListener("wheel", onFirstScrollIntent, { once: true, passive: true });
     window.addEventListener("touchmove", onFirstScrollIntent, { once: true, passive: true });
-    window.addEventListener("keydown", onFirstScrollIntent, { once: true });
+    window.addEventListener("keydown", onFirstKey, { passive: true });
     document.addEventListener("click", onClick);
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("wheel", onFirstScrollIntent);
       window.removeEventListener("touchmove", onFirstScrollIntent);
-      window.removeEventListener("keydown", onFirstScrollIntent);
+      window.removeEventListener("keydown", onFirstKey);
       document.removeEventListener("click", onClick);
       lenisRef.current?.destroy();
       lenisRef.current = null;

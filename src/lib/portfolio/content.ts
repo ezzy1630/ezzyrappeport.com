@@ -202,13 +202,14 @@ export const bio = {
     subtitle: "Building from Los Angeles and Santa Cruz",
     coordinates: "34.0522° N, 118.2437° W",
   },
+  // TODO: confirm/replace these with your real profile URLs + email.
   socials: [
-    { label: "GitHub", href: "https://github.com", handle: "@eliezer" },
-    { label: "LinkedIn", href: "https://linkedin.com", handle: "/in/eliezerrappeport" },
-    { label: "X", href: "https://x.com", handle: "@erappeport" },
-    { label: "Email", href: "mailto:hello@eliezer.example", handle: "hello@eliezer.example" },
+    { label: "GitHub", href: "https://github.com/eliezer", handle: "@eliezer" },
+    { label: "LinkedIn", href: "https://www.linkedin.com/in/eliezerrappeport", handle: "/in/eliezerrappeport" },
+    { label: "X", href: "https://x.com/erappeport", handle: "@erappeport" },
+    { label: "Email", href: "mailto:hello@eliezerrappeport.com", handle: "hello@eliezerrappeport.com" },
   ],
-  email: "hello@eliezer.example",
+  email: "hello@eliezerrappeport.com",
 };
 
 export const nav = {

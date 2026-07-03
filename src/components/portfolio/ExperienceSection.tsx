@@ -25,7 +25,7 @@ export default function ExperienceSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-15% 0px" }}
         transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-        className="max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
+        className="section-heading max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
       >
         <div>
           <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft/55 mb-4">
@@ -48,7 +48,7 @@ export default function ExperienceSection() {
         {/* Vertical rail */}
         <span
           aria-hidden="true"
-          className="absolute left-[7px] md:left-1/2 top-2 bottom-2 w-px bg-gradient-to-b from-electric/50 via-ink/15 to-transparent md:-translate-x-1/2"
+          className="absolute left-[7px] md:left-1/2 top-2 bottom-2 w-px bg-gradient-to-b from-electric/55 via-white/65 to-transparent shadow-[0_0_24px_rgba(0,102,255,0.18)] md:-translate-x-1/2"
         />
 
         <div className="flex flex-col gap-16 md:gap-24">
@@ -59,17 +59,15 @@ export default function ExperienceSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-15% 0px" }}
               transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-              className={`relative pl-10 md:pl-0 md:grid md:grid-cols-2 md:gap-16 ${
-                i % 2 === 1 ? "md:[direction:rtl]" : ""
-              }`}
+              className="relative pl-10 md:pl-0 md:grid md:grid-cols-2 md:gap-16"
             >
               {/* Timeline dot */}
               <span
                 aria-hidden="true"
-                className="absolute left-0 top-2 w-[15px] h-[15px] rounded-full bg-pearl border-2 border-electric shadow-[0_0_0_4px_rgba(0,102,255,0.12)] md:left-1/2 md:-translate-x-1/2"
+                className="timeline-bead absolute left-0 top-2 w-[15px] h-[15px] rounded-full md:left-1/2 md:-translate-x-1/2"
               />
 
-              <div className="md:[direction:ltr] flex flex-col gap-3">
+              <div className={`flex flex-col gap-3 ${i % 2 === 1 ? "md:order-2 md:text-right" : ""}`}>
                 <span className="text-[12px] font-mono tracking-[0.18em] text-electric">
                   {entry.period}
                 </span>
@@ -84,7 +82,7 @@ export default function ExperienceSection() {
                 </p>
               </div>
 
-              <div className="md:[direction:ltr] mt-4 md:mt-0 flex flex-col gap-5">
+              <div className={`proof-cell mt-4 md:mt-0 flex flex-col gap-5 ${i % 2 === 1 ? "md:order-1" : ""}`}>
                 <p className="text-[15px] leading-[1.7] text-ink-soft/85">
                   {entry.summary}
                 </p>
@@ -102,11 +100,11 @@ export default function ExperienceSection() {
                     </li>
                   ))}
                 </ul>
-                <div className="flex flex-wrap gap-2 mt-1">
+                <div className="stack-river flex flex-wrap gap-2 mt-1">
                   {entry.stack.map((s) => (
                     <span
                       key={s}
-                      className="px-3 py-1 rounded-full text-[11px] font-medium text-ink-soft/70 bg-white/40 border border-white/55"
+                    className="px-3 py-1 rounded-full text-[11px] font-medium text-ink-soft/70"
                     >
                       {s}
                     </span>

@@ -15,10 +15,11 @@ const geistMono = Geist_Mono({
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "500", "600", "700", "900"],
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://eliezerrappeport.com"),
   title: "Eliezer Rappeport — Engineer • AI Builder • Founder",
   description:
     "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
@@ -29,6 +30,7 @@ export const metadata: Metadata = {
     description:
       "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
     type: "website",
+    siteName: "Eliezer Rappeport",
   },
   twitter: {
     card: "summary_large_image",
@@ -40,6 +42,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  themeColor: "#f7f9fc",
 };
 
 export default function RootLayout({

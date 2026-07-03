@@ -1,15 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring, useTransform } from "framer-motion";
+
+const SECTIONS = ["projects", "experience", "about", "contact"] as const;
 
 /**
  * ScrollIndicator
  * ---------------
- * Left-side vertical rail indicating scroll depth through the page.
- *  - Active bright-blue dot at current section
- *  - Several smaller gray dots below
- *  - Thin vertical line beneath
- *  - Live progress fill driven by useScroll
+ * Left-side vertical rail. One dot per major section; the dot for the
+ * section currently in view lights up electric-blue. A progress line below
+ * fills with scroll depth.
  */
 export default function ScrollIndicator() {
   const { scrollYProgress } = useScroll();
@@ -19,6 +20,24 @@ export default function ScrollIndicator() {
     restDelta: 0.001,
   });
   const lineScale = useTransform(progress, [0, 1], [0.04, 1]);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    SECTIONS.forEach((id, idx) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const ob = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) setActive(idx);
+        },
+        { rootMargin: "-45% 0px -45% 0px", threshold: 0 },
+      );
+      ob.observe(el);
+      observers.push(ob);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
 
   return (
     <motion.div
@@ -28,12 +47,15 @@ export default function ScrollIndicator() {
       className="fixed left-6 md:left-10 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none"
       aria-hidden="true"
     >
-      {/* Active dot */}
-      <span className="w-2 h-2 rounded-full bg-electric shadow-[0_0_12px_rgba(0,102,255,0.6)] pulse-dot" />
-
-      {/* Inactive dots */}
-      {[0, 1, 2, 3].map((i) => (
-        <span key={i} className="w-1 h-1 rounded-full bg-ink/25" />
+      {SECTIONS.map((id, i) => (
+        <span
+          key={id}
+          className={`rounded-full transition-all duration-500 ${
+            i === active
+              ? "w-2 h-2 bg-electric shadow-[0_0_12px_rgba(0,102,255,0.6)] pulse-dot"
+              : "w-1 h-1 bg-ink/25"
+          }`}
+        />
       ))}
 
       {/* Line with progress fill */}

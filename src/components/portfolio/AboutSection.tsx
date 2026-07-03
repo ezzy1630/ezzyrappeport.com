@@ -21,7 +21,7 @@ export default function AboutSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-15% 0px" }}
         transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-        className="max-w-7xl mx-auto mb-16 md:mb-24"
+        className="section-heading max-w-7xl mx-auto mb-16 md:mb-24"
       >
         <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft/55 mb-4">
           Purpose
@@ -44,7 +44,7 @@ export default function AboutSection() {
           className="md:col-span-5"
         >
           <p
-            className="text-[26px] md:text-[34px] leading-[1.15] font-medium tracking-[-0.02em] text-ink"
+            className="project-overview-slab p-7 md:p-9 text-[26px] md:text-[34px] leading-[1.15] font-medium tracking-[-0.02em] text-ink"
             style={{ fontFamily: "var(--font-inter-tight), sans-serif" }}
           >
             "I build at the intersection of engineering and intelligence —
@@ -72,12 +72,12 @@ export default function AboutSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="md:col-span-7 flex flex-col gap-6"
+          className="proof-grid md:col-span-7 grid gap-3"
         >
           {bio.bodyParagraphs.map((p, i) => (
             <p
               key={i}
-              className="text-[15px] md:text-[17px] leading-[1.75] text-ink-soft/85"
+              className="proof-cell text-[15px] md:text-[17px] leading-[1.75] text-ink-soft/85"
             >
               {p}
             </p>

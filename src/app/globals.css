@@ -58,6 +58,21 @@
   border-color: var(--border);
 }
 
+/* Visually hidden but available to screen readers / crawlers.
+   Defensive duplicate of Tailwind's `sr-only` so the semantic hero <h1>
+   is always clipped even if the utility is tree-shaken out. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html,
 body {
   background: var(--background);
@@ -118,6 +133,12 @@ html.lenis body {
   z-index: 2;
 }
 
+.fluid-canvas {
+  box-shadow:
+    0 0 110px rgba(255, 255, 255, 0.72) inset,
+    0 -120px 180px rgba(39, 125, 255, 0.045) inset;
+}
+
 .fluid-canvas::before {
   background:
     radial-gradient(48% 30% at 18% 28%, rgba(255, 255, 255, 0.48), transparent 78%),
@@ -141,28 +162,29 @@ html.lenis body {
   animation: fluid-haze-drift 18s linear infinite;
 }
 
-.fluid-canvas[data-webgpu="starting"],
-.fluid-canvas[data-webgpu="static"] {
+.fluid-canvas[data-fluid="starting"],
+.fluid-canvas[data-fluid="static"],
+.fluid-canvas[data-fluid="failed"] {
   filter: saturate(0.92) contrast(0.96) brightness(1.015);
 }
 
-.fluid-canvas[data-webgpu="static"]::before {
+.fluid-canvas[data-fluid="static"]::before,
+.fluid-canvas[data-fluid="failed"]::before {
   opacity: 0.11;
 }
 
-.fluid-canvas[data-webgpu="static"]::after {
+.fluid-canvas[data-fluid="static"]::after,
+.fluid-canvas[data-fluid="failed"]::after {
   opacity: 0.06;
 }
 
-.fluid-canvas[data-webgpu="starting"]::before,
-.fluid-canvas[data-webgpu="ready"]::before,
-.fluid-canvas[data-webgpu="webgl2"]::before {
+.fluid-canvas[data-fluid="starting"]::before,
+.fluid-canvas[data-fluid="ready"]::before {
   opacity: calc(0.12 + var(--liquid-active, 0) * 0.045);
 }
 
-.fluid-canvas[data-webgpu="starting"]::after,
-.fluid-canvas[data-webgpu="ready"]::after,
-.fluid-canvas[data-webgpu="webgl2"]::after {
+.fluid-canvas[data-fluid="starting"]::after,
+.fluid-canvas[data-fluid="ready"]::after {
   opacity: 0.12;
 }
 
@@ -174,11 +196,7 @@ html.lenis body {
   display: block;
 }
 
-.fluid-canvas[data-webgpu="ready"] canvas {
-  filter: saturate(0.90) contrast(0.96) brightness(1.015);
-}
-
-.fluid-canvas[data-webgpu="webgl2"] canvas {
+.fluid-canvas[data-fluid="ready"] canvas {
   filter: saturate(0.90) contrast(0.96) brightness(1.015);
 }
 
@@ -205,6 +223,29 @@ html.lenis body {
   z-index: 10;
 }
 
+.content-layer main {
+  position: relative;
+  z-index: 0;
+  background:
+    radial-gradient(54% 28% at 24% 6%, rgba(255, 255, 255, 0.72), transparent 72%),
+    radial-gradient(42% 24% at 78% 2%, rgba(132, 188, 255, 0.075), transparent 76%),
+    linear-gradient(180deg, rgba(248, 252, 255, 0.965) 0%, rgba(246, 251, 255, 0.94) 36%, rgba(241, 248, 255, 0.955) 100%);
+  box-shadow: 0 -80px 130px rgba(248, 252, 255, 0.92);
+}
+
+.content-layer main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    url("/assets/pearl-liquid-background.png") center top / cover repeat-y,
+    linear-gradient(180deg, rgba(248, 252, 255, 0.96), rgba(241, 248, 255, 0.96));
+  opacity: 0.18;
+  filter: saturate(0.86) contrast(0.94);
+}
+
 .hero-shell {
   position: relative;
   min-height: 100svh;
@@ -214,19 +255,69 @@ html.lenis body {
 
 .hero-name-stage {
   position: absolute;
-  top: clamp(6.65rem, 13.45vh, 7.9rem);
+  top: clamp(5.2rem, 9.6vh, 6.75rem);
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 85.5rem);
+  width: min(100%, 92rem);
   margin-inline: auto;
   z-index: 5;
+}
+
+/* Visible hero-name fallback — a frosted-water CSS name shown until the live
+   WebGL fluid renderer reports ready, then it dissolves into the shader.
+   Guarantees the name is always visible even if WebGL2 is unavailable. */
+.hero-name-fallback {
+  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.82;
+  letter-spacing: -0.01em;
+  text-align: center;
+  font-size: clamp(4.2rem, 12.4vw, 12.6rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.02em;
+  background: linear-gradient(178deg, #ffffff 0%, #e8f1ff 42%, #c3dbff 78%, #a9c9f5 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter:
+    drop-shadow(0 16px 26px rgba(43, 74, 116, 0.16))
+    drop-shadow(0 -2px 6px rgba(255, 255, 255, 0.72));
+  transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
+  will-change: opacity, transform, filter;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.hero-name-fallback span {
+  display: block;
+}
+
+.hero-name-fallback__mobile {
+  display: none !important;
+}
+
+/* Reveal the CSS name ONLY if the live WebGL renderer truly fails. In every
+   working state (starting / ready / static-frozen) the shader owns the name,
+   so the fallback stays invisible and never overlays the embedded liquid name. */
+.portfolio-root:has(.fluid-canvas[data-fluid="failed"]) .hero-name-fallback {
+  opacity: 1;
+  transform: none;
+}
+
+/* Display font utility (Inter Tight) — replaces repeated inline styles. */
+.font-display {
+  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
 }
 
 .hero-copy-row {
   position: absolute;
   left: max(7.6rem, 12.5vw);
   right: max(5rem, 7vw);
-  top: min(54.5vh, 32rem);
+  top: min(55.6vh, 32.75rem);
   z-index: 20;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -240,831 +331,90 @@ html.lenis body {
   position: absolute;
   left: clamp(2rem, 5.3vw, 5rem);
   right: clamp(2rem, 5.3vw, 5rem);
-  bottom: clamp(5.8rem, 10.9vh, 6.6rem);
+  bottom: clamp(6.8rem, 11.4vh, 8.2rem);
   z-index: 18;
   width: auto;
   max-width: 94rem;
   margin-inline: auto;
 }
 
-/* Glassmorphism utility */
+/* Shared optical material: white rim, inner bevel, blue only at refraction points. */
 .glass {
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.56), rgba(232, 241, 255, 0.23)),
-    rgba(255, 255, 255, 0.24);
-  backdrop-filter: blur(16px) saturate(135%);
-  -webkit-backdrop-filter: blur(16px) saturate(135%);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+    radial-gradient(90% 130% at 16% 0%, rgba(255, 255, 255, 0.82), transparent 58%),
+    radial-gradient(70% 72% at 78% 102%, rgba(80, 151, 255, 0.115), transparent 64%),
+    linear-gradient(150deg, rgba(255, 255, 255, 0.54), rgba(246, 251, 255, 0.34) 48%, rgba(229, 241, 255, 0.23)),
+    rgba(255, 255, 255, 0.30);
+  backdrop-filter: blur(16px) saturate(128%) contrast(1.04);
+  -webkit-backdrop-filter: blur(16px) saturate(128%) contrast(1.04);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow:
-    0 1px 1px rgba(255, 255, 255, 0.72) inset,
-    0 -1px 2px rgba(59, 111, 190, 0.08) inset,
-    0 12px 28px -18px rgba(17, 45, 92, 0.32);
+    0 1px 0 rgba(255, 255, 255, 0.95) inset,
+    0 -1px 0 rgba(13, 74, 155, 0.10) inset,
+    0 -10px 22px rgba(0, 102, 255, 0.055) inset,
+    0 16px 34px -26px rgba(11, 39, 82, 0.34);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .glass-strong {
   background:
-    linear-gradient(155deg, rgba(255, 255, 255, 0.68), rgba(232, 242, 255, 0.22) 58%, rgba(164, 207, 255, 0.12)),
-    rgba(255, 255, 255, 0.34);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+    radial-gradient(92% 132% at 18% -2%, rgba(255, 255, 255, 0.88), transparent 60%),
+    radial-gradient(78% 74% at 82% 104%, rgba(63, 143, 255, 0.13), transparent 66%),
+    linear-gradient(154deg, rgba(255, 255, 255, 0.64), rgba(246, 251, 255, 0.42) 50%, rgba(229, 241, 255, 0.27)),
+    rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(20px) saturate(132%) contrast(1.05);
+  -webkit-backdrop-filter: blur(20px) saturate(132%) contrast(1.05);
+  border: 1px solid rgba(255, 255, 255, 0.78);
   box-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.86) inset,
-    0 -1px 4px rgba(0, 102, 255, 0.12) inset,
-    0 14px 28px -22px rgba(12, 43, 92, 0.36);
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -1px 0 rgba(13, 74, 155, 0.12) inset,
+    0 -14px 28px rgba(0, 102, 255, 0.065) inset,
+    0 22px 42px -28px rgba(12, 43, 92, 0.42);
 }
 
-.project-capsule {
-  border-radius: var(--project-radius, 72px 48px 66px 84px / 44px 58px 72px 52px);
-  clip-path: var(--project-clip);
-  background:
-    radial-gradient(70% 118% at 19% 1%, rgba(255, 255, 255, 0.90), rgba(255, 255, 255, 0.22) 42%, transparent 71%),
-    radial-gradient(42% 88% at 91% 108%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.52)), transparent 72%),
-    radial-gradient(46% 76% at 8% 109%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.48)), transparent 70%),
-    radial-gradient(94% 44% at 50% 109%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.27)), transparent 76%),
-    linear-gradient(181deg, rgba(255, 255, 255, 0.48), rgba(250, 253, 255, 0.105) 38%, rgba(205, 229, 255, 0.23)),
-    rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(18px) saturate(172%) contrast(1.16);
-  -webkit-backdrop-filter: blur(18px) saturate(172%) contrast(1.16);
-  border: 0;
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.86) inset,
-    0 -4px 11px rgba(0, 102, 255, 0.34) inset,
-    16px 0 28px rgba(0, 102, 255, 0.16) inset,
-    -16px 0 28px rgba(255, 255, 255, 0.46) inset,
-    0 26px 54px -34px rgba(9, 40, 95, 0.55);
-  transform: translateZ(0);
-  animation: project-capsule-breathe 16s ease-in-out infinite;
-  animation-delay: var(--project-phase);
-  will-change: transform;
-  contain: layout paint;
-}
-
-.project-capsule-card {
-  filter: drop-shadow(0 12px 22px rgba(10, 45, 100, 0.11));
-}
-
-.project-card-button:focus-visible .project-capsule {
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 0.95) inset,
-    0 -2px 7px rgba(0, 102, 255, 0.36) inset,
-    0 0 0 1px rgba(0, 102, 255, 0.36),
-    0 18px 42px -30px rgba(0, 102, 255, 0.72);
-}
-
-.project-card-button:focus,
-.project-card-button:focus-visible {
-  outline: none;
-}
-
-.project-capsule::before {
-  content: "";
-  position: absolute;
-  inset: -5px;
-  border-radius: inherit;
-  border: 0;
-  box-shadow:
-    0 0 31px rgba(255, 255, 255, 0.70) inset,
-    0 11px 28px rgba(255, 255, 255, 0.34) inset,
-    0 -16px 34px rgba(0, 102, 255, 0.26) inset,
-    -8px 5px 16px rgba(0, 102, 255, 0.12);
-  filter: url("#liquidBlobFilter") blur(0.08px);
-  opacity: 0.82;
-  pointer-events: none;
-}
-
-.project-capsule::after {
-  content: "";
-  position: absolute;
-  left: 5%;
-  right: 5%;
-  bottom: -23px;
-  height: 44px;
-  border-radius: 999px;
-  background:
-    radial-gradient(22% 62% at 8% 22%, rgba(0, 102, 255, 0.78), transparent 78%),
-    radial-gradient(24% 64% at 92% 25%, rgba(0, 102, 255, 0.56), transparent 80%),
-    radial-gradient(26% 58% at 48% 30%, rgba(126, 187, 255, 0.56), transparent 82%),
-    linear-gradient(90deg, transparent 1%, rgba(0, 102, 255, 0.31) 15%, rgba(255, 255, 255, 0.60) 36%, rgba(0, 102, 255, 0.31) 64%, transparent 97%);
-  filter: blur(10px);
-  opacity: calc(var(--project-edge-opacity) * 0.84);
-  pointer-events: none;
-  transform: translateY(6px) scaleX(var(--project-caustic-scale));
-  animation: project-caustic-drift 8s ease-in-out infinite;
-  animation-delay: var(--project-phase);
-}
-
-.project-liquid-surface,
-.project-water-shell,
-.project-top-sheen,
-.project-volume-glow,
-.project-edge-caustics,
-.project-blue-rim,
-.project-caustic-threads,
-.project-bottom-pool,
-.project-inner-contour,
-.project-ripple-field,
-.project-hover-lens {
-  position: absolute;
-  pointer-events: none;
-}
-
-.project-liquid-surface {
-  inset: -32px;
-  border-radius: inherit;
-  background:
-    radial-gradient(170px 88px at var(--card-cursor-x) var(--card-cursor-y), rgba(255, 255, 255, calc(0.14 + var(--card-proximity) * 0.28)), transparent 68%),
-    radial-gradient(72% 44% at 50% 112%, rgba(0, 102, 255, 0.075), transparent 74%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.46), transparent 38%, rgba(0, 102, 255, 0.068)),
-    url("/assets/pearl-liquid-background.png");
-  background-size: 620px auto;
-  background-position: center, 42% 66%;
-  opacity: calc(0.48 + var(--card-proximity) * 0.12);
-  mix-blend-mode: screen;
-  filter: blur(0.9px) saturate(calc(1.28 + var(--card-speed) * 0.20)) contrast(1.08);
-  transform: scale(1.055);
-  animation: project-surface-swim 18s ease-in-out infinite;
-  animation-delay: var(--project-phase);
-}
-
-.project-water-shell {
-  inset: -4px -5px -7px;
-  width: calc(100% + 10px);
-  height: calc(100% + 11px);
-  z-index: 1;
-  overflow: visible;
-  filter: drop-shadow(0 12px 18px rgba(0, 84, 220, 0.09));
-}
-
-.project-water-shell path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-}
-
-.project-water-shell .project-water-body {
-  fill: rgba(255, 255, 255, 0.105);
-  stroke: rgba(255, 255, 255, 0.62);
-  stroke-width: 1.3;
-  filter: drop-shadow(0 -1px 2px rgba(255, 255, 255, 0.76)) drop-shadow(0 3px 6px rgba(0, 102, 255, 0.10));
-}
-
-.project-water-shell .project-water-top {
-  stroke: rgba(255, 255, 255, 0.82);
-  stroke-width: 2.1;
-  opacity: 0.58;
-  filter: blur(0.25px);
-}
-
-.project-water-shell .project-water-bottom {
-  stroke: rgba(0, 102, 255, calc(0.38 + var(--project-edge-opacity) * 0.30));
-  stroke-width: 2.9;
-  opacity: 0.84;
-  filter: blur(0.15px) drop-shadow(0 3px 7px rgba(0, 102, 255, 0.26));
-}
-
-.project-top-sheen {
-  top: -9%;
-  left: 8%;
-  right: 11%;
-  height: 61%;
-  border-radius: 999px;
-  background:
-    radial-gradient(60% 78% at 30% 8%, rgba(255, 255, 255, 0.92), transparent 58%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.12) 62%, transparent);
-  filter: blur(12px);
-  opacity: 0.86;
-  transform: rotate(-1.4deg);
-}
-
-.project-volume-glow {
-  inset: 5px 12px 11px;
-  border-radius: var(--project-inner-radius, 60px 39px 54px 70px / 35px 47px 58px 42px);
-  background:
-    radial-gradient(58% 86% at 74% 38%, rgba(141, 184, 255, 0.23), transparent 68%),
-    radial-gradient(52% 90% at 18% 66%, rgba(255, 255, 255, 0.34), transparent 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.20), rgba(0, 102, 255, 0.045));
-  filter: blur(10px);
-  opacity: calc(0.76 + var(--card-proximity) * 0.18);
-  mix-blend-mode: screen;
-  transform: translate3d(calc(var(--card-speed) * 2px), 0, 0);
-}
-
-.project-edge-caustics {
-  left: -2%;
-  right: -2%;
-  bottom: -20%;
-  height: 48%;
-  border-radius: 999px;
-  background:
-    radial-gradient(24% 78% at 7% 42%, rgba(0, 92, 255, 0.66), transparent 68%),
-    radial-gradient(28% 70% at 88% 50%, rgba(0, 92, 255, 0.43), transparent 72%),
-    radial-gradient(42% 52% at 50% 68%, rgba(121, 184, 255, 0.30), transparent 76%),
-    linear-gradient(177deg, transparent 46%, rgba(255, 255, 255, 0.54) 65%, rgba(0, 102, 255, calc(var(--project-caustic-opacity) * 0.68)) 91%, transparent 100%);
-  filter: blur(var(--project-caustic-blur));
-  opacity: 0.94;
-  transform: translateY(13px);
-  mix-blend-mode: multiply;
-  animation: project-caustic-drift 7.5s ease-in-out infinite alternate;
-  animation-delay: var(--project-phase);
-}
-
-.project-blue-rim {
-  inset: -1px -1px -4px;
-  border-radius: inherit;
-  background:
-    radial-gradient(92px 78px at var(--card-cursor-x) var(--card-cursor-y), rgba(0, 102, 255, calc(var(--card-proximity) * 0.19)), transparent 72%),
-    radial-gradient(34px 82px at 2% 71%, rgba(0, 102, 255, 0.72), transparent 76%),
-    radial-gradient(38px 78px at 98% 73%, rgba(0, 102, 255, 0.48), transparent 75%),
-    linear-gradient(178deg, transparent 72%, rgba(0, 102, 255, 0.17) 86%, rgba(255, 255, 255, 0.44) 94%, transparent 100%);
-  mask-image: linear-gradient(180deg, transparent 60%, #000 86%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 60%, #000 86%);
-  filter: blur(1px);
-  opacity: calc(var(--project-edge-opacity) * 0.98);
-  mix-blend-mode: multiply;
-}
-
-.project-caustic-threads {
-  inset: -3px -2px -9px;
-  width: 100%;
-  height: calc(100% + 12px);
-  border-radius: inherit;
-  overflow: visible;
-  filter: blur(0.22px) drop-shadow(0 1px 4px rgba(0, 102, 255, 0.22));
-  opacity: calc(0.50 + var(--card-proximity) * 0.30);
-  mix-blend-mode: multiply;
-  transform: translate(var(--project-thread-shift, 0px), 1px);
-}
-
-.project-caustic-threads path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  vector-effect: non-scaling-stroke;
-  stroke-dasharray: 18 46;
-  animation: none;
-  animation-delay: var(--project-phase);
-}
-
-.project-caustic-threads path:nth-child(1) {
-  stroke: rgba(0, 102, 255, 0.48);
-  stroke-width: 1.65;
-}
-
-.project-caustic-threads path:nth-child(2) {
-  stroke: rgba(255, 255, 255, 0.78);
-  stroke-width: 1.25;
-}
-
-.project-caustic-threads path:nth-child(3) {
-  stroke: rgba(255, 255, 255, 0.42);
-  stroke-width: 0.85;
-}
-
-.project-caustic-threads path:nth-child(4) {
-  stroke: rgba(0, 102, 255, 0.18);
-  stroke-width: 0.95;
-}
-
-.project-caustic-threads .project-perimeter-blue {
-  stroke: rgba(0, 102, 255, calc(0.48 + var(--project-edge-opacity) * 0.42));
-  stroke-width: 1.05;
-  stroke-dasharray: none;
-  opacity: 0.38;
-  filter: drop-shadow(0 1px 3px rgba(0, 102, 255, 0.12));
-}
-
-.project-caustic-threads .project-perimeter-white {
-  stroke: rgba(255, 255, 255, 0.78);
-  stroke-width: 1.15;
-  stroke-dasharray: 74 52;
-  opacity: 0.74;
-}
-
-.project-caustic-threads .project-bottom-wave {
-  stroke: rgba(0, 102, 255, calc(0.46 + var(--project-edge-opacity) * 0.48));
-  stroke-width: 2.15;
-  stroke-dasharray: 82 18 36 28;
-  opacity: 0.70;
-  filter: drop-shadow(0 2px 6px rgba(0, 102, 255, 0.28));
-}
-
-.project-caustic-threads .project-side-prism {
-  stroke: rgba(0, 102, 255, calc(0.18 + var(--project-edge-opacity) * 0.24));
-  stroke-width: 1.25;
-  stroke-dasharray: 42 30;
-  opacity: 0.72;
-}
-
-.project-bottom-pool {
-  left: 7%;
-  right: 8%;
-  bottom: -8px;
-  height: 36px;
-  border-radius: 999px;
-  background:
-    radial-gradient(36% 80% at 11% 44%, rgba(0, 102, 255, 0.46), transparent 75%),
-    radial-gradient(34% 92% at 88% 50%, rgba(0, 102, 255, 0.34), transparent 76%),
-    linear-gradient(92deg, transparent, rgba(0, 102, 255, 0.32) 18%, rgba(255, 255, 255, 0.42) 48%, rgba(0, 102, 255, 0.26) 78%, transparent);
-  filter: blur(6px);
-  opacity: calc(var(--project-edge-opacity) * 0.88);
-  mix-blend-mode: multiply;
-  transform: translate3d(0, calc(var(--card-proximity) * -2px), 0) scaleX(var(--project-caustic-scale));
-}
-
-.project-inner-contour {
-  inset: 10px 13px 12px;
-  border-radius: var(--project-inner-radius, 50px 59px 42px 61px / 38px 36px 52px 45px);
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  box-shadow:
-    0 1px 1px rgba(255, 255, 255, 0.86) inset,
-    0 -1px 8px rgba(0, 102, 255, 0.15) inset,
-    0 0 0 1px rgba(56, 94, 151, 0.035);
-  filter: url("#liquidBlobFilter");
-  opacity: 0.82;
-}
-
-.project-ripple-field {
-  inset: -20%;
-  border-radius: inherit;
-  background:
-    repeating-radial-gradient(
-      circle at var(--card-ripple-x) var(--card-ripple-y),
-      rgba(0, 92, 255, calc(var(--card-ripple-strength) * 0.105)) 0 1px,
-      transparent 2px 15px
-    ),
-    radial-gradient(
-      150px 80px at var(--card-ripple-x) var(--card-ripple-y),
-      rgba(255, 255, 255, calc(var(--card-ripple-strength) * 0.24)),
-      transparent 68%
-    );
-  filter: blur(0.45px);
-  opacity: calc(var(--card-ripple-strength) * 0.95);
-  mix-blend-mode: multiply;
-  mask-image: linear-gradient(180deg, transparent 10%, #000 35%, #000 84%, transparent 100%);
-  -webkit-mask-image: linear-gradient(180deg, transparent 10%, #000 35%, #000 84%, transparent 100%);
-  transition: opacity 520ms ease;
-}
-
-.project-hover-lens {
-  top: 50%;
-  right: 16%;
-  width: 118px;
-  height: 118px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 36% 31%, rgba(255, 255, 255, 0.62), transparent 28%),
-    radial-gradient(circle, rgba(0, 102, 255, 0.20), transparent 70%);
-  transform: translateY(-50%);
-  mix-blend-mode: screen;
-}
-
-.project-card-button:hover .project-liquid-surface,
-.project-card-button:focus-visible .project-liquid-surface {
-  opacity: 0.52;
-  animation-duration: 7s;
-}
-
-.project-card-button:hover .project-blue-rim,
-.project-card-button:focus-visible .project-blue-rim {
-  opacity: 1;
-}
-
-.project-card-button:hover .project-caustic-threads,
-.project-card-button:focus-visible .project-caustic-threads {
-  opacity: 0.98;
-  filter: blur(0.2px) drop-shadow(0 1px 5px rgba(0, 102, 255, 0.24));
-}
-
-.project-card-button:hover .project-caustic-threads path,
-.project-card-button:focus-visible .project-caustic-threads path {
-  animation: project-thread-drift 4.6s ease-in-out infinite;
-  animation-duration: 4.6s;
-}
-
-.project-card-button:hover .project-capsule,
-.project-card-button:focus-visible .project-capsule {
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 1) inset,
-    0 -2px 5px rgba(0, 102, 255, 0.50) inset,
-    11px 0 22px rgba(0, 102, 255, 0.21) inset,
-    -12px 0 21px rgba(255, 255, 255, 0.52) inset,
-    0 25px 48px -28px rgba(0, 86, 255, 0.47);
-}
-
-.project-card-button:active .project-capsule {
-  animation: none;
-  transform: translateY(3px) scaleY(0.976) translateZ(0);
-  box-shadow:
-    0 1px 2px rgba(255, 255, 255, 1) inset,
-    0 -2px 8px rgba(0, 102, 255, 0.54) inset,
-    9px 0 19px rgba(0, 102, 255, 0.20) inset,
-    -10px 0 18px rgba(255, 255, 255, 0.42) inset,
-    0 28px 52px -30px rgba(0, 86, 255, 0.58);
-}
-
-@keyframes project-capsule-breathe {
-  0%, 100% {
-    transform: translate3d(0, 0, 0) scale(1);
-    filter: saturate(1);
-  }
-  50% {
-    transform: translate3d(0, -1.5px, 0) scale(1.008, 1.014);
-    filter: saturate(1.05);
-  }
-}
-
-@keyframes project-thread-drift {
-  0%, 100% {
-    stroke-dashoffset: 0;
-  }
-  50% {
-    stroke-dashoffset: -42;
-  }
-}
-
-@keyframes project-caustic-drift {
-  0%, 100% {
-    transform: translate3d(-4px, 8px, 0) scaleX(var(--project-caustic-scale));
-  }
-  50% {
-    transform: translate3d(5px, 3px, 0) scaleX(var(--project-caustic-scale));
-  }
-}
-
-@keyframes project-surface-swim {
-  0%, 100% {
-    transform: translate3d(-5px, 0, 0) scale(1.04) rotate(-0.25deg);
-    background-position: center, 42% 66%;
-  }
-  50% {
-    transform: translate3d(6px, -2px, 0) scale(1.055) rotate(0.35deg);
-    background-position: center, 57% 62%;
-  }
-}
-
-/* Embedded liquid-glass hero name */
-.hero-name {
-  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
-  font-weight: 900;
-  letter-spacing: 0;
-  line-height: 0.78;
-  text-transform: uppercase;
+.section-heading {
   position: relative;
-  filter:
-    drop-shadow(0 18px 22px rgba(43, 74, 116, 0.10))
-    drop-shadow(0 -2px 4px rgba(255, 255, 255, 0.82));
-  contain: layout paint;
-  will-change: filter, transform;
 }
 
-.hero-name::before {
+.section-heading::before {
   content: "";
   position: absolute;
-  inset: -12% -5%;
-  background:
-    radial-gradient(33% 32% at 68% 76%, rgba(142, 194, 245, 0.09), transparent 74%),
-    radial-gradient(64% 24% at 52% 4%, rgba(255, 255, 255, 0.52), transparent 72%);
-  pointer-events: none;
+  inset: -1.25rem -1.35rem -1.15rem;
   z-index: -1;
-  filter: blur(18px);
-  opacity: calc(0.22 + var(--proximity) * 0.06);
+  border-radius: 34px;
+  background:
+    radial-gradient(84% 126% at 16% 0%, rgba(255, 255, 255, 0.54), transparent 62%),
+    radial-gradient(76% 88% at 88% 100%, rgba(0, 102, 255, 0.075), transparent 70%);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  opacity: 0.72;
+  filter: blur(0.1px);
 }
 
-.hero-name::after {
+/* Liquid ripple button — hover triggers a soft radial ripple */
+.liquid-button {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.liquid-button::before {
   content: "";
   position: absolute;
-  left: 4%;
-  right: 3%;
-  top: 35%;
-  height: 36%;
+  inset: 0;
+  background:
+    radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(0, 102, 255, 0.14), transparent 42%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 38%, rgba(0, 102, 255, 0.045));
+  opacity: 0;
+  transform: scale(0.2);
+  transition: opacity 0.4s ease, transform 0.5s ease;
   pointer-events: none;
-  z-index: 1;
-  background:
-    linear-gradient(90deg, transparent 2%, rgba(255, 255, 255, 0.28) 14%, transparent 25%, rgba(139, 194, 250, 0.11) 47%, transparent 68%, rgba(255, 255, 255, 0.22) 84%, transparent 98%),
-    radial-gradient(22% 54% at 70% 80%, rgba(102, 171, 246, 0.18), transparent 74%);
-  filter: blur(7px);
-  mix-blend-mode: screen;
-  opacity: calc(0.30 + var(--proximity) * 0.12);
-  transform: translate3d(calc(var(--liquid-local-speed, 0) * 3px), 0, 0);
+  z-index: 0;
 }
 
-.hero-name-pointer-glow,
-.hero-name-ripple-field,
-.hero-name-caustic-field {
-  position: absolute;
-  inset: -12% -4%;
-  pointer-events: none;
-}
-
-.hero-name-pointer-glow {
-  background:
-    radial-gradient(
-      340px 210px at var(--cursor-x) var(--cursor-y),
-      rgba(91, 167, 248, calc(0.075 + var(--proximity) * 0.17)),
-      rgba(196, 224, 255, calc(0.052 + var(--proximity) * 0.070)) 43%,
-      transparent 73%
-    );
-  mix-blend-mode: screen;
-  opacity: calc(0.26 + var(--proximity) * 0.28);
-  transition: opacity 180ms ease;
-  z-index: 4;
-}
-
-.hero-name-ripple-field {
-  background:
-    repeating-radial-gradient(
-      circle at var(--ripple-x) var(--ripple-y),
-      rgba(98, 174, 250, calc(var(--ripple-strength) * 0.105)) 0 2px,
-      rgba(255, 255, 255, calc(var(--ripple-strength) * 0.22)) 4px 7px,
-      transparent 10px 44px
-    );
-  filter: blur(0.9px);
-  opacity: calc(var(--ripple-strength) * 0.88);
-  mix-blend-mode: soft-light;
-  transition: opacity 680ms ease;
-  z-index: 3;
-}
-
-.hero-name-caustic-field {
-  background:
-    radial-gradient(32% 32% at 73% 78%, rgba(82, 162, 248, 0.24), transparent 74%),
-    radial-gradient(20% 22% at 84% 68%, rgba(0, 102, 255, 0.10), transparent 76%),
-    radial-gradient(35% 22% at 47% 42%, rgba(255, 255, 255, 0.42), transparent 76%),
-    linear-gradient(92deg, transparent 8%, rgba(255, 255, 255, 0.40) 22%, transparent 40%, rgba(160, 205, 250, 0.075) 59%, transparent 79%);
-  filter: blur(3.2px);
-  opacity: calc(0.26 + var(--proximity) * 0.12);
-  mix-blend-mode: screen;
-  animation: hero-caustic-drift 9s ease-in-out infinite;
-  z-index: 2;
-}
-
-.hero-name-line {
-  display: flex;
-  align-items: center;
-  font-size: clamp(4.7rem, 12.7vw, 13.3rem);
-  position: relative;
-  isolation: isolate;
-  gap: 0;
-  color: transparent;
-  filter: drop-shadow(0 9px 15px rgba(47, 75, 116, 0.055));
+.liquid-button:hover::before,
+.liquid-button:focus-visible::before {
   opacity: 1;
-  mix-blend-mode: normal;
-  z-index: 5;
-  animation: hero-text-material-drift 11s ease-in-out infinite alternate;
-}
-
-.hero-name-line::before,
-.hero-name-line::after {
-  content: "";
-  position: absolute;
-  left: 3%;
-  right: 2%;
-  pointer-events: none;
-  z-index: 6;
-  border-radius: 999px;
-  mix-blend-mode: screen;
-}
-
-.hero-name-line::before {
-  top: 22%;
-  height: 10%;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.44) 18%, transparent 33%, rgba(153, 201, 248, 0.12) 54%, transparent 82%);
-  filter: blur(5px);
-  opacity: 0.34;
-}
-
-.hero-name-line::after {
-  bottom: 8%;
-  height: 14%;
-  background: linear-gradient(90deg, transparent 4%, rgba(255, 255, 255, 0.24) 26%, rgba(126, 187, 255, 0.15) 62%, transparent 94%);
-  filter: blur(7px);
-  opacity: 0.32;
-}
-
-.hero-name-line-2 {
-  font-size: clamp(4.95rem, 13.15vw, 13.75rem);
-  transform: translate3d(0, -0.01em, 0);
-  filter:
-    drop-shadow(0 13px 18px rgba(47, 75, 116, 0.085))
-    drop-shadow(0 0 20px rgba(97, 171, 248, 0.055));
-}
-
-.hero-name-line-2::after {
-  height: 19%;
-  bottom: 2%;
-  background: linear-gradient(90deg, transparent 8%, rgba(255, 255, 255, 0.20) 28%, rgba(83, 164, 250, 0.26) 68%, rgba(255, 255, 255, 0.18) 84%, transparent 98%);
-  opacity: 0.46;
-}
-
-.hero-letter {
-  position: relative;
-  display: inline-block;
-  width: calc(1em * var(--letter-ratio));
-  height: 1em;
-  flex: 0 0 auto;
-  filter:
-    drop-shadow(0 -1px 1px rgba(255, 255, 255, calc(0.70 + var(--letter-hot, 0) * 0.20)))
-    drop-shadow(0 7px 11px rgba(48, 76, 116, calc(0.085 + var(--letter-hot, 0) * 0.055 + var(--letter-ripple, 0) * 0.050)))
-    drop-shadow(0 0 12px rgba(95, 171, 248, calc(var(--letter-blue, 0) * 0.055 + var(--letter-ripple, 0) * 0.040)));
-  transform:
-    translate3d(
-      var(--letter-push-x, 0px),
-      calc(var(--letter-push-y, 0px) + var(--letter-hot, 0) * -1.5px),
-      0
-    )
-    scale(calc(1 + var(--letter-hot, 0) * 0.010 + var(--letter-ripple, 0) * 0.004));
-  transition:
-    filter 180ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.hero-letter + .hero-letter {
-  margin-left: -0.055em;
-}
-
-.hero-letter::before {
-  content: "";
-  position: absolute;
-  inset: 8% 1% 5%;
-  border-radius: 34% 42% 38% 36% / 18% 22% 20% 24%;
-  background:
-    radial-gradient(52% 46% at 38% 16%, rgba(255, 255, 255, calc(0.40 + var(--letter-hot, 0) * 0.23)), transparent 72%),
-    radial-gradient(48% 44% at 72% 70%, rgba(118, 184, 250, calc(0.055 + var(--letter-blue, 0) * 0.12 + var(--letter-hot, 0) * 0.080 + var(--letter-ripple, 0) * 0.12)), transparent 74%);
-  filter: blur(calc(8px - var(--letter-hot, 0) * 1.5px));
-  opacity: calc(0.54 + var(--letter-hot, 0) * 0.16 + var(--letter-ripple, 0) * 0.16);
-  mix-blend-mode: screen;
-  pointer-events: none;
-}
-
-.hero-letter::after {
-  content: "";
-  position: absolute;
-  left: 4%;
-  right: 3%;
-  bottom: 4%;
-  height: 18%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(103, 176, 250, calc(0.090 + var(--letter-blue, 0) * 0.17 + var(--letter-hot, 0) * 0.075 + var(--letter-ripple, 0) * 0.13)), rgba(255, 255, 255, 0.28), transparent);
-  filter: blur(calc(7px - var(--letter-hot, 0) * 1px));
-  opacity: calc(0.40 + var(--letter-hot, 0) * 0.13 + var(--letter-ripple, 0) * 0.16);
-  mix-blend-mode: multiply;
-  pointer-events: none;
-}
-
-.hero-letter-svg {
-  position: relative;
-  z-index: 1;
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.hero-letter-glyph {
-  animation: hero-letter-swim 8.5s ease-in-out infinite alternate;
-  transform-origin: center;
-}
-
-.hero-letter-svg text {
-  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
-  font-size: 118px;
-  font-weight: 900;
-  line-height: 1;
-  text-anchor: middle;
-  letter-spacing: 0;
-  dominant-baseline: alphabetic;
-}
-
-.hero-letter-ridge {
-  fill: transparent;
-  stroke: rgba(128, 190, 250, calc(0.40 + var(--letter-blue, 0) * 0.16 + var(--letter-hot, 0) * 0.18 + var(--letter-ripple, 0) * 0.22));
-  stroke-width: calc(14px + var(--letter-line-weight, 0) * 2px + var(--letter-hot, 0) * 2.2px + var(--letter-ripple, 0) * 2.4px);
-  paint-order: stroke fill;
-  filter: blur(3.2px);
-  opacity: calc(0.80 + var(--letter-hot, 0) * 0.12 + var(--letter-ripple, 0) * 0.16);
-  mix-blend-mode: screen;
-}
-
-.hero-letter-volume {
-  fill: transparent;
-  stroke: rgba(58, 80, 116, calc(0.34 + var(--letter-line-weight, 0) * 0.06));
-  stroke-width: calc(7.2px + var(--letter-line-weight, 0) * 1.1px + var(--letter-hot, 0) * 1.0px);
-  paint-order: stroke;
-  filter: blur(2.2px);
-  opacity: calc(0.62 + var(--letter-hot, 0) * 0.08);
-  transform: translate(1.2px, 2.1px);
-  mix-blend-mode: multiply;
-}
-
-.hero-letter-body {
-  stroke: rgba(88, 112, 150, calc(0.38 + var(--letter-line-weight, 0) * 0.07));
-  stroke-width: calc(2.1px + var(--letter-line-weight, 0) * 0.55px + var(--letter-hot, 0) * 0.45px);
-  paint-order: stroke fill;
-  opacity: calc(0.98 + var(--letter-hot, 0) * 0.02);
-  mix-blend-mode: normal;
-}
-
-.hero-letter-caustic {
-  stroke: rgba(255, 255, 255, 0.14);
-  stroke-width: calc(1.05px + var(--letter-blue, 0) * 0.95px + var(--letter-hot, 0) * 0.45px);
-  paint-order: stroke fill;
-  opacity: calc(0.62 + var(--letter-blue, 0) * 0.22 + var(--letter-hot, 0) * 0.18 + var(--letter-ripple, 0) * 0.20);
-  filter: blur(0.25px);
-  mix-blend-mode: screen;
-}
-
-.hero-letter-specular {
-  stroke: none;
-  opacity: calc(0.58 + var(--letter-hot, 0) * 0.16 + var(--letter-ripple, 0) * 0.08);
-  transform: translateY(-3px) scaleY(0.54);
-  transform-origin: 50% 28%;
-  filter: blur(0.36px);
-  mix-blend-mode: screen;
-}
-
-.hero-letter-meniscus,
-.hero-letter-edge {
-  fill: transparent;
-  paint-order: stroke;
-  mix-blend-mode: screen;
-}
-
-.hero-letter-meniscus {
-  stroke: rgba(255, 255, 255, 0.86);
-  stroke-width: calc(2.15px + var(--letter-line-weight, 0) * 0.35px + var(--letter-hot, 0) * 0.50px);
-  opacity: calc(0.78 + var(--letter-hot, 0) * 0.16);
-  filter: blur(0.36px);
-}
-
-.hero-letter-edge {
-  stroke-width: calc(2.6px + var(--letter-line-weight, 0) * 0.55px + var(--letter-hot, 0) * 0.65px + var(--letter-ripple, 0) * 0.75px);
-  opacity: calc(0.74 + var(--letter-blue, 0) * 0.10 + var(--letter-hot, 0) * 0.16 + var(--letter-ripple, 0) * 0.18);
-  filter: blur(0.42px) drop-shadow(0 0 7px rgba(112, 184, 250, calc(0.18 + var(--letter-blue, 0) * 0.14)));
-}
-
-@keyframes hero-text-material-drift {
-  0% {
-    background-position: 50% 48%, 48% 42%, 50% 18%, 0 0;
-    transform: translate3d(0, -1px, 0);
-  }
-  100% {
-    background-position: 54% 52%, 53% 46%, 48% 20%, 0 0;
-    transform: translate3d(0, 2px, 0);
-  }
-}
-
-@keyframes hero-caustic-drift {
-  0%, 100% {
-    transform: translate3d(-1.5%, 0, 0) skewX(-1deg);
-  }
-  50% {
-    transform: translate3d(1.5%, 1%, 0) skewX(1deg);
-  }
-}
-
-@keyframes hero-letter-swim {
-  0% {
-    transform: translate3d(-0.7px, -0.42px, 0) scaleX(0.996);
-  }
-  100% {
-    transform: translate3d(0.7px, 0.48px, 0) scaleX(1.004);
-  }
-}
-
-/* Custom cursor (when enabled) */
-.custom-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 1px;
-  border-radius: 50%;
-  background: transparent;
-  pointer-events: none;
-  z-index: 9997;
-  mix-blend-mode: normal;
-  transition: width 0.18s ease, height 0.18s ease, opacity 0.25s ease;
-  will-change: transform;
-}
-
-.custom-cursor-ring {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 68px;
-  height: 68px;
-  border: 1px solid rgba(0, 102, 255, 0.11);
-  border-radius: 50%;
-  background:
-    repeating-radial-gradient(circle, rgba(0, 102, 255, 0.055) 0 1px, rgba(255, 255, 255, 0.16) 3px 5px, transparent 7px 18px),
-    radial-gradient(circle, rgba(0, 102, 255, 0.045), transparent 48%),
-    radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 70%);
-  pointer-events: none;
-  z-index: 9998;
-  transition: width 0.25s ease, height 0.25s ease, opacity 0.3s ease;
-  will-change: transform;
+  transform: scale(1.2);
 }
 
 /* Liquid blob card edge — organic SVG filter applied via CSS */
@@ -1106,11 +456,6 @@ html.lenis body {
     scroll-behavior: auto !important;
   }
 
-  .custom-cursor,
-  .custom-cursor-ring {
-    display: none !important;
-  }
-
   .fluid-canvas::before,
   .fluid-canvas::after {
     animation: none !important;
@@ -1121,17 +466,28 @@ html.lenis body {
 /* Hero name responsive scaling — mobile */
 @media (max-width: 768px) {
   .hero-shell {
-    min-height: auto;
+    min-height: 100svh;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    padding: 6.5rem 1.25rem 7rem;
+    gap: clamp(1.1rem, 3.2svh, 1.8rem);
+    padding: clamp(5.1rem, 11svh, 6.5rem) 1.15rem 5.4rem;
     overflow: visible;
   }
 
-  .hero-name {
+  .hero-name-fallback {
     padding-inline: 0 !important;
     width: 100%;
+    font-size: clamp(2.65rem, 13.4vw, 4.15rem);
+    line-height: 0.78;
+    letter-spacing: -0.015em;
+  }
+
+  .hero-name-fallback__desktop {
+    display: none !important;
+  }
+
+  .hero-name-fallback__mobile {
+    display: block !important;
   }
 
   .hero-name-stage,
@@ -1150,6 +506,7 @@ html.lenis body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+    gap: 1.05rem;
     padding-bottom: 0;
     max-width: 100%;
   }
@@ -1159,21 +516,7 @@ html.lenis body {
     max-width: 100%;
   }
 
-  .hero-name-line {
-    font-size: clamp(2.55rem, 11.4vw, 4.15rem);
-    line-height: 0.88;
-    gap: 0.01em;
-  }
-
-  .hero-name-line-2 {
-    font-size: clamp(2.65rem, 11.8vw, 4.35rem);
-  }
-
-  .hero-letter {
-    filter:
-      drop-shadow(0 -1px 1px rgba(255, 255, 255, 0.42))
-      drop-shadow(0 3px 5px rgba(31, 65, 118, 0.10));
-  }
+  /* hero-name-fallback mobile sizing is set above */
 
   .site-nav {
     width: 100vw;
@@ -1189,15 +532,7 @@ html.lenis body {
   }
 
   .hero-projects {
-    margin-top: 0.5rem;
-  }
-
-  .hero-projects > div {
-    gap: 1rem;
-  }
-
-  .hero-projects a {
-    height: 108px;
+    margin-top: 0.15rem;
   }
 
   .hero-copy-row p {
@@ -1213,17 +548,58 @@ html.lenis body {
   }
 }
 
+@media (max-width: 768px) {
+  .section-heading::before {
+    inset: -0.9rem -0.85rem -0.85rem;
+    border-radius: 26px;
+  }
+
+  .project-evidence-stage::before {
+    inset: -1.2rem -0.85rem;
+    border-radius: 30px;
+  }
+
+  .project-artifact {
+    min-height: 214px;
+  }
+
+  .project-artifact__card {
+    height: 124px;
+  }
+
+  .project-artifact__orb {
+    width: min(92%, 340px);
+  }
+
+  .proof-cell {
+    border-radius: 20px;
+  }
+
+  .project-detail-hero {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+
+  .project-detail-artifact {
+    min-height: 238px;
+  }
+
+  .project-detail-card {
+    height: 132px;
+  }
+}
+
 @media (min-width: 769px) and (max-height: 820px) {
   .hero-copy-row {
     top: min(50.5vh, 29.5rem);
   }
 
   .hero-projects {
-    bottom: clamp(3.55rem, 7.5vh, 5rem);
+    bottom: clamp(5rem, 9vh, 6.5rem);
   }
 
-  .project-card-button {
-    height: 118px;
+  .project-buttons-row__card {
+    height: 120px;
   }
 }
 
@@ -1276,10 +652,460 @@ html.lenis body {
   animation: drift-x 8s ease-in-out infinite;
 }
 
-/* Keep the native pointer visible; the custom layer is only the liquid halo. */
-@media (hover: hover) and (pointer: fine) {
-  body.custom-cursor-active {
-    cursor: auto;
+/* ---------------------------------------------------------------------------
+ * Liquid-glass project buttons (WebGL + DOM overlay)
+ * --------------------------------------------------------------------------- */
+
+.liquid-glass-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  padding: 1.15rem 1.2rem 1.15rem 1.45rem;
+  text-decoration: none;
+  outline: none;
+  isolation: isolate;
+  border-radius: clamp(26px, 3vw, 48px);
+  filter:
+    drop-shadow(0 22px 24px rgba(10, 43, 92, 0.16))
+    drop-shadow(0 0 22px rgba(0, 102, 255, 0.15));
+  transform: translateZ(0);
+}
+
+.liquid-glass-card::before,
+.liquid-glass-card::after {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.liquid-glass-card::before {
+  border: 1px solid rgba(255, 255, 255, 0.84);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 -1px 0 rgba(0, 78, 170, 0.18) inset,
+    0 -24px 34px rgba(0, 102, 255, 0.13) inset,
+    0 18px 26px rgba(22, 61, 116, 0.12);
+  opacity: 0.95;
+}
+
+.liquid-glass-card::after {
+  background:
+    radial-gradient(86% 68% at 76% 105%, rgba(0, 102, 255, 0.25), transparent 58%),
+    radial-gradient(18% 92% at 2% 54%, rgba(0, 102, 255, 0.20), transparent 70%),
+    radial-gradient(18% 92% at 98% 52%, rgba(0, 102, 255, 0.17), transparent 70%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.20), transparent 36%, rgba(20, 72, 145, 0.11));
+  mix-blend-mode: screen;
+  opacity: 0.92;
+}
+
+.project-buttons-row {
+  display: flex;
+  gap: clamp(1rem, 2.35vw, 2.15rem);
+  width: 100%;
+  align-items: center;
+}
+
+.project-buttons-row__card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 1 1 0;
+  min-width: 0;
+  height: clamp(126px, 15.2vh, 156px);
+  padding:
+    clamp(1.6rem, 2.6vw, 2.2rem)
+    clamp(1.5rem, 2.8vw, 2.4rem)
+    clamp(1.6rem, 2.6vw, 2.2rem)
+    clamp(2.4rem, 3.8vw, 3.4rem);
+  text-decoration: none;
+  outline: none;
+  isolation: isolate;
+  background: transparent;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+}
+
+.project-buttons-row__card:hover {
+  transform: translateY(-4px) scale(1.012);
+  filter:
+    drop-shadow(0 22px 24px rgba(10, 43, 92, 0.14))
+    drop-shadow(0 0 22px rgba(0, 102, 255, 0.15));
+}
+
+.project-buttons-row__card:active {
+  transform: translateY(1px) scale(0.994);
+}
+
+.project-buttons-row__card:focus-visible {
+  outline: none;
+}
+
+.liquid-glass-canvas {
+  position: absolute;
+  inset: -1px;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 1;
+}
+
+.liquid-glass-content {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+  padding-right: 0.5rem;
+  pointer-events: none;
+}
+
+.liquid-glass-index {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(35, 45, 60, 0.58);
+  letter-spacing: 0.04em;
+}
+
+.liquid-glass-title {
+  font-family: var(--font-inter-tight), sans-serif;
+  font-size: clamp(15px, 1.15vw, 19px);
+  font-weight: 760;
+  color: rgba(6, 10, 16, 0.95);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.liquid-glass-subtitle {
+  font-size: clamp(11px, 0.85vw, 13px);
+  color: rgba(28, 38, 54, 0.76);
+  line-height: 1.35;
+}
+
+.liquid-glass-arrow {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  width: clamp(44px, 3.2vw, 54px);
+  height: clamp(44px, 3.2vw, 54px);
+  flex-shrink: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(70% 86% at 28% 10%, rgba(255, 255, 255, 0.96), transparent 58%),
+    radial-gradient(90% 76% at 78% 110%, rgba(0, 102, 255, 0.10), transparent 62%),
+    rgba(255, 255, 255, 0.86);
+  color: rgba(8, 12, 18, 0.92);
+  box-shadow:
+    0 10px 28px -18px rgba(8, 35, 82, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.96) inset,
+    0 -1px 0 rgba(0, 78, 170, 0.12) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.72);
+  transform: translateZ(0);
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.35s ease,
+    box-shadow 0.35s ease;
+  pointer-events: auto;
+}
+
+.liquid-glass-arrow-icon {
+  width: 17px;
+  height: 17px;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.project-buttons-row__card:hover .liquid-glass-arrow {
+  transform: scale(1.06);
+  background: rgba(255, 255, 255, 1);
+  box-shadow:
+    0 12px 32px -18px rgba(8, 35, 82, 0.5),
+    0 1px 1px rgba(255, 255, 255, 0.8) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.project-evidence-stage {
+  position: relative;
+}
+
+.project-evidence-stage::before {
+  content: "";
+  position: absolute;
+  inset: -2.5rem -2rem;
+  z-index: -1;
+  border-radius: 44px;
+  background:
+    radial-gradient(34% 52% at 18% 34%, rgba(255, 255, 255, 0.50), transparent 72%),
+    radial-gradient(44% 54% at 88% 60%, rgba(0, 102, 255, 0.060), transparent 76%),
+    linear-gradient(132deg, rgba(255, 255, 255, 0.16), rgba(223, 238, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  opacity: 0.88;
+}
+
+.project-artifact {
+  position: relative;
+  min-height: 260px;
+  display: grid;
+  align-items: center;
+  isolation: isolate;
+}
+
+.project-artifact__orb,
+.project-artifact__scan {
+  position: absolute;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.project-artifact__orb {
+  width: min(82%, 360px);
+  aspect-ratio: 1.48;
+  left: 50%;
+  top: 50%;
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(-9deg);
+  background:
+    radial-gradient(52% 36% at 28% 18%, rgba(255, 255, 255, 0.92), transparent 68%),
+    radial-gradient(58% 48% at 76% 84%, rgba(0, 102, 255, 0.22), transparent 70%),
+    radial-gradient(65% 62% at 54% 54%, rgba(232, 244, 255, 0.44), rgba(255, 255, 255, 0.10) 72%, transparent 100%);
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  box-shadow:
+    0 2px 0 rgba(255, 255, 255, 0.88) inset,
+    0 -20px 42px rgba(0, 102, 255, 0.11) inset,
+    0 34px 50px -42px rgba(11, 42, 88, 0.32);
+  filter: blur(0.1px) saturate(1.06);
+  opacity: 0.82;
+}
+
+.project-artifact__scan {
+  inset: 16% 6%;
+  border-radius: 999px;
+  background:
+    repeating-linear-gradient(92deg, transparent 0 18px, rgba(0, 102, 255, 0.050) 19px, transparent 20px),
+    radial-gradient(70% 44% at 50% 52%, rgba(255, 255, 255, 0.32), transparent 72%);
+  mask-image: radial-gradient(70% 48% at 50% 50%, #000 42%, transparent 76%);
+  opacity: 0.42;
+  transform: rotate(-7deg);
+}
+
+.project-artifact__card {
+  z-index: 1;
+  height: 136px;
+  width: min(100%, 460px);
+  margin-inline: auto;
+}
+
+.project-title-stack {
+  position: relative;
+  z-index: 1;
+}
+
+.project-lede {
+  max-width: 48rem;
+}
+
+.proof-grid {
+  align-items: stretch;
+}
+
+.proof-cell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px;
+  padding: 1.15rem;
+  background:
+    radial-gradient(88% 92% at 8% 0%, rgba(255, 255, 255, 0.66), transparent 64%),
+    radial-gradient(64% 66% at 94% 100%, rgba(0, 102, 255, 0.085), transparent 70%),
+    rgba(255, 255, 255, 0.31);
+  border: 1px solid rgba(255, 255, 255, 0.54);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 -12px 22px rgba(0, 102, 255, 0.042) inset,
+    0 18px 30px -28px rgba(13, 47, 93, 0.34);
+}
+
+.proof-cell::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.34), transparent);
+  opacity: 0.62;
+}
+
+.proof-label {
+  margin-bottom: 0.65rem;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(28, 36, 51, 0.60);
+}
+
+.timeline-bead {
+  background:
+    radial-gradient(circle at 34% 20%, rgba(255, 255, 255, 0.95), rgba(232, 244, 255, 0.62) 42%, rgba(0, 102, 255, 0.30) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 0 0 4px rgba(0, 102, 255, 0.095),
+    0 0 22px rgba(0, 102, 255, 0.24),
+    0 1px 0 rgba(255, 255, 255, 0.96) inset,
+    0 -4px 10px rgba(0, 102, 255, 0.18) inset;
+}
+
+.stack-river span {
+  border: 1px solid rgba(255, 255, 255, 0.58);
+  background:
+    radial-gradient(100% 140% at 18% 0%, rgba(255, 255, 255, 0.78), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(221, 238, 255, 0.24));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 -8px 16px rgba(0, 102, 255, 0.038) inset;
+}
+
+.project-detail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.78fr);
+  gap: clamp(2rem, 6vw, 5.5rem);
+  align-items: center;
+}
+
+.project-detail-artifact {
+  min-height: 340px;
+}
+
+.project-detail-card {
+  height: 156px;
+}
+
+.project-overview-slab {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  background:
+    radial-gradient(64% 88% at 14% 0%, rgba(255, 255, 255, 0.72), transparent 64%),
+    radial-gradient(54% 60% at 92% 92%, rgba(0, 102, 255, 0.12), transparent 70%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.44), rgba(235, 246, 255, 0.25));
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.88) inset,
+    0 -20px 36px rgba(0, 102, 255, 0.045) inset,
+    0 30px 50px -38px rgba(11, 42, 88, 0.34);
+}
+
+.project-overview-slab::before {
+  content: "";
+  position: absolute;
+  inset: auto 8% 0;
+  height: 4px;
+  border-radius: 999px 999px 0 0;
+  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.34), rgba(255, 255, 255, 0.70), transparent);
+  opacity: 0.70;
+}
+
+.project-buttons-row__card:hover .liquid-glass-arrow-icon {
+  transform: translate(1.5px, -1.5px);
+}
+
+.liquid-glass-arrow--hover,
+.liquid-glass-arrow:hover {
+  transform: scale(1.08) !important;
+  background: rgba(255, 255, 255, 1) !important;
+  box-shadow:
+    0 14px 36px -18px rgba(8, 35, 82, 0.55),
+    0 1px 1px rgba(255, 255, 255, 0.8) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.5) !important;
+}
+
+.liquid-glass-arrow--hover .liquid-glass-arrow-icon,
+.liquid-glass-arrow:hover .liquid-glass-arrow-icon {
+  transform: translate(2px, -2px);
+}
+
+.project-buttons-row__card:active .liquid-glass-arrow {
+  transform: scale(0.96) translateY(2px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.project-buttons-row__card:focus-visible .liquid-glass-arrow,
+.liquid-glass-arrow:focus-visible {
+  box-shadow:
+    0 0 0 3px rgba(0, 102, 255, 0.35),
+    0 10px 28px -18px rgba(8, 35, 82, 0.45),
+    0 1px 1px rgba(255, 255, 255, 0.8) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.4);
+}
+
+/* Responsive liquid-glass row */
+@media (max-width: 1024px) {
+  .project-buttons-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .project-buttons-row__card {
+    height: clamp(116px, 12vh, 134px);
+    padding:
+      clamp(1.4rem, 2.2vw, 1.8rem)
+      clamp(1.3rem, 2.4vw, 2rem)
+      clamp(1.4rem, 2.2vw, 1.8rem)
+      clamp(1.8rem, 3vw, 2.6rem);
   }
 }
+
+@media (max-width: 640px) {
+  .project-buttons-row {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .project-buttons-row__card {
+    height: 108px;
+    padding: 1.35rem 1.2rem 1.35rem 1.55rem;
+  }
+
+  .liquid-glass-title {
+    font-size: 14px;
+  }
+
+  .liquid-glass-subtitle {
+    font-size: 11px;
+  }
+
+  .liquid-glass-arrow {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+/* Reduced motion: keep the glass look, disable continuous drift */
+@media (prefers-reduced-motion: reduce) {
+  .project-buttons-row__card {
+    transition: none;
+  }
+
+  .project-buttons-row__card:hover {
+    transform: none;
+  }
+
+  .project-buttons-row__card:active {
+    transform: scale(0.985);
+  }
+
+  .liquid-glass-arrow,
+  .liquid-glass-arrow-icon {
+    transition: none;
+  }
+}
+
 /* force recompile 1782931931 */

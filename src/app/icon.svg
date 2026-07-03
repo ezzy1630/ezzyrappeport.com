@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="drop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#e8f1ff"/>
+      <stop offset="100%" stop-color="#a9c9f5"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="#f7f9fc"/>
+  <path d="M32 9c8 9 13.5 16.5 13.5 23.5a13.5 13.5 0 0 1-27 0C18.5 25.5 24 18 32 9z" fill="url(#drop)" stroke="#0066ff" stroke-opacity="0.4" stroke-width="1.6"/>
+  <text x="32" y="42" font-family="Georgia, 'Times New Roman', serif" font-size="19" font-weight="900" font-style="italic" text-anchor="middle" fill="#0a0f1a">ER</text>
+</svg>

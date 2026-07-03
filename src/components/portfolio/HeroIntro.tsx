@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { ArrowUpRight } from "lucide-react";
 import { bio } from "@/lib/portfolio/content";
+import { useLiquidTransform } from "@/hooks/portfolio/use-liquid-transform";
+import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 
 /**
  * HeroIntro
@@ -13,44 +15,54 @@ import { bio } from "@/lib/portfolio/content";
  *  - Primary CTA: "View Featured Work" pill with diagonal arrow
  */
 export default function HeroIntro() {
+  const reducedMotion = useReducedMotion();
+  const liquidRef = useLiquidTransform<HTMLDivElement>({
+    scale: 0.8,
+    maxMove: 10,
+    scrollMultiplier: 0.8,
+    reduce: reducedMotion,
+  });
+
   return (
-    <motion.div
-      initial={{ opacity: 1, y: 0 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1.2, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
-      className="hero-intro flex w-full min-w-0 max-w-[430px] max-md:max-w-[calc(100vw-2.5rem)] flex-col gap-4"
-    >
-      {/* Tagline */}
-      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[18px] md:text-[20px] font-medium text-ink">
-        {bio.taglineParts.map((part, i) => (
-          <span key={part} className="flex items-center gap-3">
-            {i > 0 && (
-              <span
-                aria-hidden="true"
-                className="inline-block w-1.5 h-1.5 rounded-full bg-electric"
-              />
-            )}
-            <span>{part}</span>
-          </span>
-        ))}
-      </div>
-
-      {/* Body copy */}
-      <p className="hero-intro-copy w-full min-w-0 max-w-[410px] max-md:max-w-[20rem] text-[13px] md:text-[14px] leading-[1.48] text-ink-soft/82">
-        {bio.bodyParagraphs[0]}
-      </p>
-
-      {/* CTA */}
-      <a
-        href="#projects"
-        className="group inline-flex items-center gap-3 self-start rounded-full pl-6 pr-2 py-2 glass text-[13px] md:text-[14px] font-medium text-ink hover:scale-[1.02] active:scale-[0.99] transition-transform duration-300"
-        data-cursor="hover"
+    <div ref={liquidRef} className="will-change-transform">
+      <motion.div
+        initial={{ opacity: 1, y: 0 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.2, delay: 1.2, ease: [0.22, 1, 0.36, 1] }}
+        className="hero-intro flex w-full min-w-0 max-w-[430px] max-md:max-w-[calc(100vw-2.5rem)] flex-col gap-4"
       >
-        View Featured Work
-        <span className="grid place-items-center w-8 h-8 rounded-full bg-ink text-white transition-transform duration-300 group-hover:rotate-45">
-          <ArrowUpRight className="w-4 h-4" strokeWidth={2.2} />
-        </span>
-      </a>
-    </motion.div>
+        {/* Tagline */}
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-[18px] md:text-[20px] font-medium text-ink">
+          {bio.taglineParts.map((part, i) => (
+            <span key={part} className="flex items-center gap-3">
+              {i > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="inline-block w-1.5 h-1.5 rounded-full bg-electric"
+                />
+              )}
+              <span>{part}</span>
+            </span>
+          ))}
+        </div>
+
+        {/* Body copy */}
+        <p className="hero-intro-copy w-full min-w-0 max-w-[410px] max-md:max-w-[20rem] text-[13px] md:text-[14px] leading-[1.48] text-ink-soft/82">
+          {bio.bodyParagraphs[0]}
+        </p>
+
+        {/* CTA */}
+        <a
+          href="#projects"
+          className="group liquid-button inline-flex items-center gap-3 self-start rounded-full pl-6 pr-2 py-2 glass text-[13px] md:text-[14px] font-medium text-ink hover:scale-[1.02] active:scale-[0.99] transition-transform duration-300"
+          data-cursor="hover"
+        >
+          View Featured Work
+          <span className="grid place-items-center w-8 h-8 rounded-full bg-ink text-white transition-transform duration-300 group-hover:rotate-45">
+            <ArrowUpRight className="w-4 h-4" strokeWidth={2.2} />
+          </span>
+        </a>
+      </motion.div>
+    </div>
   );
 }
