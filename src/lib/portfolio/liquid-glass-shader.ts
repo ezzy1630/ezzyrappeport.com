@@ -30,7 +30,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   monkeyclaw: {
     reducedMotion: 0,
     blueIntensity: 0.74,
-    organicAmount: 0.16,
+    organicAmount: 0.42,
     thickness: 1.14,
     causticSpeed: 0.85,
     rimSoftness: 0.44,
@@ -42,7 +42,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   velox: {
     reducedMotion: 0,
     blueIntensity: 0.56,
-    organicAmount: 0.12,
+    organicAmount: 0.34,
     thickness: 1.02,
     causticSpeed: 1.45,
     rimSoftness: 0.56,
@@ -54,7 +54,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   flowe: {
     reducedMotion: 0,
     blueIntensity: 0.62,
-    organicAmount: 0.14,
+    organicAmount: 0.38,
     thickness: 1.08,
     causticSpeed: 0.68,
     rimSoftness: 0.50,
@@ -66,7 +66,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   nexarad: {
     reducedMotion: 0,
     blueIntensity: 0.86,
-    organicAmount: 0.15,
+    organicAmount: 0.40,
     thickness: 1.22,
     causticSpeed: 1.05,
     rimSoftness: 0.40,
@@ -78,7 +78,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   etch: {
     reducedMotion: 0,
     blueIntensity: 0.64,
-    organicAmount: 0.12,
+    organicAmount: 0.32,
     thickness: 0.98,
     causticSpeed: 1.18,
     rimSoftness: 0.54,
@@ -224,7 +224,7 @@ export const FRAGMENT_SHADER = /* glsl */ `
 
     float sdf = sdRoundedRect(p, safeSize, cornerRadii);
 
-    float edgeNoise = organicEdge(p, t * 0.5) * u_organicAmount * (1.0 - morph) * 0.62;
+    float edgeNoise = organicEdge(p, t * 0.5) * u_organicAmount * (1.0 - morph) * 0.90;
 
     float arrowRadius = min(u_resolution.y * 0.28, 30.0);
     vec2 arrowCenter = vec2(safeSize.x - 36.0, 0.0);
@@ -279,7 +279,7 @@ export const FRAGMENT_SHADER = /* glsl */ `
     fragColor.a += causticMask * caustic * 0.46;
 
     vec3 bodyColor = COLOR_FROST;
-    float bodyAlpha = mix(0.46, 0.58, morph) * bodyMask;
+    float bodyAlpha = mix(0.34, 0.46, morph) * bodyMask;
     float cloud = fbm(px * 0.014 + t * 0.006) * 0.5 + 0.5;
     float frostVeil = fbm(px * 0.025 + vec2(t * 0.014, -t * 0.009)) * innerMask;
     bodyColor = mix(bodyColor, COLOR_WHITE, cloud * 0.22 * innerMask);
@@ -303,13 +303,13 @@ export const FRAGMENT_SHADER = /* glsl */ `
     vec2 surfGrad = normalize(p + vec2(0.001, 0.001));
     float diffuse = max(dot(surfGrad, lightDir), 0.0);
     vec3 rimColor = mix(COLOR_WHITE, COLOR_BLUE_GLOW, (1.0 - diffuse) * 0.34 * lowerFactor);
-    fragColor.rgb += rimColor * rimLight * 1.48 * u_specularIntensity;
-    fragColor.a += rimLight * 0.84;
+    fragColor.rgb += rimColor * rimLight * 1.86 * u_specularIntensity;
+    fragColor.a += rimLight * 0.94;
 
     float meniscus = smoothstep(0.0, -18.0, sdf) * (1.0 - smoothstep(-28.0, -64.0, sdf));
     meniscus *= lowerFactor * (0.72 + 0.28 * caustic);
-    fragColor.rgb += mix(COLOR_WHITE, COLOR_BLUE_GLOW, 0.48) * meniscus * 0.96 * u_blueIntensity;
-    fragColor.a += meniscus * 0.36;
+    fragColor.rgb += mix(COLOR_WHITE, COLOR_BLUE_GLOW, 0.56) * meniscus * 1.34 * u_blueIntensity;
+    fragColor.a += meniscus * 0.48;
 
     float streaks = sin(px.x * 0.012 + px.y * 0.004 + t * 0.04) * 0.5 + 0.5;
     streaks *= smoothstep(0.0, 1.0, fbm(px * 0.022 + vec2(t * 0.012, 0.0)));
@@ -339,7 +339,7 @@ export const FRAGMENT_SHADER = /* glsl */ `
 
     fragColor.rgb = pow(fragColor.rgb, vec3(0.92));
     float capsuleAlpha = clamp(bodyMask + rimMask + edgeMask + outerShadow * 0.42, 0.0, 1.0);
-    fragColor.a = clamp(fragColor.a, 0.0, 0.82) * capsuleAlpha;
+    fragColor.a = clamp(fragColor.a, 0.0, 0.92) * capsuleAlpha;
 
     gl_FragColor = fragColor;
   }

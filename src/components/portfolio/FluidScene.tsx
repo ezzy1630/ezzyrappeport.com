@@ -264,7 +264,7 @@ void main() {
   vec3 refrBg = vec3(r, g, b) * vec3(0.96, 0.98, 1.0) + vec3(0.010, 0.014, 0.026);
 
   vec3 frost = vec3(0.965, 0.985, 1.0);
-  vec3 letterBody = mix(refrBg, frost, 0.16);
+  vec3 letterBody = mix(refrBg, frost, 0.055);
 
   float bodyGrad = smoothstep(0.13, 0.55, uv.y);
   letterBody += vec3(0.06, 0.065, 0.078) * (1.0 - bodyGrad) * interior;
@@ -277,10 +277,10 @@ void main() {
   );
   float internalVein = fbm3((uv + innerDrift * 0.018) * vec2(14.0, 9.0) + t * 0.035);
   float depthPocket = smoothstep(0.36, 0.88, internalVein) * interior;
-  letterBody -= vec3(0.08, 0.11, 0.17) * occ * 0.42;
-  letterBody -= vec3(0.07, 0.10, 0.18) * depthPocket * 0.32;
-  letterBody += vec3(0.94, 0.975, 1.0) * shoulder * 0.34;
-  letterBody += vec3(0.92, 0.97, 1.0) * insideRidge * 0.44;
+  letterBody -= vec3(0.08, 0.11, 0.17) * occ * 0.28;
+  letterBody -= vec3(0.07, 0.10, 0.18) * depthPocket * 0.22;
+  letterBody += vec3(0.98, 0.995, 1.0) * shoulder * 0.48;
+  letterBody += vec3(0.96, 0.99, 1.0) * insideRidge * 0.68;
 
   vec3 lightDir = normalize(vec3(-0.48, -0.56, 0.68));
   float spec = pow(max(dot(n, lightDir), 0.0), SPEC_SHINE);
@@ -312,19 +312,19 @@ void main() {
   float rim = smoothstep(0.18, 0.86, edge);
   float letterMask = smoothstep(0.40, 0.62, cov);
   vec3 color = base;
-  color = mix(color, letterBody, letterMask * (0.68 + mobilePoster * 0.16));
-  color += vec3(1.0) * rim * (RIM_AMP * (1.34 + mobilePoster * 0.28)) * (1.0 - letterMask * 0.34);
-  color += vec3(0.95, 0.99, 1.0) * outsideRidge * (1.15 + mobilePoster * 0.34);
-  color += pearlBlue * outsideRidge * (0.42 + mobilePoster * 0.14);
-  color += pearlBlue * rim * (0.56 + mobilePoster * 0.18) * (1.0 - letterMask);
-  color += vec3(0.90, 0.98, 1.0) * innerRim * (0.72 + mobilePoster * 0.22) * letterMask;
-  color += vec3(1.0) * spec * (0.58 + mobilePoster * 0.16) * (rim + insideRidge);
-  color += pearlBlue * shoulder * caustic * 0.34;
+  color = mix(color, letterBody, letterMask * (0.34 + mobilePoster * 0.10));
+  color += vec3(1.0) * rim * (RIM_AMP * (1.74 + mobilePoster * 0.30)) * (1.0 - letterMask * 0.20);
+  color += vec3(0.98, 1.0, 1.0) * outsideRidge * (1.72 + mobilePoster * 0.28);
+  color += pearlBlue * outsideRidge * (0.58 + mobilePoster * 0.16);
+  color += pearlBlue * rim * (0.68 + mobilePoster * 0.18) * (1.0 - letterMask * 0.24);
+  color += vec3(0.94, 0.99, 1.0) * innerRim * (1.18 + mobilePoster * 0.18) * letterMask;
+  color += vec3(1.0) * spec * (0.82 + mobilePoster * 0.18) * (rim + insideRidge);
+  color += pearlBlue * shoulder * caustic * 0.46;
   float coolLetterMask = clamp(letterMask + outsideRidge * 0.72 + insideRidge * 0.38, 0.0, 1.0);
   float letterLum = dot(color, vec3(0.299, 0.587, 0.114));
-  vec3 cooledLetter = vec3(letterLum * 0.70, letterLum * 0.82, min(1.0, letterLum * 1.14 + 0.12));
-  cooledLetter += pearlBlue * (outsideRidge * 0.10 + shoulder * 0.05);
-  color = mix(color, cooledLetter, coolLetterMask * 0.48);
+  vec3 cooledLetter = vec3(letterLum * 0.82, letterLum * 0.92, min(1.0, letterLum * 1.06 + 0.06));
+  cooledLetter += pearlBlue * (outsideRidge * 0.16 + shoulder * 0.03);
+  color = mix(color, cooledLetter, coolLetterMask * 0.26);
 
   color += pearlBlue * ripple.x * 0.28 + vec3(1.0) * ripple.y * 0.38;
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
