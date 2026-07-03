@@ -44,7 +44,7 @@ export default function ScrollIndicator() {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.8, delay: 1.8 }}
-      className="fixed left-6 md:left-10 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none"
+      className="scroll-indicator fixed left-6 md:left-10 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3 pointer-events-none"
       aria-hidden="true"
     >
       {SECTIONS.map((id, i) => (

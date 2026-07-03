@@ -52,15 +52,15 @@ uniform float u_nameOpacity;
 in vec2 v_uv;
 out vec4 outColor;
 
-#define MENISCUS_AMP 0.44
-#define REFRACTION   0.168
-#define RIM_AMP      1.78
-#define SPEC_SHINE   72.0
-#define SPEC_AMP     0.86
-#define FRES_AMP     1.02
-#define DOME_AMP     0.34
-#define GLOSS_AMP    0.76
-#define CAUSTIC_AMP  0.30
+#define MENISCUS_AMP 0.50
+#define REFRACTION   0.176
+#define RIM_AMP      1.94
+#define SPEC_SHINE   86.0
+#define SPEC_AMP     0.98
+#define FRES_AMP     1.15
+#define DOME_AMP     0.36
+#define GLOSS_AMP    0.84
+#define CAUSTIC_AMP  0.34
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
@@ -189,6 +189,7 @@ void main() {
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec2 p = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
+  float mobilePoster = smoothstep(0.82, 0.56, aspect);
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
@@ -252,8 +253,8 @@ void main() {
   vec3 n = normalize(vec3(-hgrad.x * 0.5, -hgrad.y * 0.5, 1.0));
 
   float glassDepth = smoothstep(0.14, 0.96, cov);
-  float chroma = edge * 0.0105 + shoulder * 0.0045 + glassDepth * 0.0025;
-  vec2 refrBase = uv + n.xy * REFRACTION * (0.68 + edge * 2.9 + glassDepth * 0.58) + sampleWarp * 0.58;
+  float chroma = edge * 0.0125 + shoulder * 0.0055 + glassDepth * 0.0028;
+  vec2 refrBase = uv + n.xy * REFRACTION * (0.76 + edge * 3.4 + glassDepth * 0.66) + sampleWarp * 0.62;
   vec2 refrR = refrBase + lensOffset * 1.2 + vec2(chroma, -chroma * 0.32);
   vec2 refrG = refrBase + lensOffset * 1.0;
   vec2 refrB = refrBase + lensOffset * 0.8 - vec2(chroma * 1.15, -chroma * 0.24);
@@ -262,8 +263,8 @@ void main() {
   float b = texture(u_texture, clamp(refrB, vec2(0.0), vec2(1.0))).b * 1.02 + 0.026;
   vec3 refrBg = vec3(r, g, b) * vec3(0.96, 0.98, 1.0) + vec3(0.010, 0.014, 0.026);
 
-  vec3 frost = vec3(0.94, 0.965, 1.0);
-  vec3 letterBody = mix(refrBg, frost, 0.26);
+  vec3 frost = vec3(0.965, 0.985, 1.0);
+  vec3 letterBody = mix(refrBg, frost, 0.16);
 
   float bodyGrad = smoothstep(0.13, 0.55, uv.y);
   letterBody += vec3(0.06, 0.065, 0.078) * (1.0 - bodyGrad) * interior;
@@ -276,14 +277,14 @@ void main() {
   );
   float internalVein = fbm3((uv + innerDrift * 0.018) * vec2(14.0, 9.0) + t * 0.035);
   float depthPocket = smoothstep(0.36, 0.88, internalVein) * interior;
-  letterBody -= vec3(0.10, 0.13, 0.19) * occ * 0.78;
-  letterBody -= vec3(0.08, 0.12, 0.20) * depthPocket * 0.52;
-  letterBody += vec3(0.94, 0.975, 1.0) * shoulder * 0.22;
-  letterBody += vec3(0.88, 0.95, 1.0) * insideRidge * 0.20;
+  letterBody -= vec3(0.08, 0.11, 0.17) * occ * 0.42;
+  letterBody -= vec3(0.07, 0.10, 0.18) * depthPocket * 0.32;
+  letterBody += vec3(0.94, 0.975, 1.0) * shoulder * 0.34;
+  letterBody += vec3(0.92, 0.97, 1.0) * insideRidge * 0.44;
 
   vec3 lightDir = normalize(vec3(-0.48, -0.56, 0.68));
   float spec = pow(max(dot(n, lightDir), 0.0), SPEC_SHINE);
-  letterBody += vec3(1.0) * spec * SPEC_AMP * interior;
+  letterBody += vec3(1.0) * spec * SPEC_AMP * (interior + shoulder * 0.7);
 
   vec3 topLight = normalize(vec3(-0.12, -0.86, 0.52));
   float gloss = pow(max(dot(n, topLight), 0.0), 6.8);
@@ -311,19 +312,19 @@ void main() {
   float rim = smoothstep(0.18, 0.86, edge);
   float letterMask = smoothstep(0.40, 0.62, cov);
   vec3 color = base;
-  color = mix(color, letterBody, letterMask * 0.82);
-  color += vec3(1.0) * rim * RIM_AMP * (1.0 - letterMask * 0.46);
-  color += vec3(0.86, 0.94, 1.0) * outsideRidge * 0.58;
-  color += pearlBlue * outsideRidge * 0.22;
-  color += pearlBlue * rim * 0.42 * (1.0 - letterMask);
-  color += vec3(0.82, 0.92, 1.0) * innerRim * 0.44 * letterMask;
-  color += vec3(1.0) * spec * 0.30 * (rim + insideRidge);
-  color += pearlBlue * shoulder * caustic * 0.26;
+  color = mix(color, letterBody, letterMask * (0.68 + mobilePoster * 0.16));
+  color += vec3(1.0) * rim * (RIM_AMP * (1.34 + mobilePoster * 0.28)) * (1.0 - letterMask * 0.34);
+  color += vec3(0.95, 0.99, 1.0) * outsideRidge * (1.15 + mobilePoster * 0.34);
+  color += pearlBlue * outsideRidge * (0.42 + mobilePoster * 0.14);
+  color += pearlBlue * rim * (0.56 + mobilePoster * 0.18) * (1.0 - letterMask);
+  color += vec3(0.90, 0.98, 1.0) * innerRim * (0.72 + mobilePoster * 0.22) * letterMask;
+  color += vec3(1.0) * spec * (0.58 + mobilePoster * 0.16) * (rim + insideRidge);
+  color += pearlBlue * shoulder * caustic * 0.34;
   float coolLetterMask = clamp(letterMask + outsideRidge * 0.72 + insideRidge * 0.38, 0.0, 1.0);
   float letterLum = dot(color, vec3(0.299, 0.587, 0.114));
-  vec3 cooledLetter = vec3(letterLum * 0.64, letterLum * 0.76, min(1.0, letterLum * 1.08 + 0.10));
+  vec3 cooledLetter = vec3(letterLum * 0.70, letterLum * 0.82, min(1.0, letterLum * 1.14 + 0.12));
   cooledLetter += pearlBlue * (outsideRidge * 0.10 + shoulder * 0.05);
-  color = mix(color, cooledLetter, coolLetterMask * 0.86);
+  color = mix(color, cooledLetter, coolLetterMask * 0.48);
 
   color += pearlBlue * ripple.x * 0.28 + vec3(1.0) * ripple.y * 0.38;
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
@@ -398,18 +399,17 @@ function createHeroTextCanvas(width: number, height: number): HTMLCanvasElement 
 
   const lines: TextLine[] = isMobilePoster
     ? [
-        { text: HERO_LINE_1, scale: 0.82, xShift: 0 },
-        { text: "RAPPE", scale: 1.0, xShift: 0 },
-        { text: "PORT", scale: 0.98, xShift: 0 },
+        { text: HERO_LINE_1, scale: 0.92, xShift: 0 },
+        { text: HERO_LINE_2, scale: 1.0, xShift: 0 },
       ]
     : [
         { text: HERO_LINE_1, scale: 0.96, xShift: 0 },
         { text: HERO_LINE_2, scale: 1.0, xShift: 0 },
       ];
 
-  const targetW = width * (isMobilePoster ? 0.52 : 0.86);
-  const targetH = height * (isMobilePoster ? 0.31 : 0.36);
-  const lineGap = isMobilePoster ? 0.56 : 0.76;
+  const targetW = width * (isMobilePoster ? 0.64 : 0.86);
+  const targetH = height * (isMobilePoster ? 0.26 : 0.36);
+  const lineGap = isMobilePoster ? 0.72 : 0.76;
 
   const measureAt = (fontSize: number) => {
     const maxW = lines.reduce((max, line) => {
@@ -426,7 +426,7 @@ function createHeroTextCanvas(width: number, height: number): HTMLCanvasElement 
     if (measured.maxW <= 0 || measured.blockH <= 0) break;
     size *= Math.min(targetW / measured.maxW, targetH / measured.blockH);
   }
-  size = Math.max(24, Math.min(size, height * (isMobilePoster ? 0.118 : 0.265)));
+  size = Math.max(24, Math.min(size, height * (isMobilePoster ? 0.080 : 0.265)));
 
   ctx.textBaseline = "alphabetic";
   ctx.textAlign = "left";
@@ -451,7 +451,7 @@ function createHeroTextCanvas(width: number, height: number): HTMLCanvasElement 
   };
 
   const measured = measureAt(size);
-  const top = height * (isMobilePoster ? 0.118 : 0.115);
+  const top = height * (isMobilePoster ? 0.116 : 0.115);
   const blockX = (width - measured.maxW) / 2;
   lines.forEach((line, index) => {
     const sz = size * line.scale;

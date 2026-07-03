@@ -19,6 +19,14 @@ type LiquidGlassCardProps = {
   className?: string;
 };
 
+const compactSubtitles: Partial<Record<Project["slug"], string>> = {
+  monkeyclaw: "Security Agent",
+  velox: "Research Browser",
+  flowe: "Productivity App",
+  nexarad: "Radiology Platform",
+  etch: "Hardware Verification",
+};
+
 export default function LiquidGlassCard({
   project,
   personality,
@@ -26,6 +34,7 @@ export default function LiquidGlassCard({
   className = "",
 }: LiquidGlassCardProps) {
   const personalityPreset = PERSONALITY_PRESETS[personality];
+  const displaySubtitle = compactSubtitles[project.slug] ?? project.subtitle;
   const containerRef = useRef<HTMLAnchorElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
@@ -283,7 +292,7 @@ export default function LiquidGlassCard({
       <div className="liquid-glass-content">
         <span className="liquid-glass-index">{project.index}</span>
         <h3 className="liquid-glass-title">{project.title}</h3>
-        <p className="liquid-glass-subtitle">{project.subtitle}</p>
+        <p className="liquid-glass-subtitle">{displaySubtitle}</p>
       </div>
       <span
         className={`liquid-glass-arrow ${arrowHover ? "liquid-glass-arrow--hover" : ""}`}

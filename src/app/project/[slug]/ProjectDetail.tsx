@@ -21,7 +21,7 @@ export default function ProjectDetail({ project }: Props) {
   return (
     <PortfolioShell heroName={false}>
       <div className="content-layer">
-        <article className="relative z-10 mx-auto max-w-6xl px-6 pt-28 md:pt-36 pb-24 md:pb-32">
+        <article className="relative z-10 mx-auto max-w-6xl px-6 pt-24 md:pt-28 pb-24 md:pb-32">
           <Link
             href="/#projects"
             className="liquid-button glass mb-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-ink-soft/80 transition hover:text-ink"
@@ -68,7 +68,7 @@ export default function ProjectDetail({ project }: Props) {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            className="proof-grid mt-14 grid gap-3 md:grid-cols-3"
+            className="proof-grid mt-8 grid gap-3 md:mt-6 md:grid-cols-3"
           >
             {[["Problem", project.problem], ["Approach", project.approach], ["Outcome", project.outcome]].map(([label, value]) => (
               <div key={label} className="proof-cell">

@@ -23,8 +23,7 @@ export default function HeroName() {
         <span className="hero-name-fallback__desktop">ELIEZER</span>
         <span className="hero-name-fallback__desktop">RAPPEPORT</span>
         <span className="hero-name-fallback__mobile">ELIEZER</span>
-        <span className="hero-name-fallback__mobile">RAPPE</span>
-        <span className="hero-name-fallback__mobile">PORT</span>
+        <span className="hero-name-fallback__mobile">RAPPEPORT</span>
       </div>
     </>
   );

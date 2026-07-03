@@ -30,7 +30,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   monkeyclaw: {
     reducedMotion: 0,
     blueIntensity: 0.74,
-    organicAmount: 0.82,
+    organicAmount: 0.16,
     thickness: 1.14,
     causticSpeed: 0.85,
     rimSoftness: 0.44,
@@ -42,7 +42,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   velox: {
     reducedMotion: 0,
     blueIntensity: 0.56,
-    organicAmount: 0.58,
+    organicAmount: 0.12,
     thickness: 1.02,
     causticSpeed: 1.45,
     rimSoftness: 0.56,
@@ -54,7 +54,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   flowe: {
     reducedMotion: 0,
     blueIntensity: 0.62,
-    organicAmount: 0.72,
+    organicAmount: 0.14,
     thickness: 1.08,
     causticSpeed: 0.68,
     rimSoftness: 0.50,
@@ -66,7 +66,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   nexarad: {
     reducedMotion: 0,
     blueIntensity: 0.86,
-    organicAmount: 0.62,
+    organicAmount: 0.15,
     thickness: 1.22,
     causticSpeed: 1.05,
     rimSoftness: 0.40,
@@ -78,7 +78,7 @@ export const PERSONALITY_PRESETS: Record<CardPersonality, CardPersonalityPreset>
   etch: {
     reducedMotion: 0,
     blueIntensity: 0.64,
-    organicAmount: 0.46,
+    organicAmount: 0.12,
     thickness: 0.98,
     causticSpeed: 1.18,
     rimSoftness: 0.54,
@@ -162,11 +162,11 @@ export const FRAGMENT_SHADER = /* glsl */ `
 
   float organicEdge(vec2 p, float t) {
     float h = 0.0;
-    h += sin(p.x * 0.045 + t * 0.35) * 2.2;
-    h += sin(p.y * 0.032 + t * 0.22) * 1.6;
-    h += sin((p.x * 0.7 + p.y) * 0.018 + t * 0.14) * 2.8;
-    h += sin(p.x * 0.12 + p.y * 0.08 + t * 0.28) * 0.9;
-    h += sin(length(p) * 0.04 - t * 0.2) * 1.2;
+    h += sin(p.x * 0.045 + t * 0.35) * 1.0;
+    h += sin(p.y * 0.032 + t * 0.22) * 0.8;
+    h += sin((p.x * 0.7 + p.y) * 0.018 + t * 0.14) * 1.1;
+    h += sin(p.x * 0.12 + p.y * 0.08 + t * 0.28) * 0.35;
+    h += sin(length(p) * 0.04 - t * 0.2) * 0.45;
     return h;
   }
 
@@ -207,23 +207,24 @@ export const FRAGMENT_SHADER = /* glsl */ `
 
     vec2 halfSize = u_resolution * 0.5 - vec2(15.0);
     vec2 safeSize = halfSize - vec2(8.0);
+    float pillRadius = min(safeSize.y * 0.98, safeSize.x * 0.34);
 
     vec4 cornerRadii = mix(
-      vec4(58.0, 42.0, 62.0, 66.0),
-      vec4(34.0, 34.0, 34.0, 34.0),
+      vec4(pillRadius),
+      vec4(pillRadius * 0.96),
       morph
     );
 
     cornerRadii += vec4(
-      sin(u_seed) * 8.0,
-      cos(u_seed * 0.7) * 6.0,
-      sin(u_seed * 1.3) * 9.0,
-      cos(u_seed * 1.7) * 7.0
+      sin(u_seed) * 1.0,
+      cos(u_seed * 0.7) * 0.8,
+      sin(u_seed * 1.3) * 0.9,
+      cos(u_seed * 1.7) * 0.8
     ) * (1.0 - morph);
 
     float sdf = sdRoundedRect(p, safeSize, cornerRadii);
 
-    float edgeNoise = organicEdge(p, t * 0.5) * u_organicAmount * (1.0 - morph) * 1.08;
+    float edgeNoise = organicEdge(p, t * 0.5) * u_organicAmount * (1.0 - morph) * 0.62;
 
     float arrowRadius = min(u_resolution.y * 0.28, 30.0);
     vec2 arrowCenter = vec2(safeSize.x - 36.0, 0.0);
@@ -233,18 +234,18 @@ export const FRAGMENT_SHADER = /* glsl */ `
     float pocketNoiseDamp = smoothstep(0.0, 70.0, arrowDist);
     edgeNoise *= pocketNoiseDamp;
     sdf += edgeNoise;
-    sdf += arrowPocketShape * 12.0;
+    sdf += arrowPocketShape * 1.2;
 
     float pointerDist = length(px - u_pointer);
     float pointerStrength = u_hover * smoothstep(175.0, 0.0, pointerDist);
     float pressure = exp(-pointerDist * 0.018) * u_hover;
-    float edgeBulge = pointerStrength * 7.5 * smoothstep(0.0, 34.0, abs(sdf));
+    float edgeBulge = pointerStrength * 4.8 * smoothstep(0.0, 34.0, abs(sdf));
     float ripple = pointerRipple(px, u_pointer, pointerStrength);
     float wave = clickWave(px, u_clickOrigin, u_clickPulse);
-    sdf += ripple + wave - edgeBulge - pressure * 2.2;
+    sdf += ripple * 0.55 + wave * 0.65 - edgeBulge - pressure * 1.4;
 
-    float rimWidth = mix(28.0, 17.0, morph) * u_thickness;
-    float innerPad = mix(15.0, 7.0, morph);
+    float rimWidth = mix(24.0, 18.0, morph) * u_thickness;
+    float innerPad = mix(13.0, 8.0, morph);
 
     float outerShadow = (1.0 - smoothstep(0.0, 42.0, sdf)) * smoothstep(0.0, 2.0, sdf);
     float contactShadow = (1.0 - smoothstep(0.0, 24.0, sdf)) * smoothstep(0.0, 1.0, sdf);
@@ -259,17 +260,17 @@ export const FRAGMENT_SHADER = /* glsl */ `
 
     vec4 fragColor = vec4(0.0);
 
-    vec3 shadowColor = mix(COLOR_SHADOW, COLOR_BLUE, 0.08) * 0.34;
-    fragColor.rgb += shadowColor * outerShadow * 0.62;
+    vec3 shadowColor = mix(COLOR_SHADOW, COLOR_BLUE, 0.08) * 0.30;
+    fragColor.rgb += shadowColor * outerShadow * 0.50;
     fragColor.rgb += COLOR_BLUE * contactShadow * lowerFactor * 0.12 * u_blueIntensity;
     fragColor.a += outerShadow * 0.24 + contactShadow * lowerFactor * 0.16;
 
     float caustic = caustics(px * 0.85, t * u_causticSpeed);
     float sidePressure = smoothstep(safeSize.x * 0.55, safeSize.x, abs(p.x)) * bodyMask;
-    float causticMask = edgeMask * lowerFactor * u_blueIntensity;
-    causticMask += edgeMask * sidePressure * 0.48 * u_blueIntensity;
-    causticMask += bodyMask * lowerFactor * 0.12 * u_blueIntensity;
-    causticMask += bottomBand * 0.44 * u_blueIntensity;
+    float causticMask = edgeMask * lowerFactor * 1.18 * u_blueIntensity;
+    causticMask += edgeMask * sidePressure * 0.58 * u_blueIntensity;
+    causticMask += bodyMask * lowerFactor * 0.14 * u_blueIntensity;
+    causticMask += bottomBand * 0.58 * u_blueIntensity;
     causticMask *= smoothstep(0.0, -8.0, sdf) * 0.78 + smoothstep(0.0, 4.0, sdf) * 0.12;
     causticMask = clamp(causticMask, 0.0, 1.0);
     vec3 blueGlow = mix(COLOR_BLUE, COLOR_BLUE_GLOW, caustic * 0.7);
@@ -278,13 +279,13 @@ export const FRAGMENT_SHADER = /* glsl */ `
     fragColor.a += causticMask * caustic * 0.46;
 
     vec3 bodyColor = COLOR_FROST;
-    float bodyAlpha = mix(0.80, 0.92, morph) * bodyMask;
+    float bodyAlpha = mix(0.46, 0.58, morph) * bodyMask;
     float cloud = fbm(px * 0.014 + t * 0.006) * 0.5 + 0.5;
     float frostVeil = fbm(px * 0.025 + vec2(t * 0.014, -t * 0.009)) * innerMask;
     bodyColor = mix(bodyColor, COLOR_WHITE, cloud * 0.22 * innerMask);
     bodyColor -= COLOR_SHADOW * frostVeil * 0.030;
     bodyColor += COLOR_BLUE_GLOW * bottomBand * caustic * 0.24 * u_blueIntensity;
-    bodyAlpha *= 1.0 + innerMask * 0.22 + lowerFactor * 0.10;
+    bodyAlpha *= 1.0 + innerMask * 0.08 + lowerFactor * 0.05;
     fragColor.rgb += bodyColor * bodyAlpha;
     fragColor.a += bodyAlpha;
 
@@ -302,13 +303,13 @@ export const FRAGMENT_SHADER = /* glsl */ `
     vec2 surfGrad = normalize(p + vec2(0.001, 0.001));
     float diffuse = max(dot(surfGrad, lightDir), 0.0);
     vec3 rimColor = mix(COLOR_WHITE, COLOR_BLUE_GLOW, (1.0 - diffuse) * 0.34 * lowerFactor);
-    fragColor.rgb += rimColor * rimLight * 1.55 * u_specularIntensity;
-    fragColor.a += rimLight * 0.92;
+    fragColor.rgb += rimColor * rimLight * 1.48 * u_specularIntensity;
+    fragColor.a += rimLight * 0.84;
 
     float meniscus = smoothstep(0.0, -18.0, sdf) * (1.0 - smoothstep(-28.0, -64.0, sdf));
     meniscus *= lowerFactor * (0.72 + 0.28 * caustic);
-    fragColor.rgb += mix(COLOR_WHITE, COLOR_BLUE_GLOW, 0.45) * meniscus * 0.78 * u_blueIntensity;
-    fragColor.a += meniscus * 0.30;
+    fragColor.rgb += mix(COLOR_WHITE, COLOR_BLUE_GLOW, 0.48) * meniscus * 0.96 * u_blueIntensity;
+    fragColor.a += meniscus * 0.36;
 
     float streaks = sin(px.x * 0.012 + px.y * 0.004 + t * 0.04) * 0.5 + 0.5;
     streaks *= smoothstep(0.0, 1.0, fbm(px * 0.022 + vec2(t * 0.012, 0.0)));
@@ -322,23 +323,23 @@ export const FRAGMENT_SHADER = /* glsl */ `
     fragColor.rgb += COLOR_WHITE * topSheen * 0.72;
     fragColor.a += topSheen * 0.28;
 
-    float convex = smoothstep(0.25, 0.85, organicEdge(px, t * 0.4 + 1.0));
+    float convex = smoothstep(0.35, 0.95, organicEdge(px, t * 0.4 + 1.0));
     float glintMask = smoothstep(0.0, 6.0, sdf) * (1.0 - smoothstep(0.0, -rimWidth, sdf));
-    fragColor.rgb += COLOR_WHITE * convex * glintMask * 0.58 * u_specularIntensity;
-    fragColor.a += convex * glintMask * 0.24;
+    fragColor.rgb += COLOR_WHITE * convex * glintMask * 0.32 * u_specularIntensity;
+    fragColor.a += convex * glintMask * 0.12;
 
     float pocketRimMask = smoothstep(0.0, 10.0, arrowPocket + 6.0) * (1.0 - smoothstep(-6.0, -14.0, arrowPocket));
     pocketRimMask *= bodyMask;
-    fragColor.rgb += COLOR_WHITE * pocketRimMask * 0.62 * u_specularIntensity;
-    fragColor.rgb += COLOR_BLUE_GLOW * pocketRimMask * 0.16 * u_blueIntensity;
-    fragColor.a += pocketRimMask * 0.20;
+    fragColor.rgb += COLOR_WHITE * pocketRimMask * 0.22 * u_specularIntensity;
+    fragColor.rgb += COLOR_BLUE_GLOW * pocketRimMask * 0.06 * u_blueIntensity;
+    fragColor.a += pocketRimMask * 0.07;
 
     fragColor.rgb *= 1.0 - u_active * 0.05;
     fragColor.a *= 1.0 - u_active * 0.04;
 
     fragColor.rgb = pow(fragColor.rgb, vec3(0.92));
     float capsuleAlpha = clamp(bodyMask + rimMask + edgeMask + outerShadow * 0.42, 0.0, 1.0);
-    fragColor.a = clamp(fragColor.a, 0.0, 0.985) * capsuleAlpha;
+    fragColor.a = clamp(fragColor.a, 0.0, 0.82) * capsuleAlpha;
 
     gl_FragColor = fragColor;
   }
