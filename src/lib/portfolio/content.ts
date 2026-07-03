@@ -1,8 +1,4 @@
-/**
- * Placeholder portfolio content.
- * Replace these strings with your real projects, experience, and bio.
- * Everything is centralized here so you can swap content without touching component code.
- */
+type ProjectCardPersonality = "monkeyclaw" | "velox" | "flowe" | "nexarad" | "etch";
 
 export type Project = {
   slug: string;
@@ -18,6 +14,7 @@ export type Project = {
   year: string;
   role: string;
   accent: "blue-strong" | "blue-medium" | "blue-low" | "blue-flow";
+  personality: ProjectCardPersonality;
 };
 
 export const projects: Project[] = [
@@ -25,77 +22,101 @@ export const projects: Project[] = [
     slug: "monkeyclaw",
     index: "01",
     title: "MONKEYCLAW",
-    subtitle: "Multi-Agent Security System",
-    tagline: "Autonomous red-team agents that find what humans miss.",
+    subtitle: "Autonomous Security Agent",
+    tagline: "Continuous red, blue, and purple-team security testing for agent runtimes.",
     description:
-      "Monkeyclaw deploys a coordinated team of adversarial agents that probe, fuzz, and reason about a target system from multiple vantage points. Each agent specializes — one surfaces insecure surface area, another crafts exploitation chains, a third verifies impact — and they negotiate a shared world model to escalate findings in real time.",
+      "MonkeyClaw is a continuous security agent for NemoClaw-style coding runtimes. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
     problem:
-      "Manual penetration testing doesn't scale with the rate of modern deployments, and rule-based scanners drown teams in false positives. Security reviews happen too late in the cycle to influence architecture, and findings arrive as static PDFs that nobody reads.",
+      "Agent runtimes can read source, run shell commands, call tools, and touch the network. A one-time audit cannot keep up with changing prompts, skills, permissions, and sandbox behavior, and a blocked attack is still risky if no detection fired.",
     approach:
-      "We modeled the engagement as a multi-agent planning problem. A coordinator agent maintains a live attack graph; specialist agents propose next steps grounded in the current graph state. We constrained the agents with a formal capability budget and required verifiable proof of impact before promoting any finding, which eliminated the hallucinated exploit chains that plague naive LLM-driven security tools.",
+      "I built a five-stage loop: red-team ideation across 18 attack-surface zones, programmatic and semantic judging, repro and root-cause analysis, blue-team patch generation, and purple-team detection-as-pass verification. The demo path runs with zero model credentials against a planted victim.",
     outcome:
-      "In a closed beta across 14 production codebases, Monkeyclaw surfaced 3 critical privilege-escalation paths that had survived two prior external audits. Mean time to first valid finding dropped from 4 days (human red team) to 38 minutes.",
-    stack: ["TypeScript", "Python", "LangGraph", "Rust", "Postgres", "Kubernetes"],
-    year: "2025",
+      "The repo now includes a working CLI, seeded demo, live dashboard, tiered verifier gates, attack coverage tracking, Telegram alert paths, and a growing regression model that treats silent controls as incomplete defenses.",
+    stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
+    year: "2026",
     role: "Founder & Lead Engineer",
     accent: "blue-strong",
+    personality: "monkeyclaw",
   },
   {
     slug: "velox",
     index: "02",
     title: "VELOX",
-    subtitle: "Agent-First Browser",
-    tagline: "A browser where agents are first-class citizens, not extensions.",
+    subtitle: "Agent-First Research Browser",
+    tagline: "A Chromium browser where research agents work in visible tabs.",
     description:
-      "Velox rebuilds the browser around the assumption that the primary user is sometimes a human and sometimes an agent acting on her behalf. Pages, tabs, history, and forms all expose a structured agent interface alongside the human DOM. Agents can read, navigate, and act without reverse-engineering visual layout.",
+      "Velox is an Electron and Chromium-based desktop browser that turns web research into an inspectable agent workspace. It predicts intent while you type, launches bounded research sessions, opens real pages in visible tabs, and synthesizes cited answers into a visual canvas.",
     problem:
-      "Existing automation stacks treat the browser as a screen to be scraped. Agents fight anti-bot systems, break on minor UI changes, and can't access the rich semantic structure that the browser already has internally. Browser extensions are a poor compromise — they live in the same untrusted context as the page.",
+      "Most AI search tools hide the browsing process and only begin once a full query is submitted. Browser automation is also brittle when the user cannot see what the agent opened, read, skipped, or cited.",
     approach:
-      "We forked the Chromium content layer and exposed a stable, capability-scoped agent API at the browser-process level. Agents authenticate via signed capabilities, not cookies. The rendering pipeline remains untouched for human users, but every DOM mutation emits a structured event that subscribed agents can react to deterministically.",
+      "I built a desktop shell, React browser chrome, Express/WebSocket agent server, Playwright research runtime, source shelf, export path, and no-key demo mode. The research flow streams session state as agents navigate, capture evidence, and hand off to a synthesis agent.",
     outcome:
-      "Velox ran 12x more agent workflows per hour than a Playwright cluster on identical hardware, with a 94% reduction in flaky-run rate. Three design partners have replaced their internal RPA stacks with Velox-based agents.",
-    stack: ["C++", "Chromium", "TypeScript", "WebGPU", "SQLite"],
-    year: "2024",
+      "The local app ships as a hackathon-ready alpha with predictive intent, visible agent tabs, live browsing evidence, cited answer generation, Markdown/JSON export, persisted session snapshots, and a one-command macOS boot path.",
+    stack: ["Electron", "React", "TypeScript", "Express", "WebSocket", "Playwright"],
+    year: "2026",
     role: "Co-Founder & CTO",
     accent: "blue-low",
+    personality: "velox",
   },
   {
     slug: "flowe",
     index: "03",
     title: "FLOWE",
-    subtitle: "Intelligent Student App",
-    tagline: "A tutor that remembers what you forgot and why.",
+    subtitle: "AI Productivity App",
+    tagline: "A calm operating system for tasks, focus, Canvas, and daily planning.",
     description:
-      "Flowe is a learning companion that builds a per-concept mastery graph for each student and uses it to schedule reviews, surface prerequisites, and generate practice at the exact difficulty that produces growth. The interface is deliberately calm — no streaks, no leaderboards, no dark patterns.",
+      "FlowE is a SwiftUI productivity app for students and professionals. It combines task management, focus sessions, Canvas LMS sync, Apple Calendar integration, AI-driven planning, and lightweight gamification on top of a real-time Convex backend.",
     problem:
-      "Adaptive learning systems have been promising personalized education for two decades and delivering slightly worse flashcards. Most of them optimize for engagement metrics that correlate with retention but anti-correlate with learning. Students end up studying more and remembering less.",
+      "School work, personal tasks, calendars, and focus routines usually live in separate tools. Students need one place that understands course context, deadlines, energy, and what can realistically fit into a day.",
     approach:
-      "We replaced the engagement loop with a mastery loop. Every interaction updates a Bayesian knowledge tracer; the scheduler is a constrained optimizer that maximizes expected long-term retention subject to a daily time budget. We open-sourced the mastery model so independent researchers could audit it.",
+      "I built the iOS app with MVVM, dependency injection, offline mutation retry, Clerk auth, Canvas REST and ICS ingestion, EventKit, push notifications, analytics, and Convex schema/functions for tasks, events, Canvas data, wallets, and sync.",
     outcome:
-      "In a 1,200-student pilot with a state community college, students using Flowe for 18 minutes per week outperformed the control group by 0.41 standard deviations on end-of-term assessments. Retention-to-next-term improved by 22%.",
-    stack: ["TypeScript", "React Native", "FastAPI", "PyTorch", "Postgres"],
-    year: "2023",
+      "The repo has a generated Xcode project, production-shaped config boundaries, local Convex workflows, Canvas sync validation, authentication paths, and simulator build commands for the current iOS app.",
+    stack: ["SwiftUI", "Convex", "TypeScript", "Clerk", "Canvas LMS", "EventKit"],
+    year: "2026",
     role: "Founder & CEO",
     accent: "blue-flow",
+    personality: "flowe",
   },
   {
     slug: "nexarad",
     index: "04",
     title: "NEXARAD",
-    subtitle: "Medical Imaging AI",
-    tagline: "Diagnostic-grade chest CT triage in under 90 seconds.",
+    subtitle: "Radiology Workflow Platform",
+    tagline: "Evidence-linked imaging workflows with strict non-clinical demo boundaries.",
     description:
-      "Nexarad is a regulatory-cleared AI assistant for radiologists that triages chest CTs for actionable findings — pulmonary embolism, aortic dissection, intracranial hemorrhage extension — and surfaces them at the top of the worklist before the radiologist opens the study.",
+      "NexaRad is a production-shaped foundation for radiology workflow software: backend-owned auth, tenant isolation, local DICOM services, object storage, structured findings, verifier-gated reports, and AWS-first infrastructure boundaries.",
     problem:
-      "Triage in radiology is a queueing problem with life-and-death latency. A missed dissection on a routine scan might not be read for 45 minutes. Existing CAD systems produce noisy annotations that radiologists dismiss as background chatter, so they get tuned out exactly when they're needed most.",
+      "Medical imaging demos often skip the hard parts: PHI boundaries, DICOM plumbing, tenant isolation, object storage, report provenance, and clear labeling when something is research-only rather than clinical software.",
     approach:
-      "We trained on 2.4 million de-identified studies across 38 institutions, with strict site-level holdouts to prevent shortcut learning. The model produces a calibrated probability per finding plus a saliency map that is only shown when the model's confidence crosses a clinically-tuned threshold — high precision, low noise. Every prediction includes an uncertainty estimate so the worklist can route ambiguous cases to senior readers.",
+      "I built a local stack with web, API, OHIF, Orthanc, MinIO, Alembic migrations, seeded non-PHI studies, synthetic upload smoke tests, demo/research safety defaults, and a rule that browser clients only call the NexaRad API.",
     outcome:
-      "Cleared by the FDA in 11 months. In prospective deployment across 9 hospitals, mean time to flagging a true-positive critical finding dropped from 27 minutes to 1.4 minutes. Missed-critical-finding rate fell by 71%.",
-    stack: ["PyTorch", "C++", "CUDA", "DICOM", "Kubernetes", "ONNX"],
-    year: "2022",
-    role: "Founding ML Engineer",
+      "The founder-ready walkthrough can boot the full local demo, seed visible research-only studies and draft reports, rehearse uploads, and keep AI providers and PHI disabled by default.",
+    stack: ["Next.js", "FastAPI", "DICOM", "OHIF", "Orthanc", "MinIO"],
+    year: "2026",
+    role: "Founder & Engineer",
     accent: "blue-strong",
+    personality: "nexarad",
+  },
+  {
+    slug: "etch",
+    index: "05",
+    title: "ETCH",
+    subtitle: "Verification-First Hardware Design",
+    tagline: "From natural-language intent to RTL evidence, gates, and proof dossiers.",
+    description:
+      "Etch is a local hardware-design cockpit that turns a natural-language requirement into a typed design spec, candidate RTL, independent verification artifacts, EDA gate results, correctness-first ranking, physical readiness records, and a proof dossier.",
+    problem:
+      "AI can generate RTL, but generation alone does not prove a chip design should be trusted. Hardware workflows need durable evidence: what passed, what failed, which tools were missing, and which claims are still out of bounds.",
+    approach:
+      "I built a FastAPI backend, React/Vite workbench, Electron shell, file-backed run workspace, deterministic FIFO demo, optional LLM proposal path, simulation/formal/synthesis adapters, claims ledger, and status-aware cockpit views for trust and diagnostics.",
+    outcome:
+      "The vertical slice proves a synchronous FIFO through typed specs, three candidates, independent oracle artifacts, simulation and bounded-formal gates, Yosys metrics, explicit missing-tool states, and Markdown/JSON proof dossiers.",
+    stack: ["Python", "FastAPI", "React", "Electron", "Yosys", "Verilator"],
+    year: "2026",
+    role: "Founder & Engineer",
+    accent: "blue-medium",
+    personality: "etch",
   },
 ];
 

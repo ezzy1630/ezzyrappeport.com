@@ -36,8 +36,8 @@ export default function ProjectsSection() {
           </h2>
         </div>
         <p className="max-w-md text-[14px] md:text-[15px] leading-[1.7] text-ink-soft/75">
-          Four projects at the intersection of multi-agent systems, real-world deployment,
-          and tools that compound impact. Each one shipped to users — not a demo.
+          Five systems at the intersection of agents, workflow software, evidence,
+          and real deployment boundaries. Each one is grounded in working code.
         </p>
       </motion.div>
 
