@@ -43,7 +43,11 @@ export default function KineticCanvas({
     let currentPhysics = getLiquidPhysics();
     const getPhysics = () => currentPhysics;
 
-    const attachRenderer = (canvas: HTMLCanvasElement, rendererCleanup: () => void) => {
+    const attachRenderer = (
+      canvas: HTMLCanvasElement,
+      rendererCleanup: () => void,
+      fluidState: "ready" | "static",
+    ) => {
       if (disposed) {
         rendererCleanup();
         canvas.remove();
@@ -53,7 +57,7 @@ export default function KineticCanvas({
       cleanup = rendererCleanup;
       rendererCanvas = canvas;
       container.appendChild(canvas);
-      container.dataset.fluid = "ready";
+      container.dataset.fluid = fluidState;
     };
 
     const startInteractiveRenderer = () => {
@@ -65,8 +69,7 @@ export default function KineticCanvas({
 
       try {
         const rendererCleanup = startFluidRenderer(canvas, getPhysics, reducedMotionRef, staticModeRef, heroNameRef);
-        attachRenderer(canvas, rendererCleanup);
-        if (!frozen) container.dataset.fluid = "ready";
+        attachRenderer(canvas, rendererCleanup, frozen ? "static" : "ready");
       } catch (error) {
         console.warn("Fluid renderer failed to start", error);
         canvas.remove();

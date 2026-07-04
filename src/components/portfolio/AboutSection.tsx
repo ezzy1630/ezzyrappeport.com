@@ -13,7 +13,7 @@ export default function AboutSection() {
   return (
     <section
       id="about"
-      className="relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
+      className="depth-section depth-section--about relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
       aria-label="About"
     >
       <motion.div
@@ -41,7 +41,7 @@ export default function AboutSection() {
           whileInView={{ opacity: 1, x: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="md:col-span-5"
+          className="about-still-water md:col-span-5"
         >
           <p
             className="project-overview-slab p-7 md:p-9 text-[26px] md:text-[34px] leading-[1.15] font-medium tracking-[-0.02em] text-ink"
@@ -72,7 +72,7 @@ export default function AboutSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 0.9, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-          className="proof-grid md:col-span-7 grid gap-3"
+          className="about-current proof-grid md:col-span-7 grid gap-3"
         >
           {bio.bodyParagraphs.map((p, i) => (
             <p

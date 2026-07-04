@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { MotionConfig } from "framer-motion";
+import { Waves } from "lucide-react";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
 import SmoothScrollProvider from "./SmoothScrollProvider";
@@ -34,20 +36,45 @@ export default function PortfolioShell({
 }: Props) {
   const reducedMotion = useReducedMotion();
   const coarsePointer = useCoarsePointer();
+  const [motionEnabled, setMotionEnabled] = useState(!reducedMotion);
+  const motionReduced = reducedMotion || !motionEnabled;
 
   return (
-    <MotionConfig reducedMotion="user">
-      <SmoothScrollProvider reducedMotion={reducedMotion}>
+    <MotionConfig reducedMotion={motionReduced ? "always" : "never"}>
+      <SmoothScrollProvider reducedMotion={motionReduced}>
         <div id="top" className="portfolio-root">
           <ErrorBoundary>
             <FluidScene
-              reducedMotion={reducedMotion}
+              reducedMotion={motionReduced}
               staticMode={coarsePointer}
               heroName={heroName}
             />
           </ErrorBoundary>
 
           {showNav && <Navigation />}
+          {showNav && (
+            <button
+              type="button"
+              className="motion-toggle glass"
+              aria-pressed={motionEnabled && !reducedMotion}
+              aria-label={
+                motionEnabled && !reducedMotion
+                  ? "Turn motion off"
+                  : "Turn motion on"
+              }
+              title={
+                motionEnabled && !reducedMotion
+                  ? "Turn motion off"
+                  : "Turn motion on"
+              }
+              onClick={() => setMotionEnabled((enabled) => !enabled)}
+            >
+              <Waves aria-hidden="true" className="motion-toggle__icon" strokeWidth={2.2} />
+              <span className="motion-toggle__label">
+                {motionEnabled && !reducedMotion ? "Motion" : "Still"}
+              </span>
+            </button>
+          )}
 
           {children}
         </div>

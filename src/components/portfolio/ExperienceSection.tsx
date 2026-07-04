@@ -17,7 +17,7 @@ export default function ExperienceSection() {
   return (
     <section
       id="experience"
-      className="relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
+      className="depth-section depth-section--experience relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
       aria-label="Experience"
     >
       <motion.div
@@ -48,7 +48,7 @@ export default function ExperienceSection() {
         {/* Vertical rail */}
         <span
           aria-hidden="true"
-          className="absolute left-[7px] md:left-1/2 top-2 bottom-2 w-px bg-gradient-to-b from-electric/55 via-white/65 to-transparent shadow-[0_0_24px_rgba(0,102,255,0.18)] md:-translate-x-1/2"
+          className="droplet-timeline absolute left-[7px] md:left-1/2 top-2 bottom-2 w-px md:-translate-x-1/2"
         />
 
         <div className="flex flex-col gap-16 md:gap-24">
@@ -82,7 +82,7 @@ export default function ExperienceSection() {
                 </p>
               </div>
 
-              <div className={`proof-cell mt-4 md:mt-0 flex flex-col gap-5 ${i % 2 === 1 ? "md:order-1" : ""}`}>
+              <div className={`depth-plate proof-cell mt-4 md:mt-0 flex flex-col gap-5 ${i % 2 === 1 ? "md:order-1" : ""}`}>
                 <p className="text-[15px] leading-[1.7] text-ink-soft/85">
                   {entry.summary}
                 </p>

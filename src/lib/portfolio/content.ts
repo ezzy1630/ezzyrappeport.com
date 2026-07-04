@@ -22,7 +22,7 @@ export const projects: Project[] = [
     slug: "monkeyclaw",
     index: "01",
     title: "MONKEYCLAW",
-    subtitle: "Autonomous Security Agent",
+    subtitle: "Multi-Agent Security System",
     tagline: "Continuous red, blue, and purple-team security testing for agent runtimes.",
     description:
       "MonkeyClaw is a continuous security agent for NemoClaw-style coding runtimes. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
@@ -42,7 +42,7 @@ export const projects: Project[] = [
     slug: "velox",
     index: "02",
     title: "VELOX",
-    subtitle: "Agent-First Research Browser",
+    subtitle: "Agent-First Browser",
     tagline: "A Chromium browser where research agents work in visible tabs.",
     description:
       "Velox is an Electron and Chromium-based desktop browser that turns web research into an inspectable agent workspace. It predicts intent while you type, launches bounded research sessions, opens real pages in visible tabs, and synthesizes cited answers into a visual canvas.",
@@ -62,7 +62,7 @@ export const projects: Project[] = [
     slug: "flowe",
     index: "03",
     title: "FLOWE",
-    subtitle: "AI Productivity App",
+    subtitle: "Intelligent Student App",
     tagline: "A calm operating system for tasks, focus, Canvas, and daily planning.",
     description:
       "FlowE is a SwiftUI productivity app for students and professionals. It combines task management, focus sessions, Canvas LMS sync, Apple Calendar integration, AI-driven planning, and lightweight gamification on top of a real-time Convex backend.",
@@ -82,7 +82,7 @@ export const projects: Project[] = [
     slug: "nexarad",
     index: "04",
     title: "NEXARAD",
-    subtitle: "Radiology Workflow Platform",
+    subtitle: "Medical Imaging AI",
     tagline: "Evidence-linked imaging workflows with strict non-clinical demo boundaries.",
     description:
       "NexaRad is a production-shaped foundation for radiology workflow software: backend-owned auth, tenant isolation, local DICOM services, object storage, structured findings, verifier-gated reports, and AWS-first infrastructure boundaries.",
@@ -202,11 +202,10 @@ export const bio = {
     subtitle: "Building from Los Angeles and Santa Cruz",
     coordinates: "34.0522° N, 118.2437° W",
   },
-  // TODO: confirm/replace these with your real profile URLs + email.
   socials: [
-    { label: "GitHub", href: "https://github.com/eliezer", handle: "@eliezer" },
+    { label: "GitHub", href: "https://github.com/ezzyrappeport", handle: "@ezzyrappeport" },
     { label: "LinkedIn", href: "https://www.linkedin.com/in/eliezerrappeport", handle: "/in/eliezerrappeport" },
-    { label: "X", href: "https://x.com/erappeport", handle: "@erappeport" },
+    { label: "X", href: "https://x.com/ezzyrappeport", handle: "@ezzyrappeport" },
     { label: "Email", href: "mailto:hello@eliezerrappeport.com", handle: "hello@eliezerrappeport.com" },
   ],
   email: "hello@eliezerrappeport.com",

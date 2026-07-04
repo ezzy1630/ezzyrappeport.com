@@ -15,11 +15,23 @@ import { bio } from "@/lib/portfolio/content";
 export default function ContactSection() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const mailtoHref = () => {
+    const subject = encodeURIComponent(`Portfolio inquiry from ${form.name || "website visitor"}`);
+    const body = encodeURIComponent(
+      [
+        form.message,
+        "",
+        `From: ${form.name || "Not provided"}`,
+        `Reply-to: ${form.email || "Not provided"}`,
+      ].join("\n"),
+    );
+    return `mailto:${bio.email}?subject=${subject}&body=${body}`;
+  };
 
   return (
     <section
       id="contact"
-      className="relative px-6 md:px-10 lg:px-14 py-32 md:py-44"
+      className="contact-depth relative px-6 md:px-10 lg:px-14 py-32 md:py-44"
       aria-label="Contact"
     >
       <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 md:gap-24 items-start">
@@ -89,9 +101,10 @@ export default function ContactSection() {
           transition={{ duration: 1.0, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           onSubmit={(e) => {
             e.preventDefault();
+            window.location.href = mailtoHref();
             setSubmitted(true);
           }}
-          className="glass-strong rounded-3xl p-7 md:p-10 flex flex-col gap-5"
+          className="contact-mirror glass-strong rounded-3xl p-7 md:p-10 flex flex-col gap-5"
           aria-label="Contact form"
         >
           {submitted ? (
@@ -100,18 +113,18 @@ export default function ContactSection() {
                 <Check className="w-6 h-6" strokeWidth={2.2} />
               </span>
               <p className="text-[18px] font-semibold text-ink">
-                Thanks, {form.name || "friend"} — message noted.
+                Your email app should be open.
               </p>
               <p className="text-[14px] leading-[1.6] text-ink-soft/70">
-                For a fast reply, email me directly at{" "}
+                I prepared the message as an email to{" "}
                 <a
-                  href={`mailto:${bio.email}`}
+                  href={mailtoHref()}
                   className="text-electric underline underline-offset-2"
                   data-cursor="hover"
                 >
                   {bio.email}
                 </a>
-                . I read everything and reply within a couple of days.
+                . If it did not open, use that link directly.
               </p>
               <button
                 type="button"
