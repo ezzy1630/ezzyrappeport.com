@@ -22,9 +22,31 @@ export type LiquidRippleState = {
   age: number;
 };
 
+export type LiquidScrollState = {
+  progress: number;
+  velocity: number;
+  direction: -1 | 0 | 1;
+  depth: number;
+  section: number;
+  time: number;
+};
+
+export type LiquidTargetState = {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  hover: number;
+  pressed: number;
+  time: number;
+};
+
 export type LiquidPhysics = {
   pointer: LiquidPointerState;
   ripples: LiquidRippleState[];
+  scroll: LiquidScrollState;
+  targets: LiquidTargetState[];
   time: number;
 };
 
@@ -41,6 +63,7 @@ type PhysicsSubscriber = (state: LiquidPhysics) => void;
 
 const RIPPLE_LIFETIME = 3.2;
 const MAX_RIPPLES = 16;
+const MAX_TARGETS = 8;
 const POINTER_WAKE_RADIUS = 220;
 const RIPPLE_SPEED = 155;
 
@@ -59,6 +82,15 @@ const state: LiquidPhysics = {
     time: 0,
   },
   ripples: [],
+  scroll: {
+    progress: 0,
+    velocity: 0,
+    direction: 0,
+    depth: 0,
+    section: 0,
+    time: 0,
+  },
+  targets: [],
   time: 0,
 };
 
@@ -80,6 +112,9 @@ function setRootVars() {
   root.style.setProperty("--liquid-speed", state.pointer.speed.toFixed(3));
   root.style.setProperty("--liquid-energy", state.pointer.energy.toFixed(3));
   root.style.setProperty("--liquid-active", state.pointer.active ? "1" : "0");
+  root.style.setProperty("--liquid-scroll", state.scroll.progress.toFixed(4));
+  root.style.setProperty("--liquid-scroll-velocity", state.scroll.velocity.toFixed(3));
+  root.style.setProperty("--liquid-depth", state.scroll.depth.toFixed(3));
 }
 
 function emitPointer() {
@@ -162,6 +197,16 @@ function tick(now: number) {
   const targetEnergy = state.pointer.active ? 0.36 : 0.03;
   const k = state.pointer.active ? 0.08 : 0.025;
   state.pointer.energy += (targetEnergy - state.pointer.energy) * k;
+  state.scroll.velocity *= 0.92;
+  state.scroll.depth += (state.scroll.progress - state.scroll.depth) * 0.045;
+  state.targets = state.targets
+    .map((target) => ({
+      ...target,
+      hover: target.hover * 0.94,
+      pressed: target.pressed * 0.86,
+    }))
+    .filter((target) => target.hover > 0.01 || target.pressed > 0.01)
+    .slice(-MAX_TARGETS);
 
   const freshRipples: LiquidRippleState[] = [];
   for (const r of state.ripples) {
@@ -228,6 +273,40 @@ export function emitLiquidPointer(pointer: Partial<LiquidPointerState>) {
 
 export function emitLiquidRipple(ripple: LiquidRippleState) {
   pushRipple(ripple.x, ripple.y, ripple.intensity, ripple.time);
+}
+
+export function emitLiquidScroll(scroll: Partial<LiquidScrollState>) {
+  const now = performance.now();
+  const progress = Math.max(0, Math.min(1, scroll.progress ?? state.scroll.progress));
+  const velocity = scroll.velocity ?? state.scroll.velocity;
+  state.scroll = {
+    ...state.scroll,
+    ...scroll,
+    progress,
+    velocity,
+    direction: velocity > 0.002 ? 1 : velocity < -0.002 ? -1 : state.scroll.direction,
+    depth: scroll.depth ?? state.scroll.depth,
+    section: Math.max(0, Math.min(3, scroll.section ?? Math.round(progress * 3))),
+    time: now,
+  };
+  setRootVars();
+  emitPhysics();
+}
+
+export function emitLiquidTarget(target: LiquidTargetState) {
+  const existing = state.targets.findIndex((candidate) => candidate.id === target.id);
+  if (existing >= 0) {
+    state.targets[existing] = target;
+  } else {
+    state.targets.push(target);
+  }
+  if (state.targets.length > MAX_TARGETS) state.targets.shift();
+  emitPhysics();
+}
+
+export function clearLiquidTarget(id: string) {
+  state.targets = state.targets.filter((target) => target.id !== id);
+  emitPhysics();
 }
 
 export function subscribeLiquidPointer(subscriber: PointerSubscriber) {

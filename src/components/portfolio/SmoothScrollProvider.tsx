@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Lenis from "lenis";
+import { emitLiquidScroll } from "@/lib/portfolio/liquid-interaction";
 
 /**
  * SmoothScrollProvider
@@ -20,9 +21,30 @@ export default function SmoothScrollProvider({
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
+    let lastScrollY = typeof window !== "undefined" ? window.scrollY : 0;
+    let lastScrollTime = typeof performance !== "undefined" ? performance.now() : 0;
+
+    const emitNativeScroll = () => {
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      const now = performance.now();
+      const y = window.scrollY;
+      const dt = Math.max(16, now - lastScrollTime);
+      const velocity = ((y - lastScrollY) / dt) * 16 / Math.max(window.innerHeight, 1);
+      emitLiquidScroll({
+        progress: y / max,
+        velocity,
+        depth: y / max,
+      });
+      lastScrollY = y;
+      lastScrollTime = now;
+    };
+
+    emitNativeScroll();
+    window.addEventListener("scroll", emitNativeScroll, { passive: true });
+
     if (reducedMotion) {
       // No smooth scroll — let native instant scroll handle it
-      return;
+      return () => window.removeEventListener("scroll", emitNativeScroll);
     }
 
     let rafId = 0;
@@ -31,14 +53,26 @@ export default function SmoothScrollProvider({
       if (lenisRef.current) return lenisRef.current;
 
       const lenis = new Lenis({
-      duration: 1.15,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      wheelMultiplier: 0.9,
-      touchMultiplier: 1.5,
-      lerp: 0.08,
+        duration: 1.2,
+        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        smoothWheel: true,
+        wheelMultiplier: 0.82,
+        touchMultiplier: 1.35,
+        lerp: 0.075,
       });
       lenisRef.current = lenis;
+      lenis.on("scroll", ({ scroll, velocity, progress }: { scroll: number; velocity: number; progress: number }) => {
+        const normalizedVelocity = velocity / Math.max(window.innerHeight, 1);
+        emitLiquidScroll({
+          progress,
+          velocity: normalizedVelocity,
+          depth: progress,
+          section: Math.round(progress * 3),
+          time: performance.now(),
+        });
+        lastScrollY = scroll;
+        lastScrollTime = performance.now();
+      });
 
       function raf(time: number) {
         lenis.raf(time);
@@ -92,6 +126,7 @@ export default function SmoothScrollProvider({
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener("scroll", emitNativeScroll);
       window.removeEventListener("wheel", onFirstScrollIntent);
       window.removeEventListener("touchmove", onFirstScrollIntent);
       window.removeEventListener("keydown", onFirstKey);

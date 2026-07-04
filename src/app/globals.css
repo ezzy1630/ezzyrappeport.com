@@ -221,6 +221,8 @@ html.lenis body {
 .content-layer {
   position: relative;
   z-index: 10;
+  transform: translate3d(0, calc(var(--liquid-scroll-velocity, 0) * -18px), 0);
+  transition: transform 0.22s ease-out;
 }
 
 .content-layer main {
@@ -718,12 +720,36 @@ nextjs-portal {
 }
 
 .liquid-glass-card::before,
-.liquid-glass-card::after {
+.liquid-glass-card::after,
+.liquid-glass-surface {
   content: "";
   position: absolute;
   z-index: 1;
-  border-radius: 999px;
   pointer-events: none;
+}
+
+.liquid-glass-surface {
+  inset: -8px;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at var(--card-x, 66%) var(--card-y, 62%), rgba(255, 255, 255, 0.60), rgba(47, 140, 255, 0.20) 13%, transparent 34%),
+    radial-gradient(92% 130% at 12% 0%, rgba(255, 255, 255, 0.35), transparent 58%),
+    radial-gradient(72% 74% at 18% 112%, rgba(0, 102, 255, 0.31), transparent 64%),
+    linear-gradient(155deg, rgba(246, 251, 255, 0.22), rgba(218, 234, 250, 0.13) 54%, rgba(185, 213, 244, 0.09));
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.96) inset,
+    0 -1px 0 rgba(22, 86, 165, 0.19) inset,
+    0 -24px 34px rgba(0, 102, 255, 0.18) inset,
+    0 26px 40px -30px rgba(8, 35, 82, 0.48);
+  opacity: 0.94;
+  filter: blur(0.05px) saturate(1.08);
+  transform: scale(1);
+  transition:
+    border-radius 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.35s ease,
+    filter 0.35s ease;
 }
 
 .liquid-glass-card::before {
@@ -746,6 +772,32 @@ nextjs-portal {
   mix-blend-mode: screen;
   opacity: 0.92;
   filter: blur(0.8px);
+}
+
+.project-buttons-row__card:hover .liquid-glass-surface,
+.project-buttons-row__card:focus-visible .liquid-glass-surface {
+  border-radius: 34px;
+  transform: scale(1.018);
+  opacity: 1;
+  filter:
+    blur(0.03px)
+    saturate(1.18)
+    drop-shadow(0 0 22px rgba(0, 102, 255, 0.20));
+}
+
+.project-buttons-row__card[data-transitioning="true"] {
+  z-index: 80;
+}
+
+.project-buttons-row__card[data-transitioning="true"] .liquid-glass-surface {
+  border-radius: 30px;
+  transform: scale(14);
+  opacity: 0.96;
+  filter:
+    saturate(1.35)
+    brightness(1.12)
+    drop-shadow(0 0 80px rgba(47, 140, 255, 0.45));
+  transition-duration: 0.56s;
 }
 
 .project-buttons-row {

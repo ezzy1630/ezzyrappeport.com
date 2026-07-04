@@ -17,7 +17,14 @@ uniform vec2 u_pointer;
 uniform vec4 u_ripples[12];
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
+uniform sampler2D u_velocityField;
+uniform sampler2D u_dyeField;
+uniform sampler2D u_heightField;
+uniform sampler2D u_normalField;
+uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
+uniform vec4 u_scroll;
+uniform vec4 u_targets[8];
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -129,6 +136,26 @@ vec3 rippleField(vec2 pos, vec2 pointer, float time) {
   return vec3(blue, white, warp);
 }
 
+float roundedBox(vec2 p, vec2 b, float r) {
+  vec2 q = abs(p) - b + r;
+  return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+
+float targetField(vec2 uv, out float edgeGlow) {
+  float field = 0.0;
+  edgeGlow = 0.0;
+  vec2 px = vec2(uv.x * u_resolution.x, (1.0 - uv.y) * u_resolution.y);
+  for (int i = 0; i < 8; i++) {
+    vec4 target = u_targets[i];
+    if (target.z <= 1.0 || target.w <= 1.0) continue;
+    vec2 halfSize = target.zw * 0.5;
+    float d = roundedBox(px - target.xy, halfSize, min(54.0, min(halfSize.x, halfSize.y) * 0.45));
+    field = max(field, 1.0 - smoothstep(-10.0, 22.0, d));
+    edgeGlow = max(edgeGlow, 1.0 - smoothstep(0.0, 44.0, abs(d)));
+  }
+  return field;
+}
+
 float textCov(vec2 uv) {
   return texture(u_text, uv).a * u_nameOpacity;
 }
@@ -166,16 +193,24 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
+  vec4 velocitySample = texture(u_velocityField, uv);
+  vec2 simVelocity = (velocitySample.xy - 0.5) * 2.0;
+  vec3 simDye = texture(u_dyeField, uv).rgb;
+  vec3 simNormal = vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0);
+  float simHeight = texture(u_heightField, uv).r;
+  vec4 simObstacle = texture(u_obstacleField, uv);
+  float targetEdge = 0.0;
+  float targetBody = targetField(uv, targetEdge);
 
   float flowA = fbm(p * 1.9 + vec2(t * 0.026, -t * 0.014));
   float flowB = fbm(p * 3.6 + vec2(-t * 0.038, t * 0.020));
   float flowC = fbm(p * 6.2 + vec2(t * 0.052, t * 0.030));
   vec3 ripple = rippleField(uv, pointer, t);
 
-  p.x += (flowA - 0.5) * 0.028 + ripple.z;
-  p.y += (flowB - 0.5) * 0.020 + ripple.z * 0.42;
+  p.x += (flowA - 0.5) * 0.028 + ripple.z + simVelocity.x * 0.16 + u_scroll.y * 0.035;
+  p.y += (flowB - 0.5) * 0.020 + ripple.z * 0.42 + simVelocity.y * 0.12 - u_scroll.y * 0.055;
 
-  vec2 baseUV = uv + lensOffset;
+  vec2 baseUV = uv + lensOffset + simNormal.xy * 0.028 + simVelocity * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
   vec2 flowUV = clamp(baseUV + vec2((flowA - 0.5) * 0.018, (flowB - 0.5) * 0.014), vec2(0.0), vec2(1.0));
 
   vec3 pearlBlue = vec3(0.09, 0.55, 1.0);
@@ -190,9 +225,13 @@ void main() {
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
   vec3 causticLight = vec3(1.0, 0.98, 0.95) * caustic * CAUSTIC_AMP * (0.7 + causticMask);
   float bottomZone = smoothstep(0.55, 0.0, uv.y) * 0.42;
-    base += causticLight * (1.0 + bottomZone);
+  base += causticLight * (1.0 + bottomZone);
+  base += pearlBlue * dot(simDye, vec3(0.05, 0.25, 0.70)) * 0.28;
+  base += vec3(1.0) * max(max(simDye.r, simDye.g), simDye.b) * 0.035;
+  base += pearlBlue * targetEdge * 0.09 + vec3(1.0) * targetEdge * 0.06;
+  base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.055;
 
-  float sampleWarp = ripple.z + lensOffset.x * 8.0;
+  float sampleWarp = ripple.z + lensOffset.x * 8.0 + simHeight * 0.70 + simVelocity.x * 0.48;
 
   float cov = textCov(uv);
   float edge = 4.0 * cov * (1.0 - cov);
@@ -201,6 +240,7 @@ void main() {
 
   float belowCov = textCov(uv + vec2(0.0, 0.023));
   float contact = smoothstep(0.06, 0.5, belowCov) * (1.0 - smoothstep(0.0, 0.30, cov));
+  contact = max(contact, simObstacle.g * (1.0 - smoothstep(0.20, 0.74, cov)) * 0.82);
   base -= vec3(0.16, 0.17, 0.19) * contact * 0.88;
   base += pearlBlue * contact * 0.028;
 
@@ -225,11 +265,11 @@ void main() {
   float hU = surfH(uv + vec2(0.0, eps2.y), t, pointer);
   float hD = surfH(uv - vec2(0.0, eps2.y), t, pointer);
   vec2 hgrad = vec2(hR - hL, hU - hD) / (2.0 * max(eps2.x, eps2.y));
-  vec3 n = normalize(vec3(-hgrad.x * 0.5, -hgrad.y * 0.5, 1.0));
+  vec3 n = normalize(vec3(-hgrad.x * 0.5, -hgrad.y * 0.5, 1.0) + vec3(simNormal.xy * 0.55, 0.0));
 
   float glassDepth = smoothstep(0.14, 0.96, cov);
   float chroma = edge * 0.0125 + shoulder * 0.0055 + glassDepth * 0.0028;
-  vec2 refrBase = uv + n.xy * REFRACTION * (0.76 + edge * 3.4 + glassDepth * 0.66) + sampleWarp * 0.62;
+  vec2 refrBase = uv + n.xy * REFRACTION * (0.76 + edge * 3.4 + glassDepth * 0.66 + simObstacle.g * 1.5) + sampleWarp * 0.62;
   vec2 refrR = refrBase + lensOffset * 1.2 + vec2(chroma, -chroma * 0.32);
   vec2 refrG = refrBase + lensOffset * 1.0;
   vec2 refrB = refrBase + lensOffset * 0.8 - vec2(chroma * 1.15, -chroma * 0.24);
@@ -281,7 +321,7 @@ void main() {
 
   float blueZone = smoothstep(0.5, 0.95, uv.x) * (1.0 - smoothstep(0.45, 0.9, uv.y));
   float cursorBlue = exp(-distance(uv, pointer) * 5.0) * u_energy;
-  letterBody += pearlBlue * (blueZone * 0.10 + cursorBlue * 0.06) * interior;
+  letterBody += pearlBlue * (blueZone * 0.10 + cursorBlue * 0.10 + simObstacle.g * 0.14) * interior;
 
   float cAbove = textCov(uv + vec2(0.0, 3.5 / u_resolution.y));
   float cLeft = textCov(uv + vec2(-3.5 / u_resolution.x, 0.0));
@@ -314,14 +354,16 @@ void main() {
   color -= vec3(0.05, 0.07, 0.10) * shoulder * (0.42 + mobilePoster * 0.16);
   color += vec3(1.0, 1.0, 0.98) * outsideRidge * (0.60 + mobilePoster * 0.22);
 
-  color += pearlBlue * ripple.x * 0.14 + vec3(1.0) * ripple.y * 0.42;
+  color += pearlBlue * ripple.x * 0.24 + vec3(1.0) * ripple.y * 0.58;
+  color += pearlBlue * simDye.b * 0.18 + vec3(1.0) * simHeight * 0.20;
+  color += pearlBlue * simObstacle.g * (0.20 + targetBody * 0.12);
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
-  color += pearlBlue * wake * 0.03 + pearlWhite * wake * 0.08;
+  color += pearlBlue * wake * 0.09 + pearlWhite * wake * 0.13;
 
   color += pearlWhite * lensStrength * 0.06 + pearlBlue * lensStrength * 0.03;
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
   color = mix(color * pearlWhite, color, vignette);
-  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.97)), 1.0);
+  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.97)), 0.82);
 }
 `;

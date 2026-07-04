@@ -67,7 +67,8 @@ export default function KineticCanvas({
         const rendererCleanup = startFluidRenderer(canvas, getPhysics, reducedMotionRef, staticModeRef, heroNameRef);
         attachRenderer(canvas, rendererCleanup);
         if (!frozen) container.dataset.fluid = "ready";
-      } catch {
+      } catch (error) {
+        console.warn("Fluid renderer failed to start", error);
         canvas.remove();
         container.dataset.fluid = "failed";
       }
