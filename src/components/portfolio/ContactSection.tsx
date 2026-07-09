@@ -41,10 +41,10 @@ export default function ContactSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-15% 0px" }}
           transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-          className="section-heading"
+          className="section-heading section-heading--contact"
         >
-          <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft/55 mb-4">
-            Contact
+          <p className="section-kicker text-[12px] text-ink-soft/62 mb-4">
+            Open channel / next build
           </p>
           <h2
             className="text-[56px] md:text-[88px] leading-[0.95] font-black tracking-[-0.04em] text-ink"

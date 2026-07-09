@@ -107,6 +107,17 @@ html.lenis body {
   isolation: isolate;
 }
 
+.portfolio-root--locked {
+  height: 100svh;
+  min-height: 100svh;
+  overflow: hidden;
+}
+
+.portfolio-root--locked .content-layer {
+  height: 100svh;
+  overflow: hidden;
+}
+
 .fluid-canvas {
   position: fixed;
   inset: 0;
@@ -115,12 +126,16 @@ html.lenis body {
   z-index: 1;
   pointer-events: none;
   background:
-    radial-gradient(38% 30% at 69% 58%, rgba(105, 166, 236, 0.090), transparent 74%),
-    radial-gradient(50% 40% at 77% 18%, rgba(148, 193, 242, 0.11), transparent 78%),
-    linear-gradient(180deg, rgba(232, 243, 254, 0.50), rgba(203, 225, 247, 0.26)),
-    url("/assets/pearl-liquid-background.png") center / cover no-repeat,
-    linear-gradient(118deg, #dfeefa 0%, #d1e2f4 36%, #e3eff9 62%, #cadcec 100%),
-    #dae8f5;
+    linear-gradient(112deg, transparent 8%, rgba(255, 255, 255, 0.42) 18%, transparent 31%, rgba(255, 255, 255, 0.30) 47%, transparent 62%),
+    linear-gradient(24deg, transparent 18%, rgba(129, 178, 230, 0.060) 28%, transparent 38%, rgba(255, 255, 255, 0.36) 58%, transparent 74%),
+    radial-gradient(36% 18% at 68% 56%, rgba(58, 139, 244, 0.060), transparent 74%),
+    linear-gradient(180deg, rgba(240, 247, 254, 0.54), rgba(213, 231, 249, 0.30)),
+    image-set(
+      url("/assets/pearl-liquid-background-poster.webp") type("image/webp"),
+      url("/assets/pearl-liquid-background.png") type("image/png")
+    ) center / cover no-repeat,
+    linear-gradient(118deg, #eef5fb 0%, #dce9f5 36%, #f2f7fb 62%, #d8e5f1 100%),
+    #e6eff8;
   overflow: hidden;
 }
 
@@ -135,30 +150,32 @@ html.lenis body {
 
 .fluid-canvas {
   box-shadow:
-    0 0 90px rgba(255, 255, 255, 0.46) inset,
-    0 -120px 180px rgba(39, 125, 255, 0.070) inset;
+    0 0 110px rgba(255, 255, 255, 0.62) inset,
+    0 -120px 180px rgba(39, 125, 255, 0.040) inset,
+    0 90px 150px rgba(255, 255, 255, 0.34) inset;
 }
 
 .fluid-canvas::before {
   background:
-    radial-gradient(48% 30% at 18% 28%, rgba(255, 255, 255, 0.28), transparent 78%),
-    radial-gradient(38% 28% at 74% 18%, rgba(126, 179, 239, 0.095), transparent 80%),
-    linear-gradient(94deg, transparent 4%, rgba(255, 255, 255, 0.16) 24%, transparent 46%, rgba(131, 184, 241, 0.065) 70%, transparent 90%);
-  filter: blur(30px);
+    radial-gradient(62% 18% at 18% 24%, rgba(255, 255, 255, 0.20), transparent 68%),
+    radial-gradient(44% 20% at 74% 62%, rgba(255, 255, 255, 0.16), transparent 72%),
+    linear-gradient(118deg, transparent 8%, rgba(255, 255, 255, 0.36) 21%, transparent 34%, rgba(122, 184, 255, 0.055) 52%, transparent 67%, rgba(255, 255, 255, 0.26) 82%, transparent 96%),
+    radial-gradient(70% 34% at 42% 18%, rgba(255, 255, 255, 0.28), transparent 76%);
+  filter: blur(18px);
   mix-blend-mode: screen;
-  opacity: calc(0.14 + var(--liquid-active, 0) * 0.045);
+  opacity: calc(0.22 + var(--liquid-active, 0) * 0.05);
   transform: translate3d(calc(var(--liquid-speed, 0) * -6px), 0, 0);
   animation: fluid-air-sheet 13s ease-in-out infinite alternate;
 }
 
 .fluid-canvas::after {
   background:
-    radial-gradient(32% 24% at 15% 26%, rgba(255, 255, 255, 0.15), transparent 74%),
-    radial-gradient(28% 24% at 76% 18%, rgba(143, 190, 244, 0.15), transparent 78%),
-    radial-gradient(34% 24% at 53% 78%, rgba(255, 255, 255, 0.12), transparent 78%);
-  filter: blur(34px);
-  mix-blend-mode: screen;
-  opacity: 0.14;
+    linear-gradient(166deg, transparent 2%, rgba(255, 255, 255, 0.32) 14%, transparent 27%, rgba(255, 255, 255, 0.22) 44%, transparent 58%, rgba(94, 157, 239, 0.055) 72%, transparent 88%),
+    radial-gradient(76% 24% at 18% 82%, rgba(255, 255, 255, 0.11), transparent 70%),
+    radial-gradient(48% 26% at 86% 20%, rgba(255, 255, 255, 0.09), transparent 74%);
+  filter: blur(12px);
+  mix-blend-mode: soft-light;
+  opacity: 0.28;
   animation: fluid-haze-drift 18s linear infinite;
 }
 
@@ -180,12 +197,12 @@ html.lenis body {
 
 .fluid-canvas[data-fluid="starting"]::before,
 .fluid-canvas[data-fluid="ready"]::before {
-  opacity: calc(0.08 + var(--liquid-active, 0) * 0.035);
+  opacity: calc(0.18 + var(--liquid-active, 0) * 0.040);
 }
 
 .fluid-canvas[data-fluid="starting"]::after,
 .fluid-canvas[data-fluid="ready"]::after {
-  opacity: 0.08;
+  opacity: 0.22;
 }
 
 .fluid-canvas canvas {
@@ -197,7 +214,7 @@ html.lenis body {
 }
 
 .fluid-canvas[data-fluid="ready"] canvas {
-  filter: saturate(0.98) contrast(1.06) brightness(0.91);
+  filter: saturate(0.95) contrast(1.10) brightness(0.96);
 }
 
 @keyframes fluid-air-sheet {
@@ -229,10 +246,12 @@ html.lenis body {
   position: relative;
   z-index: 0;
   background:
-    radial-gradient(54% 28% at 24% 6%, rgba(255, 255, 255, 0.48), transparent 72%),
-    radial-gradient(42% 24% at 78% 2%, rgba(86, 158, 238, 0.11), transparent 76%),
-    linear-gradient(180deg, rgba(232, 243, 254, 0.94) 0%, rgba(226, 239, 252, 0.92) 36%, rgba(220, 234, 249, 0.94) 100%);
-  box-shadow: 0 -80px 130px rgba(226, 239, 252, 0.76);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, transparent 18%),
+    linear-gradient(112deg, transparent 8%, rgba(255, 255, 255, 0.30) 22%, transparent 36%, rgba(112, 174, 244, 0.045) 58%, transparent 74%),
+    linear-gradient(180deg, rgba(236, 246, 255, 0.95) 0%, rgba(226, 239, 252, 0.92) 36%, rgba(216, 231, 247, 0.95) 100%);
+  box-shadow:
+    0 -80px 130px rgba(226, 239, 252, 0.76),
+    0 -1px 0 rgba(255, 255, 255, 0.80) inset;
 }
 
 .content-layer main::before {
@@ -242,10 +261,13 @@ html.lenis body {
   z-index: -1;
   pointer-events: none;
   background:
-    url("/assets/pearl-liquid-background.png") center top / cover repeat-y,
+    image-set(
+      url("/assets/pearl-liquid-background-poster.webp") type("image/webp"),
+      url("/assets/pearl-liquid-background.png") type("image/png")
+    ) center top / cover repeat-y,
     linear-gradient(180deg, rgba(231, 242, 253, 0.92), rgba(218, 233, 249, 0.92));
   opacity: 0.24;
-  filter: saturate(0.90) contrast(1.0) brightness(0.94);
+  filter: saturate(0.82) contrast(1.05) brightness(0.97);
 }
 
 .hero-shell {
@@ -265,9 +287,10 @@ html.lenis body {
   z-index: 5;
 }
 
-/* Visible hero-name fallback — a frosted-water CSS name shown until the live
-   WebGL fluid renderer reports ready, then it dissolves into the shader.
-   Guarantees the name is always visible even if WebGL2 is unavailable. */
+/* Hero name — the single visible rendering path.
+   A frosted-water CSS name: soft blue-white body, white rim, gentle depth.
+   Always visible (not gated on WebGL state) so the name is readable on every
+   device and never shows rectangle/line artifacts from a competing shader path. */
 .hero-name-fallback {
   font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
   font-weight: 900;
@@ -278,10 +301,8 @@ html.lenis body {
   flex-direction: column;
   align-items: center;
   gap: clamp(0.35rem, 1.2vw, 0.85rem);
-  transition: opacity 0.6s ease, transform 0.6s ease, filter 0.6s ease;
-  will-change: opacity, transform, filter;
   pointer-events: none;
-  opacity: 0;
+  opacity: 1;
 }
 
 .hero-name-fallback__line {
@@ -296,33 +317,16 @@ html.lenis body {
   font-size: clamp(5.6rem, 13.4vw, 13.8rem);
   line-height: 0.78;
   letter-spacing: -0.065em;
-  background:
-    radial-gradient(84% 94% at 28% 8%, rgba(255, 255, 255, 0.98), rgba(238, 246, 255, 0.62) 40%, rgba(175, 192, 218, 0.33) 76%, rgba(90, 112, 145, 0.30) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: rgba(210, 222, 238, 0.38);
-  -webkit-text-stroke: clamp(1px, 0.12vw, 2px) rgba(255, 255, 255, 0.88);
+  color: rgba(184, 206, 232, 0.82);
+  -webkit-text-fill-color: rgba(184, 206, 232, 0.82);
+  -webkit-text-stroke: clamp(0.5px, 0.06vw, 1px) rgba(255, 255, 255, 0.78);
   text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95),
-    0 12px 34px rgba(17, 50, 92, 0.16),
-    0 -3px 18px rgba(255, 255, 255, 0.68);
+    0 1px 0 rgba(255, 255, 255, 0.98),
+    0 12px 34px rgba(17, 50, 92, 0.22),
+    0 -4px 20px rgba(255, 255, 255, 0.58);
   filter:
-    drop-shadow(0 2px 1px rgba(255, 255, 255, 0.82))
-    drop-shadow(0 20px 28px rgba(23, 54, 92, 0.12));
-}
-
-/* Reveal the CSS name while WebGL boots or if the renderer fails. */
-.portfolio-root:has(.fluid-canvas[data-fluid="starting"]) .hero-name-fallback,
-.portfolio-root:has(.fluid-canvas[data-fluid="ready"]) .hero-name-fallback,
-.portfolio-root:has(.fluid-canvas[data-fluid="failed"]) .hero-name-fallback {
-  opacity: 0.34;
-  transform: none;
-}
-
-.portfolio-root:has(.fluid-canvas[data-fluid="starting"]) .hero-name-fallback,
-.portfolio-root:has(.fluid-canvas[data-fluid="failed"]) .hero-name-fallback {
-  opacity: 1;
+    drop-shadow(0 2px 1px rgba(255, 255, 255, 0.88))
+    drop-shadow(0 22px 30px rgba(23, 54, 92, 0.14));
 }
 
 /* Display font utility (Inter Tight) — replaces repeated inline styles. */
@@ -408,6 +412,95 @@ html.lenis body {
   opacity: 0.78;
 }
 
+.section-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-weight: 650;
+}
+
+.section-kicker::before {
+  content: "";
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: rgba(0, 102, 255, 0.94);
+  box-shadow: 0 0 16px rgba(0, 102, 255, 0.34);
+}
+
+.section-kicker::after {
+  content: "";
+  width: clamp(2.8rem, 8vw, 7rem);
+  height: 1px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(0, 102, 255, 0.24), rgba(255, 255, 255, 0.78), transparent);
+}
+
+.location-capsule {
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    linear-gradient(124deg, rgba(255, 255, 255, 0.58), rgba(238, 247, 255, 0.28) 42%, rgba(255, 255, 255, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(214, 231, 248, 0.14));
+  backdrop-filter: blur(22px) saturate(128%) contrast(1.06);
+  -webkit-backdrop-filter: blur(22px) saturate(128%) contrast(1.06);
+  border: 1px solid rgba(255, 255, 255, 0.74);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -1px 0 rgba(18, 80, 154, 0.12) inset,
+    0 -18px 30px rgba(0, 102, 255, 0.038) inset,
+    0 20px 42px -34px rgba(8, 36, 82, 0.50);
+}
+
+.location-capsule::before,
+.location-capsule::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.location-capsule::before {
+  inset: 7px 8px;
+  border-radius: 25px;
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.70) inset,
+    0 -9px 18px rgba(0, 102, 255, 0.035) inset;
+}
+
+.location-capsule::after {
+  left: 13%;
+  right: 13%;
+  bottom: 8px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.88), rgba(0, 102, 255, 0.32), transparent);
+  opacity: 0.86;
+  filter: blur(0.25px);
+}
+
+.location-capsule__status {
+  background: rgba(0, 102, 255, 0.96);
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.45),
+    0 0 16px rgba(0, 102, 255, 0.48);
+}
+
+.location-capsule__pin {
+  background:
+    radial-gradient(74% 80% at 30% 12%, rgba(255, 255, 255, 0.88), transparent 64%),
+    rgba(255, 255, 255, 0.26);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.78) inset,
+    0 -7px 12px rgba(0, 102, 255, 0.035) inset,
+    0 0 0 1px rgba(255, 255, 255, 0.42);
+}
+
+.location-capsule__coords {
+  border-top: 1px solid rgba(255, 255, 255, 0.38);
+}
+
 .motion-toggle {
   position: fixed;
   right: clamp(1rem, 3vw, 2.5rem);
@@ -456,7 +549,7 @@ html.lenis body {
   inset: 2rem clamp(0.75rem, 3vw, 2rem);
   z-index: -1;
   pointer-events: none;
-  border-radius: clamp(28px, 4vw, 52px);
+  border-radius: clamp(20px, 3vw, 32px);
   background:
     radial-gradient(42% 32% at 16% 18%, rgba(255, 255, 255, 0.38), transparent 72%),
     radial-gradient(36% 42% at 80% 68%, rgba(0, 102, 255, 0.085), transparent 74%),
@@ -468,6 +561,34 @@ html.lenis body {
   opacity: 0.72;
 }
 
+.depth-section--projects::before {
+  inset: 1.25rem clamp(0.55rem, 2.2vw, 1.7rem);
+  background:
+    linear-gradient(108deg, transparent 4%, rgba(255, 255, 255, 0.28) 18%, transparent 36%, rgba(255, 255, 255, 0.18) 61%, transparent 82%),
+    radial-gradient(46% 18% at 22% 34%, rgba(255, 255, 255, 0.13), transparent 70%),
+    radial-gradient(52% 20% at 72% 72%, rgba(255, 255, 255, 0.10), transparent 72%),
+    linear-gradient(180deg, rgba(241, 249, 255, 0.48), rgba(209, 228, 247, 0.18));
+  border-color: rgba(255, 255, 255, 0.34);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.86) inset,
+    0 -42px 86px rgba(0, 102, 255, 0.030) inset;
+}
+
+.depth-section--projects::after {
+  content: "";
+  position: absolute;
+  inset: 8% 0 auto;
+  height: 72%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(102deg, transparent 9%, rgba(255, 255, 255, 0.32) 18%, transparent 30%, rgba(0, 102, 255, 0.050) 54%, transparent 72%),
+    radial-gradient(54% 20% at 18% 44%, rgba(255, 255, 255, 0.13), transparent 72%),
+    radial-gradient(46% 18% at 78% 56%, rgba(255, 255, 255, 0.10), transparent 74%);
+  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 78%, transparent);
+  opacity: 0.70;
+}
+
 .depth-section--experience::after {
   content: "";
   position: absolute;
@@ -476,8 +597,10 @@ html.lenis body {
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(closest-side at 50% 12%, rgba(255, 255, 255, 0.30), transparent 74%),
-    repeating-radial-gradient(circle at 50% 24%, rgba(0, 102, 255, 0.06) 0 1px, transparent 1px 38px);
+    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent),
+    radial-gradient(circle at 42% 24%, rgba(0, 102, 255, 0.070) 0 1px, transparent 2px),
+    radial-gradient(circle at 58% 38%, rgba(0, 102, 255, 0.045) 0 1px, transparent 2px),
+    radial-gradient(circle at 48% 58%, rgba(255, 255, 255, 0.12) 0 1px, transparent 2px);
   mask-image: linear-gradient(180deg, transparent, #000 20%, #000 68%, transparent);
   opacity: 0.55;
 }
@@ -504,9 +627,8 @@ html.lenis body {
 
 .depth-section--about::before {
   background:
-    radial-gradient(42% 36% at 22% 16%, rgba(255, 255, 255, 0.44), transparent 72%),
-    radial-gradient(52% 30% at 72% 80%, rgba(0, 102, 255, 0.055), transparent 78%),
-    linear-gradient(180deg, rgba(246, 251, 255, 0.38), rgba(216, 233, 249, 0.18));
+    linear-gradient(132deg, rgba(255, 255, 255, 0.42), transparent 28%, rgba(255, 255, 255, 0.22) 62%, transparent 86%),
+    linear-gradient(180deg, rgba(246, 251, 255, 0.42), rgba(216, 233, 249, 0.18));
 }
 
 .about-still-water,
@@ -530,8 +652,7 @@ html.lenis body {
 
 .contact-depth::before {
   background:
-    radial-gradient(44% 30% at 50% 0%, rgba(255, 255, 255, 0.54), transparent 74%),
-    radial-gradient(46% 36% at 70% 76%, rgba(0, 102, 255, 0.070), transparent 74%),
+    linear-gradient(118deg, transparent 5%, rgba(255, 255, 255, 0.40) 20%, transparent 38%, rgba(0, 102, 255, 0.042) 64%, transparent 82%),
     linear-gradient(180deg, rgba(246, 251, 255, 0.46), rgba(216, 233, 249, 0.22));
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.84) inset,
@@ -651,7 +772,7 @@ nextjs-portal {
     padding-inline: 0 !important;
     width: 100%;
     gap: clamp(0.18rem, 1svh, 0.38rem);
-    opacity: 0;
+    opacity: 1;
   }
 
   .hero-name-fallback__line {
@@ -668,12 +789,6 @@ nextjs-portal {
     letter-spacing: -0.07em;
     white-space: nowrap;
     -webkit-text-stroke: 1px rgba(255, 255, 255, 0.92);
-  }
-
-  .portfolio-root:has(.fluid-canvas[data-fluid="starting"]) .hero-name-fallback,
-  .portfolio-root:has(.fluid-canvas[data-fluid="ready"]) .hero-name-fallback,
-  .portfolio-root:has(.fluid-canvas[data-fluid="static"]) .hero-name-fallback {
-    opacity: 0.72;
   }
 
   .hero-name-stage,
@@ -732,6 +847,26 @@ nextjs-portal {
 }
 
 @media (max-width: 768px) {
+  .project-modal {
+    align-items: end;
+    padding: 0.75rem;
+  }
+
+  .project-modal__panel {
+    width: 100%;
+    max-height: 86svh;
+    border-radius: 26px;
+    padding: 1.15rem;
+  }
+
+  .project-modal__header {
+    padding-right: 2.6rem;
+  }
+
+  .project-modal__proof-grid {
+    grid-template-columns: 1fr;
+  }
+
   .section-heading::before {
     bottom: -0.8rem;
     width: 12rem;
@@ -833,7 +968,9 @@ nextjs-portal {
 }
 
 /* ---------------------------------------------------------------------------
- * Liquid-glass project buttons (WebGL + DOM overlay)
+ * Liquid-glass project buttons — ONE clear glass object per card.
+ * No inner fake layers (no ::before inner border, no ::after glow strip,
+ * no duplicate inset surface). Obvious text + a clean arrow affordance.
  * --------------------------------------------------------------------------- */
 
 .liquid-glass-card {
@@ -846,107 +983,46 @@ nextjs-portal {
   text-decoration: none;
   outline: none;
   isolation: isolate;
-  border-radius: 42px 52px 45px 38px / 38px 44px 50px 42px;
+  border-radius: 26px;
   overflow: hidden;
   background:
-    radial-gradient(92% 130% at 12% 0%, rgba(255, 255, 255, 0.30), transparent 58%),
-    radial-gradient(72% 74% at 18% 112%, rgba(0, 102, 255, 0.26), transparent 64%),
-    radial-gradient(82% 100% at 86% 115%, rgba(0, 102, 255, 0.16), transparent 68%),
-    linear-gradient(155deg, rgba(246, 251, 255, 0.18), rgba(218, 234, 250, 0.11) 54%, rgba(185, 213, 244, 0.08)),
-    rgba(230, 242, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.86);
+    radial-gradient(92% 130% at 12% 0%, rgba(255, 255, 255, 0.42), transparent 58%),
+    radial-gradient(72% 48% at 18% 112%, rgba(0, 102, 255, 0.10), transparent 66%),
+    linear-gradient(155deg, rgba(246, 251, 255, 0.34), rgba(218, 234, 250, 0.22) 54%, rgba(185, 213, 244, 0.16)),
+    rgba(230, 242, 255, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.82);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.94) inset,
-    0 -1px 0 rgba(22, 86, 165, 0.18) inset,
-    0 -22px 30px rgba(0, 102, 255, 0.16) inset,
-    0 26px 40px -30px rgba(8, 35, 82, 0.46);
+    0 -1px 0 rgba(22, 86, 165, 0.14) inset,
+    0 -16px 24px rgba(0, 102, 255, 0.055) inset,
+    0 18px 30px -24px rgba(8, 35, 82, 0.42);
   backdrop-filter: blur(18px) saturate(122%) contrast(1.02);
   -webkit-backdrop-filter: blur(18px) saturate(122%) contrast(1.02);
-  filter:
-    drop-shadow(0 18px 18px rgba(10, 43, 92, 0.13))
-    drop-shadow(0 0 18px rgba(0, 102, 255, 0.15));
   transform: translateZ(0);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, background 0.35s ease;
 }
 
-.liquid-glass-card::before,
-.liquid-glass-card::after,
+/* Single soft specular highlight that follows the pointer — the only "liquid"
+   flourish on the card. One layer, not a stack. */
 .liquid-glass-surface {
   content: "";
   position: absolute;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.liquid-glass-surface {
-  inset: -8px;
+  inset: 0;
   z-index: 0;
   border-radius: inherit;
+  pointer-events: none;
   background:
-    radial-gradient(circle at var(--card-x, 66%) var(--card-y, 62%), rgba(255, 255, 255, 0.60), rgba(47, 140, 255, 0.20) 13%, transparent 34%),
-    radial-gradient(92% 130% at 12% 0%, rgba(255, 255, 255, 0.35), transparent 58%),
-    radial-gradient(72% 74% at 18% 112%, rgba(0, 102, 255, 0.31), transparent 64%),
-    linear-gradient(155deg, rgba(246, 251, 255, 0.22), rgba(218, 234, 250, 0.13) 54%, rgba(185, 213, 244, 0.09));
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.96) inset,
-    0 -1px 0 rgba(22, 86, 165, 0.19) inset,
-    0 -24px 34px rgba(0, 102, 255, 0.18) inset,
-    0 26px 40px -30px rgba(8, 35, 82, 0.48);
-  opacity: 0.94;
-  filter: blur(0.05px) saturate(1.08);
-  transform: scale(1);
-  transition:
-    border-radius 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.35s ease,
-    filter 0.35s ease;
+    radial-gradient(circle at var(--card-x, 66%) var(--card-y, 38%),
+      rgba(255, 255, 255, 0.40),
+      rgba(47, 140, 255, 0.06) 18%,
+      transparent 42%);
+  opacity: 0.7;
+  transition: opacity 0.35s ease;
 }
 
-.liquid-glass-card::before {
-  inset: 16px 20px;
-  border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.84) inset,
-    0 -1px 0 rgba(0, 78, 170, 0.13) inset,
-    0 -8px 14px rgba(0, 102, 255, 0.055) inset;
-  opacity: 0.58;
-}
-
-.liquid-glass-card::after {
-  inset: auto 30px 13px;
-  height: 8px;
-  border-radius: 46% 54% 50% 50% / 42% 58% 42% 58%;
-  background:
-    linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.78), rgba(255, 255, 255, 0.82), rgba(0, 102, 255, 0.42), transparent);
-  mix-blend-mode: screen;
-  opacity: 0.92;
-  filter: blur(0.8px);
-}
-
-.project-buttons-row__card:hover .liquid-glass-surface,
-.project-buttons-row__card:focus-visible .liquid-glass-surface {
-  border-radius: 34px;
-  transform: scale(1.018);
+.liquid-glass-card:hover .liquid-glass-surface,
+.liquid-glass-card:focus-visible .liquid-glass-surface {
   opacity: 1;
-  filter:
-    blur(0.03px)
-    saturate(1.18)
-    drop-shadow(0 0 22px rgba(0, 102, 255, 0.20));
-}
-
-.project-buttons-row__card[data-transitioning="true"] {
-  z-index: 80;
-}
-
-.project-buttons-row__card[data-transitioning="true"] .liquid-glass-surface {
-  border-radius: 30px;
-  transform: scale(14);
-  opacity: 0.96;
-  filter:
-    saturate(1.35)
-    brightness(1.12)
-    drop-shadow(0 0 80px rgba(47, 140, 255, 0.45));
-  transition-duration: 0.56s;
 }
 
 .project-buttons-row {
@@ -973,25 +1049,33 @@ nextjs-portal {
   outline: none;
   isolation: isolate;
   background: transparent;
-  border-radius: 42px 52px 45px 38px / 38px 44px 50px 42px;
-  overflow: visible;
+  border-radius: 26px;
+  overflow: hidden;
   contain: layout style;
-  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
 }
 
 .project-buttons-row__card:hover {
-  transform: translateY(-2px) scaleX(1.012) scaleY(1.004);
-  filter:
-    drop-shadow(0 20px 22px rgba(10, 43, 92, 0.13))
-    drop-shadow(0 0 20px rgba(0, 102, 255, 0.15));
+  transform: translateY(-3px);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -1px 0 rgba(22, 86, 165, 0.16) inset,
+    0 -16px 24px rgba(0, 102, 255, 0.07) inset,
+    0 26px 40px -28px rgba(8, 35, 82, 0.5);
 }
 
 .project-buttons-row__card:active {
-  transform: translateY(1px) scale(0.994);
+  transform: translateY(-1px) scale(0.996);
 }
 
 .project-buttons-row__card:focus-visible {
   outline: none;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -1px 0 rgba(22, 86, 165, 0.16) inset,
+    0 -16px 24px rgba(0, 102, 255, 0.07) inset,
+    0 26px 40px -28px rgba(8, 35, 82, 0.5),
+    0 0 0 2px rgba(0, 102, 255, 0.6);
 }
 
 .liquid-glass-canvas {
@@ -1084,6 +1168,159 @@ nextjs-portal {
     0 0 0 1px rgba(255, 255, 255, 0.5);
 }
 
+.project-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 3vw, 2.5rem);
+}
+
+.project-modal__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  cursor: pointer;
+  background:
+    radial-gradient(56% 46% at 50% 44%, rgba(255, 255, 255, 0.16), transparent 72%),
+    rgba(225, 237, 250, 0.54);
+  backdrop-filter: blur(20px) saturate(120%);
+  -webkit-backdrop-filter: blur(20px) saturate(120%);
+}
+
+.project-modal__panel {
+  position: relative;
+  width: min(100%, 58rem);
+  max-height: min(82svh, 760px);
+  overflow: auto;
+  border-radius: 34px;
+  padding: clamp(1.35rem, 3vw, 2.6rem);
+  color: var(--color-ink);
+  background:
+    linear-gradient(112deg, rgba(255, 255, 255, 0.82), rgba(238, 247, 255, 0.60) 38%, rgba(218, 236, 255, 0.45)),
+    radial-gradient(84% 62% at 74% 108%, rgba(0, 102, 255, 0.11), transparent 64%),
+    rgba(244, 250, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.98) inset,
+    0 -22px 54px rgba(0, 102, 255, 0.055) inset,
+    0 38px 96px -56px rgba(8, 35, 82, 0.52);
+  backdrop-filter: blur(26px) saturate(126%) contrast(1.03);
+  -webkit-backdrop-filter: blur(26px) saturate(126%) contrast(1.03);
+}
+
+.project-modal__close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  border-radius: 999px;
+  color: rgba(10, 15, 26, 0.84);
+  background: rgba(255, 255, 255, 0.60);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.92) inset;
+}
+
+.project-modal__header {
+  padding-right: 3rem;
+}
+
+.project-modal__index {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: rgba(0, 102, 255, 0.86);
+}
+
+.project-modal__title {
+  margin-top: 0.45rem;
+  font-family: var(--font-inter-tight), var(--font-geist-sans), sans-serif;
+  font-size: clamp(2.6rem, 7vw, 5.4rem);
+  font-weight: 900;
+  line-height: 0.9;
+  letter-spacing: 0;
+  color: rgba(7, 12, 20, 0.96);
+}
+
+.project-modal__subtitle {
+  margin-top: 0.85rem;
+  font-size: clamp(1.05rem, 2vw, 1.45rem);
+  font-weight: 650;
+  color: rgba(19, 29, 44, 0.84);
+}
+
+.project-modal__tagline,
+.project-modal__description,
+.project-modal__proof p {
+  color: rgba(28, 36, 51, 0.76);
+}
+
+.project-modal__tagline {
+  margin-top: 0.45rem;
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.project-modal__body {
+  margin-top: clamp(1.4rem, 3vw, 2.2rem);
+}
+
+.project-modal__description {
+  max-width: 48rem;
+  font-size: clamp(1rem, 1.4vw, 1.14rem);
+  line-height: 1.65;
+}
+
+.project-modal__proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.4rem;
+}
+
+.project-modal__proof {
+  border-radius: 20px;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.90) inset,
+    0 -12px 22px rgba(0, 102, 255, 0.035) inset;
+}
+
+.project-modal__proof h3 {
+  margin-bottom: 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 750;
+  color: rgba(28, 36, 51, 0.58);
+}
+
+.project-modal__proof p {
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.project-modal__stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+}
+
+.project-modal__stack span {
+  border-radius: 999px;
+  padding: 0.42rem 0.75rem;
+  font-size: 0.76rem;
+  color: rgba(28, 36, 51, 0.76);
+  background: rgba(255, 255, 255, 0.46);
+  border: 1px solid rgba(255, 255, 255, 0.68);
+}
+
 .project-evidence-stage {
   position: relative;
 }
@@ -1099,6 +1336,11 @@ nextjs-portal {
     radial-gradient(42% 48% at 86% 62%, rgba(0, 102, 255, 0.070), transparent 76%);
   border: 0;
   opacity: 0.62;
+}
+
+.project-evidence-stage:nth-child(even)::before {
+  background:
+    linear-gradient(106deg, transparent 10%, rgba(255, 255, 255, 0.24) 28%, transparent 48%, rgba(0, 102, 255, 0.040) 72%, transparent 88%);
 }
 
 .project-artifact {
@@ -1124,13 +1366,13 @@ nextjs-portal {
   border-radius: 999px;
   transform: translate(-50%, -50%) rotate(-9deg);
   background:
-    radial-gradient(52% 36% at 28% 18%, rgba(255, 255, 255, 0.92), transparent 68%),
-    radial-gradient(58% 48% at 76% 84%, rgba(0, 102, 255, 0.22), transparent 70%),
-    radial-gradient(65% 62% at 54% 54%, rgba(232, 244, 255, 0.44), rgba(255, 255, 255, 0.10) 72%, transparent 100%);
+    linear-gradient(108deg, transparent 6%, rgba(255, 255, 255, 0.60) 24%, transparent 44%, rgba(255, 255, 255, 0.30) 68%, transparent 88%),
+    radial-gradient(62% 34% at 76% 84%, rgba(0, 102, 255, 0.12), transparent 70%),
+    radial-gradient(65% 62% at 54% 54%, rgba(232, 244, 255, 0.46), rgba(255, 255, 255, 0.10) 72%, transparent 100%);
   border: 1px solid rgba(255, 255, 255, 0.52);
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.88) inset,
-    0 -20px 42px rgba(0, 102, 255, 0.11) inset,
+    0 -20px 42px rgba(0, 102, 255, 0.055) inset,
     0 34px 50px -42px rgba(11, 42, 88, 0.32);
   filter: blur(0.1px) saturate(1.06);
   opacity: 0.86;
@@ -1140,7 +1382,7 @@ nextjs-portal {
   inset: 16% 6%;
   border-radius: 999px;
   background:
-    repeating-linear-gradient(92deg, transparent 0 18px, rgba(0, 102, 255, 0.050) 19px, transparent 20px),
+    linear-gradient(92deg, transparent 8%, rgba(0, 102, 255, 0.048) 28%, transparent 46%, rgba(255, 255, 255, 0.13) 62%, transparent 82%),
     radial-gradient(70% 44% at 50% 52%, rgba(255, 255, 255, 0.32), transparent 72%);
   mask-image: radial-gradient(70% 48% at 50% 50%, #000 42%, transparent 76%);
   opacity: 0.42;
@@ -1173,13 +1415,13 @@ nextjs-portal {
   border-radius: 24px;
   padding: 1.15rem 1.2rem;
   background:
-    radial-gradient(88% 92% at 8% 0%, rgba(255, 255, 255, 0.74), transparent 64%),
-    radial-gradient(64% 66% at 94% 100%, rgba(0, 102, 255, 0.18), transparent 70%),
+    linear-gradient(116deg, rgba(255, 255, 255, 0.58), transparent 32%, rgba(255, 255, 255, 0.22) 68%, transparent 90%),
+    radial-gradient(64% 42% at 94% 100%, rgba(0, 102, 255, 0.090), transparent 70%),
     linear-gradient(145deg, rgba(255,255,255,0.48), rgba(226,240,255,0.32));
   border: 1px solid rgba(255, 255, 255, 0.76);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 -16px 26px rgba(0, 102, 255, 0.085) inset,
+    0 -16px 26px rgba(0, 102, 255, 0.045) inset,
     0 20px 32px -28px rgba(13, 47, 93, 0.46);
 }
 
@@ -1197,10 +1439,23 @@ nextjs-portal {
 
 .proof-label {
   margin-bottom: 0.65rem;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0;
   color: rgba(28, 36, 51, 0.60);
+}
+
+.proof-grid--projects .proof-cell:nth-child(1) {
+  border-radius: 30px 24px 28px 22px / 24px 31px 22px 30px;
+}
+
+.proof-grid--projects .proof-cell:nth-child(2) {
+  border-radius: 22px 32px 22px 30px / 30px 22px 32px 24px;
+  transform: translateY(10px);
+}
+
+.proof-grid--projects .proof-cell:nth-child(3) {
+  border-radius: 28px 22px 32px 24px / 22px 30px 24px 32px;
 }
 
 .timeline-bead {
@@ -1345,6 +1600,11 @@ nextjs-portal {
 }
 
 @media (max-width: 640px) {
+  .motion-toggle {
+    right: 0.85rem;
+    bottom: 3.55rem;
+  }
+
   .project-buttons-row {
     display: grid;
     grid-template-columns: 1fr;
@@ -1414,5 +1674,3 @@ nextjs-portal {
     transition: none;
   }
 }
-
-/* force recompile 1782931931 */

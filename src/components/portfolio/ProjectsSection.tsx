@@ -17,7 +17,7 @@ export default function ProjectsSection() {
   return (
     <section
       id="projects"
-      className="relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
+      className="depth-section depth-section--projects relative px-6 md:px-10 lg:px-14 py-32 md:py-40"
       aria-label="Featured projects"
     >
       <motion.div
@@ -25,11 +25,11 @@ export default function ProjectsSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-15% 0px" }}
         transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-        className="section-heading max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
+        className="section-heading section-heading--projects max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
       >
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft/55 mb-4">
-            Featured Work
+          <p className="section-kicker text-[12px] text-ink-soft/62 mb-4">
+            Surface tension / shipped systems
           </p>
           <h2
             className="text-[44px] md:text-[68px] leading-[0.95] font-black tracking-[-0.03em] text-ink"
@@ -98,7 +98,7 @@ export default function ProjectsSection() {
                 {project.description}
               </p>
 
-              <div className="proof-grid grid sm:grid-cols-3 gap-3 mt-2">
+              <div className="proof-grid proof-grid--projects grid sm:grid-cols-3 gap-3 mt-2">
                 <div className="proof-cell">
                   <p className="proof-label">
                     Problem

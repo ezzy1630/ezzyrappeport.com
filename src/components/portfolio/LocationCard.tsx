@@ -32,17 +32,17 @@ export default function LocationCard() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 1.0, delay: 1.5, ease: [0.22, 1, 0.36, 1] }}
         whileHover={{ y: -2 }}
-        className="glass rounded-[30px] px-4 py-3.5 md:px-5 md:py-4 w-[270px] md:w-[294px] relative"
+        className="location-capsule rounded-[30px] px-4 py-3.5 md:px-5 md:py-4 w-[270px] md:w-[294px] relative"
         aria-label={bio.location.title}
       >
         {/* Blue status dot */}
         <span
           aria-hidden="true"
-          className="absolute top-4 right-5 w-2 h-2 rounded-full bg-electric shadow-[0_0_12px_rgba(0,102,255,0.6)]"
+          className="location-capsule__status absolute top-4 right-5 w-2 h-2 rounded-full"
         />
 
         <div className="flex items-start gap-3.5 pr-5">
-          <span className="grid place-items-center w-8 h-8 rounded-full bg-white/35 text-ink shadow-[0_1px_1px_rgba(255,255,255,0.75)_inset]">
+          <span className="location-capsule__pin grid place-items-center w-8 h-8 rounded-full text-ink">
             <MapPin className="w-[18px] h-[18px]" strokeWidth={1.6} />
           </span>
           <div className="flex-1 min-w-0">
@@ -55,7 +55,7 @@ export default function LocationCard() {
           </div>
         </div>
 
-        <div className="mt-2.5 pt-2 border-t border-white/34">
+        <div className="location-capsule__coords mt-2.5 pt-2">
           <p
             className="text-[10px] md:text-[11px] tracking-normal text-ink-soft/65 font-mono"
             style={{ fontFeatureSettings: "'tnum'" }}

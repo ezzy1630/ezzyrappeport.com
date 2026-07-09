@@ -194,8 +194,8 @@ function tick(now: number) {
   const t = now / 1000;
   state.time = t;
 
-  const targetEnergy = state.pointer.active ? 0.36 : 0.03;
-  const k = state.pointer.active ? 0.08 : 0.025;
+  const targetEnergy = state.pointer.active ? 0.46 : 0.055;
+  const k = state.pointer.active ? 0.10 : 0.032;
   state.pointer.energy += (targetEnergy - state.pointer.energy) * k;
   state.scroll.velocity *= 0.92;
   state.scroll.depth += (state.scroll.progress - state.scroll.depth) * 0.045;
@@ -220,8 +220,8 @@ function tick(now: number) {
   if (!state.pointer.active && now - lastInputTime > 2600 && t > nextIdleRipple) {
     const idleX = window.innerWidth * (0.18 + ((Math.sin(t * 0.37) + 1) * 0.5) * 0.64);
     const idleY = window.innerHeight * (0.18 + ((Math.cos(t * 0.29 + 1.2) + 1) * 0.5) * 0.56);
-    pushRipple(idleX, idleY, 0.12, now);
-    nextIdleRipple = t + 3.4 + ((Math.sin(t * 1.7) + 1) * 0.5) * 1.8;
+    pushRipple(idleX, idleY, 0.22, now);
+    nextIdleRipple = t + 2.4 + ((Math.sin(t * 1.7) + 1) * 0.5) * 1.2;
   }
 
   emitPointer();

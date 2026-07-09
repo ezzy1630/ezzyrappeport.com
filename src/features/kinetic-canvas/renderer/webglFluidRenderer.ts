@@ -2,11 +2,16 @@
 
 import type { LiquidPhysics } from "../input/liquidInput";
 import { createHeroTextCanvas } from "../materials/heroTextMask";
-import { FLUID_TEXTURE_SRC, RIPPLE_COUNT, TARGET_FPS, TEXT_MAX_DIM, resolveKineticQuality } from "./quality";
+import {
+  FLUID_TEXTURE_FALLBACK_SRC,
+  FLUID_TEXTURE_SRC,
+  RIPPLE_COUNT,
+  resolveKineticQuality,
+  type KineticQuality,
+} from "./quality";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 
 const TARGET_COUNT = 8;
-const PRESSURE_ITERATIONS = 10;
 
 type DoubleBuffer = {
   read: WebGLTexture;
@@ -284,7 +289,11 @@ export function startFluidRenderer(
   reducedMotionRef: { current: boolean },
   staticModeRef: { current: boolean },
   heroNameRef: { current: boolean },
+  initialQuality?: KineticQuality,
 ): () => void {
+  let quality = initialQuality ?? resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
+  if (quality.tier === "static") return () => {};
+
   const glContext = canvas.getContext("webgl2", {
     antialias: false,
     alpha: true,
@@ -357,11 +366,18 @@ export function startFluidRenderer(
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([248, 251, 255, 255]));
   const image = new Image();
   image.decoding = "async";
-  image.src = FLUID_TEXTURE_SRC;
+  const loadFluidImage = (src: string, fallback = false) => {
+    image.dataset.fallback = fallback ? "true" : "false";
+    image.src = src;
+  };
   image.addEventListener("load", () => {
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
   });
+  image.addEventListener("error", () => {
+    if (image.dataset.fallback !== "true") loadFluidImage(FLUID_TEXTURE_FALLBACK_SRC, true);
+  });
+  loadFluidImage(FLUID_TEXTURE_SRC);
 
   // hero-name coverage texture
   const textTexture = gl.createTexture();
@@ -428,10 +444,8 @@ export function startFluidRenderer(
   }
 
   function configureSim() {
-    const quality = resolveKineticQuality();
-    const targetWidth = quality.coarsePointer || quality.reducedMotion ? 384 : 640;
-    simWidth = targetWidth;
-    simHeight = Math.max(192, Math.round(targetWidth * (height / Math.max(width, 1))));
+    simWidth = Math.max(1, quality.simWidth);
+    simHeight = Math.max(192, Math.round(simWidth * (height / Math.max(width, 1))));
     disposeSimBuffers();
     velocity = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     dye = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
@@ -465,7 +479,15 @@ export function startFluidRenderer(
     );
     for (let i = 0; i < RIPPLE_COUNT; i++) {
       const ripple = physics.ripples[i];
-      if (ripple) gl.uniform4f(simRippleLocations[i], ripple.x / Math.max(width, 1) * simWidth, ripple.y / Math.max(height, 1) * simHeight, t - ripple.age, ripple.intensity);
+      if (ripple && i < quality.activeRipples) {
+        gl.uniform4f(
+          simRippleLocations[i],
+          ripple.x / Math.max(width, 1) * simWidth,
+          ripple.y / Math.max(height, 1) * simHeight,
+          t - ripple.age,
+          ripple.intensity * quality.renderScale,
+        );
+      }
       else gl.uniform4f(simRippleLocations[i], -9999, -9999, -9999, 0);
     }
     for (let i = 0; i < TARGET_COUNT; i++) {
@@ -513,7 +535,7 @@ export function startFluidRenderer(
     bindTexture(0, velocity.read, simVelocityLocationRead);
     drawSim(2, divergence.fbo);
     bindTexture(4, divergence.texture, simDivergenceLocationRead);
-    for (let i = 0; i < PRESSURE_ITERATIONS; i++) {
+    for (let i = 0; i < quality.pressureIterations; i++) {
       bindTexture(3, pressure.read, simPressureLocationRead);
       drawSim(3, pressure.writeFbo);
       pressure.swap();
@@ -534,7 +556,7 @@ export function startFluidRenderer(
 
   function regenerateText() {
     if (!heroNameRef.current) return;
-    const texW = Math.min(canvas.width, TEXT_MAX_DIM);
+    const texW = Math.min(canvas.width, quality.textMaxDim);
     const texH = Math.max(1, Math.round(texW * (height / Math.max(width, 1))));
     const textCanvas = createHeroTextCanvas(texW, texH);
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
@@ -553,7 +575,10 @@ export function startFluidRenderer(
   function configure() {
     width = window.innerWidth;
     height = window.innerHeight;
-    dpr = resolveKineticQuality().dpr;
+    quality = resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
+    if (quality.tier === "static") return;
+    canvas.dataset.quality = quality.tier;
+    dpr = quality.dpr;
     canvas.width = Math.max(1, Math.floor(width * dpr));
     canvas.height = Math.max(1, Math.floor(height * dpr));
     canvas.style.width = `${width}px`;
@@ -604,8 +629,8 @@ export function startFluidRenderer(
     }
     for (let i = 0; i < RIPPLE_COUNT; i++) {
       const ripple = physics.ripples[i];
-      if (ripple) {
-        gl.uniform4f(rippleLocations[i], ripple.x * dpr, ripple.y * dpr, t - ripple.age, ripple.intensity);
+      if (ripple && i < quality.activeRipples) {
+        gl.uniform4f(rippleLocations[i], ripple.x * dpr, ripple.y * dpr, t - ripple.age, ripple.intensity * quality.renderScale);
       } else {
         gl.uniform4f(rippleLocations[i], -9999, -9999, -9999, 0);
       }
@@ -627,7 +652,7 @@ export function startFluidRenderer(
       frame = 0;
       return; // single static frame; the name still renders
     }
-    const interval = 1000 / TARGET_FPS;
+    const interval = 1000 / quality.targetFps;
     if (now - lastRenderTime < interval) {
       frame = requestAnimationFrame(render);
       return;

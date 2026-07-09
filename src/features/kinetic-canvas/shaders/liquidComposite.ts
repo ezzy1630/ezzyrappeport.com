@@ -30,14 +30,14 @@ in vec2 v_uv;
 out vec4 outColor;
 
 #define MENISCUS_AMP 0.62
-#define REFRACTION   0.192
+#define REFRACTION   0.265
 #define RIM_AMP      2.18
 #define SPEC_SHINE   92.0
 #define SPEC_AMP     1.08
 #define FRES_AMP     1.28
 #define DOME_AMP     0.54
 #define GLOSS_AMP    0.96
-#define CAUSTIC_AMP  0.40
+#define CAUSTIC_AMP  0.78
 #define BUBBLE_RIM   1.32
 
 float hash(vec2 p) {
@@ -223,13 +223,17 @@ void main() {
   float caustic = caustics(p * 2.8, t * 0.25);
   caustic += caustics(p * 4.2 + vec2(t * 0.1), t * 0.35) * 0.5;
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
+  float liquidRidge = ridge(flowA - 0.52, 0.20) * 0.34 + ridge(flowB - 0.48, 0.18) * 0.22;
+  float fineCaustic = pow(caustic, 2.15) * (0.52 + liquidRidge);
   vec3 causticLight = vec3(1.0, 0.98, 0.95) * caustic * CAUSTIC_AMP * (0.7 + causticMask);
   float bottomZone = smoothstep(0.55, 0.0, uv.y) * 0.42;
-  base += causticLight * (1.0 + bottomZone);
-  base += pearlBlue * dot(simDye, vec3(0.05, 0.25, 0.70)) * 0.28;
+  base += causticLight * (1.08 + bottomZone);
+  base += vec3(1.0, 0.99, 0.96) * fineCaustic * 0.48;
+  base += softSilver * liquidRidge * 0.12;
+  base += pearlBlue * dot(simDye, vec3(0.02, 0.12, 0.86)) * 0.18;
   base += vec3(1.0) * max(max(simDye.r, simDye.g), simDye.b) * 0.035;
-  base += pearlBlue * targetEdge * 0.09 + vec3(1.0) * targetEdge * 0.06;
-  base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.055;
+  base += pearlBlue * targetEdge * 0.15 + vec3(1.0) * targetEdge * 0.08;
+  base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.032;
 
   float sampleWarp = ripple.z + lensOffset.x * 8.0 + simHeight * 0.70 + simVelocity.x * 0.48;
 
@@ -321,7 +325,7 @@ void main() {
 
   float blueZone = smoothstep(0.5, 0.95, uv.x) * (1.0 - smoothstep(0.45, 0.9, uv.y));
   float cursorBlue = exp(-distance(uv, pointer) * 5.0) * u_energy;
-  letterBody += pearlBlue * (blueZone * 0.10 + cursorBlue * 0.10 + simObstacle.g * 0.14) * interior;
+  letterBody += pearlBlue * (blueZone * 0.045 + cursorBlue * 0.13 + simObstacle.g * 0.11) * interior;
 
   float cAbove = textCov(uv + vec2(0.0, 3.5 / u_resolution.y));
   float cLeft = textCov(uv + vec2(-3.5 / u_resolution.x, 0.0));
@@ -338,13 +342,13 @@ void main() {
   color += vec3(1.0) * rim * (RIM_AMP * (1.74 + mobilePoster * 0.30)) * (1.0 - letterMask * 0.20);
   color += vec3(1.0) * rim * BUBBLE_RIM * bubbleCrown * 0.42;
   color += vec3(0.98, 1.0, 1.0) * outsideRidge * (1.72 + mobilePoster * 0.28);
-  color += pearlBlue * outsideRidge * (0.24 + mobilePoster * 0.08);
-  color += pearlBlue * rim * (0.28 + mobilePoster * 0.10) * (1.0 - letterMask * 0.24);
+  color += pearlBlue * outsideRidge * (0.18 + mobilePoster * 0.06);
+  color += pearlBlue * rim * (0.20 + mobilePoster * 0.08) * (1.0 - letterMask * 0.24);
   color += pearlWhite * outsideRidge * (0.58 + mobilePoster * 0.28);
   color += softSilver * rim * (0.48 + mobilePoster * 0.16) * (1.0 - letterMask * 0.18);
   color += vec3(0.94, 0.99, 1.0) * innerRim * (1.18 + mobilePoster * 0.18) * letterMask;
   color += vec3(1.0) * spec * (0.72 + mobilePoster * 0.18) * (rim + insideRidge);
-  color += pearlBlue * shoulder * caustic * 0.20;
+  color += pearlBlue * shoulder * fineCaustic * 0.18;
   float coolLetterMask = clamp(letterMask + outsideRidge * 0.72 + insideRidge * 0.38, 0.0, 1.0);
   float letterLum = dot(color, vec3(0.299, 0.587, 0.114));
   vec3 cooledLetter = vec3(letterLum * 0.82, letterLum * 0.92, min(1.0, letterLum * 1.06 + 0.06));
@@ -354,16 +358,16 @@ void main() {
   color -= vec3(0.05, 0.07, 0.10) * shoulder * (0.42 + mobilePoster * 0.16);
   color += vec3(1.0, 1.0, 0.98) * outsideRidge * (0.60 + mobilePoster * 0.22);
 
-  color += pearlBlue * ripple.x * 0.24 + vec3(1.0) * ripple.y * 0.58;
-  color += pearlBlue * simDye.b * 0.18 + vec3(1.0) * simHeight * 0.20;
-  color += pearlBlue * simObstacle.g * (0.20 + targetBody * 0.12);
+  color += pearlBlue * ripple.x * 0.56 + vec3(1.0) * ripple.y * 0.78;
+  color += pearlBlue * simDye.b * 0.20 + vec3(1.0) * simHeight * 0.34;
+  color += pearlBlue * simObstacle.g * (0.15 + targetBody * 0.18);
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
-  color += pearlBlue * wake * 0.09 + pearlWhite * wake * 0.13;
+  color += pearlBlue * wake * 0.14 + pearlWhite * wake * 0.14;
 
-  color += pearlWhite * lensStrength * 0.06 + pearlBlue * lensStrength * 0.03;
+  color += pearlWhite * lensStrength * 0.08 + pearlBlue * lensStrength * 0.025;
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
   color = mix(color * pearlWhite, color, vignette);
-  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.97)), 0.82);
+  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.95)), 0.92);
 }
 `;

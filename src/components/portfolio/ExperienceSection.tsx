@@ -25,11 +25,11 @@ export default function ExperienceSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true, margin: "-15% 0px" }}
         transition={{ duration: 1.0, ease: [0.22, 1, 0.36, 1] }}
-        className="section-heading max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
+        className="section-heading section-heading--experience max-w-7xl mx-auto mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8"
       >
         <div>
-          <p className="text-[11px] uppercase tracking-[0.28em] text-ink-soft/55 mb-4">
-            Career
+          <p className="section-kicker text-[12px] text-ink-soft/62 mb-4">
+            Pressure record / field work
           </p>
           <h2
             className="text-[44px] md:text-[68px] leading-[0.95] font-black tracking-[-0.03em] text-ink"

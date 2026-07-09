@@ -1,10 +1,15 @@
 "use client";
 
 import { projects } from "@/lib/portfolio/content";
+import type { Project } from "@/lib/portfolio/content";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import LiquidGlassCard from "./LiquidGlassCard";
 
-export default function ProjectButtonsRow() {
+type Props = {
+  onProjectSelect?: (project: Project) => void;
+};
+
+export default function ProjectButtonsRow({ onProjectSelect }: Props) {
   const reducedMotion = useReducedMotion();
   const heroProjects = projects.slice(0, 4);
 
@@ -17,6 +22,7 @@ export default function ProjectButtonsRow() {
           personality={project.personality}
           reducedMotion={reducedMotion}
           className="project-buttons-row__card"
+          onOpen={onProjectSelect}
         />
       ))}
     </div>

@@ -1,8 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
 import type { Project } from "@/lib/portfolio/content";
 import type { CardPersonality } from "@/lib/portfolio/liquid-glass-shader";
@@ -17,6 +16,7 @@ type LiquidGlassCardProps = {
   personality: CardPersonality;
   reducedMotion?: boolean;
   className?: string;
+  onOpen?: (project: Project) => void;
 };
 
 const heroSubtitles: Partial<Record<Project["slug"], string>> = {
@@ -29,12 +29,10 @@ const heroSubtitles: Partial<Record<Project["slug"], string>> = {
 export default function LiquidGlassCard({
   project,
   personality,
-  reducedMotion = false,
   className = "",
+  onOpen,
 }: LiquidGlassCardProps) {
-  const router = useRouter();
   const containerRef = useRef<HTMLAnchorElement>(null);
-  const [transitioning, setTransitioning] = useState(false);
   const displaySubtitle = heroSubtitles[project.slug] ?? project.subtitle;
   const targetId = `card-${project.slug}`;
 
@@ -89,15 +87,14 @@ export default function LiquidGlassCard({
   };
 
   const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    if (reducedMotion || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    if (transitioning) return;
-    setTransitioning(true);
-    emitTarget(1, 1.25);
-    emitCardRipple(e.clientX, e.clientY, 1.15);
-    window.setTimeout(() => {
-      router.push(`/project/${project.slug}`);
-    }, 820);
+    // Modal-first: intercept plain clicks and open the modal in place.
+    // Modifier-clicks (cmd/ctrl/shift/alt/middle) fall through to the real route.
+    if (onOpen && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
+      e.preventDefault();
+      emitTarget(1, 1.15);
+      emitCardRipple(e.clientX, e.clientY, 1.05);
+      onOpen(project);
+    }
   };
 
   return (
@@ -106,7 +103,6 @@ export default function LiquidGlassCard({
       href={`/project/${project.slug}`}
       className={`liquid-glass-card group ${className}`}
       data-personality={personality}
-      data-transitioning={transitioning ? "true" : "false"}
       onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}

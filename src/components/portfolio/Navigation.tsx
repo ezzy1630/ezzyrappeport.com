@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
-import { nav } from "@/lib/portfolio/content";
+import { bio, nav } from "@/lib/portfolio/content";
 
 /**
  * Navigation
@@ -47,7 +47,7 @@ export default function Navigation() {
         className="hidden md:flex items-center gap-12 pointer-events-auto"
         aria-label="Primary"
       >
-        {nav.links.map((link) => (
+        {!onHome && nav.links.map((link) => (
           <a
             key={link.href}
             href={onHome ? link.href : `/${link.href}`}
@@ -61,7 +61,7 @@ export default function Navigation() {
 
       {/* Right — CTA */}
       <a
-        href={onHome ? nav.cta.href : `/${nav.cta.href}`}
+        href={`mailto:${bio.email}`}
         className="site-nav-cta pointer-events-auto liquid-button glass rounded-full pl-5 pr-4 py-2.5 md:pl-6 md:pr-4 md:py-3 flex items-center gap-3 md:gap-4 text-[13px] font-medium text-ink hover:scale-[1.02] active:scale-[0.98] transition-transform duration-300"
       >
         <span className="hidden sm:inline">{nav.cta.label}</span>

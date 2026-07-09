@@ -23,12 +23,12 @@ export default function ProjectDetail({ project }: Props) {
       <div className="content-layer">
         <article className="relative z-10 mx-auto max-w-6xl px-6 pt-24 md:pt-28 pb-24 md:pb-32">
           <Link
-            href="/#projects"
+            href="/"
             className="liquid-button glass mb-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-ink-soft/80 transition hover:text-ink"
             data-cursor="hover"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to projects
+            Back to home
           </Link>
 
           <motion.div

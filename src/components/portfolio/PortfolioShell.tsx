@@ -1,14 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { MotionConfig } from "framer-motion";
 import { Waves } from "lucide-react";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
 import SmoothScrollProvider from "./SmoothScrollProvider";
-import FluidScene from "./FluidScene";
 import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
+
+const FluidScene = dynamic(() => import("./FluidScene"), {
+  ssr: false,
+  loading: () => (
+    <div
+      className="fluid-canvas"
+      data-fluid="poster"
+      data-quality="shell"
+      aria-hidden="true"
+    />
+  ),
+});
 
 type Props = {
   children: React.ReactNode;
@@ -16,6 +28,8 @@ type Props = {
   heroName?: boolean;
   /** Show the floating top navigation. */
   showNav?: boolean;
+  /** Keep the route to one viewport; modal content handles overflow. */
+  screenLocked?: boolean;
 };
 
 /**
@@ -33,6 +47,7 @@ export default function PortfolioShell({
   children,
   heroName = true,
   showNav = true,
+  screenLocked = false,
 }: Props) {
   const reducedMotion = useReducedMotion();
   const coarsePointer = useCoarsePointer();
@@ -42,7 +57,7 @@ export default function PortfolioShell({
   return (
     <MotionConfig reducedMotion={motionReduced ? "always" : "never"}>
       <SmoothScrollProvider reducedMotion={motionReduced}>
-        <div id="top" className="portfolio-root">
+        <div id="top" className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}>
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
