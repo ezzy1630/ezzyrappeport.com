@@ -1,118 +1,184 @@
-"use client";
-
+import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
-import { type Project, projects, bio } from "@/lib/portfolio/content";
+import { bio, type Project, projects } from "@/lib/portfolio/content";
 import PortfolioShell from "@/components/portfolio/PortfolioShell";
-import LiquidGlassCard from "@/components/portfolio/LiquidGlassCard";
-import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 
 type Props = {
   project: Project;
 };
 
+const chapters = [
+  { key: "problem", label: "Problem" },
+  { key: "approach", label: "Approach" },
+  { key: "outcome", label: "Outcome" },
+] as const;
+
 export default function ProjectDetail({ project }: Props) {
-  const reducedMotion = useReducedMotion();
-  const i = projects.findIndex((p) => p.slug === project.slug);
-  const prev = projects[(i - 1 + projects.length) % projects.length];
-  const next = projects[(i + 1) % projects.length];
+  const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
+  const previous = projects[(projectIndex - 1 + projects.length) % projects.length];
+  const next = projects[(projectIndex + 1) % projects.length];
+  const gallery = project.media.gallery ?? [];
 
   return (
     <PortfolioShell heroName={false}>
       <div className="content-layer">
-        <article className="relative z-10 mx-auto max-w-6xl px-6 pt-24 md:pt-28 pb-24 md:pb-32">
-          <Link
-            href="/"
-            className="liquid-button glass mb-10 inline-flex items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium text-ink-soft/80 transition hover:text-ink"
-            data-cursor="hover"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to home
+        <article className={`case-page case-page--${project.slug}`}>
+          <Link href="/#projects" className="case-back">
+            <span aria-hidden="true">←</span> Selected work
           </Link>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="project-detail-hero"
-          >
-            <div className="project-detail-copy">
-              <span className="text-[12px] font-mono tracking-[0.18em] text-electric">
-                {project.index} / {project.year}
-              </span>
-              <h1 className="font-display mt-3 text-[48px] font-black leading-[0.92] tracking-[-0.035em] text-ink md:text-[86px]">
-                {project.title}
-              </h1>
-              <p className="mt-5 max-w-2xl text-[17px] leading-[1.55] text-ink-soft/82 md:text-[21px]">
-                {project.subtitle}
+          <header className="case-hero">
+            <div className="case-hero__content">
+              <p className="case-hero__eyebrow">
+                {project.index} / <time dateTime={project.year}>{project.year}</time>
               </p>
-              <p className="mt-3 text-[14px] italic text-ink-soft/60">{project.tagline}</p>
-              <p className="mt-5 text-[12px] uppercase tracking-[0.18em] text-ink-soft/55">
-                {project.role}
-              </p>
+              <h1 className="case-hero__title">{project.title}</h1>
+              <p className="case-hero__subtitle">{project.subtitle}</p>
+              <p className="case-hero__tagline">{project.tagline}</p>
+
+              <dl className="case-hero__facts">
+                <div className="case-hero__fact">
+                  <dt>Role</dt>
+                  <dd>{project.role}</dd>
+                </div>
+                <div className="case-hero__fact">
+                  <dt>Status</dt>
+                  <dd>{project.status}</dd>
+                </div>
+                <div className="case-hero__fact">
+                  <dt>Verified proof</dt>
+                  <dd>{project.proof}</dd>
+                </div>
+              </dl>
+
+              {project.cautionLabel ? (
+                <p className="case-hero__caution">{project.cautionLabel}</p>
+              ) : null}
+
+              {project.verifiedLinks.length > 0 ? (
+                <div className="case-hero__links" aria-label="Verified project links">
+                  {project.verifiedLinks.map((link) => (
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {link.label} <span aria-hidden="true">↗</span>
+                    </a>
+                  ))}
+                </div>
+              ) : null}
             </div>
-            <div className={`project-detail-artifact project-artifact--${project.personality}`} aria-hidden="false">
-              <div className="project-artifact__orb" aria-hidden="true" />
-              <div className="project-artifact__scan" aria-hidden="true" />
-              <LiquidGlassCard
-                project={project}
-                personality={project.personality}
-                reducedMotion={reducedMotion}
-                className="project-artifact__card project-detail-card"
+
+            <figure className="case-hero__media">
+              <Image
+                src={project.media.cover.src}
+                alt={project.media.cover.alt}
+                width={project.media.cover.width}
+                height={project.media.cover.height}
+                sizes="(max-width: 1050px) 100vw, 62vw"
+                priority
+                unoptimized={project.media.cover.src.endsWith(".svg")}
               />
-            </div>
-          </motion.div>
+              {project.media.cover.caption ? (
+                <figcaption>{project.media.cover.caption}</figcaption>
+              ) : null}
+            </figure>
+          </header>
 
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
-            className="proof-grid mt-8 grid gap-3 md:mt-6 md:grid-cols-3"
-          >
-            {[["Problem", project.problem], ["Approach", project.approach], ["Outcome", project.outcome]].map(([label, value]) => (
-              <div key={label} className="proof-cell">
-                <p className="proof-label">{label}</p>
-                <p className="text-[14px] leading-[1.65] text-ink-soft/85">{value}</p>
-              </div>
-            ))}
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.22, ease: [0.22, 1, 0.36, 1] }}
-            className="project-overview-slab mt-10 p-8 md:p-12"
-          >
-            <p className="mb-4 text-[10px] uppercase tracking-[0.2em] text-ink-soft/55">Overview</p>
-            <p className="text-[16px] leading-[1.7] text-ink-soft/90 md:text-[18px]">{project.description}</p>
-            <div className="stack-river mt-8 flex flex-wrap gap-2">
-              {project.stack.map((tech) => (
-                <span key={tech} className="rounded-full px-4 py-1.5 text-[12px] font-medium text-ink-soft/80">{tech}</span>
+          <section className="case-narrative" aria-labelledby="case-narrative-title">
+            <header className="case-narrative__header">
+              <p>From constraint to evidence</p>
+              <h2 id="case-narrative-title">The work, end to end.</h2>
+            </header>
+            <div className="case-narrative__grid">
+              {chapters.map((chapter, index) => (
+                <section key={chapter.key} className="case-narrative__chapter">
+                  <p className="case-narrative__index" aria-hidden="true">
+                    0{index + 1}
+                  </p>
+                  <h3>{chapter.label}</h3>
+                  <p>{project[chapter.key]}</p>
+                </section>
               ))}
             </div>
-          </motion.div>
+          </section>
 
-          <nav className="mt-16 grid gap-4 sm:grid-cols-2" aria-label="Project navigation">
-            <Link href={`/project/${prev.slug}`} className="glass group flex items-center gap-4 rounded-2xl p-5 transition hover:scale-[1.01]" data-cursor="hover">
-              <ArrowLeft className="h-5 w-5 shrink-0 text-ink-soft/60 group-hover:text-ink transition-colors" />
-              <span className="flex min-w-0 flex-col">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft/55">Previous</span>
-                <span className="font-display truncate text-[15px] font-bold text-ink">{prev.title}</span>
+          <section className="case-overview" aria-labelledby="case-overview-title">
+            <div className="case-overview__copy">
+              <p>Overview</p>
+              <h2 id="case-overview-title">What shipped</h2>
+              <p>{project.description}</p>
+            </div>
+            <div className="case-overview__stack">
+              <h3>Built with</h3>
+              <ul className="case-stack" aria-label="Technology stack">
+                {project.stack.map((technology) => (
+                  <li key={technology}>{technology}</li>
+                ))}
+              </ul>
+            </div>
+          </section>
+
+          {gallery.length > 0 ? (
+            <section className="case-gallery" aria-labelledby="case-gallery-title">
+              <header className="case-gallery__header">
+                <p>Evidence</p>
+                <h2 id="case-gallery-title">Inside the system</h2>
+              </header>
+              <div className="case-gallery__grid">
+                {gallery.map((asset) => (
+                  <figure key={asset.src} className="case-gallery__item">
+                    <div className="case-gallery__media">
+                      <Image
+                        src={asset.src}
+                        alt={asset.alt}
+                        width={asset.width}
+                        height={asset.height}
+                        sizes="(max-width: 760px) 100vw, 50vw"
+                        unoptimized={asset.src.endsWith(".svg")}
+                      />
+                    </div>
+                    {asset.caption ? (
+                      <figcaption className="case-gallery__caption">
+                        {asset.caption}
+                      </figcaption>
+                    ) : null}
+                  </figure>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <nav className="case-pagination" aria-label="Project navigation">
+            <Link
+              href={`/project/${previous.slug}`}
+              className="case-pagination__link case-pagination__link--previous"
+            >
+              <span aria-hidden="true">←</span>
+              <span>
+                <small>Previous project</small>
+                <strong>{previous.title}</strong>
               </span>
             </Link>
-            <Link href={`/project/${next.slug}`} className="glass group flex items-center justify-end gap-4 rounded-2xl p-5 text-right transition hover:scale-[1.01]" data-cursor="hover">
-              <span className="flex min-w-0 flex-col items-end">
-                <span className="text-[10px] uppercase tracking-[0.2em] text-ink-soft/55">Next</span>
-                <span className="font-display truncate text-[15px] font-bold text-ink">{next.title}</span>
+            <Link
+              href={`/project/${next.slug}`}
+              className="case-pagination__link case-pagination__link--next"
+            >
+              <span>
+                <small>Next project</small>
+                <strong>{next.title}</strong>
               </span>
-              <ArrowRight className="h-5 w-5 shrink-0 text-ink-soft/60 group-hover:text-ink transition-colors" />
+              <span aria-hidden="true">→</span>
             </Link>
           </nav>
 
-          <footer className="mt-20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-t border-white/40 pt-8">
-            <p className="text-[12px] text-ink-soft/60">© {new Date().getFullYear()} {bio.name}</p>
-            <a href={`mailto:${bio.email}`} className="text-[12px] font-mono tracking-[0.15em] text-ink-soft/55 uppercase hover:text-electric transition-colors" data-cursor="hover">{bio.email}</a>
+          <footer className="case-footer">
+            <p>
+              © {new Date().getFullYear()} {bio.name}
+            </p>
+            <a href={`mailto:${bio.email}`}>{bio.email}</a>
           </footer>
         </article>
       </div>

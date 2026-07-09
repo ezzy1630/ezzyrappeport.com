@@ -101,7 +101,7 @@ precision highp float;
 uniform int u_pass;
 uniform vec2 u_resolution;
 uniform vec4 u_pointer;
-uniform vec4 u_ripples[12];
+uniform vec4 u_ripples[8];
 uniform vec4 u_targets[8];
 uniform vec4 u_scroll;
 uniform float u_time;
@@ -152,7 +152,7 @@ float ripplePulse(vec2 uv, vec2 pointer, out float blue) {
   float pointerEnv = exp(-dp * 6.0) * u_pointer.z;
   pulse += pointerRing * pointerEnv * 0.12;
   blue += max(pointerRing, 0.0) * pointerEnv * 0.35 + exp(-dp * 8.0) * u_pointer.z * 0.55;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 8; i++) {
     vec4 r = u_ripples[i];
     float age = u_time - r.z;
     if (age <= 0.0 || age > 3.2 || r.w <= 0.001) continue;
@@ -283,6 +283,36 @@ void main() {
 }
 `;
 
+function lowerQualityProfile(current: KineticQuality): KineticQuality {
+  if (current.tier === "high") {
+    return {
+      ...current,
+      tier: "balanced",
+      dpr: Math.min(current.dpr, 0.75),
+      maxDpr: 0.75,
+      targetFps: 24,
+      simWidth: 192,
+      textMaxDim: 1120,
+      activeRipples: 6,
+      renderScale: 0.9,
+    };
+  }
+  if (current.tier === "balanced") {
+    return {
+      ...current,
+      tier: "low",
+      dpr: Math.min(current.dpr, 0.6),
+      maxDpr: 0.6,
+      targetFps: 18,
+      simWidth: 128,
+      textMaxDim: 840,
+      activeRipples: 4,
+      renderScale: 0.7,
+    };
+  }
+  return current;
+}
+
 export function startFluidRenderer(
   canvas: HTMLCanvasElement,
   getPhysics: () => LiquidPhysics,
@@ -318,8 +348,6 @@ export function startFluidRenderer(
   );
   const textureLocation = gl.getUniformLocation(program, "u_texture");
   const textLocation = gl.getUniformLocation(program, "u_text");
-  const simVelocityLocation = gl.getUniformLocation(program, "u_velocityField");
-  const simDyeLocation = gl.getUniformLocation(program, "u_dyeField");
   const simHeightLocation = gl.getUniformLocation(program, "u_heightField");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
@@ -340,11 +368,7 @@ export function startFluidRenderer(
   const simTargetLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
     gl.getUniformLocation(simProgram, `u_targets[${i}]`),
   );
-  const simVelocityLocationRead = gl.getUniformLocation(simProgram, "u_velocity");
-  const simDyeLocationRead = gl.getUniformLocation(simProgram, "u_dye");
   const simHeightLocationRead = gl.getUniformLocation(simProgram, "u_height");
-  const simPressureLocationRead = gl.getUniformLocation(simProgram, "u_pressure");
-  const simDivergenceLocationRead = gl.getUniformLocation(simProgram, "u_divergence");
   const simObstacleLocationRead = gl.getUniformLocation(simProgram, "u_obstacle");
   const simTextLocationRead = gl.getUniformLocation(simProgram, "u_text");
 
@@ -393,22 +417,24 @@ export function startFluidRenderer(
   let height = 0;
   let dpr = 1;
   let frame = 0;
-  let running = true;
+  let frameTimer = 0;
+  let resizeFrame = 0;
+  let revealFrame = 0;
+  let running = false;
+  let surfaceVisible = true;
   let lastRenderTime = 0;
   let lastSimTime = 0;
+  let statsStartedAt = performance.now();
+  let renderedFrames = 0;
+  let lateFrames = 0;
+  let adaptiveLevel = 0;
   let textTextureVisible = false;
   const startedAt = performance.now();
   let simWidth = 1;
   let simHeight = 1;
-  let velocity: DoubleBuffer | null = null;
-  let dye: DoubleBuffer | null = null;
   let heightField: DoubleBuffer | null = null;
-  let pressure: DoubleBuffer | null = null;
-  let divergence: SingleBuffer | null = null;
-  let curl: SingleBuffer | null = null;
   let obstacle: SingleBuffer | null = null;
   let normal: SingleBuffer | null = null;
-  let previous: SingleBuffer | null = null;
 
   const renderInternalFormat = gl.RGBA16F;
   const renderFormat = gl.RGBA;
@@ -423,39 +449,42 @@ export function startFluidRenderer(
 
   function disposeSimBuffers() {
     const textures = [
-      velocity?.read, velocity?.write, dye?.read, dye?.write, heightField?.read, heightField?.write,
-      pressure?.read, pressure?.write, divergence?.texture, curl?.texture, obstacle?.texture, normal?.texture, previous?.texture,
+      heightField?.read,
+      heightField?.write,
+      obstacle?.texture,
+      normal?.texture,
     ];
     const fbos = [
-      velocity?.readFbo, velocity?.writeFbo, dye?.readFbo, dye?.writeFbo, heightField?.readFbo, heightField?.writeFbo,
-      pressure?.readFbo, pressure?.writeFbo, divergence?.fbo, curl?.fbo, obstacle?.fbo, normal?.fbo, previous?.fbo,
+      heightField?.readFbo,
+      heightField?.writeFbo,
+      obstacle?.fbo,
+      normal?.fbo,
     ];
     textures.forEach((tex) => tex && gl.deleteTexture(tex));
     fbos.forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
-    velocity = null;
-    dye = null;
     heightField = null;
-    pressure = null;
-    divergence = null;
-    curl = null;
     obstacle = null;
     normal = null;
-    previous = null;
   }
 
   function configureSim() {
     simWidth = Math.max(1, quality.simWidth);
-    simHeight = Math.max(192, Math.round(simWidth * (height / Math.max(width, 1))));
+    simHeight = Math.max(96, Math.round(simWidth * (height / Math.max(width, 1))));
     disposeSimBuffers();
-    velocity = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    dye = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     heightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    pressure = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    divergence = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    curl = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     obstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     normal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    previous = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+
+    const clearBuffer = (fbo: WebGLFramebuffer, r: number, g: number, b: number) => {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+      gl.clearColor(r, g, b, 1);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+    };
+    clearBuffer(heightField.readFbo, 0, 0, 0);
+    clearBuffer(heightField.writeFbo, 0, 0, 0);
+    clearBuffer(obstacle.fbo, 0, 0, 0);
+    clearBuffer(normal.fbo, 0.5, 0.5, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
   function setSimUniforms(physics: LiquidPhysics, t: number, delta: number) {
@@ -516,37 +545,16 @@ export function startFluidRenderer(
   }
 
   function updateSimulation(physics: LiquidPhysics, t: number) {
-    if (!velocity || !dye || !heightField || !pressure || !divergence || !obstacle || !normal) return;
+    if (!heightField || !obstacle || !normal) return;
     const delta = lastSimTime > 0 ? Math.min(0.05, t - lastSimTime) : 1 / 60;
     lastSimTime = t;
     gl.useProgram(simProgram);
     setSimUniforms(physics, t, delta);
-    bindTexture(0, velocity.read, simVelocityLocationRead);
-    bindTexture(1, dye.read, simDyeLocationRead);
     bindTexture(2, heightField.read, simHeightLocationRead);
-    bindTexture(3, pressure.read, simPressureLocationRead);
-    bindTexture(4, divergence.texture, simDivergenceLocationRead);
     bindTexture(5, obstacle.texture, simObstacleLocationRead);
     bindTexture(6, textTexture, simTextLocationRead);
 
     drawSim(0, obstacle.fbo);
-    drawSim(1, velocity.writeFbo);
-    velocity.swap();
-    bindTexture(0, velocity.read, simVelocityLocationRead);
-    drawSim(2, divergence.fbo);
-    bindTexture(4, divergence.texture, simDivergenceLocationRead);
-    for (let i = 0; i < quality.pressureIterations; i++) {
-      bindTexture(3, pressure.read, simPressureLocationRead);
-      drawSim(3, pressure.writeFbo);
-      pressure.swap();
-    }
-    bindTexture(3, pressure.read, simPressureLocationRead);
-    drawSim(4, velocity.writeFbo);
-    velocity.swap();
-    bindTexture(0, velocity.read, simVelocityLocationRead);
-    drawSim(5, dye.writeFbo);
-    dye.swap();
-    bindTexture(1, dye.read, simDyeLocationRead);
     drawSim(6, heightField.writeFbo);
     heightField.swap();
     bindTexture(2, heightField.read, simHeightLocationRead);
@@ -576,6 +584,9 @@ export function startFluidRenderer(
     width = window.innerWidth;
     height = window.innerHeight;
     quality = resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
+    for (let level = 0; level < adaptiveLevel; level++) {
+      quality = lowerQualityProfile(quality);
+    }
     if (quality.tier === "static") return;
     canvas.dataset.quality = quality.tier;
     dpr = quality.dpr;
@@ -583,9 +594,17 @@ export function startFluidRenderer(
     canvas.height = Math.max(1, Math.floor(height * dpr));
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
+    if (canvas.style.opacity !== "0") {
+      canvas.style.opacity = quality.tier === "low" ? "0.82" : "0.88";
+    }
     gl.viewport(0, 0, canvas.width, canvas.height);
     configureSim();
     regenerateText();
+  }
+
+  function onResize() {
+    cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(configure);
   }
 
   function paint(t: number) {
@@ -635,9 +654,7 @@ export function startFluidRenderer(
         gl.uniform4f(rippleLocations[i], -9999, -9999, -9999, 0);
       }
     }
-    if (velocity && dye && heightField && normal && obstacle) {
-      bindTexture(2, velocity.read, simVelocityLocation);
-      bindTexture(3, dye.read, simDyeLocation);
+    if (heightField && normal && obstacle) {
       bindTexture(4, heightField.read, simHeightLocation);
       bindTexture(5, normal.texture, simNormalLocation);
       bindTexture(6, obstacle.texture, simObstacleLocation);
@@ -653,32 +670,104 @@ export function startFluidRenderer(
       return; // single static frame; the name still renders
     }
     const interval = 1000 / quality.targetFps;
-    if (now - lastRenderTime < interval) {
-      frame = requestAnimationFrame(render);
+    const elapsed = now - lastRenderTime;
+    if (elapsed < interval) {
+      scheduleRender(interval - elapsed);
       return;
     }
-    lastRenderTime = now;
+    if (lastRenderTime > 0 && elapsed > interval * 1.2 && elapsed < interval * 4) {
+      lateFrames += 1;
+    } else if (elapsed >= interval * 4) {
+      // Tab switches, screenshots, and main-thread pauses are not evidence that
+      // the sustained quality tier is too high.
+      lateFrames = 0;
+    } else {
+      lateFrames = Math.max(0, lateFrames - 1);
+    }
+    lastRenderTime = now - (elapsed % interval);
     paint((now - startedAt) / 1000);
-    frame = requestAnimationFrame(render);
+    renderedFrames += 1;
+
+    const statsElapsed = now - statsStartedAt;
+    if (statsElapsed >= 2000) {
+      canvas.dataset.fps = Math.round((renderedFrames * 1000) / statsElapsed).toString();
+      statsStartedAt = now;
+      renderedFrames = 0;
+    }
+
+    if (lateFrames >= 6 && quality.tier !== "low") {
+      adaptiveLevel += 1;
+      lateFrames = 0;
+      configure();
+      canvas.dataset.adaptive = "true";
+    }
+    const nextInterval = 1000 / quality.targetFps;
+    const phase = now - lastRenderTime;
+    scheduleRender(Math.max(0, nextInterval - phase));
+  }
+
+  function scheduleRender(delay = 0) {
+    if (!running) return;
+    window.clearTimeout(frameTimer);
+    if (delay > 8) {
+      frameTimer = window.setTimeout(() => {
+        if (running) frame = requestAnimationFrame(render);
+      }, Math.max(0, delay - 4));
+    } else {
+      frame = requestAnimationFrame(render);
+    }
+  }
+
+  function syncRunning() {
+    const shouldRun = !document.hidden && surfaceVisible;
+    if (shouldRun === running) return;
+    running = shouldRun;
+    cancelAnimationFrame(frame);
+    window.clearTimeout(frameTimer);
+    if (running) {
+      delete canvas.dataset.paused;
+      lastRenderTime = 0;
+      lastSimTime = 0;
+      statsStartedAt = performance.now();
+      renderedFrames = 0;
+      scheduleRender();
+    } else {
+      canvas.dataset.paused = document.hidden ? "hidden" : "offscreen";
+    }
   }
 
   function onVisibility() {
-    running = !document.hidden;
-    if (running) frame = requestAnimationFrame(render);
-    else cancelAnimationFrame(frame);
+    syncRunning();
   }
 
-  function onScroll() {
-    if (reducedMotionRef.current || staticModeRef.current) {
-      paint(0);
-    }
-  }
-
+  canvas.style.opacity = "0";
+  canvas.style.mixBlendMode = "normal";
+  canvas.style.filter = "saturate(0.96) contrast(1.04) brightness(0.96)";
+  canvas.style.transition = "opacity 420ms ease";
   configure();
-  window.addEventListener("resize", configure);
-  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
-  frame = requestAnimationFrame(render);
+
+  const renderSurface = document.querySelector<HTMLElement>(
+    heroNameRef.current ? ".hero-shell" : ".case-hero",
+  );
+  let surfaceObserver: IntersectionObserver | null = null;
+  if (renderSurface && "IntersectionObserver" in window) {
+    const rect = renderSurface.getBoundingClientRect();
+    surfaceVisible = rect.bottom > -180 && rect.top < window.innerHeight + 180;
+    surfaceObserver = new IntersectionObserver(
+      ([entry]) => {
+        surfaceVisible = Boolean(entry?.isIntersecting);
+        syncRunning();
+      },
+      { rootMargin: "180px 0px" },
+    );
+    surfaceObserver.observe(renderSurface);
+  }
+  syncRunning();
+  revealFrame = requestAnimationFrame(() => {
+    canvas.style.opacity = quality.tier === "low" ? "0.82" : "0.88";
+  });
 
   // Re-rasterize once the hero font has loaded; repaint a static frame in
   // frozen mode so the real glyphs appear.
@@ -694,8 +783,11 @@ export function startFluidRenderer(
   return () => {
     running = false;
     cancelAnimationFrame(frame);
-    window.removeEventListener("resize", configure);
-    window.removeEventListener("scroll", onScroll);
+    window.clearTimeout(frameTimer);
+    cancelAnimationFrame(resizeFrame);
+    cancelAnimationFrame(revealFrame);
+    surfaceObserver?.disconnect();
+    window.removeEventListener("resize", onResize);
     document.removeEventListener("visibilitychange", onVisibility);
     gl.deleteTexture(texture);
     gl.deleteTexture(textTexture);

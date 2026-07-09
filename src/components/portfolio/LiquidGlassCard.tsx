@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { Project } from "@/lib/portfolio/content";
@@ -12,11 +12,9 @@ import {
 } from "@/lib/portfolio/liquid-interaction";
 
 type LiquidGlassCardProps = {
-  project: Project;
+  project: Pick<Project, "slug" | "title" | "subtitle" | "index">;
   personality: CardPersonality;
-  reducedMotion?: boolean;
   className?: string;
-  onOpen?: (project: Project) => void;
 };
 
 const heroSubtitles: Partial<Record<Project["slug"], string>> = {
@@ -30,16 +28,17 @@ export default function LiquidGlassCard({
   project,
   personality,
   className = "",
-  onOpen,
 }: LiquidGlassCardProps) {
   const containerRef = useRef<HTMLAnchorElement>(null);
+  const rectRef = useRef<DOMRect | null>(null);
+  const pointerFrameRef = useRef(0);
+  const pendingPointerRef = useRef<{ x: number; y: number } | null>(null);
   const displaySubtitle = heroSubtitles[project.slug] ?? project.subtitle;
   const targetId = `card-${project.slug}`;
 
   const emitTarget = (hover: number, pressed = 0) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
+    const rect = rectRef.current;
+    if (!rect) return;
     emitLiquidTarget({
       id: targetId,
       x: rect.left + rect.width / 2,
@@ -52,6 +51,10 @@ export default function LiquidGlassCard({
     });
   };
 
+  useEffect(() => {
+    return () => window.cancelAnimationFrame(pointerFrameRef.current);
+  }, []);
+
   const emitCardRipple = (clientX: number, clientY: number, intensity: number) => {
     emitLiquidRipple({
       x: clientX,
@@ -63,20 +66,32 @@ export default function LiquidGlassCard({
   };
 
   const onPointerEnter = (e: React.PointerEvent) => {
+    rectRef.current = containerRef.current?.getBoundingClientRect() ?? null;
     emitTarget(1);
     emitCardRipple(e.clientX, e.clientY, 0.34);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
-    emitTarget(1);
-    const container = containerRef.current;
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    container.style.setProperty("--card-x", `${e.clientX - rect.left}px`);
-    container.style.setProperty("--card-y", `${e.clientY - rect.top}px`);
+    pendingPointerRef.current = { x: e.clientX, y: e.clientY };
+    if (pointerFrameRef.current) return;
+    pointerFrameRef.current = window.requestAnimationFrame(() => {
+      pointerFrameRef.current = 0;
+      const pointer = pendingPointerRef.current;
+      const rect = rectRef.current;
+      const container = containerRef.current;
+      if (!pointer || !rect || !container) return;
+      pendingPointerRef.current = null;
+      container.style.setProperty("--card-x", `${pointer.x - rect.left}px`);
+      container.style.setProperty("--card-y", `${pointer.y - rect.top}px`);
+      emitTarget(1);
+    });
   };
 
   const onPointerLeave = () => {
+    window.cancelAnimationFrame(pointerFrameRef.current);
+    pointerFrameRef.current = 0;
+    pendingPointerRef.current = null;
+    rectRef.current = null;
     emitTarget(0);
     clearLiquidTarget(targetId);
   };
@@ -86,28 +101,17 @@ export default function LiquidGlassCard({
     emitCardRipple(e.clientX, e.clientY, 0.95);
   };
 
-  const onClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Modal-first: intercept plain clicks and open the modal in place.
-    // Modifier-clicks (cmd/ctrl/shift/alt/middle) fall through to the real route.
-    if (onOpen && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey && e.button === 0) {
-      e.preventDefault();
-      emitTarget(1, 1.15);
-      emitCardRipple(e.clientX, e.clientY, 1.05);
-      onOpen(project);
-    }
-  };
-
   return (
     <Link
       ref={containerRef}
       href={`/project/${project.slug}`}
+      prefetch={false}
       className={`liquid-glass-card group ${className}`}
       data-personality={personality}
       onPointerEnter={onPointerEnter}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       onPointerDown={onPointerDown}
-      onClick={onClick}
       data-cursor="hover"
       aria-label={`Open ${project.title}: ${displaySubtitle}`}
     >

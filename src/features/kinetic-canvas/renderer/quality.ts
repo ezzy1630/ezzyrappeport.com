@@ -1,7 +1,7 @@
 "use client";
 
-export const TARGET_FPS = 60;
-export const RIPPLE_COUNT = 12;
+export const TARGET_FPS = 30;
+export const RIPPLE_COUNT = 8;
 export const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.webp";
 export const FLUID_TEXTURE_FALLBACK_SRC = "/assets/pearl-liquid-background.png";
 export const HERO_LINE_1 = "ELIEZER";
@@ -69,39 +69,39 @@ export function resolveKineticQuality(
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {
       tier: "high",
-      dpr: Math.min(window.devicePixelRatio || 1, 1.25),
-      maxDpr: 1.25,
-      targetFps: 45,
-      simWidth: 360,
-      textMaxDim: 1536,
-      pressureIterations: 3,
+      dpr: Math.min(window.devicePixelRatio || 1, 0.9),
+      maxDpr: 0.9,
+      targetFps: 30,
+      simWidth: 256,
+      textMaxDim: 1360,
+      pressureIterations: 0,
       activeRipples: 8,
-      startDelayMs: 90,
+      startDelayMs: 45,
       renderScale: 1,
     },
     balanced: {
       tier: "balanced",
-      dpr: Math.min(window.devicePixelRatio || 1, 1.1),
-      maxDpr: 1.1,
-      targetFps: 30,
-      simWidth: 260,
-      textMaxDim: 1280,
-      pressureIterations: 2,
+      dpr: Math.min(window.devicePixelRatio || 1, 0.75),
+      maxDpr: 0.75,
+      targetFps: 24,
+      simWidth: 192,
+      textMaxDim: 1120,
+      pressureIterations: 0,
       activeRipples: 6,
-      startDelayMs: 140,
-      renderScale: 0.82,
+      startDelayMs: 70,
+      renderScale: 0.9,
     },
     low: {
       tier: "low",
-      dpr: Math.min(window.devicePixelRatio || 1, 1),
-      maxDpr: 1,
-      targetFps: 24,
-      simWidth: 180,
-      textMaxDim: 1024,
-      pressureIterations: 1,
+      dpr: Math.min(window.devicePixelRatio || 1, 0.6),
+      maxDpr: 0.6,
+      targetFps: 18,
+      simWidth: 128,
+      textMaxDim: 840,
+      pressureIterations: 0,
       activeRipples: 4,
-      startDelayMs: 220,
-      renderScale: 0.56,
+      startDelayMs: 110,
+      renderScale: 0.7,
     },
     static: {
       tier: "static",

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
-import { MotionConfig } from "framer-motion";
 import { Waves } from "lucide-react";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
@@ -55,19 +54,18 @@ export default function PortfolioShell({
   const motionReduced = reducedMotion || !motionEnabled;
 
   return (
-    <MotionConfig reducedMotion={motionReduced ? "always" : "never"}>
       <SmoothScrollProvider reducedMotion={motionReduced}>
         <div id="top" className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}>
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
-              staticMode={coarsePointer}
+              staticMode={coarsePointer || !heroName}
               heroName={heroName}
             />
           </ErrorBoundary>
 
           {showNav && <Navigation />}
-          {showNav && (
+          {showNav && heroName && !coarsePointer && (
             <button
               type="button"
               className="motion-toggle glass"
@@ -94,6 +92,5 @@ export default function PortfolioShell({
           {children}
         </div>
       </SmoothScrollProvider>
-    </MotionConfig>
   );
 }

@@ -75,8 +75,8 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
         { text: HERO_LINE_2, scale: 1.0 },
       ];
 
-  const targetW = width * (isMobilePoster ? 0.92 : 0.93);
-  const targetH = height * (isMobilePoster ? 0.25 : 0.40);
+  const targetW = width * (isMobilePoster ? 0.90 : 0.76);
+  const targetH = height * (isMobilePoster ? 0.25 : 0.48);
   const lineGap = isMobilePoster ? 0.92 : 0.88;
   const trackingFactor = isMobilePoster ? -0.030 : -0.042;
 

@@ -14,11 +14,9 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_energy;
 uniform vec2 u_pointer;
-uniform vec4 u_ripples[12];
+uniform vec4 u_ripples[8];
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
-uniform sampler2D u_velocityField;
-uniform sampler2D u_dyeField;
 uniform sampler2D u_heightField;
 uniform sampler2D u_normalField;
 uniform sampler2D u_obstacleField;
@@ -37,45 +35,8 @@ out vec4 outColor;
 #define FRES_AMP     1.28
 #define DOME_AMP     0.54
 #define GLOSS_AMP    0.96
-#define CAUSTIC_AMP  0.78
+#define CAUSTIC_AMP  0.38
 #define BUBBLE_RIM   1.32
-
-float hash(vec2 p) {
-  return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-}
-
-float noise(vec2 p) {
-  vec2 i = floor(p);
-  vec2 f = fract(p);
-  float a = hash(i);
-  float b = hash(i + vec2(1.0, 0.0));
-  float c = hash(i + vec2(0.0, 1.0));
-  float d = hash(i + vec2(1.0, 1.0));
-  vec2 m = f * f * (3.0 - 2.0 * f);
-  return mix(mix(a, b, m.x), mix(c, d, m.x), m.y);
-}
-
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 5; i++) {
-    v += noise(p) * a;
-    p = mat2(1.62, 1.08, -1.08, 1.62) * p + 9.7;
-    a *= 0.52;
-  }
-  return v;
-}
-
-float fbm3(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 3; i++) {
-    v += noise(p) * a;
-    p = mat2(1.62, 1.08, -1.08, 1.62) * p + 9.7;
-    a *= 0.52;
-  }
-  return v;
-}
 
 float ridge(float v, float w) {
   return 1.0 - smoothstep(0.0, w, abs(v));
@@ -89,12 +50,12 @@ float ellipseRing(vec2 uv, vec2 c, float r, vec2 squash, float w) {
 float caustics(vec2 p, float time) {
   float v = 0.0;
   mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 2; i++) {
     float s = 1.0 + float(i) * 0.35;
     v += abs(sin(p.x * 12.0 * s + time * 0.45) + sin(p.y * 10.0 * s - time * 0.35)) * (0.5 / s);
     p = rot * p * 1.35 + float(i) * 1.3;
   }
-  return v / 2.5;
+  return v / 1.45;
 }
 
 vec2 cursorLens(vec2 uv, vec2 pointer, out float lens) {
@@ -119,7 +80,7 @@ vec3 rippleField(vec2 pos, vec2 pointer, float time) {
   white += ridge(dp - 0.078 - sin(time * 1.2) * 0.009, 0.018) * penv * 0.32;
   warp += pr * penv * 0.022;
 
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 8; i++) {
     vec4 r = u_ripples[i];
     float age = time - r.z;
     if (age > 0.0 && age < 3.2 && r.w > 0.001) {
@@ -177,7 +138,10 @@ float textSurfH(vec2 uv, float time) {
 float surfH(vec2 uv, float time, vec2 pointer) {
   float c = textCov(uv);
   float textH = textSurfH(uv, time);
-  float liquid = fbm(uv * 3.5 + vec2(time * 0.03, -time * 0.02)) * 0.012;
+  float liquid = (
+    sin(dot(uv, vec2(8.4, 5.2)) + time * 0.58) +
+    sin(dot(uv, vec2(-4.8, 9.1)) - time * 0.42)
+  ) * 0.005;
   float dp = distance(uv, pointer);
   float dent = -exp(-dp * 4.0) * 0.06 * u_energy;
   return textH + liquid * (1.0 - c * 0.5) + dent;
@@ -193,49 +157,49 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
-  vec4 velocitySample = texture(u_velocityField, uv);
-  vec2 simVelocity = (velocitySample.xy - 0.5) * 2.0;
-  vec3 simDye = texture(u_dyeField, uv).rgb;
   vec3 simNormal = vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0);
   float simHeight = texture(u_heightField, uv).r;
   vec4 simObstacle = texture(u_obstacleField, uv);
   float targetEdge = 0.0;
   float targetBody = targetField(uv, targetEdge);
 
-  float flowA = fbm(p * 1.9 + vec2(t * 0.026, -t * 0.014));
-  float flowB = fbm(p * 3.6 + vec2(-t * 0.038, t * 0.020));
-  float flowC = fbm(p * 6.2 + vec2(t * 0.052, t * 0.030));
+  float flowA = 0.5 + 0.25 * (
+    sin(dot(p, vec2(3.8, 2.4)) + t * 0.42) +
+    sin(dot(p, vec2(-2.1, 5.2)) - t * 0.31)
+  );
+  float flowB = 0.5 + 0.25 * (
+    sin(dot(p, vec2(7.2, -3.1)) - t * 0.54) +
+    cos(dot(p, vec2(4.1, 6.6)) + t * 0.37)
+  );
+  float flowC = 0.5 + 0.5 * sin(dot(p, vec2(6.2, -4.7)) + t * 0.72);
   vec3 ripple = rippleField(uv, pointer, t);
 
-  p.x += (flowA - 0.5) * 0.028 + ripple.z + simVelocity.x * 0.16 + u_scroll.y * 0.035;
-  p.y += (flowB - 0.5) * 0.020 + ripple.z * 0.42 + simVelocity.y * 0.12 - u_scroll.y * 0.055;
+  p.x += (flowA - 0.5) * 0.034 + ripple.z + simNormal.x * 0.042 + u_scroll.y * 0.035;
+  p.y += (flowB - 0.5) * 0.026 + ripple.z * 0.42 + simNormal.y * 0.036 - u_scroll.y * 0.055;
 
-  vec2 baseUV = uv + lensOffset + simNormal.xy * 0.028 + simVelocity * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
+  vec2 baseUV = uv + lensOffset + simNormal.xy * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
   vec2 flowUV = clamp(baseUV + vec2((flowA - 0.5) * 0.018, (flowB - 0.5) * 0.014), vec2(0.0), vec2(1.0));
 
   vec3 pearlBlue = vec3(0.09, 0.55, 1.0);
   vec3 pearlWhite = vec3(0.969, 0.976, 0.988);
   vec3 softSilver = vec3(0.867, 0.890, 0.925);
   vec3 base = texture(u_texture, flowUV).rgb;
-  base = mix(base, pearlWhite, 0.22);
-  base += vec3(0.008, 0.008, 0.012);
+  base = mix(base, pearlWhite, 0.08);
+  base += vec3(0.004, 0.006, 0.012);
 
-  float caustic = caustics(p * 2.8, t * 0.25);
-  caustic += caustics(p * 4.2 + vec2(t * 0.1), t * 0.35) * 0.5;
+  float caustic = caustics(p * 3.1 + vec2(t * 0.035, -t * 0.026), t * 0.42);
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
   float liquidRidge = ridge(flowA - 0.52, 0.20) * 0.34 + ridge(flowB - 0.48, 0.18) * 0.22;
   float fineCaustic = pow(caustic, 2.15) * (0.52 + liquidRidge);
-  vec3 causticLight = vec3(1.0, 0.98, 0.95) * caustic * CAUSTIC_AMP * (0.7 + causticMask);
+  vec3 causticLight = vec3(0.90, 0.96, 1.0) * caustic * CAUSTIC_AMP * (0.65 + causticMask);
   float bottomZone = smoothstep(0.55, 0.0, uv.y) * 0.42;
-  base += causticLight * (1.08 + bottomZone);
-  base += vec3(1.0, 0.99, 0.96) * fineCaustic * 0.48;
+  base += causticLight * (0.54 + bottomZone * 0.34);
+  base += vec3(0.92, 0.97, 1.0) * fineCaustic * 0.16;
   base += softSilver * liquidRidge * 0.12;
-  base += pearlBlue * dot(simDye, vec3(0.02, 0.12, 0.86)) * 0.18;
-  base += vec3(1.0) * max(max(simDye.r, simDye.g), simDye.b) * 0.035;
   base += pearlBlue * targetEdge * 0.15 + vec3(1.0) * targetEdge * 0.08;
   base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.032;
 
-  float sampleWarp = ripple.z + lensOffset.x * 8.0 + simHeight * 0.70 + simVelocity.x * 0.48;
+  float sampleWarp = ripple.z + lensOffset.x * 8.0 + simHeight * 0.76 + simNormal.x * 0.08;
 
   float cov = textCov(uv);
   float edge = 4.0 * cov * (1.0 - cov);
@@ -291,10 +255,13 @@ void main() {
 
   float occ = smoothstep(0.72, 1.0, cov);
   vec2 innerDrift = vec2(
-    fbm3(uv * 8.0 + vec2(t * 0.08, -t * 0.04)) - 0.5,
-    fbm3(uv * 8.0 + vec2(-t * 0.06, t * 0.07)) - 0.5
+    sin(uv.y * 17.0 + t * 0.44),
+    cos(uv.x * 15.0 - t * 0.36)
+  ) * 0.5;
+  float internalVein = 0.5 + 0.25 * (
+    sin((uv.x + innerDrift.x * 0.018) * 14.0 + t * 0.42) +
+    sin((uv.y + innerDrift.y * 0.018) * 11.0 - t * 0.31)
   );
-  float internalVein = fbm3((uv + innerDrift * 0.018) * vec2(14.0, 9.0) + t * 0.035);
   float depthPocket = smoothstep(0.36, 0.88, internalVein) * interior;
   letterBody -= vec3(0.08, 0.11, 0.17) * occ * 0.28;
   letterBody -= vec3(0.07, 0.10, 0.18) * depthPocket * 0.22;
@@ -353,13 +320,15 @@ void main() {
   float letterLum = dot(color, vec3(0.299, 0.587, 0.114));
   vec3 cooledLetter = vec3(letterLum * 0.82, letterLum * 0.92, min(1.0, letterLum * 1.06 + 0.06));
   cooledLetter += pearlBlue * (outsideRidge * 0.16 + shoulder * 0.03);
-  color = mix(color, cooledLetter, coolLetterMask * 0.26);
+  color = mix(color, cooledLetter, coolLetterMask * 0.68);
+  color -= vec3(0.12, 0.075, 0.018) * (insideRidge * 0.54 + interior * 0.16);
+  color += vec3(0.04, 0.23, 0.62) * (outsideRidge * 0.24 + rim * 0.07);
   color -= vec3(0.10, 0.13, 0.17) * interior * (0.34 + mobilePoster * 0.10);
   color -= vec3(0.05, 0.07, 0.10) * shoulder * (0.42 + mobilePoster * 0.16);
   color += vec3(1.0, 1.0, 0.98) * outsideRidge * (0.60 + mobilePoster * 0.22);
 
   color += pearlBlue * ripple.x * 0.56 + vec3(1.0) * ripple.y * 0.78;
-  color += pearlBlue * simDye.b * 0.20 + vec3(1.0) * simHeight * 0.34;
+  color += vec3(1.0) * simHeight * 0.34;
   color += pearlBlue * simObstacle.g * (0.15 + targetBody * 0.18);
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
   color += pearlBlue * wake * 0.14 + pearlWhite * wake * 0.14;
@@ -368,6 +337,24 @@ void main() {
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
   color = mix(color * pearlWhite, color, vignette);
+  float materialMask = clamp(letterMask + outsideRidge * 0.92 + rim * 0.46, 0.0, 1.0);
+  float backdropLum = clamp(dot(refrBg, vec3(0.24, 0.68, 0.08)), 0.0, 1.0);
+  float materialLum = mix(0.72, 0.92, backdropLum);
+  vec3 iceMaterial = vec3(
+    materialLum * 0.95,
+    materialLum * 0.98,
+    min(1.0, materialLum * 1.02 + 0.018)
+  );
+  iceMaterial = mix(iceMaterial, refrBg * vec3(0.95, 0.985, 1.02), 0.62);
+  iceMaterial += vec3(1.0) * (insideRidge * 0.24 + bubbleGlare * bubbleCrown * 0.20 + spec * 0.18);
+  iceMaterial -= vec3(0.040, 0.052, 0.082) * interior * (0.38 + depthPocket * 0.26);
+  iceMaterial += vec3(0.04, 0.16, 0.42) * (outsideRidge * 0.18 + rim * 0.045);
+  color = mix(color, iceMaterial, materialMask * 0.94);
+  float neutralEdge = clamp(outsideRidge * 1.12 + rim * 0.32, 0.0, 1.0);
+  vec3 edgeIce = vec3(0.82, 0.92, 1.0) + vec3(1.0) * (spec * 0.14 + bubbleCrown * 0.07);
+  color = mix(color, edgeIce, neutralEdge * 0.56);
+  float peak = max(max(color.r, color.g), color.b);
+  if (peak > 1.0) color /= peak;
   outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.95)), 0.92);
 }
 `;

@@ -1,12 +1,10 @@
-"use client";
-
 const LINE_1 = "ELIEZER";
 const LINE_2 = "RAPPEPORT";
 
 function HeroLine({ text, className }: { text: string; className?: string }) {
   return (
     <span className={`hero-name-fallback__line ${className ?? ""}`}>
-      <span className="hero-name-fallback__word">{text}</span>
+      <span className="hero-name-fallback__word" data-text={text}>{text}</span>
     </span>
   );
 }
@@ -26,7 +24,7 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
 export default function HeroName() {
   return (
     <>
-      <h1 className="sr-only" aria-label="Eliezer Rappeport">
+      <h1 id="portfolio-title" className="sr-only" aria-label="Eliezer Rappeport">
         Eliezer Rappeport
       </h1>
       <div className="hero-name-fallback" aria-hidden="true">

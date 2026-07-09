@@ -1,5 +1,24 @@
 type ProjectCardPersonality = "monkeyclaw" | "velox" | "flowe" | "nexarad" | "etch";
 
+export type ProjectMediaAsset = {
+  src: string;
+  alt: string;
+  width: number;
+  height: number;
+  caption?: string;
+};
+
+export type ProjectMedia = {
+  cover: ProjectMediaAsset;
+  gallery?: ProjectMediaAsset[];
+};
+
+export type ProjectLink = {
+  kind: "source" | "site" | "releases";
+  label: string;
+  href: string;
+};
+
 export type Project = {
   slug: string;
   index: string;
@@ -15,6 +34,11 @@ export type Project = {
   role: string;
   accent: "blue-strong" | "blue-medium" | "blue-low" | "blue-flow";
   personality: ProjectCardPersonality;
+  status: string;
+  proof: string;
+  cautionLabel?: string;
+  media: ProjectMedia;
+  verifiedLinks: ProjectLink[];
 };
 
 export const projects: Project[] = [
@@ -25,7 +49,7 @@ export const projects: Project[] = [
     subtitle: "Multi-Agent Security System",
     tagline: "Continuous red, blue, and purple-team security testing for agent runtimes.",
     description:
-      "MonkeyClaw is a continuous security agent for NemoClaw-style coding runtimes. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
+      "MonkeyClaw is a continuous security agent for NemoClaw and OpenClaw deployments. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
     problem:
       "Agent runtimes can read source, run shell commands, call tools, and touch the network. A one-time audit cannot keep up with changing prompts, skills, permissions, and sandbox behavior, and a blocked attack is still risky if no detection fired.",
     approach:
@@ -34,9 +58,43 @@ export const projects: Project[] = [
       "The repo now includes a working CLI, seeded demo, live dashboard, tiered verifier gates, attack coverage tracking, Telegram alert paths, and a growing regression model that treats silent controls as incomplete defenses.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
     year: "2026",
-    role: "Founder & Lead Engineer",
+    role: "Lead Engineer & Contributor",
     accent: "blue-strong",
     personality: "monkeyclaw",
+    status: "Public repository · working demo",
+    proof: "18 seeded attack zones · 8 verifier gates · 1,051 tracked test functions",
+    cautionLabel: "Multi-contributor project",
+    media: {
+      cover: {
+        src: "/projects/monkeyclaw/logo.webp",
+        alt: "Black MonkeyClaw monkey-and-wordmark logo",
+        width: 1254,
+        height: 1254,
+      },
+      gallery: [
+        {
+          src: "/projects/monkeyclaw/architecture.svg",
+          alt: "MonkeyClaw red, judge, repro, blue, and purple-team architecture loop",
+          width: 920,
+          height: 472,
+          caption: "The continuous security loop across 18 attack-surface zones.",
+        },
+        {
+          src: "/projects/monkeyclaw/detection-as-pass.svg",
+          alt: "Detection-as-pass prevention and observability matrix",
+          width: 440,
+          height: 318,
+          caption: "A defense passes only when it blocks the attack and produces evidence.",
+        },
+      ],
+    },
+    verifiedLinks: [
+      {
+        kind: "source",
+        label: "View source",
+        href: "https://github.com/justin06lee/monkeyclaw",
+      },
+    ],
   },
   {
     slug: "velox",
@@ -57,6 +115,43 @@ export const projects: Project[] = [
     role: "Co-Founder & CTO",
     accent: "blue-low",
     personality: "velox",
+    status: "Public alpha · v0.3.0",
+    proof: "Visible agent tabs · no-key demo · Markdown and JSON export",
+    media: {
+      cover: {
+        src: "/projects/velox/landing.webp",
+        alt: "Velox browser new-tab page with its predictive research field",
+        width: 3024,
+        height: 1964,
+      },
+      gallery: [
+        {
+          src: "/projects/velox/predicting.webp",
+          alt: "Velox predicting research intent while a query is typed",
+          width: 3024,
+          height: 1964,
+          caption: "Bounded intent prediction starts before the query is submitted.",
+        },
+        {
+          src: "/projects/velox/logo.svg",
+          alt: "Velox predictive-cursor wordmark",
+          width: 420,
+          height: 112,
+        },
+      ],
+    },
+    verifiedLinks: [
+      {
+        kind: "source",
+        label: "View source",
+        href: "https://github.com/ezzy1630/Velox",
+      },
+      {
+        kind: "releases",
+        label: "View releases",
+        href: "https://github.com/ezzy1630/Velox/releases",
+      },
+    ],
   },
   {
     slug: "flowe",
@@ -77,12 +172,46 @@ export const projects: Project[] = [
     role: "Founder & CEO",
     accent: "blue-flow",
     personality: "flowe",
+    status: "Private build · public site",
+    proof: "SwiftUI client · Convex backend · Canvas sync · offline retry",
+    cautionLabel: "Campaign visualization",
+    media: {
+      cover: {
+        src: "/projects/flowe/brain-dump-campaign.webp",
+        alt: "FlowE campaign visualization of the Brain Dump planning interface",
+        width: 1080,
+        height: 1920,
+        caption: "Project-authored campaign visualization, not a raw runtime capture.",
+      },
+      gallery: [
+        {
+          src: "/projects/flowe/structured-plan-campaign.webp",
+          alt: "FlowE campaign visualization of a course-aware structured plan",
+          width: 1080,
+          height: 1920,
+          caption: "A course-aware plan composed from deadlines and study context.",
+        },
+        {
+          src: "/projects/flowe/app-icon.webp",
+          alt: "FlowE app icon",
+          width: 1024,
+          height: 1024,
+        },
+      ],
+    },
+    verifiedLinks: [
+      {
+        kind: "site",
+        label: "Visit site",
+        href: "https://flowe.cc",
+      },
+    ],
   },
   {
     slug: "nexarad",
     index: "04",
     title: "NEXARAD",
-    subtitle: "Medical Imaging AI",
+    subtitle: "Evidence-Linked Radiology",
     tagline: "Evidence-linked imaging workflows with strict non-clinical demo boundaries.",
     description:
       "NexaRad is a production-shaped foundation for radiology workflow software: backend-owned auth, tenant isolation, local DICOM services, object storage, structured findings, verifier-gated reports, and AWS-first infrastructure boundaries.",
@@ -97,6 +226,40 @@ export const projects: Project[] = [
     role: "Founder & Engineer",
     accent: "blue-strong",
     personality: "nexarad",
+    status: "Private build · non-clinical research demo",
+    proof: "Synthetic DICOM demo · PHI disabled · external AI off by default",
+    cautionLabel: "Demo / Research / Not for Clinical Use",
+    media: {
+      cover: {
+        src: "/projects/nexarad/research-overview.webp",
+        alt: "NexaRad research overview for evidence-linked chest X-ray review",
+        width: 1200,
+        height: 630,
+        caption: "Public demo posture with explicit non-clinical boundaries.",
+      },
+      gallery: [
+        {
+          src: "/projects/nexarad/app-icon.webp",
+          alt: "NexaRad radiology app icon",
+          width: 512,
+          height: 512,
+        },
+        {
+          src: "/projects/nexarad/synthetic-cxr-evidence.webp",
+          alt: "Synthetic non-clinical chest X-ray evidence fixture",
+          width: 160,
+          height: 120,
+          caption: "Synthetic validation fixture; no patient data or clinical-performance claim.",
+        },
+      ],
+    },
+    verifiedLinks: [
+      {
+        kind: "site",
+        label: "Visit research site",
+        href: "https://nexarad.org",
+      },
+    ],
   },
   {
     slug: "etch",
@@ -111,12 +274,47 @@ export const projects: Project[] = [
     approach:
       "I built a FastAPI backend, React/Vite workbench, Electron shell, file-backed run workspace, deterministic FIFO demo, optional LLM proposal path, simulation/formal/synthesis adapters, claims ledger, and status-aware cockpit views for trust and diagnostics.",
     outcome:
-      "The vertical slice proves a synchronous FIFO through typed specs, three candidates, independent oracle artifacts, simulation and bounded-formal gates, Yosys metrics, explicit missing-tool states, and Markdown/JSON proof dossiers.",
+      "The saved vertical slice carries a synchronous FIFO through typed specs, three candidates, independent oracle artifacts, simulation and bounded-formal gates, Yosys metrics, explicit missing-tool states, and Markdown/JSON proof dossiers. Physical signoff remains pending.",
     stack: ["Python", "FastAPI", "React", "Electron", "Yosys", "Verilator"],
     year: "2026",
     role: "Founder & Engineer",
     accent: "blue-medium",
     personality: "etch",
+    status: "Public repository · local vertical slice",
+    proof: "Saved FIFO run · simulation pass · bounded-formal pass · signoff pending",
+    cautionLabel: "Physical signoff pending",
+    media: {
+      cover: {
+        src: "/projects/etch/correctness-ranking.webp",
+        alt: "Etch correctness-first ranking of three FIFO candidates",
+        width: 1920,
+        height: 1080,
+        caption: "Candidate A wins on verified correctness and area among valid candidates.",
+      },
+      gallery: [
+        {
+          src: "/projects/etch/intent-ui.webp",
+          alt: "Etch interface accepting a natural-language synchronous FIFO requirement",
+          width: 1920,
+          height: 1080,
+          caption: "A typed hardware-design run begins from a bounded natural-language intent.",
+        },
+        {
+          src: "/projects/etch/physical-proxy.webp",
+          alt: "Etch physical proxy evidence with signoff explicitly marked pending",
+          width: 1920,
+          height: 1080,
+          caption: "Physical evidence stays separate from foundry signoff claims.",
+        },
+      ],
+    },
+    verifiedLinks: [
+      {
+        kind: "source",
+        label: "View source",
+        href: "https://github.com/ezzy1630/Etch",
+      },
+    ],
   },
 ];
 

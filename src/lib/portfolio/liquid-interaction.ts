@@ -103,9 +103,28 @@ let raf = 0;
 let nextIdleRipple = 1.4;
 let lastInputTime = 0;
 let lastRippleAt = 0;
+let lastTickAt = 0;
+let rootVarsKey = "";
+let pendingPointer: { x: number; y: number; time: number } | null = null;
+let runtimeVisible = true;
+let visibilityObserver: IntersectionObserver | null = null;
+
+const PHYSICS_INTERVAL_MS = 1000 / 30;
 
 function setRootVars() {
   if (typeof document === "undefined") return;
+  const nextKey = [
+    Math.round(state.pointer.x),
+    Math.round(state.pointer.y),
+    state.pointer.speed.toFixed(2),
+    state.pointer.energy.toFixed(2),
+    state.pointer.active ? 1 : 0,
+    state.scroll.progress.toFixed(3),
+    state.scroll.velocity.toFixed(2),
+    state.scroll.depth.toFixed(2),
+  ].join("|");
+  if (nextKey === rootVarsKey) return;
+  rootVarsKey = nextKey;
   const root = document.documentElement;
   root.style.setProperty("--liquid-x", `${state.pointer.x}px`);
   root.style.setProperty("--liquid-y", `${state.pointer.y}px`);
@@ -141,14 +160,21 @@ function pushRipple(x: number, y: number, intensity: number, now: number) {
 function onPointerMove(e: PointerEvent) {
   const now = performance.now();
   lastInputTime = now;
+  pendingPointer = { x: e.clientX, y: e.clientY, time: now };
+}
+
+function applyPendingPointer() {
+  if (!pendingPointer) return;
+  const { x, y, time: now } = pendingPointer;
+  pendingPointer = null;
   const prevTime = state.pointer.time || now;
   const dt = Math.max((now - prevTime) / 1000, 0.001);
-  const dx = e.clientX - state.pointer.x;
-  const dy = e.clientY - state.pointer.y;
+  const dx = x - state.pointer.x;
+  const dy = y - state.pointer.y;
   const speed = Math.hypot(dx, dy) / Math.max(window.innerWidth, window.innerHeight) / dt;
 
-  state.pointer.x = e.clientX;
-  state.pointer.y = e.clientY;
+  state.pointer.x = x;
+  state.pointer.y = y;
   state.pointer.vx += (dx / dt - state.pointer.vx) * 0.25;
   state.pointer.vy += (dy / dt - state.pointer.vy) * 0.25;
   state.pointer.speed = speed;
@@ -161,7 +187,7 @@ function onPointerMove(e: PointerEvent) {
 
   if (now - lastRippleAt > 240) {
     const intensity = Math.min(0.7, 0.12 + speed * 0.38);
-    pushRipple(e.clientX, e.clientY, intensity, now);
+    pushRipple(x, y, intensity, now);
     lastRippleAt = now;
   }
 }
@@ -169,6 +195,7 @@ function onPointerMove(e: PointerEvent) {
 function onPointerDown(e: PointerEvent) {
   const now = performance.now();
   lastInputTime = now;
+  pendingPointer = null;
   state.pointer.x = e.clientX;
   state.pointer.y = e.clientY;
   state.pointer.vx = 0;
@@ -183,6 +210,7 @@ function onPointerDown(e: PointerEvent) {
 }
 
 function onPointerEnd() {
+  pendingPointer = null;
   state.pointer.active = false;
   state.pointer.vx *= 0.35;
   state.pointer.vy *= 0.35;
@@ -191,31 +219,45 @@ function onPointerEnd() {
 }
 
 function tick(now: number) {
+  if (document.hidden || !runtimeVisible) return;
+  if (now - lastTickAt < PHYSICS_INTERVAL_MS) {
+    raf = requestAnimationFrame(tick);
+    return;
+  }
+  lastTickAt = now;
+  applyPendingPointer();
   const t = now / 1000;
   state.time = t;
 
+  if (state.pointer.active && now - lastInputTime > 720) {
+    state.pointer.active = false;
+  }
   const targetEnergy = state.pointer.active ? 0.46 : 0.055;
-  const k = state.pointer.active ? 0.10 : 0.032;
+  const k = state.pointer.active ? 0.19 : 0.063;
   state.pointer.energy += (targetEnergy - state.pointer.energy) * k;
-  state.scroll.velocity *= 0.92;
-  state.scroll.depth += (state.scroll.progress - state.scroll.depth) * 0.045;
-  state.targets = state.targets
-    .map((target) => ({
-      ...target,
-      hover: target.hover * 0.94,
-      pressed: target.pressed * 0.86,
-    }))
-    .filter((target) => target.hover > 0.01 || target.pressed > 0.01)
-    .slice(-MAX_TARGETS);
-
-  const freshRipples: LiquidRippleState[] = [];
-  for (const r of state.ripples) {
-    const age = (now - r.time) / 1000;
-    if (age < RIPPLE_LIFETIME) {
-      freshRipples.push({ ...r, age });
+  state.pointer.speed *= state.pointer.active ? 0.84 : 0.68;
+  state.pointer.vx *= 0.82;
+  state.pointer.vy *= 0.82;
+  state.scroll.velocity *= 0.846;
+  state.scroll.depth += (state.scroll.progress - state.scroll.depth) * 0.088;
+  for (let index = state.targets.length - 1; index >= 0; index--) {
+    const target = state.targets[index];
+    target.hover *= 0.88;
+    target.pressed *= 0.74;
+    if (target.hover <= 0.01 && target.pressed <= 0.01) {
+      state.targets.splice(index, 1);
     }
   }
-  state.ripples = freshRipples;
+
+  for (let index = state.ripples.length - 1; index >= 0; index--) {
+    const r = state.ripples[index];
+    const age = (now - r.time) / 1000;
+    if (age < RIPPLE_LIFETIME) {
+      r.age = age;
+    } else {
+      state.ripples.splice(index, 1);
+    }
+  }
 
   if (!state.pointer.active && now - lastInputTime > 2600 && t > nextIdleRipple) {
     const idleX = window.innerWidth * (0.18 + ((Math.sin(t * 0.37) + 1) * 0.5) * 0.64);
@@ -229,20 +271,52 @@ function tick(now: number) {
   raf = requestAnimationFrame(tick);
 }
 
+function onVisibilityChange() {
+  cancelAnimationFrame(raf);
+  if (!document.hidden && runtimeVisible && started) {
+    lastTickAt = 0;
+    raf = requestAnimationFrame(tick);
+  }
+}
+
+function setRuntimeVisible(visible: boolean) {
+  if (runtimeVisible === visible) return;
+  runtimeVisible = visible;
+  cancelAnimationFrame(raf);
+  if (runtimeVisible && !document.hidden && started) {
+    lastTickAt = 0;
+    raf = requestAnimationFrame(tick);
+  }
+}
+
 function start() {
   if (started || typeof window === "undefined") return;
   started = true;
   const now = performance.now();
   lastInputTime = now;
   lastRippleAt = 0;
+  lastTickAt = 0;
+  runtimeVisible = true;
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("pointerdown", onPointerDown, { passive: true });
   window.addEventListener("pointerup", onPointerEnd, { passive: true });
   window.addEventListener("pointercancel", onPointerEnd, { passive: true });
   window.addEventListener("pointerleave", onPointerEnd);
+  document.addEventListener("visibilitychange", onVisibilityChange);
 
-  raf = requestAnimationFrame(tick);
+  const renderSurface = document.querySelector<HTMLElement>(".hero-shell, .case-hero");
+  if (renderSurface && "IntersectionObserver" in window) {
+    const rect = renderSurface.getBoundingClientRect();
+    runtimeVisible = rect.bottom > -180 && rect.top < window.innerHeight + 180;
+    visibilityObserver = new IntersectionObserver(
+      ([entry]) => setRuntimeVisible(Boolean(entry?.isIntersecting)),
+      { rootMargin: "180px 0px" },
+    );
+    visibilityObserver.observe(renderSurface);
+  }
+
+  if (runtimeVisible && !document.hidden) raf = requestAnimationFrame(tick);
 }
 
 function stop() {
@@ -253,7 +327,11 @@ function stop() {
   window.removeEventListener("pointerup", onPointerEnd);
   window.removeEventListener("pointercancel", onPointerEnd);
   window.removeEventListener("pointerleave", onPointerEnd);
+  document.removeEventListener("visibilitychange", onVisibilityChange);
+  visibilityObserver?.disconnect();
+  visibilityObserver = null;
   cancelAnimationFrame(raf);
+  pendingPointer = null;
 }
 
 function hasSubscribers() {

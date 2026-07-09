@@ -1,11 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Inter_Tight } from "next/font/google";
+import { Geist_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+import "./revamp.css";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -15,7 +11,7 @@ const geistMono = Geist_Mono({
 const interTight = Inter_Tight({
   variable: "--font-inter-tight",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "900"],
+  weight: "variable",
 });
 
 export const metadata: Metadata = {
@@ -53,7 +49,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} ${interTight.variable} antialiased bg-background text-foreground`}
+        className={`${geistMono.variable} ${interTight.variable} antialiased bg-background text-foreground`}
       >
         {children}
       </body>

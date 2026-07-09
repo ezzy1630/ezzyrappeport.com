@@ -35,6 +35,16 @@ export default function KineticCanvas({
     const container = mountRef.current;
     if (!container) return;
 
+    const initialQuality = resolveKineticQuality(reducedMotion, staticMode);
+    if (initialQuality.tier === "static") {
+      container.dataset.fluid = "static";
+      container.dataset.quality = "static";
+      return () => {
+        delete container.dataset.fluid;
+        delete container.dataset.quality;
+      };
+    }
+
     let disposed = false;
     let cleanup = () => {};
     let rendererCanvas: HTMLCanvasElement | null = null;

@@ -1,75 +1,34 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { bio, nav } from "@/lib/portfolio/content";
 
-/**
- * Navigation
- * -----------
- * Floating top nav — no hard container, just floating glass elements:
- *  - Left: ER circular pill logo + "ELIEZER RAPPEPORT" name label
- *  - Center: Projects / Experience / About links
- *  - Right: "Get In Touch" pill button with electric-blue accent dot
- *
- * Appears after a small delay on mount (cinematic).
- */
 export default function Navigation() {
-  const pathname = usePathname();
-  const onHome = pathname === "/";
+  const onHome = usePathname() === "/";
 
   return (
-    <motion.header
-      initial={false}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 1.0, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-      className="site-nav fixed top-0 left-0 right-0 z-50 px-6 md:px-10 lg:px-14 py-5 md:py-6 flex items-center justify-between pointer-events-none"
-    >
-      {/* Left — Brand */}
+    <header className="site-nav">
       <a
         href={onHome ? "#top" : "/"}
-        className="site-nav-brand pointer-events-auto flex items-center gap-3 md:gap-4 group"
-        aria-label={`${nav.fullName} — back to top`}
+        className="site-nav-brand"
+        aria-label={`${nav.fullName} — home`}
       >
-        <span
-          className="glass grid place-items-center w-11 h-11 md:w-12 md:h-12 rounded-full italic font-black text-[15px] md:text-[16px] text-ink transition-transform duration-500 group-hover:scale-105"
-          style={{ fontFamily: "var(--font-inter-tight), sans-serif" }}
-        >
-          {nav.brand}
-        </span>
-        <span className="hidden sm:inline text-[13px] md:text-[14px] font-medium text-ink/92 tracking-normal">
-          {nav.fullName}
-        </span>
+        <span className="site-nav-monogram">{nav.brand}</span>
+        <span className="site-nav-name">{nav.fullName}</span>
       </a>
 
-      {/* Center — Links */}
-      <nav
-        className="hidden md:flex items-center gap-12 pointer-events-auto"
-        aria-label="Primary"
-      >
-        {!onHome && nav.links.map((link) => (
-          <a
-            key={link.href}
-            href={onHome ? link.href : `/${link.href}`}
-            className="relative text-[13px] tracking-normal font-medium text-ink/82 hover:text-ink transition-colors duration-300"
-          >
+      <nav className="site-nav-links" aria-label="Primary navigation">
+        {nav.links.map((link) => (
+          <a key={link.href} href={onHome ? link.href : `/${link.href}`}>
             {link.label}
-            <span className="pointer-events-none absolute -bottom-1.5 left-0 right-0 h-px bg-electric scale-x-0 hover:scale-x-100 transition-transform origin-left duration-500" />
           </a>
         ))}
       </nav>
 
-      {/* Right — CTA */}
-      <a
-        href={`mailto:${bio.email}`}
-        className="site-nav-cta pointer-events-auto liquid-button glass rounded-full pl-5 pr-4 py-2.5 md:pl-6 md:pr-4 md:py-3 flex items-center gap-3 md:gap-4 text-[13px] font-medium text-ink hover:scale-[1.02] active:scale-[0.98] transition-transform duration-300"
-      >
-        <span className="hidden sm:inline">{nav.cta.label}</span>
-        <span className="sm:hidden">Contact</span>
-        <span className="relative grid place-items-center w-4 h-4">
-          <span className="w-2 h-2 rounded-full bg-electric pulse-dot shadow-[0_0_12px_rgba(0,102,255,0.55)]" />
-        </span>
+      <a href={`mailto:${bio.email}`} className="site-nav-cta">
+        <span>{nav.cta.label}</span>
+        <i aria-hidden="true" />
       </a>
-    </motion.header>
+    </header>
   );
 }
