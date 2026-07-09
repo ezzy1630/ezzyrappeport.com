@@ -226,7 +226,7 @@ export const projects: Project[] = [
     role: "Founder & Engineer",
     accent: "blue-strong",
     personality: "nexarad",
-    status: "Private build · non-clinical research demo",
+    status: "Acquired · research foundation",
     proof: "Synthetic DICOM demo · PHI disabled · external AI off by default",
     cautionLabel: "Demo / Research / Not for Clinical Use",
     media: {
@@ -371,20 +371,6 @@ export const experience: ExperienceEntry[] = [
     ],
     stack: ["TypeScript", "React Native", "FastAPI", "PyTorch"],
   },
-  {
-    company: "Vanta (Early Engineer)",
-    role: "Software Engineer, Platform",
-    period: "2019 — 2021",
-    location: "San Francisco, CA",
-    summary:
-      "Joined Vanta pre-Series A as one of the first platform engineers. Built the connector framework that powers Vanta's continuous compliance monitoring across 200+ integrations.",
-    highlights: [
-      "Designed the integration SDK used by every third-party connector in the Vanta marketplace.",
-      "Reduced p99 connector sync latency by 73% through a rewrite of the connection scheduler.",
-      "Mentored four interns, three of whom converted to full-time offers.",
-    ],
-    stack: ["TypeScript", "Node.js", "Postgres", "AWS"],
-  },
 ];
 
 export const bio = {
@@ -402,7 +388,7 @@ export const bio = {
   },
   socials: [
     { label: "GitHub", href: "https://github.com/ezzyrappeport", handle: "@ezzyrappeport" },
-    { label: "LinkedIn", href: "https://www.linkedin.com/in/eliezerrappeport", handle: "/in/eliezerrappeport" },
+    { label: "LinkedIn", href: "https://linkedin.com/in/ezzy-rappeport", handle: "/in/ezzy-rappeport" },
     { label: "X", href: "https://x.com/ezzyrappeport", handle: "@ezzyrappeport" },
     { label: "Email", href: "mailto:hello@eliezerrappeport.com", handle: "hello@eliezerrappeport.com" },
   ],
