@@ -60,7 +60,9 @@ export default function PortfolioShell({
             <FluidScene
               reducedMotion={motionReduced}
               staticMode={coarsePointer || !heroName}
-              heroName={heroName}
+              // The hero title is intentionally CSS-owned; WebGL remains the
+              // ambient fluid and ripple layer behind it.
+              heroName={false}
             />
           </ErrorBoundary>
 

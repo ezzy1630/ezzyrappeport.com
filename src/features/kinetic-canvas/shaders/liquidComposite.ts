@@ -27,16 +27,16 @@ uniform vec4 u_targets[8];
 in vec2 v_uv;
 out vec4 outColor;
 
-#define MENISCUS_AMP 0.62
-#define REFRACTION   0.265
-#define RIM_AMP      2.18
+#define MENISCUS_AMP 0.38
+#define REFRACTION   0.12
+#define RIM_AMP      0.86
 #define SPEC_SHINE   92.0
-#define SPEC_AMP     1.08
-#define FRES_AMP     1.28
-#define DOME_AMP     0.54
-#define GLOSS_AMP    0.96
-#define CAUSTIC_AMP  0.38
-#define BUBBLE_RIM   1.32
+#define SPEC_AMP     0.54
+#define FRES_AMP     0.42
+#define DOME_AMP     0.30
+#define GLOSS_AMP    0.48
+#define CAUSTIC_AMP  0.16
+#define BUBBLE_RIM   0.58
 
 float ridge(float v, float w) {
   return 1.0 - smoothstep(0.0, w, abs(v));
@@ -180,7 +180,7 @@ void main() {
   vec2 baseUV = uv + lensOffset + simNormal.xy * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
   vec2 flowUV = clamp(baseUV + vec2((flowA - 0.5) * 0.018, (flowB - 0.5) * 0.014), vec2(0.0), vec2(1.0));
 
-  vec3 pearlBlue = vec3(0.09, 0.55, 1.0);
+  vec3 pearlBlue = vec3(0.14, 0.40, 0.78);
   vec3 pearlWhite = vec3(0.969, 0.976, 0.988);
   vec3 softSilver = vec3(0.867, 0.890, 0.925);
   vec3 base = texture(u_texture, flowUV).rgb;
@@ -193,13 +193,15 @@ void main() {
   float fineCaustic = pow(caustic, 2.15) * (0.52 + liquidRidge);
   vec3 causticLight = vec3(0.90, 0.96, 1.0) * caustic * CAUSTIC_AMP * (0.65 + causticMask);
   float bottomZone = smoothstep(0.55, 0.0, uv.y) * 0.42;
-  base += causticLight * (0.54 + bottomZone * 0.34);
-  base += vec3(0.92, 0.97, 1.0) * fineCaustic * 0.16;
-  base += softSilver * liquidRidge * 0.12;
-  base += pearlBlue * targetEdge * 0.15 + vec3(1.0) * targetEdge * 0.08;
-  base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.032;
+  base += causticLight * (0.22 + bottomZone * 0.14);
+  base += vec3(0.92, 0.97, 1.0) * fineCaustic * 0.06;
+  base += softSilver * liquidRidge * 0.05;
+  base += pearlBlue * targetEdge * 0.08 + vec3(1.0) * targetEdge * 0.04;
+  base += pearlBlue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.016;
 
-  float sampleWarp = ripple.z + lensOffset.x * 8.0 + simHeight * 0.76 + simNormal.x * 0.08;
+  // Keep the title optically connected to the fluid without dragging large
+  // chunks of the background through each letter.
+  float sampleWarp = ripple.z + lensOffset.x * 3.0 + simHeight * 0.08 + simNormal.x * 0.03;
 
   float cov = textCov(uv);
   float edge = 4.0 * cov * (1.0 - cov);
@@ -237,7 +239,7 @@ void main() {
 
   float glassDepth = smoothstep(0.14, 0.96, cov);
   float chroma = edge * 0.0125 + shoulder * 0.0055 + glassDepth * 0.0028;
-  vec2 refrBase = uv + n.xy * REFRACTION * (0.76 + edge * 3.4 + glassDepth * 0.66 + simObstacle.g * 1.5) + sampleWarp * 0.62;
+  vec2 refrBase = uv + n.xy * REFRACTION * (0.72 + edge * 1.4 + glassDepth * 0.28 + simObstacle.g * 0.36) + sampleWarp * 0.08;
   vec2 refrR = refrBase + lensOffset * 1.2 + vec2(chroma, -chroma * 0.32);
   vec2 refrG = refrBase + lensOffset * 1.0;
   vec2 refrB = refrBase + lensOffset * 0.8 - vec2(chroma * 1.15, -chroma * 0.24);
@@ -298,42 +300,42 @@ void main() {
   float cLeft = textCov(uv + vec2(-3.5 / u_resolution.x, 0.0));
   float bubbleCrown = smoothstep(0.35, 0.88, cov) * (1.0 - smoothstep(0.0, 0.42, cAbove));
   float bubbleGlare = pow(max(dot(n, normalize(vec3(-0.38, -0.72, 0.58))), 0.0), 18.0);
-  letterBody += vec3(1.0, 0.99, 0.97) * bubbleGlare * bubbleCrown * 1.24;
-  letterBody += vec3(0.92, 0.97, 1.0) * bubbleCrown * (0.18 + cLeft * 0.08);
+  letterBody += vec3(1.0, 0.99, 0.97) * bubbleGlare * bubbleCrown * 0.54;
+  letterBody += vec3(0.92, 0.97, 1.0) * bubbleCrown * (0.08 + cLeft * 0.04);
 
   float innerRim = smoothstep(0.18, 0.82, edge) * (1.0 - smoothstep(0.82, 1.0, cov));
   float rim = smoothstep(0.14, 0.84, edge);
   float letterMask = smoothstep(0.06, 0.28, cov);
   vec3 color = base;
-  color = mix(color, letterBody, letterMask * (0.62 + mobilePoster * 0.14));
-  color += vec3(1.0) * rim * (RIM_AMP * (1.74 + mobilePoster * 0.30)) * (1.0 - letterMask * 0.20);
-  color += vec3(1.0) * rim * BUBBLE_RIM * bubbleCrown * 0.42;
-  color += vec3(0.98, 1.0, 1.0) * outsideRidge * (1.72 + mobilePoster * 0.28);
-  color += pearlBlue * outsideRidge * (0.18 + mobilePoster * 0.06);
-  color += pearlBlue * rim * (0.20 + mobilePoster * 0.08) * (1.0 - letterMask * 0.24);
-  color += pearlWhite * outsideRidge * (0.58 + mobilePoster * 0.28);
-  color += softSilver * rim * (0.48 + mobilePoster * 0.16) * (1.0 - letterMask * 0.18);
-  color += vec3(0.94, 0.99, 1.0) * innerRim * (1.18 + mobilePoster * 0.18) * letterMask;
-  color += vec3(1.0) * spec * (0.72 + mobilePoster * 0.18) * (rim + insideRidge);
-  color += pearlBlue * shoulder * fineCaustic * 0.18;
+  color = mix(color, letterBody, letterMask * (0.68 + mobilePoster * 0.10));
+  color += vec3(1.0) * rim * (RIM_AMP * (0.72 + mobilePoster * 0.12)) * (1.0 - letterMask * 0.20);
+  color += vec3(1.0) * rim * BUBBLE_RIM * bubbleCrown * 0.24;
+  color += vec3(0.98, 1.0, 1.0) * outsideRidge * (0.42 + mobilePoster * 0.08);
+  color += pearlBlue * outsideRidge * (0.04 + mobilePoster * 0.02);
+  color += pearlBlue * rim * (0.08 + mobilePoster * 0.03) * (1.0 - letterMask * 0.24);
+  color += pearlWhite * outsideRidge * (0.15 + mobilePoster * 0.05);
+  color += softSilver * rim * (0.22 + mobilePoster * 0.08) * (1.0 - letterMask * 0.18);
+  color += vec3(0.94, 0.99, 1.0) * innerRim * (0.62 + mobilePoster * 0.10) * letterMask;
+  color += vec3(1.0) * spec * (0.38 + mobilePoster * 0.10) * (rim + insideRidge);
+  color += pearlBlue * shoulder * fineCaustic * 0.08;
   float coolLetterMask = clamp(letterMask + outsideRidge * 0.72 + insideRidge * 0.38, 0.0, 1.0);
   float letterLum = dot(color, vec3(0.299, 0.587, 0.114));
   vec3 cooledLetter = vec3(letterLum * 0.82, letterLum * 0.92, min(1.0, letterLum * 1.06 + 0.06));
   cooledLetter += pearlBlue * (outsideRidge * 0.16 + shoulder * 0.03);
-  color = mix(color, cooledLetter, coolLetterMask * 0.68);
-  color -= vec3(0.12, 0.075, 0.018) * (insideRidge * 0.54 + interior * 0.16);
-  color += vec3(0.04, 0.23, 0.62) * (outsideRidge * 0.24 + rim * 0.07);
-  color -= vec3(0.10, 0.13, 0.17) * interior * (0.34 + mobilePoster * 0.10);
-  color -= vec3(0.05, 0.07, 0.10) * shoulder * (0.42 + mobilePoster * 0.16);
-  color += vec3(1.0, 1.0, 0.98) * outsideRidge * (0.60 + mobilePoster * 0.22);
+  color = mix(color, cooledLetter, coolLetterMask * 0.28);
+  color -= vec3(0.06, 0.042, 0.012) * (insideRidge * 0.30 + interior * 0.10);
+  color += vec3(0.04, 0.16, 0.42) * (outsideRidge * 0.10 + rim * 0.03);
+  color -= vec3(0.06, 0.08, 0.11) * interior * (0.18 + mobilePoster * 0.06);
+  color -= vec3(0.03, 0.045, 0.07) * shoulder * (0.24 + mobilePoster * 0.08);
+  color += vec3(1.0, 1.0, 0.98) * outsideRidge * (0.28 + mobilePoster * 0.10);
 
-  color += pearlBlue * ripple.x * 0.56 + vec3(1.0) * ripple.y * 0.78;
-  color += vec3(1.0) * simHeight * 0.34;
-  color += pearlBlue * simObstacle.g * (0.15 + targetBody * 0.18);
+  color += pearlBlue * ripple.x * 0.28 + vec3(1.0) * ripple.y * 0.38;
+  color += vec3(1.0) * simHeight * 0.16;
+  color += pearlBlue * simObstacle.g * (0.08 + targetBody * 0.10);
   float wake = exp(-distance(uv, pointer) * 5.5) * u_energy;
-  color += pearlBlue * wake * 0.14 + pearlWhite * wake * 0.14;
+  color += pearlBlue * wake * 0.07 + pearlWhite * wake * 0.07;
 
-  color += pearlWhite * lensStrength * 0.08 + pearlBlue * lensStrength * 0.025;
+  color += pearlWhite * lensStrength * 0.04 + pearlBlue * lensStrength * 0.012;
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
   color = mix(color * pearlWhite, color, vignette);
@@ -349,12 +351,12 @@ void main() {
   iceMaterial += vec3(1.0) * (insideRidge * 0.24 + bubbleGlare * bubbleCrown * 0.20 + spec * 0.18);
   iceMaterial -= vec3(0.040, 0.052, 0.082) * interior * (0.38 + depthPocket * 0.26);
   iceMaterial += vec3(0.04, 0.16, 0.42) * (outsideRidge * 0.18 + rim * 0.045);
-  color = mix(color, iceMaterial, materialMask * 0.94);
-  float neutralEdge = clamp(outsideRidge * 1.12 + rim * 0.32, 0.0, 1.0);
+  color = mix(color, iceMaterial, materialMask * 0.68);
+  float neutralEdge = clamp(outsideRidge * 0.42 + rim * 0.14, 0.0, 1.0);
   vec3 edgeIce = vec3(0.82, 0.92, 1.0) + vec3(1.0) * (spec * 0.14 + bubbleCrown * 0.07);
-  color = mix(color, edgeIce, neutralEdge * 0.56);
+  color = mix(color, edgeIce, neutralEdge * 0.18);
   float peak = max(max(color.r, color.g), color.b);
   if (peak > 1.0) color /= peak;
-  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.95)), 0.92);
+  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.97)), 1.0);
 }
 `;

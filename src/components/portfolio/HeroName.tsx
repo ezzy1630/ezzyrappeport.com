@@ -12,14 +12,13 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
 /**
  * HeroName
  * --------
- * The visual hero name ("ELIEZER RAPPEPORT") is rendered inside the unified
- * fluid shader in `FluidScene` as submerged, refractive glass typography.
+ * The visual hero name ("ELIEZER RAPPEPORT") is rendered as one restrained
+ * CSS glass treatment above the ambient fluid background.
  *
  * This component provides:
  *  - a visually-hidden, screen-reader-accessible `<h1>` for SEO + a11y, and
- *  - a visible CSS "frosted-water" fallback name (`.hero-name-fallback`) that
- *    shows whenever the live WebGL renderer is NOT ready (e.g. WebGL2
- *    unavailable) and gracefully dissolves away once the shader takes over.
+ *  - a visible CSS glass name (`.hero-name-fallback`) that stays readable
+ *    above the WebGL background on every device and renderer tier.
  */
 export default function HeroName() {
   return (
