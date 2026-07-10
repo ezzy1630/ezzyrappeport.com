@@ -243,7 +243,7 @@ void main() {
   vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
     sin(time * 0.32 + uv.y * 9.0),
     cos(time * 0.27 + uv.x * 8.0)
-  ) * 0.0025;
+  ) * 0.0025 + lensOffset * 0.45;
   vec2 bubbleUv = uv + bubbleWarp;
   float bubbleOne = bubbleDisc(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15));
   float bubbleTwo = bubbleDisc(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86));
@@ -267,6 +267,9 @@ void main() {
   color += vec3(1.0, 0.995, 0.99) * outerRim * (0.22 + mobilePoster * 0.05);
   color += vec3(0.88, 0.95, 1.0) * innerRim * 0.28;
   color -= vec3(0.06, 0.09, 0.17) * innerRim * (1.0 - edgeLight) * 0.55;
+  color += blue * innerRim * lowerRightBlue * 0.14;
+  float titleCaustic = pow(caustic, 2.35) * (innerRim * 0.9 + outerRim * 0.65);
+  color += white * titleCaustic * 0.14 + blue * titleCaustic * 0.08;
   color += white * ripple.y * 0.24 + blue * ripple.x * 0.18;
   color += white * simulationHeight * 0.08;
   color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;

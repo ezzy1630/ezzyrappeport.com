@@ -31,7 +31,7 @@ function measureHeroLine(
 function drawTrackedText(
   ctx: CanvasRenderingContext2D,
   text: string,
-  centerX: number,
+  startX: number,
   baseline: number,
   fontSize: number,
   fontStack: string,
@@ -39,7 +39,7 @@ function drawTrackedText(
   paint: "fill" | "stroke" = "fill",
 ) {
   const lineW = measureHeroLine(ctx, text, fontSize, fontStack, tracking);
-  let x = centerX - lineW / 2;
+  let x = startX;
   ctx.font = `900 ${fontSize}px ${fontStack}`;
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -97,9 +97,12 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
   }
   size = Math.max(44, Math.min(size, height * (isMobilePoster ? 0.135 : 0.30)));
 
-  const top = height * (isMobilePoster ? 0.112 : 0.12);
-  const centerX = width / 2;
+  const top = height * (isMobilePoster ? 0.112 : 0.132);
+  const titleLeft = width * (isMobilePoster ? 0.05 : 0.125);
+  const verticalScale = isMobilePoster ? 1 : 0.92;
   ctx.save();
+  ctx.translate(0, top);
+  ctx.scale(1, verticalScale);
   ctx.shadowColor = "rgba(255, 255, 255, 0.58)";
   ctx.shadowBlur = Math.max(3, size * 0.018);
   ctx.lineJoin = "round";
@@ -107,15 +110,15 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
   lines.forEach((line, index) => {
     const sz = size * line.scale;
     const tracking = sz * trackingFactor;
-    const baseline = top + sz * 0.82 + index * size * lineGap;
+    const baseline = sz * 0.82 + index * size * lineGap;
     ctx.font = `900 ${sz}px ${fontStack}`;
     ctx.strokeStyle = "#ffffff";
     // Keep the source mask mostly fill-based. The shader owns the glass rim;
     // a broad canvas stroke turns the title into a uniform outlined panel.
     ctx.lineWidth = Math.max(2, sz * 0.028);
-    drawTrackedText(ctx, line.text, centerX, baseline, sz, fontStack, tracking, "stroke");
+    drawTrackedText(ctx, line.text, titleLeft, baseline, sz, fontStack, tracking, "stroke");
     ctx.fillStyle = "#ffffff";
-    drawTrackedText(ctx, line.text, centerX, baseline, sz, fontStack, tracking);
+    drawTrackedText(ctx, line.text, titleLeft, baseline, sz, fontStack, tracking);
   });
   ctx.restore();
   return canvas;

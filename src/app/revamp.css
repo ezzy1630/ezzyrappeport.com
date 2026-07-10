@@ -227,7 +227,7 @@ body {
   top: auto;
   left: auto;
   z-index: 2;
-  width: min(86rem, 86vw);
+  width: min(86rem, 80vw);
   min-width: 0;
   margin: 0 auto;
   transform: none;
@@ -237,8 +237,10 @@ body {
   position: relative;
   isolation: isolate;
   align-items: flex-start;
+  width: 100%;
+  box-sizing: border-box;
   gap: clamp(0.2rem, 0.65vw, 0.6rem);
-  padding: clamp(0.35rem, 0.75vw, 0.7rem) clamp(0.45rem, 1vw, 0.9rem);
+  padding: clamp(0.35rem, 0.75vw, 0.7rem) 0 clamp(0.35rem, 0.75vw, 0.7rem) clamp(2rem, 3.6vw, 3.8rem);
   line-height: 0.76;
   text-align: left;
   filter: none;
@@ -256,14 +258,19 @@ body {
   font-size: clamp(6.1rem, 14.4vw, 14.5rem);
   line-height: 0.76;
   letter-spacing: -0.04em;
-  color: rgba(210, 225, 243, 0.72);
-  -webkit-text-fill-color: rgba(210, 225, 243, 0.72);
-  -webkit-text-stroke: clamp(0.9px, 0.075vw, 1.45px) rgba(80, 111, 155, 0.38);
+  color: transparent;
+  background: linear-gradient(180deg, rgba(244, 250, 255, 0.94), rgba(190, 216, 242, 0.82) 52%, rgba(144, 185, 229, 0.88));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: clamp(0.8px, 0.065vw, 1.25px) rgba(75, 121, 185, 0.46);
   text-shadow:
     -1px -1px 0 rgba(255, 255, 255, 0.84),
     0 8px 18px rgba(30, 67, 123, 0.12);
   filter: none;
 }
+
+.hero-name-fallback__line { text-align: left; }
 
 .hero-name-fallback__word::before,
 .hero-name-fallback__word::after {
@@ -321,6 +328,8 @@ body {
 }
 
 .hero-intro__cta {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
@@ -334,7 +343,28 @@ body {
   backdrop-filter: none;
   font-size: 0.82rem;
   font-weight: 560;
+  box-shadow: 0 1px 0 white inset, 0 16px 30px -26px rgba(14, 38, 76, 0.48);
+  transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, box-shadow 220ms ease;
 }
+
+.hero-intro__cta::before {
+  content: "";
+  position: absolute;
+  inset: -70% 32% 12% -18%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.70), rgba(157,204,255,0.18) 42%, transparent 72%);
+  opacity: 0;
+  transform: translateX(-24%);
+  transition: opacity 240ms ease, transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.hero-intro__cta:hover {
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 1px 0 white inset, 0 18px 34px -25px rgba(14, 38, 76, 0.62);
+  transform: translateY(-2px);
+}
+.hero-intro__cta:hover::before { opacity: 1; transform: translateX(18%); }
 
 .hero-intro__cta-icon {
   display: grid;
@@ -365,6 +395,12 @@ body {
     linear-gradient(150deg, rgba(250,252,255,0.44), rgba(220,236,255,0.28));
   box-shadow: 0 1px 0 white inset, 0 -12px 22px rgba(37, 120, 255, 0.055) inset, 0 22px 35px -30px rgba(19, 50, 93, 0.48);
   backdrop-filter: none;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease;
+}
+
+.location-capsule:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 1px 0 white inset, 0 -14px 26px rgba(37, 120, 255, 0.08) inset, 0 26px 40px -30px rgba(19, 50, 93, 0.58);
 }
 
 .location-capsule__status {
@@ -423,7 +459,7 @@ body {
   min-height: 7rem;
   padding: 1.45rem clamp(3.8rem, 4vw, 4.6rem) 1.45rem clamp(1.45rem, 3vw, 2.2rem);
   overflow: hidden;
-  border: 0;
+  border: 1px solid rgba(255, 255, 255, 0.56);
   border-radius: 2.65rem 3.2rem 2.45rem 3.05rem / 2.75rem 2.35rem 3.05rem 2.5rem;
   background:
     radial-gradient(88% 120% at 12% -18%, rgba(255, 255, 255, 0.88), transparent 56%),
@@ -440,7 +476,7 @@ body {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   transform: none;
-  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease, background-color 240ms ease;
+  transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease, background-color 240ms ease, filter 240ms ease;
 }
 
 .project-buttons-row__card:nth-child(2) { --liquid-caustic-x: 65%; --liquid-caustic-shift: 7%; border-radius: 3.15rem 2.6rem 3rem 2.45rem / 2.4rem 3.15rem 2.45rem 3rem; }
@@ -448,6 +484,7 @@ body {
 .project-buttons-row__card:nth-child(4) { --liquid-caustic-x: 72%; --liquid-caustic-shift: 10%; border-radius: 3.1rem 2.45rem 3.2rem 2.7rem / 2.55rem 3rem 2.4rem 3.2rem; }
 .project-buttons-row__card:hover {
   transform: translateY(-3px) scale(1.008);
+  filter: saturate(1.08) brightness(1.02);
   box-shadow:
     0 3px 1px white inset,
     2px 0 1px rgba(255, 255, 255, 0.76) inset,
@@ -519,7 +556,7 @@ body {
   color: var(--rv-ink);
 }
 .liquid-glass-arrow-icon { width: 1.15rem; transition: transform 220ms ease; }
-.project-buttons-row__card:hover .liquid-glass-arrow-icon { transform: translate(2px,-2px); }
+.project-buttons-row__card:hover .liquid-glass-arrow-icon { transform: translate(2px,-2px) rotate(-8deg); }
 
 .hero-section-anchors {
   display: grid;
@@ -906,6 +943,13 @@ body {
   background: rgba(245,249,255,0.72);
   color: var(--rv-ink);
   backdrop-filter: none;
+  transition: transform 220ms ease, background 220ms ease, box-shadow 220ms ease;
+}
+
+.motion-toggle:hover {
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 1px 0 white inset, 0 14px 28px -22px rgba(9, 34, 72, 0.65);
+  transform: translateY(-1px);
 }
 
 @keyframes rv-nav-in { from { opacity: 0; transform: translateY(-0.7rem); } }
@@ -957,7 +1001,8 @@ body {
   .site-nav-cta { min-height: 2.75rem; padding-left: 1.1rem; }
   .hero-shell { display: flex; flex-direction: column; gap: 1.75rem; min-height: 0; padding: 6.5rem 1.1rem 1.5rem; overflow: visible; }
   .hero-name-stage { order: 0; width: 100%; }
-  .hero-name-fallback { align-items: flex-start; gap: 0.25rem; text-align: left; }
+  .hero-name-fallback { align-items: flex-start; gap: 0.25rem; padding-left: 0; text-align: left; }
+  .hero-name-fallback__line { text-align: center; }
   .hero-name-fallback__word { font-size: clamp(3.2rem, 15vw, 4.4rem); line-height: 0.79; letter-spacing: -0.04em; }
   .hero-copy-row { order: 1; display: flex; width: 100%; flex-direction: column; align-items: stretch; gap: 1.5rem; margin: 0; }
   .hero-intro__roles { font-size: 1.15rem; }
