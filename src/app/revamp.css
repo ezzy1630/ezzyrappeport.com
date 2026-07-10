@@ -322,9 +322,10 @@ body {
 .hero-intro-copy {
   max-width: 24rem;
   margin: 0.85rem 0 0;
-  color: color-mix(in oklch, var(--rv-muted) 92%, transparent);
+  color: color-mix(in oklch, var(--rv-muted) 98%, var(--rv-ink) 2%);
   font-size: 0.9rem;
   line-height: 1.55;
+  text-shadow: 0 1px 9px rgba(255, 255, 255, 0.58);
 }
 
 .hero-intro__cta {

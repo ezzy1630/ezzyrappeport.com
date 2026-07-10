@@ -41,6 +41,13 @@ float bubbleDisc(vec2 uv, vec2 center, float radius, vec2 squash) {
   return 1.0 - smoothstep(radius * 0.58, radius, distanceToCenter);
 }
 
+float bubbleArc(vec2 uv, vec2 center, float radius, vec2 squash, vec2 lightDirection) {
+  vec2 local = (uv - center) * squash;
+  float ring = ellipseRing(uv, center, radius, squash, 0.006);
+  float direction = 0.5 + 0.5 * dot(normalize(local + vec2(0.0001)), normalize(lightDirection));
+  return ring * smoothstep(0.18, 0.76, direction);
+}
+
 float caustics(vec2 p, float time) {
   float value = 0.0;
   mat2 rotation = mat2(0.8, -0.6, 0.6, 0.8);
@@ -250,9 +257,9 @@ void main() {
   float bubbleThree = bubbleDisc(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2));
   float bubbleBody = (bubbleOne * 0.28 + bubbleTwo * 0.22 + bubbleThree * 0.24) * interior;
   float bubbleRim = (
-    ellipseRing(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15), 0.006) * 0.55 +
-    ellipseRing(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86), 0.007) * 0.45 +
-    ellipseRing(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2), 0.005) * 0.50
+    bubbleArc(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15), vec2(-0.72, -0.66)) * 0.72 +
+    bubbleArc(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86), vec2(-0.58, -0.82)) * 0.62 +
+    bubbleArc(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2), vec2(-0.80, -0.54)) * 0.68
   ) * interior;
   letterBody -= vec3(0.050, 0.075, 0.15) * bubbleBody;
   letterBody += vec3(1.0, 0.995, 0.98) * bubbleRim * 0.74;
