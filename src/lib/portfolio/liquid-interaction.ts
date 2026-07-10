@@ -38,7 +38,11 @@ export type LiquidTargetState = {
   width: number;
   height: number;
   hover: number;
+  hoverTarget: number;
   pressed: number;
+  seed: number;
+  organic: number;
+  blueIntensity: number;
   time: number;
 };
 
@@ -100,7 +104,7 @@ const physicsSubscribers = new Set<PhysicsSubscriber>();
 
 let started = false;
 let raf = 0;
-let nextIdleRipple = 1.4;
+let nextIdleRipple = 8;
 let lastInputTime = 0;
 let lastRippleAt = 0;
 let lastTickAt = 0;
@@ -185,11 +189,6 @@ function applyPendingPointer() {
   emitPointer();
   emitPhysics();
 
-  if (now - lastRippleAt > 240) {
-    const intensity = Math.min(0.7, 0.12 + speed * 0.38);
-    pushRipple(x, y, intensity, now);
-    lastRippleAt = now;
-  }
 }
 
 function onPointerDown(e: PointerEvent) {
@@ -229,11 +228,11 @@ function tick(now: number) {
   const t = now / 1000;
   state.time = t;
 
-  if (state.pointer.active && now - lastInputTime > 720) {
+  if (state.pointer.active && now - lastInputTime > 620) {
     state.pointer.active = false;
   }
-  const targetEnergy = state.pointer.active ? 0.46 : 0.055;
-  const k = state.pointer.active ? 0.19 : 0.063;
+  const targetEnergy = state.pointer.active ? 0.42 : 0;
+  const k = state.pointer.active ? 0.19 : 0.12;
   state.pointer.energy += (targetEnergy - state.pointer.energy) * k;
   state.pointer.speed *= state.pointer.active ? 0.84 : 0.68;
   state.pointer.vx *= 0.82;
@@ -242,11 +241,9 @@ function tick(now: number) {
   state.scroll.depth += (state.scroll.progress - state.scroll.depth) * 0.088;
   for (let index = state.targets.length - 1; index >= 0; index--) {
     const target = state.targets[index];
-    target.hover *= 0.88;
-    target.pressed *= 0.74;
-    if (target.hover <= 0.01 && target.pressed <= 0.01) {
-      state.targets.splice(index, 1);
-    }
+    const hoverRate = target.hoverTarget > target.hover ? 0.24 : 0.11;
+    target.hover += (target.hoverTarget - target.hover) * hoverRate;
+    target.pressed *= 0.68;
   }
 
   for (let index = state.ripples.length - 1; index >= 0; index--) {
@@ -259,11 +256,11 @@ function tick(now: number) {
     }
   }
 
-  if (!state.pointer.active && now - lastInputTime > 2600 && t > nextIdleRipple) {
+  if (!state.pointer.active && now - lastInputTime > 4000 && t > nextIdleRipple) {
     const idleX = window.innerWidth * (0.18 + ((Math.sin(t * 0.37) + 1) * 0.5) * 0.64);
     const idleY = window.innerHeight * (0.18 + ((Math.cos(t * 0.29 + 1.2) + 1) * 0.5) * 0.56);
     pushRipple(idleX, idleY, 0.22, now);
-    nextIdleRipple = t + 2.4 + ((Math.sin(t * 1.7) + 1) * 0.5) * 1.2;
+    nextIdleRipple = t + 8 + ((Math.sin(t * 1.7) + 1) * 0.5) * 6;
   }
 
   emitPointer();
@@ -374,9 +371,12 @@ export function emitLiquidScroll(scroll: Partial<LiquidScrollState>) {
 export function emitLiquidTarget(target: LiquidTargetState) {
   const existing = state.targets.findIndex((candidate) => candidate.id === target.id);
   if (existing >= 0) {
-    state.targets[existing] = target;
+    state.targets[existing] = {
+      ...target,
+      hover: state.targets[existing].hover,
+    };
   } else {
-    state.targets.push(target);
+    state.targets.push({ ...target, hover: target.hoverTarget > 0 ? 0 : target.hover });
   }
   if (state.targets.length > MAX_TARGETS) state.targets.shift();
   emitPhysics();

@@ -1,5 +1,6 @@
-const LINE_1 = "ELIEZER";
-const LINE_2 = "RAPPEPORT";
+import { portfolioIdentity } from "@/lib/portfolio/identity";
+
+const [LINE_1, LINE_2] = portfolioIdentity.titleLines;
 
 function HeroLine({ text, className }: { text: string; className?: string }) {
   return (
@@ -12,7 +13,7 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
 /**
  * HeroName
  * --------
- * The visual hero name ("ELIEZER RAPPEPORT") is rendered as one restrained
+ * The visual hero name ("EZZY RAPPEPORT") is rendered as one restrained
  * CSS glass treatment above the ambient fluid background.
  *
  * This component provides:
@@ -23,12 +24,12 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
 export default function HeroName() {
   return (
     <>
-      <h1 id="portfolio-title" className="sr-only" aria-label="Eliezer Rappeport">
-        Eliezer Rappeport
+      <h1 id="portfolio-title" className="sr-only" aria-label={portfolioIdentity.name}>
+        {portfolioIdentity.name}
       </h1>
       <div className="hero-name-fallback" aria-hidden="true">
-        <HeroLine text={LINE_1} />
-        <HeroLine text={LINE_2} />
+        <HeroLine text={LINE_1} className="hero-name-fallback__line--first" />
+        <HeroLine text={LINE_2} className="hero-name-fallback__line--second" />
       </div>
     </>
   );

@@ -1,11 +1,12 @@
 "use client";
 
+import { portfolioIdentity } from "@/lib/portfolio/identity";
+
 export const TARGET_FPS = 30;
 export const RIPPLE_COUNT = 8;
 export const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.webp";
 export const FLUID_TEXTURE_FALLBACK_SRC = "/assets/pearl-liquid-background.png";
-export const HERO_LINE_1 = "ELIEZER";
-export const HERO_LINE_2 = "RAPPEPORT";
+export const [HERO_LINE_1, HERO_LINE_2] = portfolioIdentity.titleLines;
 
 export type KineticQualityTier = "high" | "balanced" | "low" | "static";
 
@@ -69,11 +70,11 @@ export function resolveKineticQuality(
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {
       tier: "high",
-      dpr: Math.min(window.devicePixelRatio || 1, 0.9),
-      maxDpr: 0.9,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.25),
+      maxDpr: 1.25,
       targetFps: 30,
       simWidth: 256,
-      textMaxDim: 1360,
+      textMaxDim: 2560,
       pressureIterations: 0,
       activeRipples: 8,
       startDelayMs: 45,
@@ -81,11 +82,11 @@ export function resolveKineticQuality(
     },
     balanced: {
       tier: "balanced",
-      dpr: Math.min(window.devicePixelRatio || 1, 0.75),
-      maxDpr: 0.75,
+      dpr: Math.min(window.devicePixelRatio || 1, 1),
+      maxDpr: 1,
       targetFps: 24,
       simWidth: 192,
-      textMaxDim: 1120,
+      textMaxDim: 1920,
       pressureIterations: 0,
       activeRipples: 6,
       startDelayMs: 70,
@@ -93,11 +94,11 @@ export function resolveKineticQuality(
     },
     low: {
       tier: "low",
-      dpr: Math.min(window.devicePixelRatio || 1, 0.6),
-      maxDpr: 0.6,
+      dpr: Math.min(window.devicePixelRatio || 1, 0.78),
+      maxDpr: 0.78,
       targetFps: 18,
       simWidth: 128,
-      textMaxDim: 840,
+      textMaxDim: 1024,
       pressureIterations: 0,
       activeRipples: 4,
       startDelayMs: 110,

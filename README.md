@@ -1,6 +1,6 @@
-# Eliezer Rappeport — Portfolio
+# Ezzy Rappeport — Portfolio
 
-The source for [eliezerrappeport.com](https://eliezerrappeport.com): a personal portfolio for Eliezer Rappeport, an engineer, AI builder, and founder.
+The source for [ezzyrappeport.com](https://ezzyrappeport.com): a personal portfolio for Ezzy Rappeport, a software engineer, AI systems builder, and founder.
 
 The site pairs an editorial portfolio with an interactive liquid surface. It is built to make the work legible first, then add motion and depth when the device can support it.
 

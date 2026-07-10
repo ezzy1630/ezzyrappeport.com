@@ -18,10 +18,10 @@ export default function OpengraphImage() {
         }}
       >
         <div style={{ display: "flex", fontSize: 26, color: "#0066ff", letterSpacing: 6, marginBottom: 28 }}>
-          ENGINEER · AI BUILDER · FOUNDER
+          SOFTWARE ENGINEER · AI SYSTEMS · FOUNDER
         </div>
         <div style={{ display: "flex", fontSize: 116, fontWeight: 800, color: "#0a0f1a", lineHeight: 1.02, letterSpacing: -3 }}>
-          ELIEZER
+          EZZY
         </div>
         <div style={{ display: "flex", fontSize: 116, fontWeight: 800, color: "#0a0f1a", lineHeight: 1.02, letterSpacing: -3 }}>
           RAPPEPORT

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter_Tight } from "next/font/google";
+import { portfolioIdentity } from "@/lib/portfolio/identity";
 import "./globals.css";
 import "./revamp.css";
 
@@ -15,23 +16,25 @@ const interTight = Inter_Tight({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://eliezerrappeport.com"),
-  title: "Eliezer Rappeport — Engineer • AI Builder • Founder",
+  metadataBase: new URL(portfolioIdentity.domain),
+  title: "Ezzy Rappeport — Software Engineer • AI Systems • Founder",
   description:
     "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
-  keywords: ["Eliezer Rappeport", "AI", "multi-agent", "engineer", "founder", "portfolio"],
-  authors: [{ name: "Eliezer Rappeport" }],
+  keywords: ["Ezzy Rappeport", "AI", "multi-agent", "software engineer", "founder", "portfolio"],
+  authors: [{ name: "Ezzy Rappeport" }],
+  alternates: { canonical: "/" },
   openGraph: {
-    title: "Eliezer Rappeport — Engineer • AI Builder • Founder",
+    title: "Ezzy Rappeport — Software Engineer • AI Systems • Founder",
     description:
       "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
     type: "website",
-    siteName: "Eliezer Rappeport",
+    siteName: "Ezzy Rappeport",
+    url: "/",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Eliezer Rappeport",
-    description: "Engineer • AI Builder • Founder",
+    title: "Ezzy Rappeport",
+    description: "Software Engineer • AI Systems • Founder",
   },
 };
 
@@ -47,10 +50,28 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body
         className={`${geistMono.variable} ${interTight.variable} antialiased bg-background text-foreground`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Person",
+              name: portfolioIdentity.name,
+              url: portfolioIdentity.domain,
+              email: `mailto:${portfolioIdentity.email}`,
+              jobTitle: portfolioIdentity.role,
+              sameAs: [
+                "https://github.com/ezzy1630",
+                "https://linkedin.com/in/ezzy-rappeport",
+                "https://x.com/ezzyrappeport",
+              ],
+            }),
+          }}
+        />
         {children}
       </body>
     </html>

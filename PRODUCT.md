@@ -5,10 +5,10 @@
 brand
 
 ## Users
-Visitors are founders, engineers, investors, collaborators, and hiring or partnership leads evaluating Eliezer Rappeport through the work itself. They arrive expecting a portfolio, but the interface should make the engineering taste and ambition immediately visible.
+Visitors are founders, engineers, investors, collaborators, and hiring or partnership leads evaluating Ezzy Rappeport through the work itself. They arrive expecting a portfolio, but the interface should make the engineering taste and ambition immediately visible.
 
 ## Product Purpose
-This portfolio presents Eliezer Rappeport as an engineer, AI builder, and founder through a live, responsive liquid interface. Success means the site feels like a crafted technical art piece: memorable, fluid, precise, and credible without becoming heavy or opaque.
+This portfolio presents Ezzy Rappeport as a software engineer, AI systems builder, and founder through a live, responsive liquid interface. Success means the site feels like a crafted technical art piece: memorable, fluid, precise, and credible without becoming heavy or opaque.
 
 ## Brand Personality
 Light, fluid, exacting. The site should feel airy and connected like clear water under studio light, with enough engineering depth that the visitor wonders how it was built.

@@ -1,7 +1,7 @@
 "use client";
 
 import type { LiquidPhysics } from "../input/liquidInput";
-import { createHeroTextCanvas } from "../materials/heroTextMask";
+import { clearHeroTextCanvasCache, createHeroTextCanvas } from "../materials/heroTextMask";
 import {
   FLUID_TEXTURE_FALLBACK_SRC,
   FLUID_TEXTURE_SRC,
@@ -102,7 +102,8 @@ uniform int u_pass;
 uniform vec2 u_resolution;
 uniform vec4 u_pointer;
 uniform vec4 u_ripples[8];
-uniform vec4 u_targets[8];
+uniform vec4 u_targetRects[8];
+uniform vec2 u_targetStates[8];
 uniform vec4 u_scroll;
 uniform float u_time;
 uniform float u_delta;
@@ -131,15 +132,16 @@ float targetMask(vec2 uv, out float pressed) {
   pressed = 0.0;
   vec2 px = uv * u_resolution;
   for (int i = 0; i < 8; i++) {
-    vec4 target = u_targets[i];
+    vec4 target = u_targetRects[i];
+    vec2 state = u_targetStates[i];
     if (target.z <= 1.0 || target.w <= 1.0) continue;
     vec2 center = target.xy;
     vec2 halfSize = target.zw * 0.5;
     float d = roundedBox(px - center, halfSize, min(42.0, min(halfSize.x, halfSize.y) * 0.48));
     float body = 1.0 - smoothstep(-7.0, 10.0, d);
     float edge = 1.0 - smoothstep(0.0, 26.0, abs(d));
-    mask = max(mask, max(body * 0.62, edge * 0.82));
-    pressed = max(pressed, body * target.w / max(target.w, 1.0));
+    mask = max(mask, max(body * (0.58 + state.x * 0.10), edge * (0.72 + state.x * 0.18)));
+    pressed = max(pressed, body * state.y);
   }
   return mask;
 }
@@ -198,11 +200,12 @@ void main() {
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
     vel += obstacleNormal * edge * (0.014 + abs(u_scroll.y) * 0.026);
     for (int i = 0; i < 8; i++) {
-      vec4 t = u_targets[i];
+      vec4 t = u_targetRects[i];
+      vec2 targetState = u_targetStates[i];
       if (t.z <= 1.0) continue;
       vec2 d = uv * u_resolution - t.xy;
       float env = exp(-dot(d / max(t.zw, vec2(1.0)), d / max(t.zw, vec2(1.0))) * 2.8);
-      vel += normalize(d + vec2(0.001)) * env * (0.018 + t.w * 0.014);
+      vel += normalize(d + vec2(0.001)) * env * (0.006 + targetState.x * 0.012 + targetState.y * 0.026);
     }
     vel *= 1.0 - obstacle * 0.92;
     outColor = encodeVelocity(vel);
@@ -288,11 +291,11 @@ function lowerQualityProfile(current: KineticQuality): KineticQuality {
     return {
       ...current,
       tier: "balanced",
-      dpr: Math.min(current.dpr, 0.75),
-      maxDpr: 0.75,
+      dpr: Math.min(current.dpr, 1),
+      maxDpr: 1,
       targetFps: 24,
       simWidth: 192,
-      textMaxDim: 1120,
+      textMaxDim: 1920,
       activeRipples: 6,
       renderScale: 0.9,
     };
@@ -301,11 +304,11 @@ function lowerQualityProfile(current: KineticQuality): KineticQuality {
     return {
       ...current,
       tier: "low",
-      dpr: Math.min(current.dpr, 0.6),
-      maxDpr: 0.6,
+      dpr: Math.min(current.dpr, 0.78),
+      maxDpr: 0.78,
       targetFps: 18,
       simWidth: 128,
-      textMaxDim: 840,
+      textMaxDim: 1024,
       activeRipples: 4,
       renderScale: 0.7,
     };
@@ -320,6 +323,7 @@ export function startFluidRenderer(
   staticModeRef: { current: boolean },
   heroNameRef: { current: boolean },
   initialQuality?: KineticQuality,
+  onReady?: () => void,
 ): () => void {
   let quality = initialQuality ?? resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
   if (quality.tier === "static") return () => {};
@@ -343,6 +347,7 @@ export function startFluidRenderer(
   const energyLocation = gl.getUniformLocation(program, "u_energy");
   const pointerLocation = gl.getUniformLocation(program, "u_pointer");
   const nameOpacityLocation = gl.getUniformLocation(program, "u_nameOpacity");
+  const sceneIntensityLocation = gl.getUniformLocation(program, "u_sceneIntensity");
   const rippleLocations = Array.from({ length: RIPPLE_COUNT }, (_, i) =>
     gl.getUniformLocation(program, `u_ripples[${i}]`),
   );
@@ -352,8 +357,14 @@ export function startFluidRenderer(
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
-  const targetLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_targets[${i}]`),
+  const targetRectLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(program, `u_targetRects[${i}]`),
+  );
+  const targetStateLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(program, `u_targetStates[${i}]`),
+  );
+  const targetDataLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(program, `u_targetData[${i}]`),
   );
 
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
@@ -365,8 +376,11 @@ export function startFluidRenderer(
   const simRippleLocations = Array.from({ length: RIPPLE_COUNT }, (_, i) =>
     gl.getUniformLocation(simProgram, `u_ripples[${i}]`),
   );
-  const simTargetLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(simProgram, `u_targets[${i}]`),
+  const simTargetRectLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(simProgram, `u_targetRects[${i}]`),
+  );
+  const simTargetStateLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(simProgram, `u_targetStates[${i}]`),
   );
   const simHeightLocationRead = gl.getUniformLocation(simProgram, "u_height");
   const simObstacleLocationRead = gl.getUniformLocation(simProgram, "u_obstacle");
@@ -523,14 +537,16 @@ export function startFluidRenderer(
       const target = physics.targets[i];
       if (target) {
         gl.uniform4f(
-          simTargetLocations[i],
+          simTargetRectLocations[i],
           target.x / Math.max(width, 1) * simWidth,
           (1 - target.y / Math.max(height, 1)) * simHeight,
           target.width / Math.max(width, 1) * simWidth,
           target.height / Math.max(height, 1) * simHeight,
         );
+        gl.uniform2f(simTargetStateLocations[i], target.hover, target.pressed);
       } else {
-        gl.uniform4f(simTargetLocations[i], -9999, -9999, 0, 0);
+        gl.uniform4f(simTargetRectLocations[i], -9999, -9999, 0, 0);
+        gl.uniform2f(simTargetStateLocations[i], 0, 0);
       }
     }
   }
@@ -595,7 +611,7 @@ export function startFluidRenderer(
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
     if (canvas.style.opacity !== "0") {
-      canvas.style.opacity = quality.tier === "low" ? "0.82" : "0.88";
+      canvas.style.opacity = "1";
     }
     gl.viewport(0, 0, canvas.width, canvas.height);
     configureSim();
@@ -609,7 +625,9 @@ export function startFluidRenderer(
 
   function paint(t: number) {
     const physics = getPhysics();
-    updateSimulation(physics, t);
+    if (lastSimTime === 0 || t - lastSimTime >= 1 / 30) {
+      updateSimulation(physics, t);
+    }
     const pointer = physics.pointer;
     const scrollY = heroNameRef.current ? window.scrollY : 9999;
     const fadeStart = height * 0.14;
@@ -636,14 +654,19 @@ export function startFluidRenderer(
     gl.uniform1f(timeLocation, t);
     gl.uniform1f(energyLocation, pointer.energy);
     gl.uniform1f(nameOpacityLocation, nameOpacity);
+    gl.uniform1f(sceneIntensityLocation, heroNameRef.current ? 1 : 0);
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
     for (let i = 0; i < TARGET_COUNT; i++) {
       const target = physics.targets[i];
       if (target) {
-        gl.uniform4f(targetLocations[i], target.x * dpr, target.y * dpr, target.width * dpr, target.height * dpr);
+        gl.uniform4f(targetRectLocations[i], target.x * dpr, target.y * dpr, target.width * dpr, target.height * dpr);
+        gl.uniform2f(targetStateLocations[i], target.hover, target.pressed);
+        gl.uniform4f(targetDataLocations[i], target.seed, target.organic, target.blueIntensity, 1);
       } else {
-        gl.uniform4f(targetLocations[i], -9999, -9999, 0, 0);
+        gl.uniform4f(targetRectLocations[i], -9999, -9999, 0, 0);
+        gl.uniform2f(targetStateLocations[i], 0, 0);
+        gl.uniform4f(targetDataLocations[i], 0, 0, 0, 0);
       }
     }
     for (let i = 0; i < RIPPLE_COUNT; i++) {
@@ -669,7 +692,10 @@ export function startFluidRenderer(
       frame = 0;
       return; // single static frame; the name still renders
     }
-    const interval = 1000 / quality.targetFps;
+    const physics = getPhysics();
+    const interactive = physics.pointer.active || physics.targets.some((target) => target.hover > 0.08 || target.pressed > 0.05);
+    const compositeFps = interactive ? (quality.tier === "low" ? 30 : 60) : quality.targetFps;
+    const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {
       scheduleRender(interval - elapsed);
@@ -701,7 +727,7 @@ export function startFluidRenderer(
       configure();
       canvas.dataset.adaptive = "true";
     }
-    const nextInterval = 1000 / quality.targetFps;
+    const nextInterval = 1000 / compositeFps;
     const phase = now - lastRenderTime;
     scheduleRender(Math.max(0, nextInterval - phase));
   }
@@ -742,7 +768,7 @@ export function startFluidRenderer(
 
   canvas.style.opacity = "0";
   canvas.style.mixBlendMode = "normal";
-  canvas.style.filter = "saturate(0.96) contrast(1.04) brightness(0.96)";
+  canvas.style.filter = "none";
   canvas.style.transition = "opacity 420ms ease";
   configure();
   window.addEventListener("resize", onResize, { passive: true });
@@ -766,7 +792,8 @@ export function startFluidRenderer(
   }
   syncRunning();
   revealFrame = requestAnimationFrame(() => {
-    canvas.style.opacity = quality.tier === "low" ? "0.82" : "0.88";
+    canvas.style.opacity = "1";
+    onReady?.();
   });
 
   // Re-rasterize once the hero font has loaded; repaint a static frame in
@@ -774,6 +801,7 @@ export function startFluidRenderer(
   if (typeof document !== "undefined" && document.fonts) {
     document.fonts.ready
       .then(() => {
+        clearHeroTextCanvasCache();
         regenerateText();
         if (reducedMotionRef.current || staticModeRef.current) paint(0);
       })

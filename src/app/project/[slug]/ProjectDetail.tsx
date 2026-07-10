@@ -71,7 +71,10 @@ export default function ProjectDetail({ project }: Props) {
               ) : null}
             </div>
 
-            <figure className="case-hero__media">
+            <figure
+              className="case-hero__media"
+              style={{ viewTransitionName: `project-${project.slug}` }}
+            >
               <Image
                 src={project.media.cover.src}
                 alt={project.media.cover.alt}

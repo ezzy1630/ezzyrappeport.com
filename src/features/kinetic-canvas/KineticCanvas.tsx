@@ -58,7 +58,7 @@ export default function KineticCanvas({
     const attachRenderer = (
       canvas: HTMLCanvasElement,
       rendererCleanup: () => void,
-      fluidState: "ready" | "static",
+      fluidState: "ready" | "starting" | "static",
     ) => {
       if (disposed) {
         rendererCleanup();
@@ -103,8 +103,11 @@ export default function KineticCanvas({
           staticModeRef,
           heroNameRef,
           quality,
+          () => {
+            if (!disposed) container.dataset.fluid = "ready";
+          },
         );
-        attachRenderer(canvas, rendererCleanup, "ready");
+        attachRenderer(canvas, rendererCleanup, "starting");
       } catch (error) {
         container.dataset.rendererError =
           error instanceof Error ? error.name : "RendererStartError";

@@ -1,3 +1,5 @@
+import { portfolioIdentity } from "./identity";
+
 type ProjectCardPersonality = "monkeyclaw" | "velox" | "flowe" | "nexarad" | "etch";
 
 export type ProjectMediaAsset = {
@@ -374,30 +376,30 @@ export const experience: ExperienceEntry[] = [
 ];
 
 export const bio = {
-  name: "Eliezer Rappeport",
-  taglineParts: ["Engineer", "AI Builder", "Founder"],
+  name: portfolioIdentity.name,
+  taglineParts: ["Software Engineer", "AI Systems", "Founder"],
   bodyParagraphs: [
-    "I build at the intersection of engineering and intelligence. Exploring multi-agent systems, humane AI, and tools that create real impact.",
+    "I build AI systems, developer tools, and product software—from multi-agent security to intelligent student workflows.",
     "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. Most of my work sits in the awkward space between research and production — taking ideas that work in a paper and making them work under a pager.",
     "I'm currently based between Los Angeles and Santa Cruz, splitting time between independent founder work and advising a small number of AI companies on agent architecture and evaluation.",
   ],
   location: {
     title: "Based in California",
-    subtitle: "Building from Los Angeles and Santa Cruz",
-    coordinates: "34.0522° N, 118.2437° W",
+    subtitle: "Los Angeles ↔ Santa Cruz",
+    status: "Open to software and AI opportunities",
   },
   socials: [
-    { label: "GitHub", href: "https://github.com/ezzyrappeport", handle: "@ezzyrappeport" },
+    { label: "GitHub", href: "https://github.com/ezzy1630", handle: "@ezzy1630" },
     { label: "LinkedIn", href: "https://linkedin.com/in/ezzy-rappeport", handle: "/in/ezzy-rappeport" },
     { label: "X", href: "https://x.com/ezzyrappeport", handle: "@ezzyrappeport" },
-    { label: "Email", href: "mailto:hello@eliezerrappeport.com", handle: "hello@eliezerrappeport.com" },
+    { label: "Email", href: `mailto:${portfolioIdentity.email}`, handle: portfolioIdentity.email },
   ],
-  email: "hello@eliezerrappeport.com",
+  email: portfolioIdentity.email,
 };
 
 export const nav = {
   brand: "ER",
-  fullName: "ELIEZER RAPPEPORT",
+  fullName: portfolioIdentity.displayName,
   links: [
     { label: "Projects", href: "#projects" },
     { label: "Experience", href: "#experience" },

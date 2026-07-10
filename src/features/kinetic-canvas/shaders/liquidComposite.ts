@@ -21,8 +21,11 @@ uniform sampler2D u_heightField;
 uniform sampler2D u_normalField;
 uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
+uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
-uniform vec4 u_targets[8];
+uniform vec4 u_targetRects[8];
+uniform vec2 u_targetStates[8];
+uniform vec4 u_targetData[8];
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -103,42 +106,63 @@ float roundedBox(vec2 p, vec2 bounds, float radius) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-float targetField(vec2 uv, out float edgeGlow) {
+vec4 targetField(vec2 uv, float time, out float bodyMask, out float edgeGlow) {
   float field = 0.0;
+  vec3 material = vec3(0.0);
   edgeGlow = 0.0;
-  vec2 pixel = vec2(uv.x * u_resolution.x, (1.0 - uv.y) * u_resolution.y);
+  vec2 pixel = uv * u_resolution;
   for (int i = 0; i < 8; i++) {
-    vec4 target = u_targets[i];
+    vec4 target = u_targetRects[i];
     if (target.z <= 1.0 || target.w <= 1.0) continue;
+    vec2 state = u_targetStates[i];
+    vec4 data = u_targetData[i];
     vec2 halfSize = target.zw * 0.5;
+    vec2 local = pixel - target.xy;
+    float organic = (
+      sin(local.x * 0.028 + data.x) +
+      sin(local.y * 0.035 - data.x * 0.7) +
+      sin((local.x + local.y) * 0.017 + time * 0.35 + data.x)
+    ) * (2.2 + data.y * 4.8) * (1.0 - state.x * 0.42);
     float distanceToTarget = roundedBox(
-      pixel - target.xy,
+      local,
       halfSize,
       min(54.0, min(halfSize.x, halfSize.y) * 0.45)
-    );
-    field = max(field, 1.0 - smoothstep(-10.0, 22.0, distanceToTarget));
-    edgeGlow = max(edgeGlow, 1.0 - smoothstep(0.0, 44.0, abs(distanceToTarget)));
+    ) + organic;
+    float body = 1.0 - smoothstep(-4.0, 5.0, distanceToTarget);
+    float edge = 1.0 - smoothstep(0.0, 10.0, abs(distanceToTarget));
+    float outerShadow = (1.0 - smoothstep(2.0, 30.0, distanceToTarget)) * smoothstep(-1.0, 5.0, distanceToTarget);
+    float lower = smoothstep(-0.28, 0.92, local.y / max(halfSize.y, 1.0));
+    float topLeft = smoothstep(0.1, 0.95, dot(normalize(local + vec2(0.001)), normalize(vec2(-0.65, -0.76))));
+    vec3 glass = vec3(0.86, 0.92, 0.985) * (0.18 + body * 0.16);
+    glass += vec3(1.0) * edge * topLeft * (0.42 + state.x * 0.18);
+    glass += vec3(0.14, 0.42, 0.88) * edge * lower * data.z * (0.28 + state.x * 0.2);
+    glass -= vec3(0.08, 0.11, 0.17) * outerShadow * 0.18;
+    material = max(material, glass);
+    field = max(field, body * (0.38 + state.x * 0.12));
+    edgeGlow = max(edgeGlow, edge);
   }
-  return field;
+  bodyMask = field;
+  return vec4(material, clamp(field + edgeGlow * 0.64, 0.0, 0.88));
 }
 
 float textCov(vec2 uv) {
   return texture(u_text, uv).a * u_nameOpacity;
 }
 
-float textSurface(vec2 uv, float time) {
-  float coverage = textCov(uv);
-  float edge = 4.0 * coverage * (1.0 - coverage);
-  float dome = smoothstep(0.14, 0.88, coverage);
-  float meniscus = pow(max(edge, 0.0), 0.82) * 0.32;
-  float cap = pow(max(coverage, 0.0), 0.48) * dome * 0.12;
-  float motion = sin(uv.x * 17.0 + uv.y * 13.0 + time * 0.55) * dome;
-  return meniscus + cap + motion * 0.004;
+float titleBasin(vec2 uv, float time) {
+  float first = roundedBox(uv - vec2(0.38, 0.225), vec2(0.275, 0.125), 0.08);
+  float second = roundedBox(uv - vec2(0.53, 0.405), vec2(0.425, 0.135), 0.085);
+  float lobes = min(
+    length((uv - vec2(0.69, 0.22)) * vec2(1.15, 1.0)) - 0.095,
+    length((uv - vec2(0.18, 0.35)) * vec2(0.92, 1.15)) - 0.08
+  );
+  float perturb = sin(uv.x * 19.0 + time * 0.12) * 0.008 + sin(uv.y * 24.0 - time * 0.1) * 0.006;
+  return 1.0 - smoothstep(-0.015, 0.055, min(min(first, second), lobes) + perturb);
 }
 
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
-  float time = u_time;
+  float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec2 plane = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
@@ -150,8 +174,10 @@ void main() {
   float simulationHeight = texture(u_heightField, uv).r;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
   float targetEdge = 0.0;
-  float targetBody = targetField(uv, targetEdge);
+  float targetBody = 0.0;
+  vec4 targetLayer = targetField(uv, time, targetBody, targetEdge);
   vec3 ripple = rippleField(uv, pointer, time);
+  float basin = titleBasin(uv, time) * u_nameOpacity;
 
   float flowA = 0.5 + 0.25 * (
     sin(dot(plane, vec2(3.8, 2.4)) + time * 0.42) +
@@ -163,8 +189,9 @@ void main() {
   );
   float flowC = 0.5 + 0.5 * sin(dot(plane, vec2(6.2, -4.7)) + time * 0.72);
 
-  plane.x += (flowA - 0.5) * 0.034 + ripple.z + simulationNormal.x * 0.042 + u_scroll.y * 0.035;
-  plane.y += (flowB - 0.5) * 0.026 + ripple.z * 0.42 + simulationNormal.y * 0.036 - u_scroll.y * 0.055;
+  float basinCalm = 1.0 - basin * 0.54;
+  plane.x += ((flowA - 0.5) * 0.034 + ripple.z + simulationNormal.x * 0.042) * basinCalm + u_scroll.y * 0.035;
+  plane.y += ((flowB - 0.5) * 0.026 + ripple.z * 0.42 + simulationNormal.y * 0.036) * basinCalm - u_scroll.y * 0.055;
 
   vec2 baseUv = uv + lensOffset + simulationNormal.xy * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
   vec2 flowUv = clamp(
@@ -183,34 +210,40 @@ void main() {
   float caustic = caustics(plane * 3.1 + vec2(time * 0.035, -time * 0.026), time * 0.42);
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
   float liquidRidge = ridge(flowA - 0.52, 0.20) * 0.34 + ridge(flowB - 0.48, 0.18) * 0.22;
-  base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask);
+  base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
   base += blue * targetEdge * 0.08 + white * targetEdge * 0.04;
   base += blue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.016;
+  base *= 1.0 - basin * 0.035;
+  base = mix(base, base * 0.82 + targetLayer.rgb, targetLayer.a);
+  base = mix(base, vec3(0.91, 0.95, 0.995), targetBody * 0.18);
+  base += white * targetEdge * 0.12;
+  base += blue * targetEdge * 0.075;
+  base -= vec3(0.10, 0.15, 0.23) * targetEdge * 0.14;
+  base -= vec3(0.05, 0.075, 0.12) * targetBody * 0.035;
 
   // One title material: a low-depth refraction, a soft body, one directional
   // bevel, and a few broad air pockets. This keeps the name watery without
   // stacking unrelated outline, ice, and color-treatment passes.
-  float coverage = textCov(uv);
-  float letterMask = smoothstep(0.035, 0.24, coverage);
-  float interior = smoothstep(0.18, 0.86, coverage);
-  vec2 textPixel = 4.8 / max(u_resolution, vec2(1.0));
-  float covRight = textCov(uv + vec2(textPixel.x, 0.0));
-  float covLeft = textCov(uv - vec2(textPixel.x, 0.0));
-  float covUp = textCov(uv + vec2(0.0, textPixel.y));
-  float covDown = textCov(uv - vec2(0.0, textPixel.y));
-  vec2 coverageGradient = vec2(covRight - covLeft, covUp - covDown);
-  float edge = smoothstep(0.08, 0.48, length(coverageGradient));
-  float outerRim = edge * (1.0 - letterMask);
-  float innerRim = edge * letterMask;
-
-  float surfaceRight = textSurface(uv + vec2(textPixel.x, 0.0), time);
-  float surfaceLeft = textSurface(uv - vec2(textPixel.x, 0.0), time);
-  float surfaceUp = textSurface(uv + vec2(0.0, textPixel.y), time);
-  float surfaceDown = textSurface(uv - vec2(0.0, textPixel.y), time);
-  vec2 surfaceGradient = vec2(surfaceRight - surfaceLeft, surfaceUp - surfaceDown);
-  vec3 normal = normalize(vec3(-surfaceGradient * 0.24 + simulationNormal.xy * 0.16, 1.0));
+  vec4 titleField = texture(u_text, uv);
+  float coverage = titleField.a * u_nameOpacity;
+  float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
+  float thickness = titleField.g * u_nameOpacity;
+  float bevel = titleField.b * u_nameOpacity;
+  float letterMask = smoothstep(-0.025, 0.035, signedDistance) * u_nameOpacity;
+  float interior = smoothstep(0.08, 0.68, thickness);
+  vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
+  float sdRight = texture(u_text, uv + vec2(textPixel.x, 0.0)).r;
+  float sdLeft = texture(u_text, uv - vec2(textPixel.x, 0.0)).r;
+  float sdUp = texture(u_text, uv + vec2(0.0, textPixel.y)).r;
+  float sdDown = texture(u_text, uv - vec2(0.0, textPixel.y)).r;
+  vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
+  float edge = smoothstep(0.015, 0.10, length(coverageGradient)) + bevel * 0.34;
+  float outerRim = ridge(signedDistance + 0.02, 0.065) * (1.0 - letterMask * 0.42);
+  float innerRim = bevel * letterMask;
+  float dome = pow(max(thickness, 0.0), 0.62);
+  vec3 normal = normalize(vec3(-coverageGradient * (3.4 + dome * 2.1) + simulationNormal.xy * 0.11, 1.0));
 
   vec2 sampleWarp = ripple.z * vec2(0.55, 0.24) + simulationNormal.xy * 0.012 + lensOffset * 0.38;
   vec2 refraction = uv + sampleWarp + normal.xy * 0.016 * letterMask;
@@ -222,12 +255,10 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 letterBody = mix(refracted, vec3(0.75, 0.81, 0.92), 0.50);
-  letterBody += vec3(0.038, 0.058, 0.112) * interior;
-  letterBody -= vec3(0.055, 0.075, 0.135) * smoothstep(0.42, 0.96, coverage);
-  float bodyLight = smoothstep(0.08, 0.52, uv.y);
-  letterBody += vec3(0.036, 0.044, 0.070) * (1.0 - bodyLight) * interior;
-  letterBody -= vec3(0.032, 0.048, 0.090) * bodyLight * interior;
+  vec3 letterBody = mix(refracted, vec3(0.72, 0.82, 0.95), 0.18);
+  letterBody += vec3(0.018, 0.032, 0.072) * dome;
+  letterBody -= vec3(0.045, 0.065, 0.12) * interior * smoothstep(0.38, 1.0, uv.y);
+  letterBody -= vec3(0.085, 0.105, 0.145) * mobilePoster * 0.42;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   vec3 lowerRightLight = normalize(vec3(0.56, 0.50, 0.62));
@@ -244,8 +275,8 @@ void main() {
   letterBody += blue * lowerRightBlue * 0.20;
   letterBody -= vec3(0.060, 0.090, 0.16) * innerRim * (1.0 - edgeLight) * 0.70;
 
-  float cavity = smoothstep(0.24, 0.90, coverage) * (0.42 + edge * 0.58);
-  letterBody -= vec3(0.035, 0.055, 0.11) * cavity;
+  float cavity = dome * (0.25 + innerRim * 0.75);
+  letterBody -= vec3(0.045, 0.070, 0.135) * cavity;
 
   vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
     sin(time * 0.32 + uv.y * 9.0),
@@ -269,7 +300,8 @@ void main() {
   letterBody += blue * simulationObstacle.g * 0.06 * interior;
 
   vec3 color = base;
-  color = mix(color, letterBody, letterMask * 0.94);
+  color = mix(color, letterBody, letterMask * 0.89);
+  color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color = mix(color, bevelColor, clamp(outerRim * 0.76 + innerRim * 0.58, 0.0, 0.92));
   color += vec3(1.0, 0.995, 0.99) * outerRim * (0.22 + mobilePoster * 0.05);
   color += vec3(0.88, 0.95, 1.0) * innerRim * 0.28;

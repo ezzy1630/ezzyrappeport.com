@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
-import { Waves } from "lucide-react";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
-import { useCoarsePointer } from "@/hooks/portfolio/use-coarse-pointer";
 import SmoothScrollProvider from "./SmoothScrollProvider";
 import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
@@ -49,19 +47,23 @@ export default function PortfolioShell({
   screenLocked = false,
 }: Props) {
   const reducedMotion = useReducedMotion();
-  const coarsePointer = useCoarsePointer();
-  const [narrowViewport, setNarrowViewport] = useState(false);
-  const [motionEnabled, setMotionEnabled] = useState(!reducedMotion);
-  const motionReduced = reducedMotion || !motionEnabled;
-  const renderHeroName = heroName && !narrowViewport;
+  const [motionPreference, setMotionPreference] = useState<boolean | null>(null);
+  const motionEnabled = motionPreference ?? !reducedMotion;
+  const motionReduced = !motionEnabled;
+  const renderHeroName = heroName;
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(max-width: 760px)");
-    const updateViewport = () => setNarrowViewport(mediaQuery.matches);
-    updateViewport();
-    mediaQuery.addEventListener("change", updateViewport);
-    return () => mediaQuery.removeEventListener("change", updateViewport);
+    const stored = window.localStorage.getItem("portfolio-motion");
+    if (stored === "on" || stored === "off") setMotionPreference(stored === "on");
   }, []);
+
+  const toggleMotion = () => {
+    setMotionPreference((current) => {
+      const next = !(current ?? !reducedMotion);
+      window.localStorage.setItem("portfolio-motion", next ? "on" : "off");
+      return next;
+    });
+  };
 
   return (
       <SmoothScrollProvider reducedMotion={motionReduced}>
@@ -69,37 +71,14 @@ export default function PortfolioShell({
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
-              staticMode={coarsePointer || !renderHeroName}
+              staticMode={false}
               // The home hero owns the single WebGL title material. Case pages
               // keep the canvas ambient-only and use the static fallback path.
               heroName={renderHeroName}
             />
           </ErrorBoundary>
 
-          {showNav && <Navigation />}
-          {showNav && heroName && !coarsePointer && !narrowViewport && (
-            <button
-              type="button"
-              className="motion-toggle glass"
-              aria-pressed={motionEnabled && !reducedMotion}
-              aria-label={
-                motionEnabled && !reducedMotion
-                  ? "Turn motion off"
-                  : "Turn motion on"
-              }
-              title={
-                motionEnabled && !reducedMotion
-                  ? "Turn motion off"
-                  : "Turn motion on"
-              }
-              onClick={() => setMotionEnabled((enabled) => !enabled)}
-            >
-              <Waves aria-hidden="true" className="motion-toggle__icon" strokeWidth={2.2} />
-              <span className="motion-toggle__label">
-                {motionEnabled && !reducedMotion ? "Motion" : "Still"}
-              </span>
-            </button>
-          )}
+          {showNav && <Navigation motionEnabled={motionEnabled} onToggleMotion={toggleMotion} />}
 
           {children}
         </div>
