@@ -100,8 +100,8 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
   const top = height * (isMobilePoster ? 0.112 : 0.12);
   const centerX = width / 2;
   ctx.save();
-  ctx.shadowColor = "rgba(255, 255, 255, 0.86)";
-  ctx.shadowBlur = Math.max(4, size * 0.032);
+  ctx.shadowColor = "rgba(255, 255, 255, 0.58)";
+  ctx.shadowBlur = Math.max(3, size * 0.018);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
   lines.forEach((line, index) => {
@@ -110,7 +110,9 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
     const baseline = top + sz * 0.82 + index * size * lineGap;
     ctx.font = `900 ${sz}px ${fontStack}`;
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = Math.max(6, sz * 0.075);
+    // Keep the source mask mostly fill-based. The shader owns the glass rim;
+    // a broad canvas stroke turns the title into a uniform outlined panel.
+    ctx.lineWidth = Math.max(2, sz * 0.028);
     drawTrackedText(ctx, line.text, centerX, baseline, sz, fontStack, tracking, "stroke");
     ctx.fillStyle = "#ffffff";
     drawTrackedText(ctx, line.text, centerX, baseline, sz, fontStack, tracking);

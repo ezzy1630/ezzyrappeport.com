@@ -206,7 +206,7 @@ void main() {
   vec3 normal = normalize(vec3(-surfaceGradient * 0.24 + simulationNormal.xy * 0.16, 1.0));
 
   vec2 sampleWarp = ripple.z * vec2(0.55, 0.24) + simulationNormal.xy * 0.012 + lensOffset * 0.38;
-  vec2 refraction = uv + sampleWarp + normal.xy * 0.010 * letterMask;
+  vec2 refraction = uv + sampleWarp + normal.xy * 0.016 * letterMask;
   vec2 chroma = normal.xy * 0.0015;
   vec3 refracted = vec3(
     texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
@@ -215,9 +215,12 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 letterBody = mix(refracted, vec3(0.78, 0.84, 0.95), 0.44);
+  vec3 letterBody = mix(refracted, vec3(0.75, 0.81, 0.92), 0.50);
   letterBody += vec3(0.038, 0.058, 0.112) * interior;
   letterBody -= vec3(0.055, 0.075, 0.135) * smoothstep(0.42, 0.96, coverage);
+  float bodyLight = smoothstep(0.08, 0.52, uv.y);
+  letterBody += vec3(0.036, 0.044, 0.070) * (1.0 - bodyLight) * interior;
+  letterBody -= vec3(0.032, 0.048, 0.090) * bodyLight * interior;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   vec3 lowerRightLight = normalize(vec3(0.56, 0.50, 0.62));
@@ -232,21 +235,27 @@ void main() {
   vec3 bevelColor = mix(vec3(0.24, 0.40, 0.70), vec3(0.98, 0.995, 1.0), edgeLight);
   letterBody += vec3(1.0, 0.995, 0.99) * topLeftHighlight * 0.52;
   letterBody += blue * lowerRightBlue * 0.20;
+  letterBody -= vec3(0.060, 0.090, 0.16) * innerRim * (1.0 - edgeLight) * 0.70;
 
   float cavity = smoothstep(0.24, 0.90, coverage) * (0.42 + edge * 0.58);
   letterBody -= vec3(0.035, 0.055, 0.11) * cavity;
 
-  float bubbleOne = bubbleDisc(uv, vec2(0.31, 0.24), 0.080, vec2(1.0, 1.15));
-  float bubbleTwo = bubbleDisc(uv, vec2(0.68, 0.34), 0.105, vec2(1.12, 0.86));
-  float bubbleThree = bubbleDisc(uv, vec2(0.83, 0.48), 0.060, vec2(0.86, 1.2));
-  float bubbleBody = (bubbleOne * 0.30 + bubbleTwo * 0.24 + bubbleThree * 0.26) * interior;
+  vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
+    sin(time * 0.32 + uv.y * 9.0),
+    cos(time * 0.27 + uv.x * 8.0)
+  ) * 0.0025;
+  vec2 bubbleUv = uv + bubbleWarp;
+  float bubbleOne = bubbleDisc(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15));
+  float bubbleTwo = bubbleDisc(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86));
+  float bubbleThree = bubbleDisc(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2));
+  float bubbleBody = (bubbleOne * 0.28 + bubbleTwo * 0.22 + bubbleThree * 0.24) * interior;
   float bubbleRim = (
-    ellipseRing(uv, vec2(0.31, 0.24), 0.080, vec2(1.0, 1.15), 0.006) * 0.55 +
-    ellipseRing(uv, vec2(0.68, 0.34), 0.105, vec2(1.12, 0.86), 0.007) * 0.45 +
-    ellipseRing(uv, vec2(0.83, 0.48), 0.060, vec2(0.86, 1.2), 0.005) * 0.50
+    ellipseRing(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15), 0.006) * 0.55 +
+    ellipseRing(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86), 0.007) * 0.45 +
+    ellipseRing(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2), 0.005) * 0.50
   ) * interior;
-  letterBody -= vec3(0.035, 0.060, 0.13) * bubbleBody;
-  letterBody += vec3(1.0, 0.995, 0.98) * bubbleRim * 0.62;
+  letterBody -= vec3(0.050, 0.075, 0.15) * bubbleBody;
+  letterBody += vec3(1.0, 0.995, 0.98) * bubbleRim * 0.74;
 
   float fresnel = pow(1.0 - max(normal.z, 0.0), 3.0);
   letterBody += vec3(0.86, 0.94, 1.0) * fresnel * 0.10;
