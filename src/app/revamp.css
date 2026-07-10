@@ -74,6 +74,15 @@ body {
   mix-blend-mode: normal;
 }
 
+/* The canvas owns the hero title once its text mask is ready. The DOM title
+   remains in place as an accessible and low-power fallback, but never stacks
+   a second glass treatment over the shader material. */
+.fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .content-layer {
   position: relative;
   z-index: var(--rv-layer-content);
@@ -218,7 +227,7 @@ body {
   top: auto;
   left: auto;
   z-index: 2;
-  width: min(75rem, 76vw);
+  width: min(86rem, 86vw);
   min-width: 0;
   margin: 0 auto;
   transform: none;
@@ -244,7 +253,7 @@ body {
 .hero-name-fallback__word {
   position: relative;
   display: inline-block;
-  font-size: clamp(6.1rem, 13.2vw, 13.85rem);
+  font-size: clamp(6.1rem, 14.4vw, 14.5rem);
   line-height: 0.76;
   letter-spacing: -0.04em;
   color: rgba(210, 225, 243, 0.72);
@@ -1010,7 +1019,7 @@ body {
 @media (min-width: 761px) and (max-height: 760px) {
   .hero-shell { gap: 0.8rem; padding-top: 5.3rem; padding-bottom: 0.8rem; }
   .hero-name-fallback__word { font-size: clamp(5rem, 10.5vw, 8.5rem); }
-  .hero-copy-row { width: min(78%, 62rem); }
+  .hero-copy-row { width: min(78%, 62rem); transform: translateY(0.65rem); }
   .project-buttons-row__card { height: 6.4rem; min-height: 6.4rem; }
   .hero-section-anchors small { display: none; }
 }

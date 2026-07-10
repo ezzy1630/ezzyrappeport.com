@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Waves } from "lucide-react";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
@@ -50,8 +50,18 @@ export default function PortfolioShell({
 }: Props) {
   const reducedMotion = useReducedMotion();
   const coarsePointer = useCoarsePointer();
+  const [narrowViewport, setNarrowViewport] = useState(false);
   const [motionEnabled, setMotionEnabled] = useState(!reducedMotion);
   const motionReduced = reducedMotion || !motionEnabled;
+  const renderHeroName = heroName && !narrowViewport;
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 760px)");
+    const updateViewport = () => setNarrowViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener("change", updateViewport);
+    return () => mediaQuery.removeEventListener("change", updateViewport);
+  }, []);
 
   return (
       <SmoothScrollProvider reducedMotion={motionReduced}>
@@ -59,15 +69,15 @@ export default function PortfolioShell({
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
-              staticMode={coarsePointer || !heroName}
-              // The hero title is intentionally CSS-owned; WebGL remains the
-              // ambient fluid and ripple layer behind it.
-              heroName={false}
+              staticMode={coarsePointer || !renderHeroName}
+              // The home hero owns the single WebGL title material. Case pages
+              // keep the canvas ambient-only and use the static fallback path.
+              heroName={renderHeroName}
             />
           </ErrorBoundary>
 
           {showNav && <Navigation />}
-          {showNav && heroName && !coarsePointer && (
+          {showNav && heroName && !coarsePointer && !narrowViewport && (
             <button
               type="button"
               className="motion-toggle glass"

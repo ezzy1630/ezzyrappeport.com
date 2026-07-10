@@ -75,9 +75,9 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
         { text: HERO_LINE_2, scale: 1.0 },
       ];
 
-  const targetW = width * (isMobilePoster ? 0.90 : 0.76);
-  const targetH = height * (isMobilePoster ? 0.25 : 0.48);
-  const lineGap = isMobilePoster ? 0.92 : 0.88;
+  const targetW = width * (isMobilePoster ? 0.90 : 0.80);
+  const targetH = height * (isMobilePoster ? 0.25 : 0.45);
+  const lineGap = isMobilePoster ? 0.92 : 0.85;
   const trackingFactor = isMobilePoster ? -0.030 : -0.042;
 
   const measureAt = (fontSize: number) => {
@@ -97,7 +97,7 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
   }
   size = Math.max(44, Math.min(size, height * (isMobilePoster ? 0.135 : 0.30)));
 
-  const top = height * (isMobilePoster ? 0.112 : 0.092);
+  const top = height * (isMobilePoster ? 0.112 : 0.12);
   const centerX = width / 2;
   ctx.save();
   ctx.shadowColor = "rgba(255, 255, 255, 0.86)";

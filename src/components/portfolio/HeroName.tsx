@@ -17,8 +17,8 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
  *
  * This component provides:
  *  - a visually-hidden, screen-reader-accessible `<h1>` for SEO + a11y, and
- *  - a visible CSS glass name (`.hero-name-fallback`) that stays readable
- *    above the WebGL background on every device and renderer tier.
+ *  - a CSS fallback that yields to the single WebGL water-material title when
+ *    the renderer is ready.
  */
 export default function HeroName() {
   return (
