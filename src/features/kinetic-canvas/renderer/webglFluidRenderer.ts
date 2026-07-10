@@ -374,6 +374,9 @@ export function startFluidRenderer(
   const targetDataLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
     gl.getUniformLocation(program, `u_targetData[${i}]`),
   );
+  const targetOpticsLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
+    gl.getUniformLocation(program, `u_targetOptics[${i}]`),
+  );
 
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
   const simResolutionLocation = gl.getUniformLocation(simProgram, "u_resolution");
@@ -697,11 +700,25 @@ export function startFluidRenderer(
       if (target) {
         gl.uniform4f(targetRectLocations[i], target.x * dpr, target.y * dpr, target.width * dpr, target.height * dpr);
         gl.uniform2f(targetStateLocations[i], target.hover, target.pressed);
-        gl.uniform4f(targetDataLocations[i], target.seed, target.organic, target.blueIntensity, 1);
+        gl.uniform4f(
+          targetDataLocations[i],
+          target.seed,
+          target.organic,
+          target.blueIntensity,
+          target.causticSpeed,
+        );
+        gl.uniform4f(
+          targetOpticsLocations[i],
+          target.thickness,
+          target.rimSoftness,
+          target.specularIntensity,
+          target.lowerWeight,
+        );
       } else {
         gl.uniform4f(targetRectLocations[i], -9999, -9999, 0, 0);
         gl.uniform2f(targetStateLocations[i], 0, 0);
         gl.uniform4f(targetDataLocations[i], 0, 0, 0, 0);
+        gl.uniform4f(targetOpticsLocations[i], 0, 0, 0, 0);
       }
     }
     const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);

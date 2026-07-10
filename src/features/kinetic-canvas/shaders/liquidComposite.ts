@@ -26,6 +26,7 @@ uniform vec4 u_scroll;
 uniform vec4 u_targetRects[4];
 uniform vec2 u_targetStates[4];
 uniform vec4 u_targetData[4];
+uniform vec4 u_targetOptics[4];
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -106,62 +107,148 @@ float roundedBox(vec2 p, vec2 bounds, float radius) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
-float organicBlob(vec2 local, vec2 halfSize, float exponent, float contour) {
-  vec2 normalized = abs(local / max(halfSize, vec2(1.0)));
-  float superellipse = pow(
-    pow(normalized.x, exponent) + pow(normalized.y, exponent),
-    1.0 / exponent
+float liquidMembrane(
+  vec2 local,
+  vec2 halfSize,
+  float seed,
+  float organicAmount,
+  float causticSpeed,
+  float hover,
+  float pressed,
+  float time,
+  float membraneScale
+) {
+  vec2 pressureSize = halfSize * vec2(1.0 + pressed * 0.010, 1.0 - pressed * 0.018);
+  vec2 normalized = local / max(pressureSize, vec2(1.0));
+  float angle = atan(normalized.y, normalized.x);
+  float radius = pressureSize.y * mix(0.42, 0.55, organicAmount);
+  float base = roundedBox(
+    local,
+    pressureSize - vec2(4.0, 5.0) * membraneScale,
+    radius
   );
-  return (superellipse - 1.0) * min(halfSize.x, halfSize.y) + contour;
+
+  // The reference keeps a calm rectangular content plateau and lets the
+  // side/lower membrane carry the deformation. Low harmonics create broad
+  // lobes; no pixel-scale noise is used, so the shell stays sculptural.
+  float sideWeight = smoothstep(0.40, 0.94, abs(normalized.x));
+  float lowerWeight = smoothstep(-0.20, 0.96, normalized.y);
+  float topWeight = smoothstep(0.18, 0.96, -normalized.y);
+  float contourWeight = mix(0.40, 1.0, max(sideWeight * 0.84, lowerWeight));
+  float phase = time * (0.08 + causticSpeed * 0.035);
+  float lobes =
+    sin(angle * 2.0 + seed * 0.31 + phase) * 0.48 +
+    sin(angle * 3.0 - seed * 0.17 - phase * 0.72) * 0.34 +
+    sin(angle * 5.0 + seed * 0.09 + phase * 0.38) * 0.18;
+  float lowerUndulation =
+    (
+      sin(normalized.x * 5.2 + seed * 0.23 - phase * 0.65) * 0.48 +
+      sin(normalized.x * 2.7 - seed * 0.11 + phase * 0.42) * 0.20
+    ) * lowerWeight;
+  float topUndulation =
+    (
+      sin(normalized.x * 4.1 - seed * 0.19 + phase * 0.36) * 0.30 +
+      sin(normalized.x * 2.2 + seed * 0.13 - phase * 0.24) * 0.14
+    ) * topWeight;
+  float viewportAspect = u_resolution.x / max(u_resolution.y, 1.0);
+  float mobileAttenuation = mix(0.72, 1.0, smoothstep(0.72, 1.16, viewportAspect));
+  float amplitude = mix(9.0, 20.0, organicAmount) *
+    membraneScale * mobileAttenuation * (1.0 - hover * 0.28);
+  return base - (lobes + lowerUndulation + topUndulation) * amplitude * contourWeight;
 }
 
-vec4 targetField(vec2 uv, float time, out float bodyMask, out float edgeGlow) {
+vec2 membraneNormal(vec2 local, vec2 halfSize, float radius) {
+  vec2 corner = abs(local) - (halfSize - radius);
+  vec2 rounded = max(corner, vec2(0.0));
+  if (length(rounded) > 0.001) return normalize(sign(local) * rounded);
+  if (corner.x > corner.y) return vec2(sign(local.x), 0.0);
+  if (corner.y > corner.x) return vec2(0.0, sign(local.y));
+  return vec2(0.0);
+}
+
+vec4 targetField(
+  vec2 uv,
+  float time,
+  out float bodyMask,
+  out float edgeGlow,
+  out float contactShadow,
+  out float innerCavity,
+  out vec2 surfaceNormal,
+  out float surfaceScale
+) {
   float field = 0.0;
   vec3 material = vec3(0.0);
   edgeGlow = 0.0;
+  contactShadow = 0.0;
+  innerCavity = 0.0;
+  surfaceNormal = vec2(0.0);
+  surfaceScale = 1.0;
+  float strongestBody = 0.0;
   vec2 pixel = uv * u_resolution;
   for (int i = 0; i < 4; i++) {
     vec4 target = u_targetRects[i];
     if (target.z <= 1.0 || target.w <= 1.0) continue;
     vec2 state = u_targetStates[i];
     vec4 data = u_targetData[i];
+    vec4 optics = u_targetOptics[i];
     vec2 halfSize = target.zw * 0.5;
+    float membraneScale = clamp(halfSize.y / 78.0, 0.68, 1.55);
     vec2 local = pixel - target.xy;
-    vec2 expandedBounds = halfSize + vec2(30.0);
+    vec2 expandedBounds = halfSize + vec2(34.0 * membraneScale);
     if (abs(local.x) > expandedBounds.x || abs(local.y) > expandedBounds.y) continue;
     vec2 normalizedLocal = local / max(halfSize, vec2(1.0));
-    float angle = atan(normalizedLocal.y, normalizedLocal.x);
-    float harmonics =
-      sin(angle * 3.0 + data.x) * 0.52 +
-      sin(angle * 5.0 - data.x * 0.73) * 0.31 +
-      sin(angle * 7.0 + data.x * 0.37 + time * 0.22) * 0.17;
-    float edgeNoise =
-      sin(local.x * 0.022 + data.x) * 0.34 +
-      sin(local.y * 0.027 - data.x * 0.7) * 0.26 +
-      sin((local.x + local.y) * 0.013 + time * 0.28 + data.x) * 0.20;
-    float organic = (harmonics + edgeNoise) * (3.8 + data.y * 7.5) * (1.0 - state.x * 0.12);
-    float exponent = 2.24 + data.y * 0.42 + state.x * 0.10;
-    float distanceToTarget = organicBlob(
+    float distanceToTarget = liquidMembrane(
       local,
       halfSize,
-      exponent,
-      organic
+      data.x,
+      data.y,
+      data.w,
+      state.x,
+      state.y,
+      time,
+      membraneScale
     );
-    float body = 1.0 - smoothstep(-4.0, 5.0, distanceToTarget);
-    float edge = 1.0 - smoothstep(0.0, 10.0, abs(distanceToTarget));
-    float outerShadow = (1.0 - smoothstep(2.0, 30.0, distanceToTarget)) * smoothstep(-1.0, 5.0, distanceToTarget);
-    float lower = smoothstep(-0.28, 0.92, local.y / max(halfSize.y, 1.0));
-    float topLeft = smoothstep(0.1, 0.95, dot(normalize(local + vec2(0.001)), normalize(vec2(-0.65, -0.76))));
-    vec3 glass = vec3(0.84, 0.91, 0.99) * (0.28 + body * 0.24);
-    glass += vec3(1.0) * edge * topLeft * (0.54 + state.x * 0.2);
-    glass += vec3(0.11, 0.39, 0.88) * edge * lower * data.z * (0.42 + state.x * 0.22);
-    glass -= vec3(0.08, 0.11, 0.17) * outerShadow * 0.24;
+    float body = 1.0 - smoothstep(
+      -3.0 * membraneScale,
+      3.5 * membraneScale,
+      distanceToTarget
+    );
+    float specularWidth = mix(3.4, 1.8, optics.y) * membraneScale;
+    float outerSpecular = ridge(distanceToTarget, specularWidth);
+    float bevelWidth = mix(10.0, 18.0, optics.x - 0.82) * membraneScale;
+    float innerBevel = ridge(distanceToTarget + bevelWidth * 0.48, bevelWidth * 0.62) * body;
+    float cavity = ridge(distanceToTarget + 3.8 * membraneScale, 4.8 * membraneScale) * body;
+    vec2 pressureSize = halfSize * vec2(1.0 + state.y * 0.010, 1.0 - state.y * 0.018);
+    float radius = pressureSize.y * mix(0.42, 0.55, data.y);
+    vec2 normal2d = membraneNormal(
+      local,
+      pressureSize - vec2(4.0, 5.0) * membraneScale,
+      radius
+    );
+    float topLeft = pow(max(dot(normal2d, normalize(vec2(-0.58, -0.82))), 0.0), 2.4);
+    float lowerFacing = pow(max(dot(normal2d, normalize(vec2(0.28, 0.96))), 0.0), 1.7);
+    float sideFacing = pow(abs(normal2d.x), 2.2) * 0.55;
+    float blueFacing = clamp(lowerFacing * optics.w + sideFacing, 0.0, 1.25);
+    float outside = smoothstep(1.0 * membraneScale, 5.0 * membraneScale, distanceToTarget) *
+      (1.0 - smoothstep(5.0 * membraneScale, 26.0 * membraneScale, distanceToTarget));
+    float contact = outside * smoothstep(0.15, 0.98, normalizedLocal.y);
+    vec3 glass = vec3(1.0) * outerSpecular * topLeft * (0.28 + optics.z * 0.42);
+    glass += vec3(0.91, 0.97, 1.0) * innerBevel * topLeft * 0.16;
+    glass += vec3(0.10, 0.38, 0.94) *
+      (outerSpecular * 0.64 + innerBevel * 0.78) * blueFacing * data.z;
     material = max(material, glass);
-    field = max(field, body * (0.54 + state.x * 0.14));
-    edgeGlow = max(edgeGlow, edge);
+    field = max(field, body);
+    edgeGlow = max(edgeGlow, max(outerSpecular, innerBevel * 0.52));
+    contactShadow = max(contactShadow, contact);
+    innerCavity = max(innerCavity, cavity);
+    if (body > strongestBody) {
+      strongestBody = body;
+      surfaceNormal = normal2d;
+      surfaceScale = membraneScale;
+    }
   }
   bodyMask = field;
-  return vec4(material, clamp(field + edgeGlow * 0.64, 0.0, 0.88));
+  return vec4(material, clamp(field * 0.12 + edgeGlow * 0.78, 0.0, 0.92));
 }
 
 float textCov(vec2 uv) {
@@ -194,7 +281,20 @@ void main() {
   vec4 simulationObstacle = texture(u_obstacleField, uv);
   float targetEdge = 0.0;
   float targetBody = 0.0;
-  vec4 targetLayer = targetField(uv, time, targetBody, targetEdge);
+  float targetContact = 0.0;
+  float targetCavity = 0.0;
+  vec2 targetNormal = vec2(0.0);
+  float targetScale = 1.0;
+  vec4 targetLayer = targetField(
+    uv,
+    time,
+    targetBody,
+    targetEdge,
+    targetContact,
+    targetCavity,
+    targetNormal,
+    targetScale
+  );
   vec3 ripple = rippleField(uv, pointer, time);
   float basin = titleBasin(uv, time) * u_nameOpacity;
 
@@ -232,15 +332,21 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
-  base += blue * targetEdge * 0.08 + white * targetEdge * 0.04;
   base += blue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.016;
   base *= 1.0 - basin * 0.035;
-  base = mix(base, base * 0.82 + targetLayer.rgb, targetLayer.a);
-  base = mix(base, vec3(0.88, 0.94, 0.995), targetBody * 0.30);
-  base += white * targetEdge * 0.20;
-  base += blue * targetEdge * 0.12;
-  base -= vec3(0.10, 0.15, 0.23) * targetEdge * 0.10;
-  base -= vec3(0.05, 0.075, 0.12) * targetBody * 0.045;
+  vec2 membraneWarp = targetNormal * targetScale *
+    (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
+  vec3 membraneRefraction = texture(
+    u_texture,
+    clamp(flowUv + membraneWarp + simulationNormal.xy * 0.004 * targetBody, vec2(0.0), vec2(1.0))
+  ).rgb;
+  base = mix(base, membraneRefraction, targetBody * (0.58 + targetLayer.a * 0.12));
+  base = mix(base, vec3(0.94, 0.97, 1.0), targetBody * 0.045);
+  base += targetLayer.rgb;
+  base += white * targetEdge * 0.035;
+  base -= vec3(0.075, 0.070, 0.055) * targetCavity * 1.05;
+  base -= vec3(0.055, 0.085, 0.15) * targetContact * 0.82;
+  base -= vec3(0.025, 0.045, 0.09) * targetBody * 0.018;
 
   // One title material: a low-depth refraction, a soft body, one directional
   // bevel, and a few broad air pockets. This keeps the name watery without

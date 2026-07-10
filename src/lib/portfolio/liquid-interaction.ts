@@ -43,6 +43,11 @@ export type LiquidTargetState = {
   seed: number;
   organic: number;
   blueIntensity: number;
+  thickness: number;
+  causticSpeed: number;
+  rimSoftness: number;
+  specularIntensity: number;
+  lowerWeight: number;
   time: number;
 };
 

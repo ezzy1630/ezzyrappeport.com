@@ -492,12 +492,12 @@ body {
   position: relative;
   display: flex;
   align-items: center;
-  height: clamp(8.75rem, 15.8vh, 9.75rem);
-  min-height: 8.75rem;
+  height: clamp(9.25rem, 16.8vh, 10.25rem);
+  min-height: 9.25rem;
   padding: 1.45rem clamp(3.8rem, 4vw, 4.6rem) 1.45rem clamp(1.45rem, 3vw, 2.2rem);
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.56);
-  border-radius: 48% 52% 46% 54% / 58% 44% 56% 42%;
+  border-radius: 2.4rem 2rem 2.8rem 2.2rem / 2.1rem 2.6rem 2.2rem 2.8rem;
   background:
     radial-gradient(88% 120% at 12% -18%, rgba(255, 255, 255, 0.88), transparent 56%),
     radial-gradient(72% 46% at var(--liquid-caustic-x, 52%) 104%, rgba(23, 105, 255, 0.18), transparent 67%),
@@ -516,11 +516,11 @@ body {
   transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 240ms ease, background-color 240ms ease, filter 240ms ease;
 }
 
-.project-buttons-row__card:nth-child(2) { --liquid-caustic-x: 65%; --liquid-caustic-shift: 7%; border-radius: 53% 47% 44% 56% / 45% 56% 44% 55%; }
-.project-buttons-row__card:nth-child(3) { --liquid-caustic-x: 36%; --liquid-caustic-shift: -5%; border-radius: 43% 57% 54% 46% / 56% 43% 57% 44%; }
-.project-buttons-row__card:nth-child(4) { --liquid-caustic-x: 72%; --liquid-caustic-shift: 10%; border-radius: 55% 45% 48% 52% / 44% 58% 42% 56%; }
+.project-buttons-row__card:nth-child(2) { --liquid-caustic-x: 65%; --liquid-caustic-shift: 7%; border-radius: 2rem 2.8rem 2.2rem 2.6rem / 2.7rem 2.1rem 2.8rem 2.2rem; }
+.project-buttons-row__card:nth-child(3) { --liquid-caustic-x: 36%; --liquid-caustic-shift: -5%; border-radius: 2.7rem 2.2rem 2.5rem 2rem / 2.2rem 2.8rem 2.1rem 2.6rem; }
+.project-buttons-row__card:nth-child(4) { --liquid-caustic-x: 72%; --liquid-caustic-shift: 10%; border-radius: 2.2rem 2.6rem 2rem 2.8rem / 2.8rem 2.2rem 2.7rem 2rem; }
 .project-buttons-row__card:hover {
-  transform: translateY(-3px) scale(1.008);
+  transform: none;
   filter: saturate(1.08) brightness(1.02);
   box-shadow:
     0 3px 1px white inset,
@@ -529,7 +529,7 @@ body {
     0 -14px 15px rgba(22, 103, 247, 0.14) inset,
     0 9px 8px -7px rgba(17, 53, 105, 0.58);
 }
-.project-buttons-row__card:active { transform: translateY(-1px) scale(0.994); }
+.project-buttons-row__card:active { transform: none; }
 .liquid-glass-surface {
   position: absolute;
   inset: 0;
@@ -591,14 +591,11 @@ body {
 .project-buttons-row__card:hover .liquid-glass-arrow-icon { transform: translate(2px,-2px); }
 
 .fluid-canvas[data-fluid="ready"] ~ .content-layer .project-buttons-row__card {
-  border-color: rgba(255, 255, 255, 0.28);
-  background: rgba(228, 241, 255, 0.055);
-  box-shadow:
-    0 1px 1px rgba(255, 255, 255, 0.62) inset,
-    0 -2px 2px rgba(50, 116, 214, 0.12) inset,
-    0 12px 28px -26px rgba(12, 53, 112, 0.62);
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
 }
-.fluid-canvas[data-fluid="ready"] ~ .content-layer .liquid-glass-surface { opacity: 0.14; }
+.fluid-canvas[data-fluid="ready"] ~ .content-layer .liquid-glass-surface { opacity: 0; }
 .project-buttons-row__card:focus-visible {
   outline: 2px solid var(--rv-blue);
   outline-offset: 4px;
@@ -1097,7 +1094,7 @@ body {
   .location-capsule__availability { font-size: 0.78rem !important; }
   .hero-projects { order: 2; width: calc(100% + 1.1rem); margin: 0; }
   .hero-projects .project-buttons-row { display: flex; gap: 0.85rem; margin: 0; padding: 0.3rem 1.1rem 0.7rem 0; overflow-x: auto; scroll-padding-left: 0; scroll-snap-type: x proximity; scrollbar-width: none; }
-  .hero-projects .project-buttons-row__card { flex: 0 0 min(84vw, 22rem); min-height: 8rem; scroll-snap-align: start; }
+  .hero-projects .project-buttons-row__card { flex: 0 0 min(84vw, 22rem); height: 8.75rem; min-height: 8.75rem; scroll-snap-align: start; }
   .project-buttons-row__position { display: block; margin: 0.25rem 1.1rem 0 0; color: var(--rv-muted); font-family: var(--font-geist-mono), monospace; font-size: 0.62rem; text-align: right; }
   .project-buttons-row__position span { color: var(--rv-blue); }
   .hero-section-anchors { order: 3; width: 100%; }

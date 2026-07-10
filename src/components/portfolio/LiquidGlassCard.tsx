@@ -16,7 +16,10 @@ type LiquidGlassCardProps = {
   project: Pick<Project, "slug" | "title" | "subtitle" | "index" | "status">;
   personality: CardPersonality;
   className?: string;
+  registerGeometry?: LiquidCardGeometryRegistrar;
 };
+
+export type LiquidCardGeometryRegistrar = (measure: () => void) => () => void;
 
 const heroSubtitles: Partial<Record<Project["slug"], string>> = {
   monkeyclaw: "Multi-Agent Security System",
@@ -36,6 +39,7 @@ export default function LiquidGlassCard({
   project,
   personality,
   className = "",
+  registerGeometry,
 }: LiquidGlassCardProps) {
   const containerRef = useRef<HTMLAnchorElement>(null);
   const router = useRouter();
@@ -63,6 +67,11 @@ export default function LiquidGlassCard({
       seed: material.seed,
       organic: material.organicAmount,
       blueIntensity: material.blueIntensity,
+      thickness: material.thickness,
+      causticSpeed: material.causticSpeed,
+      rimSoftness: material.rimSoftness,
+      specularIntensity: material.specularIntensity,
+      lowerWeight: material.lowerWeight,
       time: performance.now(),
     });
   }, [material, targetId]);
@@ -77,16 +86,14 @@ export default function LiquidGlassCard({
     const resizeObserver = new ResizeObserver(updateRect);
     resizeObserver.observe(element);
     updateRect();
-    window.addEventListener("resize", updateRect, { passive: true });
-    window.addEventListener("scroll", updateRect, { passive: true });
+    const unregisterGeometry = registerGeometry?.(updateRect);
     return () => {
       window.cancelAnimationFrame(pointerFrameRef.current);
       resizeObserver.disconnect();
-      window.removeEventListener("resize", updateRect);
-      window.removeEventListener("scroll", updateRect);
+      unregisterGeometry?.();
       clearLiquidTarget(targetId);
     };
-  }, [emitTarget, targetId]);
+  }, [emitTarget, registerGeometry, targetId]);
 
   const emitCardRipple = (clientX: number, clientY: number, intensity: number) => {
     emitLiquidRipple({
