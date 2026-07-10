@@ -18,6 +18,7 @@ const outputs = [
 ];
 
 if (!existsSync(source)) {
+  // eslint-disable-next-line no-console -- this build utility must explain a missing source asset.
   console.error(`Missing source asset: ${source}`);
   process.exit(1);
 }

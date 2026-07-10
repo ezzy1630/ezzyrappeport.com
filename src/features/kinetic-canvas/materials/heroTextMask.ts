@@ -7,9 +7,22 @@ type TextLine = {
   scale: number;
 };
 
+export type HeroTextLineLayout = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  fontSize: number;
+  tracking: number;
+};
+
 let cachedField: { key: string; canvas: HTMLCanvasElement } | null = null;
 
 export function clearHeroTextCanvasCache() {
+  if (cachedField) {
+    cachedField.canvas.width = 1;
+    cachedField.canvas.height = 1;
+  }
   cachedField = null;
 }
 
@@ -49,25 +62,54 @@ function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
 /** Pack signed distance, dome height, inner bevel, and hard coverage into RGBA. */
 function encodeTitleField(ctx: CanvasRenderingContext2D, width: number, height: number) {
   const image = ctx.getImageData(0, 0, width, height);
-  const insideSeeds = new Uint8Array(width * height);
-  const outsideSeeds = new Uint8Array(width * height);
-  for (let i = 0; i < insideSeeds.length; i++) {
-    const inside = image.data[i * 4 + 3] >= 128;
-    insideSeeds[i] = inside ? 1 : 0;
-    outsideSeeds[i] = inside ? 0 : 1;
+  const range = Math.max(18, Math.min(42, Math.round(width * 0.02)));
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (image.data[(y * width + x) * 4 + 3] < 8) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
   }
-  const distanceToInside = distanceFromSeeds(width, height, insideSeeds);
-  const distanceToOutside = distanceFromSeeds(width, height, outsideSeeds);
-  const range = Math.max(18, Math.min(48, Math.round(width * 0.022)));
-  for (let i = 0; i < insideSeeds.length; i++) {
-    const inside = insideSeeds[i] === 1;
-    const signed = inside ? distanceToOutside[i] : -distanceToInside[i];
-    const distanceIn = inside ? distanceToOutside[i] : 0;
-    image.data[i * 4] = Math.max(0, Math.min(255, Math.round(127.5 + (signed / range) * 127.5)));
-    image.data[i * 4 + 1] = Math.max(0, Math.min(255, Math.round((distanceIn / range) * 255)));
-    image.data[i * 4 + 2] = inside
-      ? Math.max(0, Math.min(255, Math.round((1 - distanceIn / (range * 0.32)) * 255)))
-      : 0;
+  if (maxX < minX || maxY < minY) return;
+
+  const cropX = Math.max(0, minX - range - 2);
+  const cropY = Math.max(0, minY - range - 2);
+  const cropRight = Math.min(width - 1, maxX + range + 2);
+  const cropBottom = Math.min(height - 1, maxY + range + 2);
+  const cropWidth = cropRight - cropX + 1;
+  const cropHeight = cropBottom - cropY + 1;
+  const insideSeeds = new Uint8Array(cropWidth * cropHeight);
+  const outsideSeeds = new Uint8Array(cropWidth * cropHeight);
+  for (let y = 0; y < cropHeight; y++) {
+    for (let x = 0; x < cropWidth; x++) {
+      const cropIndex = y * cropWidth + x;
+      const imageIndex = ((cropY + y) * width + cropX + x) * 4;
+      const inside = image.data[imageIndex + 3] >= 128;
+      insideSeeds[cropIndex] = inside ? 1 : 0;
+      outsideSeeds[cropIndex] = inside ? 0 : 1;
+    }
+  }
+  const distanceToInside = distanceFromSeeds(cropWidth, cropHeight, insideSeeds);
+  const distanceToOutside = distanceFromSeeds(cropWidth, cropHeight, outsideSeeds);
+  for (let y = 0; y < cropHeight; y++) {
+    for (let x = 0; x < cropWidth; x++) {
+      const cropIndex = y * cropWidth + x;
+      const imageIndex = ((cropY + y) * width + cropX + x) * 4;
+      const inside = insideSeeds[cropIndex] === 1;
+      const signed = inside ? distanceToOutside[cropIndex] : -distanceToInside[cropIndex];
+      const distanceIn = inside ? distanceToOutside[cropIndex] : 0;
+      image.data[imageIndex] = Math.max(0, Math.min(255, Math.round(127.5 + (signed / range) * 127.5)));
+      image.data[imageIndex + 1] = Math.max(0, Math.min(255, Math.round((distanceIn / range) * 255)));
+      image.data[imageIndex + 2] = inside
+        ? Math.max(0, Math.min(255, Math.round((1 - distanceIn / (range * 0.32)) * 255)))
+        : 0;
+    }
   }
   ctx.putImageData(image, 0, 0);
 }
@@ -119,7 +161,19 @@ function drawTrackedText(
   return lineW;
 }
 
-export function createHeroTextCanvas(width: number, height: number): HTMLCanvasElement {
+export function createHeroTextCanvas(
+  width: number,
+  height: number,
+  layout?: HeroTextLineLayout[],
+): HTMLCanvasElement {
+  const family = resolveHeroFont();
+  const fontStack = `${family}, "Inter Tight", system-ui, sans-serif`;
+  const layoutKey = layout
+    ?.map((line) => [line.x, line.y, line.width, line.height, line.fontSize, line.tracking].map(Math.round).join(","))
+    .join(";") ?? "viewport";
+  const cacheKey = `${width}x${height}:${fontStack}:${layoutKey}`;
+  if (cachedField?.key === cacheKey) return cachedField.canvas;
+
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
@@ -127,10 +181,39 @@ export function createHeroTextCanvas(width: number, height: number): HTMLCanvasE
   if (!ctx) return canvas;
   ctx.clearRect(0, 0, width, height);
 
-  const family = resolveHeroFont();
-  const fontStack = `${family}, "Inter Tight", system-ui, sans-serif`;
-  const cacheKey = `${width}x${height}:${fontStack}`;
-  if (cachedField?.key === cacheKey) return cachedField.canvas;
+  if (layout?.length === 2) {
+    ctx.save();
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    layout.forEach((line, index) => {
+      const text = index === 0 ? HERO_LINE_1 : HERO_LINE_2;
+      const fontSize = line.fontSize;
+      const tracking = line.tracking;
+      const metrics = (() => {
+        ctx.font = `900 ${fontSize}px ${fontStack}`;
+        return ctx.measureText(text);
+      })();
+      const measuredWidth = measureHeroLine(ctx, text, fontSize, fontStack, tracking);
+      const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+      const horizontalScale = line.width / Math.max(1, measuredWidth);
+      const verticalScale = line.height / Math.max(1, glyphHeight);
+
+      ctx.save();
+      ctx.translate(line.x, line.y);
+      ctx.scale(horizontalScale, verticalScale);
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = Math.max(1.5, fontSize * 0.012);
+      drawTrackedText(ctx, text, 0, metrics.actualBoundingBoxAscent, fontSize, fontStack, tracking, "stroke");
+      ctx.fillStyle = "#ffffff";
+      drawTrackedText(ctx, text, 0, metrics.actualBoundingBoxAscent, fontSize, fontStack, tracking);
+      ctx.restore();
+    });
+    ctx.restore();
+    encodeTitleField(ctx, width, height);
+    cachedField = { key: cacheKey, canvas };
+    return canvas;
+  }
+
   const isMobilePoster = width / Math.max(height, 1) < 0.74;
   const lines: TextLine[] = [
     { text: HERO_LINE_1, scale: isMobilePoster ? 1.48 : 1.22 },

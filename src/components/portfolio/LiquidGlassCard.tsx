@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowUpRight } from "lucide-react";
@@ -47,7 +47,7 @@ export default function LiquidGlassCard({
   const targetId = `card-${project.slug}`;
   const material = PERSONALITY_PRESETS[personality];
 
-  const emitTarget = (hover: number, pressed = 0) => {
+  const emitTarget = useCallback((hover: number, pressed = 0) => {
     hoverTargetRef.current = hover;
     const rect = rectRef.current;
     if (!rect) return;
@@ -65,7 +65,7 @@ export default function LiquidGlassCard({
       blueIntensity: material.blueIntensity,
       time: performance.now(),
     });
-  };
+  }, [material, targetId]);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -86,7 +86,7 @@ export default function LiquidGlassCard({
       window.removeEventListener("scroll", updateRect);
       clearLiquidTarget(targetId);
     };
-  }, [targetId]);
+  }, [emitTarget, targetId]);
 
   const emitCardRipple = (clientX: number, clientY: number, intensity: number) => {
     emitLiquidRipple({

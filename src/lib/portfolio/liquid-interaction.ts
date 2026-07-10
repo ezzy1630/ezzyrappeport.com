@@ -106,7 +106,6 @@ let started = false;
 let raf = 0;
 let nextIdleRipple = 8;
 let lastInputTime = 0;
-let lastRippleAt = 0;
 let lastTickAt = 0;
 let rootVarsKey = "";
 let pendingPointer: { x: number; y: number; time: number } | null = null;
@@ -202,7 +201,6 @@ function onPointerDown(e: PointerEvent) {
   state.pointer.active = true;
   state.pointer.energy = Math.max(state.pointer.energy, 0.7);
   state.pointer.time = now;
-  lastRippleAt = now;
   emitPointer();
   emitPhysics();
   pushRipple(e.clientX, e.clientY, 0.9, now);
@@ -291,7 +289,6 @@ function start() {
   started = true;
   const now = performance.now();
   lastInputTime = now;
-  lastRippleAt = 0;
   lastTickAt = 0;
   runtimeVisible = true;
 

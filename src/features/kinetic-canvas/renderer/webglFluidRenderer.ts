@@ -1,7 +1,11 @@
 "use client";
 
 import type { LiquidPhysics } from "../input/liquidInput";
-import { clearHeroTextCanvasCache, createHeroTextCanvas } from "../materials/heroTextMask";
+import {
+  clearHeroTextCanvasCache,
+  createHeroTextCanvas,
+  type HeroTextLineLayout,
+} from "../materials/heroTextMask";
 import {
   FLUID_TEXTURE_FALLBACK_SRC,
   FLUID_TEXTURE_SRC,
@@ -11,7 +15,7 @@ import {
 } from "./quality";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 
-const TARGET_COUNT = 8;
+const TARGET_COUNT = 4;
 
 type DoubleBuffer = {
   read: WebGLTexture;
@@ -49,9 +53,13 @@ function createProgram(gl: WebGL2RenderingContext, vertexSource: string, fragmen
   gl.linkProgram(program);
   if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
     const log = gl.getProgramInfoLog(program) ?? "unknown program error";
+    gl.deleteShader(vertexShader);
+    gl.deleteShader(fragmentShader);
     gl.deleteProgram(program);
     throw new Error(log);
   }
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
   return program;
 }
 
@@ -102,8 +110,8 @@ uniform int u_pass;
 uniform vec2 u_resolution;
 uniform vec4 u_pointer;
 uniform vec4 u_ripples[8];
-uniform vec4 u_targetRects[8];
-uniform vec2 u_targetStates[8];
+uniform vec4 u_targetRects[4];
+uniform vec2 u_targetStates[4];
 uniform vec4 u_scroll;
 uniform float u_time;
 uniform float u_delta;
@@ -131,7 +139,7 @@ float targetMask(vec2 uv, out float pressed) {
   float mask = 0.0;
   pressed = 0.0;
   vec2 px = uv * u_resolution;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 4; i++) {
     vec4 target = u_targetRects[i];
     vec2 state = u_targetStates[i];
     if (target.z <= 1.0 || target.w <= 1.0) continue;
@@ -199,7 +207,7 @@ void main() {
     vel += vec2(0.0, -u_scroll.y * 0.18);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
     vel += obstacleNormal * edge * (0.014 + abs(u_scroll.y) * 0.026);
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 4; i++) {
       vec4 t = u_targetRects[i];
       vec2 targetState = u_targetStates[i];
       if (t.z <= 1.0) continue;
@@ -295,7 +303,7 @@ function lowerQualityProfile(current: KineticQuality): KineticQuality {
       maxDpr: 1,
       targetFps: 24,
       simWidth: 192,
-      textMaxDim: 1920,
+      textMaxDim: 1080,
       activeRipples: 6,
       renderScale: 0.9,
     };
@@ -308,7 +316,7 @@ function lowerQualityProfile(current: KineticQuality): KineticQuality {
       maxDpr: 0.78,
       targetFps: 18,
       simWidth: 128,
-      textMaxDim: 1024,
+      textMaxDim: 720,
       activeRipples: 4,
       renderScale: 0.7,
     };
@@ -402,19 +410,24 @@ export function startFluidRenderer(
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([248, 251, 255, 255]));
+  let disposed = false;
   const image = new Image();
   image.decoding = "async";
   const loadFluidImage = (src: string, fallback = false) => {
     image.dataset.fallback = fallback ? "true" : "false";
     image.src = src;
   };
-  image.addEventListener("load", () => {
+  const onFluidImageLoad = () => {
+    if (disposed) return;
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-  });
-  image.addEventListener("error", () => {
+  };
+  const onFluidImageError = () => {
+    if (disposed) return;
     if (image.dataset.fallback !== "true") loadFluidImage(FLUID_TEXTURE_FALLBACK_SRC, true);
-  });
+  };
+  image.addEventListener("load", onFluidImageLoad);
+  image.addEventListener("error", onFluidImageError);
   loadFluidImage(FLUID_TEXTURE_SRC);
 
   // hero-name coverage texture
@@ -433,6 +446,7 @@ export function startFluidRenderer(
   let frame = 0;
   let frameTimer = 0;
   let resizeFrame = 0;
+  let resizeTimer = 0;
   let revealFrame = 0;
   let running = false;
   let surfaceVisible = true;
@@ -520,8 +534,9 @@ export function startFluidRenderer(
       physics.scroll.depth,
       physics.scroll.section,
     );
+    const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
     for (let i = 0; i < RIPPLE_COUNT; i++) {
-      const ripple = physics.ripples[i];
+      const ripple = physics.ripples[rippleOffset + i];
       if (ripple && i < quality.activeRipples) {
         gl.uniform4f(
           simRippleLocations[i],
@@ -582,7 +597,23 @@ export function startFluidRenderer(
     if (!heroNameRef.current) return;
     const texW = Math.min(canvas.width, quality.textMaxDim);
     const texH = Math.max(1, Math.round(texW * (height / Math.max(width, 1))));
-    const textCanvas = createHeroTextCanvas(texW, texH);
+    const scaleX = texW / Math.max(width, 1);
+    const scaleY = texH / Math.max(height, 1);
+    const titleLayout = Array.from(
+      document.querySelectorAll<HTMLElement>(".hero-name-fallback__word"),
+    ).map<HeroTextLineLayout>((word) => {
+      const rect = word.getBoundingClientRect();
+      const style = getComputedStyle(word);
+      return {
+        x: rect.left * scaleX,
+        y: (rect.top + window.scrollY) * scaleY,
+        width: rect.width * scaleX,
+        height: rect.height * scaleY,
+        fontSize: Number.parseFloat(style.fontSize) * scaleY,
+        tracking: Number.parseFloat(style.letterSpacing) * scaleX,
+      };
+    });
+    const textCanvas = createHeroTextCanvas(texW, texH, titleLayout);
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
@@ -605,6 +636,7 @@ export function startFluidRenderer(
     }
     if (quality.tier === "static") return;
     canvas.dataset.quality = quality.tier;
+    if (canvas.parentElement) canvas.parentElement.dataset.quality = quality.tier;
     dpr = quality.dpr;
     canvas.width = Math.max(1, Math.floor(width * dpr));
     canvas.height = Math.max(1, Math.floor(height * dpr));
@@ -620,7 +652,10 @@ export function startFluidRenderer(
 
   function onResize() {
     cancelAnimationFrame(resizeFrame);
-    resizeFrame = requestAnimationFrame(configure);
+    window.clearTimeout(resizeTimer);
+    resizeTimer = window.setTimeout(() => {
+      resizeFrame = requestAnimationFrame(configure);
+    }, 140);
   }
 
   function paint(t: number) {
@@ -669,8 +704,9 @@ export function startFluidRenderer(
         gl.uniform4f(targetDataLocations[i], 0, 0, 0, 0);
       }
     }
+    const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
     for (let i = 0; i < RIPPLE_COUNT; i++) {
-      const ripple = physics.ripples[i];
+      const ripple = physics.ripples[rippleOffset + i];
       if (ripple && i < quality.activeRipples) {
         gl.uniform4f(rippleLocations[i], ripple.x * dpr, ripple.y * dpr, t - ripple.age, ripple.intensity * quality.renderScale);
       } else {
@@ -694,7 +730,7 @@ export function startFluidRenderer(
     }
     const physics = getPhysics();
     const interactive = physics.pointer.active || physics.targets.some((target) => target.hover > 0.08 || target.pressed > 0.05);
-    const compositeFps = interactive ? (quality.tier === "low" ? 30 : 60) : quality.targetFps;
+    const compositeFps = interactive ? (quality.tier === "low" ? 30 : 45) : quality.targetFps;
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {
@@ -798,9 +834,10 @@ export function startFluidRenderer(
 
   // Re-rasterize once the hero font has loaded; repaint a static frame in
   // frozen mode so the real glyphs appear.
-  if (typeof document !== "undefined" && document.fonts) {
+  if (typeof document !== "undefined" && document.fonts?.status !== "loaded") {
     document.fonts.ready
       .then(() => {
+        if (disposed) return;
         clearHeroTextCanvasCache();
         regenerateText();
         if (reducedMotionRef.current || staticModeRef.current) paint(0);
@@ -809,14 +846,19 @@ export function startFluidRenderer(
   }
 
   return () => {
+    disposed = true;
     running = false;
     cancelAnimationFrame(frame);
     window.clearTimeout(frameTimer);
+    window.clearTimeout(resizeTimer);
     cancelAnimationFrame(resizeFrame);
     cancelAnimationFrame(revealFrame);
     surfaceObserver?.disconnect();
     window.removeEventListener("resize", onResize);
     document.removeEventListener("visibilitychange", onVisibility);
+    image.removeEventListener("load", onFluidImageLoad);
+    image.removeEventListener("error", onFluidImageError);
+    image.src = "";
     gl.deleteTexture(texture);
     gl.deleteTexture(textTexture);
     disposeSimBuffers();

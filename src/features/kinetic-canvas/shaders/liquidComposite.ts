@@ -23,9 +23,9 @@ uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
 uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
-uniform vec4 u_targetRects[8];
-uniform vec2 u_targetStates[8];
-uniform vec4 u_targetData[8];
+uniform vec4 u_targetRects[4];
+uniform vec2 u_targetStates[4];
+uniform vec4 u_targetData[4];
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -106,39 +106,58 @@ float roundedBox(vec2 p, vec2 bounds, float radius) {
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
 }
 
+float organicBlob(vec2 local, vec2 halfSize, float exponent, float contour) {
+  vec2 normalized = abs(local / max(halfSize, vec2(1.0)));
+  float superellipse = pow(
+    pow(normalized.x, exponent) + pow(normalized.y, exponent),
+    1.0 / exponent
+  );
+  return (superellipse - 1.0) * min(halfSize.x, halfSize.y) + contour;
+}
+
 vec4 targetField(vec2 uv, float time, out float bodyMask, out float edgeGlow) {
   float field = 0.0;
   vec3 material = vec3(0.0);
   edgeGlow = 0.0;
   vec2 pixel = uv * u_resolution;
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 4; i++) {
     vec4 target = u_targetRects[i];
     if (target.z <= 1.0 || target.w <= 1.0) continue;
     vec2 state = u_targetStates[i];
     vec4 data = u_targetData[i];
     vec2 halfSize = target.zw * 0.5;
     vec2 local = pixel - target.xy;
-    float organic = (
-      sin(local.x * 0.028 + data.x) +
-      sin(local.y * 0.035 - data.x * 0.7) +
-      sin((local.x + local.y) * 0.017 + time * 0.35 + data.x)
-    ) * (2.2 + data.y * 4.8) * (1.0 - state.x * 0.42);
-    float distanceToTarget = roundedBox(
+    vec2 expandedBounds = halfSize + vec2(30.0);
+    if (abs(local.x) > expandedBounds.x || abs(local.y) > expandedBounds.y) continue;
+    vec2 normalizedLocal = local / max(halfSize, vec2(1.0));
+    float angle = atan(normalizedLocal.y, normalizedLocal.x);
+    float harmonics =
+      sin(angle * 3.0 + data.x) * 0.52 +
+      sin(angle * 5.0 - data.x * 0.73) * 0.31 +
+      sin(angle * 7.0 + data.x * 0.37 + time * 0.22) * 0.17;
+    float edgeNoise =
+      sin(local.x * 0.022 + data.x) * 0.34 +
+      sin(local.y * 0.027 - data.x * 0.7) * 0.26 +
+      sin((local.x + local.y) * 0.013 + time * 0.28 + data.x) * 0.20;
+    float organic = (harmonics + edgeNoise) * (3.8 + data.y * 7.5) * (1.0 - state.x * 0.12);
+    float exponent = 2.24 + data.y * 0.42 + state.x * 0.10;
+    float distanceToTarget = organicBlob(
       local,
       halfSize,
-      min(54.0, min(halfSize.x, halfSize.y) * 0.45)
-    ) + organic;
+      exponent,
+      organic
+    );
     float body = 1.0 - smoothstep(-4.0, 5.0, distanceToTarget);
     float edge = 1.0 - smoothstep(0.0, 10.0, abs(distanceToTarget));
     float outerShadow = (1.0 - smoothstep(2.0, 30.0, distanceToTarget)) * smoothstep(-1.0, 5.0, distanceToTarget);
     float lower = smoothstep(-0.28, 0.92, local.y / max(halfSize.y, 1.0));
     float topLeft = smoothstep(0.1, 0.95, dot(normalize(local + vec2(0.001)), normalize(vec2(-0.65, -0.76))));
-    vec3 glass = vec3(0.86, 0.92, 0.985) * (0.18 + body * 0.16);
-    glass += vec3(1.0) * edge * topLeft * (0.42 + state.x * 0.18);
-    glass += vec3(0.14, 0.42, 0.88) * edge * lower * data.z * (0.28 + state.x * 0.2);
-    glass -= vec3(0.08, 0.11, 0.17) * outerShadow * 0.18;
+    vec3 glass = vec3(0.84, 0.91, 0.99) * (0.28 + body * 0.24);
+    glass += vec3(1.0) * edge * topLeft * (0.54 + state.x * 0.2);
+    glass += vec3(0.11, 0.39, 0.88) * edge * lower * data.z * (0.42 + state.x * 0.22);
+    glass -= vec3(0.08, 0.11, 0.17) * outerShadow * 0.24;
     material = max(material, glass);
-    field = max(field, body * (0.38 + state.x * 0.12));
+    field = max(field, body * (0.54 + state.x * 0.14));
     edgeGlow = max(edgeGlow, edge);
   }
   bodyMask = field;
@@ -217,11 +236,11 @@ void main() {
   base += blue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.016;
   base *= 1.0 - basin * 0.035;
   base = mix(base, base * 0.82 + targetLayer.rgb, targetLayer.a);
-  base = mix(base, vec3(0.91, 0.95, 0.995), targetBody * 0.18);
-  base += white * targetEdge * 0.12;
-  base += blue * targetEdge * 0.075;
-  base -= vec3(0.10, 0.15, 0.23) * targetEdge * 0.14;
-  base -= vec3(0.05, 0.075, 0.12) * targetBody * 0.035;
+  base = mix(base, vec3(0.88, 0.94, 0.995), targetBody * 0.30);
+  base += white * targetEdge * 0.20;
+  base += blue * targetEdge * 0.12;
+  base -= vec3(0.10, 0.15, 0.23) * targetEdge * 0.10;
+  base -= vec3(0.05, 0.075, 0.12) * targetBody * 0.045;
 
   // One title material: a low-depth refraction, a soft body, one directional
   // bevel, and a few broad air pockets. This keeps the name watery without
