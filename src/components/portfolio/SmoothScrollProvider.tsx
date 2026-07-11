@@ -67,7 +67,7 @@ export default function SmoothScrollProvider({
       }
     };
 
-    const scheduleHashAlignment = () => {
+    const scheduleInitialHashAlignment = () => {
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(alignHashBelowNavigation);
       });
@@ -76,15 +76,14 @@ export default function SmoothScrollProvider({
 
     emitNativeScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("pageshow", scheduleHashAlignment);
-    window.addEventListener("popstate", scheduleHashAlignment);
-    if (window.location.hash) scheduleHashAlignment();
+    // Let Next own route history and browser restoration. We only align an
+    // initial hash after this route's DOM has mounted; no history event is
+    // intercepted or corrected while another route is still on screen.
+    if (window.location.hash) scheduleInitialHashAlignment();
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("pageshow", scheduleHashAlignment);
-      window.removeEventListener("popstate", scheduleHashAlignment);
       if (previousInlineScrollBehavior) {
         root.style.scrollBehavior = previousInlineScrollBehavior;
       } else {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Menu, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
 import styles from "./Navigation.module.css";
@@ -12,7 +12,6 @@ type Props = {
 };
 
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
-  const onHome = usePathname() === "/";
   const [menuOpen, setMenuOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
@@ -61,24 +60,24 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
     };
   }, [closeMenu, menuOpen]);
 
-  const hrefFor = (href: string) => (onHome ? href : `/${href}`);
+  const hrefFor = (href: string) => `/${href}`;
 
   return (
     <header className="site-nav" data-menu-open={menuOpen ? "true" : "false"}>
-      <a
-        href={onHome ? "#top" : "/"}
+      <Link
+        href="/#top"
         className="site-nav-brand"
         aria-label={`${nav.fullName} — home`}
       >
         <span className="site-nav-monogram">{nav.brand}</span>
         <span className="site-nav-name">{nav.fullName}</span>
-      </a>
+      </Link>
 
       <nav className="site-nav-links" aria-label="Primary navigation">
         {nav.links.map((link) => (
-          <a key={link.href} href={hrefFor(link.href)}>
+          <Link key={link.href} href={hrefFor(link.href)}>
             {link.label}
-          </a>
+          </Link>
         ))}
       </nav>
 
@@ -93,10 +92,10 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         >
           <Waves aria-hidden="true" />
         </button>
-        <a href={onHome ? nav.cta.href : `/${nav.cta.href}`} className="site-nav-cta">
+        <Link href={`/${nav.cta.href}`} className="site-nav-cta">
           <span>{nav.cta.label}</span>
           <i aria-hidden="true" />
-        </a>
+        </Link>
         <button
           type="button"
           ref={menuButtonRef}
@@ -122,9 +121,9 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       >
         <nav aria-label="Mobile navigation">
           {nav.links.map((link, index) => (
-            <a key={link.href} href={hrefFor(link.href)} onClick={closeMenu}>
+            <Link key={link.href} href={hrefFor(link.href)} onClick={closeMenu}>
               <span>0{index + 1}</span>{link.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <div className="mobile-navigation__secondary">
@@ -148,9 +147,9 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
             Motion: {motionEnabled ? "On" : "Off"}
           </button>
         </div>
-        <a className="mobile-navigation__contact" href={onHome ? "#contact" : "/#contact"} onClick={closeMenu}>
+        <Link className="mobile-navigation__contact" href="/#contact" onClick={closeMenu}>
           Get in touch <span aria-hidden="true">↘</span>
-        </a>
+        </Link>
       </div>
     </header>
   );

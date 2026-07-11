@@ -1,4 +1,5 @@
 import { ArrowDownRight } from "lucide-react";
+import Link from "next/link";
 import { bio } from "@/lib/portfolio/content";
 
 export default function HeroIntro() {
@@ -13,10 +14,10 @@ export default function HeroIntro() {
         ))}
       </p>
       <p className="hero-intro-copy">{bio.bodyParagraphs[0]}</p>
-      <a href="#projects" className="hero-intro__cta" data-cursor="hover">
+      <Link href="/#projects" className="hero-intro__cta" data-cursor="hover">
         <span>Explore work</span>
         <ArrowDownRight className="hero-intro__cta-icon" aria-hidden="true" />
-      </a>
+      </Link>
     </div>
   );
 }

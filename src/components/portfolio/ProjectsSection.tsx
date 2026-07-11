@@ -12,9 +12,9 @@ export default function ProjectsSection() {
           <h2 id="work-title">Seven systems. One standard: show the work.</h2>
         </div>
         <p className={styles.intro}>
-          A compact index of products across agent security, research,
-          education, medical imaging, and hardware design. Explore a project
-          for the boundary between shipped, demonstrated, and still in progress.
+          Products across agent security, hardware, education, medical imaging,
+          and code intelligence. Each entry separates what is shipped, what is
+          demonstrated, and what is still in progress.
         </p>
       </header>
 
@@ -42,7 +42,7 @@ export default function ProjectsSection() {
                     alt={project.media.cover.alt}
                     width={project.media.cover.width}
                     height={project.media.cover.height}
-                    sizes="(max-width: 680px) 28vw, 15vw"
+                    sizes="(max-width: 900px) 90vw, (max-width: 1440px) 28vw, 400px"
                     className={styles.mediaImage}
                     unoptimized={project.media.cover.src.endsWith(".svg")}
                   />
