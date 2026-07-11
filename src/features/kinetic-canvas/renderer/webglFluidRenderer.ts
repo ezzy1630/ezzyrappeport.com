@@ -15,8 +15,6 @@ import {
 } from "./quality";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 
-const TARGET_COUNT = 4;
-
 type DoubleBuffer = {
   read: WebGLTexture;
   write: WebGLTexture;
@@ -110,8 +108,6 @@ uniform int u_pass;
 uniform vec2 u_resolution;
 uniform vec4 u_pointer;
 uniform vec4 u_ripples[8];
-uniform vec4 u_targetRects[4];
-uniform vec2 u_targetStates[4];
 uniform vec4 u_scroll;
 uniform float u_time;
 uniform float u_delta;
@@ -133,25 +129,6 @@ vec4 encodeVelocity(vec2 v) { return vec4(clamp(v * 0.5 + 0.5, 0.0, 1.0), 0.5, 1
 float roundedBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
   return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-}
-
-float targetMask(vec2 uv, out float pressed) {
-  float mask = 0.0;
-  pressed = 0.0;
-  vec2 px = uv * u_resolution;
-  for (int i = 0; i < 4; i++) {
-    vec4 target = u_targetRects[i];
-    vec2 state = u_targetStates[i];
-    if (target.z <= 1.0 || target.w <= 1.0) continue;
-    vec2 center = target.xy;
-    vec2 halfSize = target.zw * 0.5;
-    float d = roundedBox(px - center, halfSize, min(42.0, min(halfSize.x, halfSize.y) * 0.48));
-    float body = 1.0 - smoothstep(-7.0, 10.0, d);
-    float edge = 1.0 - smoothstep(0.0, 26.0, abs(d));
-    mask = max(mask, max(body * (0.58 + state.x * 0.10), edge * (0.72 + state.x * 0.18)));
-    pressed = max(pressed, body * state.y);
-  }
-  return mask;
 }
 
 float ripplePulse(vec2 uv, vec2 pointer, out float blue) {
@@ -180,18 +157,16 @@ void main() {
   vec2 uv = v_uv;
   vec2 e = texel();
   vec2 pointer = u_pointer.xy;
-  float targetPressed = 0.0;
-  float target = targetMask(uv, targetPressed);
   float text = texture(u_text, uv).a;
   vec2 textGrad = vec2(
     texture(u_text, uv + vec2(e.x, 0.0)).a - texture(u_text, uv - vec2(e.x, 0.0)).a,
     texture(u_text, uv + vec2(0.0, e.y)).a - texture(u_text, uv - vec2(0.0, e.y)).a
   );
-  float obstacle = clamp(text * 0.95 + target * 0.70, 0.0, 1.0);
-  float edge = clamp(length(textGrad) * 14.0 + target * 0.45, 0.0, 1.0);
+  float obstacle = clamp(text * 0.95, 0.0, 1.0);
+  float edge = clamp(length(textGrad) * 14.0, 0.0, 1.0);
 
   if (u_pass == 0) {
-    outColor = vec4(obstacle, edge, text, target);
+    outColor = vec4(obstacle, edge, text, 0.0);
     return;
   }
 
@@ -204,17 +179,10 @@ void main() {
     float wake = exp(-len * 6.2) * u_pointer.z;
     vel += normalize(dir) * (wake * 0.018 + pulse * 0.020);
     vel += u_pointer.zw * 0.000020;
-    vel += vec2(0.0, -u_scroll.y * 0.18);
+    float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
+    vel += vec2(0.0, -scrollImpulse * 0.018);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
-    vel += obstacleNormal * edge * (0.014 + abs(u_scroll.y) * 0.026);
-    for (int i = 0; i < 4; i++) {
-      vec4 t = u_targetRects[i];
-      vec2 targetState = u_targetStates[i];
-      if (t.z <= 1.0) continue;
-      vec2 d = uv * u_resolution - t.xy;
-      float env = exp(-dot(d / max(t.zw, vec2(1.0)), d / max(t.zw, vec2(1.0))) * 2.8);
-      vel += normalize(d + vec2(0.001)) * env * (0.006 + targetState.x * 0.012 + targetState.y * 0.026);
-    }
+    vel += obstacleNormal * edge * (0.014 + abs(scrollImpulse) * 0.004);
     vel *= 1.0 - obstacle * 0.92;
     outColor = encodeVelocity(vel);
     return;
@@ -255,12 +223,12 @@ void main() {
 
   if (u_pass == 5) {
     vec2 vel = decodeVelocity(texture(u_velocity, uv));
-    vec4 dye = texture(u_dye, clamp(uv - vel * 0.022 - vec2(0.0, u_scroll.y * 0.010), vec2(0.0), vec2(1.0))) * 0.982;
+    float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
+    vec4 dye = texture(u_dye, clamp(uv - vel * 0.022 - vec2(0.0, scrollImpulse * 0.0015), vec2(0.0), vec2(1.0))) * 0.982;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
     dye.rgb += vec3(0.08, 0.44, 1.0) * blue * 0.18 + vec3(1.0) * abs(pulse) * 0.08;
     dye.rgb += vec3(0.08, 0.42, 1.0) * edge * 0.018;
-    dye.rgb += vec3(0.06, 0.38, 1.0) * abs(u_scroll.y) * smoothstep(0.28, 0.98, uv.y) * 0.035;
     outColor = vec4(clamp(dye.rgb, 0.0, 1.0), 1.0);
     return;
   }
@@ -365,19 +333,6 @@ export function startFluidRenderer(
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
-  const targetRectLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_targetRects[${i}]`),
-  );
-  const targetStateLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_targetStates[${i}]`),
-  );
-  const targetDataLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_targetData[${i}]`),
-  );
-  const targetOpticsLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_targetOptics[${i}]`),
-  );
-
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
   const simResolutionLocation = gl.getUniformLocation(simProgram, "u_resolution");
   const simPointerLocation = gl.getUniformLocation(simProgram, "u_pointer");
@@ -386,12 +341,6 @@ export function startFluidRenderer(
   const simScrollLocation = gl.getUniformLocation(simProgram, "u_scroll");
   const simRippleLocations = Array.from({ length: RIPPLE_COUNT }, (_, i) =>
     gl.getUniformLocation(simProgram, `u_ripples[${i}]`),
-  );
-  const simTargetRectLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(simProgram, `u_targetRects[${i}]`),
-  );
-  const simTargetStateLocations = Array.from({ length: TARGET_COUNT }, (_, i) =>
-    gl.getUniformLocation(simProgram, `u_targetStates[${i}]`),
   );
   const simHeightLocationRead = gl.getUniformLocation(simProgram, "u_height");
   const simObstacleLocationRead = gl.getUniformLocation(simProgram, "u_obstacle");
@@ -459,7 +408,6 @@ export function startFluidRenderer(
   let renderedFrames = 0;
   let lateFrames = 0;
   let adaptiveLevel = 0;
-  let textTextureVisible = false;
   const startedAt = performance.now();
   let simWidth = 1;
   let simHeight = 1;
@@ -551,22 +499,6 @@ export function startFluidRenderer(
       }
       else gl.uniform4f(simRippleLocations[i], -9999, -9999, -9999, 0);
     }
-    for (let i = 0; i < TARGET_COUNT; i++) {
-      const target = physics.targets[i];
-      if (target) {
-        gl.uniform4f(
-          simTargetRectLocations[i],
-          target.x / Math.max(width, 1) * simWidth,
-          (1 - target.y / Math.max(height, 1)) * simHeight,
-          target.width / Math.max(width, 1) * simWidth,
-          target.height / Math.max(height, 1) * simHeight,
-        );
-        gl.uniform2f(simTargetStateLocations[i], target.hover, target.pressed);
-      } else {
-        gl.uniform4f(simTargetRectLocations[i], -9999, -9999, 0, 0);
-        gl.uniform2f(simTargetStateLocations[i], 0, 0);
-      }
-    }
   }
 
   function drawSim(pass: number, fbo: WebGLFramebuffer | null) {
@@ -620,14 +552,6 @@ export function startFluidRenderer(
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
-    textTextureVisible = true;
-  }
-
-  function clearTextTexture() {
-    gl.bindTexture(gl.TEXTURE_2D, textTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
-    textTextureVisible = false;
   }
 
   function configure() {
@@ -672,11 +596,8 @@ export function startFluidRenderer(
     const fadeEnd = height * 0.56;
     const fadeProgress = Math.min(1, Math.max(0, (scrollY - fadeStart) / Math.max(1, fadeEnd - fadeStart)));
     const nameOpacity = heroNameRef.current ? 1 - fadeProgress * fadeProgress * (3 - 2 * fadeProgress) : 0;
-    if (nameOpacity <= 0.01 && textTextureVisible) {
-      clearTextTexture();
-    } else if (nameOpacity > 0.01 && !textTextureVisible) {
-      regenerateText();
-    }
+    // Keep the text field resident while it fades. Clearing and rebuilding the
+    // texture at a scroll threshold caused visible flashes and simulation gaps.
 
     gl.useProgram(program);
     gl.bindVertexArray(vao);
@@ -695,32 +616,6 @@ export function startFluidRenderer(
     gl.uniform1f(sceneIntensityLocation, heroNameRef.current ? 1 : 0);
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
-    for (let i = 0; i < TARGET_COUNT; i++) {
-      const target = physics.targets[i];
-      if (target) {
-        gl.uniform4f(targetRectLocations[i], target.x * dpr, target.y * dpr, target.width * dpr, target.height * dpr);
-        gl.uniform2f(targetStateLocations[i], target.hover, target.pressed);
-        gl.uniform4f(
-          targetDataLocations[i],
-          target.seed,
-          target.organic,
-          target.blueIntensity,
-          target.causticSpeed,
-        );
-        gl.uniform4f(
-          targetOpticsLocations[i],
-          target.thickness,
-          target.rimSoftness,
-          target.specularIntensity,
-          target.lowerWeight,
-        );
-      } else {
-        gl.uniform4f(targetRectLocations[i], -9999, -9999, 0, 0);
-        gl.uniform2f(targetStateLocations[i], 0, 0);
-        gl.uniform4f(targetDataLocations[i], 0, 0, 0, 0);
-        gl.uniform4f(targetOpticsLocations[i], 0, 0, 0, 0);
-      }
-    }
     const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
     for (let i = 0; i < RIPPLE_COUNT; i++) {
       const ripple = physics.ripples[rippleOffset + i];
@@ -746,7 +641,7 @@ export function startFluidRenderer(
       return; // single static frame; the name still renders
     }
     const physics = getPhysics();
-    const interactive = physics.pointer.active || physics.targets.some((target) => target.hover > 0.08 || target.pressed > 0.05);
+    const interactive = physics.pointer.active;
     const compositeFps = interactive ? (quality.tier === "low" ? 30 : 45) : quality.targetFps;
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;

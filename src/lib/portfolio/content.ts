@@ -1,6 +1,13 @@
 import { portfolioIdentity } from "./identity";
 
-type ProjectCardPersonality = "monkeyclaw" | "velox" | "flowe" | "nexarad" | "etch";
+type ProjectCardPersonality =
+  | "monkeyclaw"
+  | "etch"
+  | "flowe"
+  | "velox"
+  | "argyph"
+  | "nexarad"
+  | "mathpilot";
 
 export type ProjectMediaAsset = {
   src: string;
@@ -43,7 +50,7 @@ export type Project = {
   verifiedLinks: ProjectLink[];
 };
 
-export const projects: Project[] = [
+const projectRecords: Project[] = [
   {
     slug: "monkeyclaw",
     index: "01",
@@ -100,7 +107,7 @@ export const projects: Project[] = [
   },
   {
     slug: "velox",
-    index: "02",
+    index: "04",
     title: "VELOX",
     subtitle: "Agent-First Browser",
     tagline: "A Chromium browser where research agents work in visible tabs.",
@@ -121,10 +128,10 @@ export const projects: Project[] = [
     proof: "Visible agent tabs · no-key demo · Markdown and JSON export",
     media: {
       cover: {
-        src: "/projects/velox/landing.webp",
-        alt: "Velox browser new-tab page with its predictive research field",
-        width: 3024,
-        height: 1964,
+        src: "/projects/velox/velox-logo.svg",
+        alt: "Velox predictive-cursor wordmark",
+        width: 420,
+        height: 112,
       },
       gallery: [
         {
@@ -179,11 +186,10 @@ export const projects: Project[] = [
     cautionLabel: "Campaign visualization",
     media: {
       cover: {
-        src: "/projects/flowe/brain-dump-campaign.webp",
-        alt: "FlowE campaign visualization of the Brain Dump planning interface",
-        width: 1080,
-        height: 1920,
-        caption: "Project-authored campaign visualization, not a raw runtime capture.",
+        src: "/projects/flowe/app-icon.png",
+        alt: "FlowE app icon",
+        width: 1024,
+        height: 1024,
       },
       gallery: [
         {
@@ -211,7 +217,7 @@ export const projects: Project[] = [
   },
   {
     slug: "nexarad",
-    index: "04",
+    index: "06",
     title: "NEXARAD",
     subtitle: "Evidence-Linked Radiology",
     tagline: "Evidence-linked imaging workflows with strict non-clinical demo boundaries.",
@@ -228,7 +234,7 @@ export const projects: Project[] = [
     role: "Founder & Engineer",
     accent: "blue-strong",
     personality: "nexarad",
-    status: "Acquired · research foundation",
+    status: "Research foundation · non-clinical demo",
     proof: "Synthetic DICOM demo · PHI disabled · external AI off by default",
     cautionLabel: "Demo / Research / Not for Clinical Use",
     media: {
@@ -241,7 +247,7 @@ export const projects: Project[] = [
       },
       gallery: [
         {
-          src: "/projects/nexarad/app-icon.webp",
+          src: "/projects/nexarad/app-icon.png",
           alt: "NexaRad radiology app icon",
           width: 512,
           height: 512,
@@ -265,7 +271,7 @@ export const projects: Project[] = [
   },
   {
     slug: "etch",
-    index: "05",
+    index: "02",
     title: "ETCH",
     subtitle: "Verification-First Hardware Design",
     tagline: "From natural-language intent to RTL evidence, gates, and proof dossiers.",
@@ -287,11 +293,10 @@ export const projects: Project[] = [
     cautionLabel: "Physical signoff pending",
     media: {
       cover: {
-        src: "/projects/etch/correctness-ranking.webp",
-        alt: "Etch correctness-first ranking of three FIFO candidates",
-        width: 1920,
-        height: 1080,
-        caption: "Candidate A wins on verified correctness and area among valid candidates.",
+        src: "/projects/etch/logo.svg",
+        alt: "Etch verification-first hardware design logo",
+        width: 1024,
+        height: 1024,
       },
       gallery: [
         {
@@ -318,70 +323,90 @@ export const projects: Project[] = [
       },
     ],
   },
+  {
+    slug: "argyph",
+    index: "05",
+    title: "ARGYPH",
+    subtitle: "Local-First Code Intelligence",
+    tagline: "One read-only MCP server for grep, symbols, semantic search, and repo packing.",
+    description:
+      "Argyph is a local binary that gives coding agents bounded codebase context without cloud accounts or API keys. Its ask-first retrieval router combines text search, a tree-sitter symbol graph, semantic search, and token-budgeted repository packing behind one MCP endpoint.",
+    problem:
+      "Giving an agent useful repository context often means wiring together multiple servers, processes, and cloud services. That increases setup cost and can move proprietary source outside the developer's machine.",
+    approach:
+      "I built a tiered Rust index that becomes useful immediately: file inventory first, symbol and structural indexes next, then local embeddings in the background. Queries return bounded spans and disclose index coverage so the caller knows what evidence was available.",
+    outcome:
+      "Argyph ships as a read-only MCP server and CLI through npm, crates.io, Homebrew, and release binaries, with incremental indexing and nineteen tools across retrieval, symbols, packing, and local memory.",
+    stack: ["Rust", "MCP", "Tree-sitter", "LanceDB", "ONNX Runtime", "SQLite"],
+    year: "2026",
+    role: "Creator & Engineer",
+    accent: "blue-medium",
+    personality: "argyph",
+    status: "Public release · v1.0.4",
+    proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
+    media: {
+      cover: {
+        src: "/projects/argyph/banner.svg",
+        alt: "Argyph code intelligence banner",
+        width: 900,
+        height: 260,
+      },
+    },
+    verifiedLinks: [
+      { kind: "source", label: "View source", href: "https://github.com/Ezzy1630/argyph" },
+      { kind: "releases", label: "View releases", href: "https://github.com/Ezzy1630/argyph/releases" },
+    ],
+  },
+  {
+    slug: "mathpilot",
+    index: "07",
+    title: "MATHPILOT",
+    subtitle: "Private Calculus Mastery Engine",
+    tagline: "A local-first macOS study cockpit for Calculus 1 and 2.",
+    description:
+      "MathPilot diagnoses a learner's level, tracks mastery on a prerequisite graph, recommends the next useful step, and keeps progress on the Mac. Practice, cumulative review, homework help, symbolic checking, and optional Codex coaching live in one native desktop workflow.",
+    problem:
+      "Calculus learners are often forced to assemble videos, generic chat, homework tools, and spaced repetition themselves. Those tools rarely share a mastery model or preserve a private, durable learning history.",
+    approach:
+      "I combined a Tauri desktop shell, React interface, SQLite persistence, FSRS review scheduling, MathLive typesetting, bundled Python and SymPy, Vision OCR, and deterministic offline fallbacks. Optional Codex features use the local CLI rather than an in-app API key.",
+    outcome:
+      "The repository includes more than 1,080 curated problems, a native macOS build, diagnostic and practice loops, mastery and review systems, local homework analysis, and automated unit and end-to-end coverage.",
+    stack: ["Tauri", "React", "TypeScript", "SQLite", "SymPy", "FSRS"],
+    year: "2026",
+    role: "Creator & Engineer",
+    accent: "blue-flow",
+    personality: "mathpilot",
+    status: "Public repository · macOS app",
+    proof: "1,080+ curated problems · 171 unit tests · 15 end-to-end tests",
+    media: {
+      cover: {
+        src: "/projects/mathpilot/app-icon.svg",
+        alt: "MathPilot app icon",
+        width: 1024,
+        height: 1024,
+      },
+    },
+    verifiedLinks: [
+      { kind: "source", label: "View source", href: "https://github.com/ezzy1630/MathPilot" },
+    ],
+  },
 ];
 
-export type ExperienceEntry = {
-  company: string;
-  role: string;
-  period: string;
-  location: string;
-  summary: string;
-  highlights: string[];
-  stack: string[];
-};
+const projectOrder = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
 
-export const experience: ExperienceEntry[] = [
-  {
-    company: "Independent",
-    role: "Founder & Engineer",
-    period: "2023 — Present",
-    location: "Los Angeles, CA",
-    summary:
-      "Building AI-native products at the intersection of multi-agent systems and real-world deployment. Currently leading Monkeyclaw and advising two seed-stage AI companies on agent architecture and evals.",
-    highlights: [
-      "Designed and shipped a multi-agent security platform from zero to closed beta in 9 months.",
-      "Advised portfolio companies on agent eval methodology, reducing hallucination-related incidents by 60%.",
-      "Published an open-source agent capability framework adopted by 800+ developers in the first quarter.",
-    ],
-    stack: ["TypeScript", "Python", "LangGraph", "Rust", "Kubernetes"],
-  },
-  {
-    company: "Nexarad (Acquired)",
-    role: "Founding ML Engineer",
-    period: "2021 — 2023",
-    location: "Santa Cruz, CA",
-    summary:
-      "Joined as the second engineer and built the core inference pipeline for a regulatory-cleared medical imaging triage system. Took the model from research prototype to FDA submission.",
-    highlights: [
-      "Architected the inference pipeline serving 90-second median time-to-triage at 99.95% uptime.",
-      "Led the data engineering effort to ingest and de-identify 2.4M studies across 38 institutions.",
-      "Owned the regulatory ML documentation package that secured FDA 510(k) clearance in 11 months.",
-    ],
-    stack: ["PyTorch", "CUDA", "C++", "DICOM", "Kubernetes"],
-  },
-  {
-    company: "Flowe",
-    role: "Founder & CEO",
-    period: "2022 — 2023",
-    location: "Remote",
-    summary:
-      "Founded and led an adaptive learning company serving community college students. Built the mastery model, raised a pre-seed, and ran a 1,200-student pilot that outperformed control by 0.41σ.",
-    highlights: [
-      "Raised a $1.8M pre-seed from education-focused investors.",
-      "Designed and ran a 1,200-student randomized pilot with a state community college system.",
-      "Open-sourced the Bayesian mastery model, which has since been forked by 6 university research labs.",
-    ],
-    stack: ["TypeScript", "React Native", "FastAPI", "PyTorch"],
-  },
-];
+export const projects = projectOrder.map((slug) => {
+  const project = projectRecords.find((candidate) => candidate.slug === slug);
+  if (!project) throw new Error(`Missing portfolio project: ${slug}`);
+  return project;
+});
 
 export const bio = {
   name: portfolioIdentity.name,
   taglineParts: ["Software Engineer", "AI Systems", "Founder"],
   bodyParagraphs: [
     "I build AI systems, developer tools, and product software—from multi-agent security to intelligent student workflows.",
-    "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. Most of my work sits in the awkward space between research and production — taking ideas that work in a paper and making them work under a pager.",
-    "I'm currently based between Los Angeles and Santa Cruz, splitting time between independent founder work and advising a small number of AI companies on agent architecture and evaluation.",
+    "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. My work lives between research and production: turning promising ideas into inspectable, dependable software.",
+    "I'm based between Los Angeles and Santa Cruz, building across agent security, code intelligence, education, radiology research, and hardware design.",
   ],
   location: {
     title: "Based in California",
@@ -391,7 +416,8 @@ export const bio = {
   socials: [
     { label: "GitHub", href: "https://github.com/ezzy1630", handle: "@ezzy1630" },
     { label: "LinkedIn", href: "https://linkedin.com/in/ezzy-rappeport", handle: "/in/ezzy-rappeport" },
-    { label: "X", href: "https://x.com/ezzyrappeport", handle: "@ezzyrappeport" },
+    { label: "X", href: "https://x.com/ezzy1630", handle: "@ezzy1630" },
+    { label: "Instagram", href: "https://instagram.com/ezzy1630", handle: "@ezzy1630" },
     { label: "Email", href: `mailto:${portfolioIdentity.email}`, handle: portfolioIdentity.email },
   ],
   email: portfolioIdentity.email,
@@ -402,7 +428,6 @@ export const nav = {
   fullName: portfolioIdentity.displayName,
   links: [
     { label: "Projects", href: "#projects" },
-    { label: "Experience", href: "#experience" },
     { label: "About", href: "#about" },
   ],
   cta: { label: "Get In Touch", href: "#contact" },
@@ -410,6 +435,5 @@ export const nav = {
 
 export const sectionAnchors = [
   { label: "PROJECTS", subtitle: "Ideas into impact", href: "#projects" },
-  { label: "EXPERIENCE", subtitle: "Engineering that scales", href: "#experience" },
   { label: "ABOUT", subtitle: "Purpose & vision", href: "#about" },
 ];

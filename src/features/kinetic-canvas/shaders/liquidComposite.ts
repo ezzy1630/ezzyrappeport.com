@@ -23,10 +23,6 @@ uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
 uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
-uniform vec4 u_targetRects[4];
-uniform vec2 u_targetStates[4];
-uniform vec4 u_targetData[4];
-uniform vec4 u_targetOptics[4];
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -50,6 +46,12 @@ float bubbleArc(vec2 uv, vec2 center, float radius, vec2 squash, vec2 lightDirec
   float ring = ellipseRing(uv, center, radius, squash, 0.006);
   float direction = 0.5 + 0.5 * dot(normalize(local + vec2(0.0001)), normalize(lightDirection));
   return ring * smoothstep(0.18, 0.76, direction);
+}
+
+float hash21(vec2 p) {
+  p = fract(p * vec2(123.34, 456.21));
+  p += dot(p, p + 45.32);
+  return fract(p.x * p.y);
 }
 
 float caustics(vec2 p, float time) {
@@ -176,79 +178,13 @@ vec4 targetField(
   out vec2 surfaceNormal,
   out float surfaceScale
 ) {
-  float field = 0.0;
-  vec3 material = vec3(0.0);
+  bodyMask = 0.0;
   edgeGlow = 0.0;
   contactShadow = 0.0;
   innerCavity = 0.0;
   surfaceNormal = vec2(0.0);
   surfaceScale = 1.0;
-  float strongestBody = 0.0;
-  vec2 pixel = uv * u_resolution;
-  for (int i = 0; i < 4; i++) {
-    vec4 target = u_targetRects[i];
-    if (target.z <= 1.0 || target.w <= 1.0) continue;
-    vec2 state = u_targetStates[i];
-    vec4 data = u_targetData[i];
-    vec4 optics = u_targetOptics[i];
-    vec2 halfSize = target.zw * 0.5;
-    float membraneScale = clamp(halfSize.y / 78.0, 0.68, 1.55);
-    vec2 local = pixel - target.xy;
-    vec2 expandedBounds = halfSize + vec2(34.0 * membraneScale);
-    if (abs(local.x) > expandedBounds.x || abs(local.y) > expandedBounds.y) continue;
-    vec2 normalizedLocal = local / max(halfSize, vec2(1.0));
-    float distanceToTarget = liquidMembrane(
-      local,
-      halfSize,
-      data.x,
-      data.y,
-      data.w,
-      state.x,
-      state.y,
-      time,
-      membraneScale
-    );
-    float body = 1.0 - smoothstep(
-      -3.0 * membraneScale,
-      3.5 * membraneScale,
-      distanceToTarget
-    );
-    float specularWidth = mix(3.4, 1.8, optics.y) * membraneScale;
-    float outerSpecular = ridge(distanceToTarget, specularWidth);
-    float bevelWidth = mix(10.0, 18.0, optics.x - 0.82) * membraneScale;
-    float innerBevel = ridge(distanceToTarget + bevelWidth * 0.48, bevelWidth * 0.62) * body;
-    float cavity = ridge(distanceToTarget + 3.8 * membraneScale, 4.8 * membraneScale) * body;
-    vec2 pressureSize = halfSize * vec2(1.0 + state.y * 0.010, 1.0 - state.y * 0.018);
-    float radius = pressureSize.y * mix(0.42, 0.55, data.y);
-    vec2 normal2d = membraneNormal(
-      local,
-      pressureSize - vec2(4.0, 5.0) * membraneScale,
-      radius
-    );
-    float topLeft = pow(max(dot(normal2d, normalize(vec2(-0.58, -0.82))), 0.0), 2.4);
-    float lowerFacing = pow(max(dot(normal2d, normalize(vec2(0.28, 0.96))), 0.0), 1.7);
-    float sideFacing = pow(abs(normal2d.x), 2.2) * 0.55;
-    float blueFacing = clamp(lowerFacing * optics.w + sideFacing, 0.0, 1.25);
-    float outside = smoothstep(1.0 * membraneScale, 5.0 * membraneScale, distanceToTarget) *
-      (1.0 - smoothstep(5.0 * membraneScale, 26.0 * membraneScale, distanceToTarget));
-    float contact = outside * smoothstep(0.15, 0.98, normalizedLocal.y);
-    vec3 glass = vec3(1.0) * outerSpecular * topLeft * (0.28 + optics.z * 0.42);
-    glass += vec3(0.91, 0.97, 1.0) * innerBevel * topLeft * 0.16;
-    glass += vec3(0.10, 0.38, 0.94) *
-      (outerSpecular * 0.64 + innerBevel * 0.78) * blueFacing * data.z;
-    material = max(material, glass);
-    field = max(field, body);
-    edgeGlow = max(edgeGlow, max(outerSpecular, innerBevel * 0.52));
-    contactShadow = max(contactShadow, contact);
-    innerCavity = max(innerCavity, cavity);
-    if (body > strongestBody) {
-      strongestBody = body;
-      surfaceNormal = normal2d;
-      surfaceScale = membraneScale;
-    }
-  }
-  bodyMask = field;
-  return vec4(material, clamp(field * 0.12 + edgeGlow * 0.78, 0.0, 0.92));
+  return vec4(0.0);
 }
 
 float textCov(vec2 uv) {
@@ -256,14 +192,16 @@ float textCov(vec2 uv) {
 }
 
 float titleBasin(vec2 uv, float time) {
-  float first = roundedBox(uv - vec2(0.38, 0.225), vec2(0.275, 0.125), 0.08);
-  float second = roundedBox(uv - vec2(0.53, 0.405), vec2(0.425, 0.135), 0.085);
-  float lobes = min(
-    length((uv - vec2(0.69, 0.22)) * vec2(1.15, 1.0)) - 0.095,
-    length((uv - vec2(0.18, 0.35)) * vec2(0.92, 1.15)) - 0.08
-  );
-  float perturb = sin(uv.x * 19.0 + time * 0.12) * 0.008 + sin(uv.y * 24.0 - time * 0.1) * 0.006;
-  return 1.0 - smoothstep(-0.015, 0.055, min(min(first, second), lobes) + perturb);
+  vec2 px = 7.0 / max(u_resolution, vec2(1.0));
+  float field = texture(u_text, uv).r;
+  field = max(field, texture(u_text, uv + vec2(px.x, 0.0)).r);
+  field = max(field, texture(u_text, uv - vec2(px.x, 0.0)).r);
+  field = max(field, texture(u_text, uv + vec2(0.0, px.y)).r);
+  field = max(field, texture(u_text, uv - vec2(0.0, px.y)).r);
+  field = max(field, texture(u_text, uv + px).r);
+  field = max(field, texture(u_text, uv - px).r);
+  float breathing = sin(uv.x * 17.0 + uv.y * 11.0 + time * 0.16) * 0.018;
+  return smoothstep(0.055 + breathing, 0.43, field) * u_nameOpacity;
 }
 
 void main() {
@@ -296,7 +234,9 @@ void main() {
     targetScale
   );
   vec3 ripple = rippleField(uv, pointer, time);
-  float basin = titleBasin(uv, time) * u_nameOpacity;
+  float basin = titleBasin(uv, time);
+  float basinRim = ridge(basin - 0.5, 0.32);
+  float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
 
   float flowA = 0.5 + 0.25 * (
     sin(dot(plane, vec2(3.8, 2.4)) + time * 0.42) +
@@ -309,10 +249,10 @@ void main() {
   float flowC = 0.5 + 0.5 * sin(dot(plane, vec2(6.2, -4.7)) + time * 0.72);
 
   float basinCalm = 1.0 - basin * 0.54;
-  plane.x += ((flowA - 0.5) * 0.034 + ripple.z + simulationNormal.x * 0.042) * basinCalm + u_scroll.y * 0.035;
-  plane.y += ((flowB - 0.5) * 0.026 + ripple.z * 0.42 + simulationNormal.y * 0.036) * basinCalm - u_scroll.y * 0.055;
+  plane.x += ((flowA - 0.5) * 0.034 + ripple.z + simulationNormal.x * 0.042) * basinCalm + scrollImpulse * 0.004;
+  plane.y += ((flowB - 0.5) * 0.026 + ripple.z * 0.42 + simulationNormal.y * 0.036) * basinCalm - scrollImpulse * 0.006;
 
-  vec2 baseUv = uv + lensOffset + simulationNormal.xy * 0.036 + vec2(0.0, -u_scroll.y * 0.018);
+  vec2 baseUv = uv + lensOffset + simulationNormal.xy * 0.036 + vec2(0.0, -scrollImpulse * 0.003);
   vec2 flowUv = clamp(
     baseUv + vec2((flowA - 0.5) * 0.018, (flowB - 0.5) * 0.014),
     vec2(0.0),
@@ -332,8 +272,9 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
-  base += blue * abs(u_scroll.y) * smoothstep(0.18, 0.92, uv.y) * 0.016;
-  base *= 1.0 - basin * 0.035;
+  base *= 1.0 - basin * 0.052;
+  base -= vec3(0.035, 0.055, 0.09) * basinRim * 0.28;
+  base += white * basinRim * 0.14 + blue * basinRim * 0.035;
   vec2 membraneWarp = targetNormal * targetScale *
     (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
   vec3 membraneRefraction = texture(
@@ -408,15 +349,16 @@ void main() {
     cos(time * 0.27 + uv.x * 8.0)
   ) * 0.0025 + lensOffset * 0.45;
   vec2 bubbleUv = uv + bubbleWarp;
-  float bubbleOne = bubbleDisc(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15));
-  float bubbleTwo = bubbleDisc(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86));
-  float bubbleThree = bubbleDisc(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2));
-  float bubbleBody = (bubbleOne * 0.28 + bubbleTwo * 0.22 + bubbleThree * 0.24) * interior;
-  float bubbleRim = (
-    bubbleArc(bubbleUv, vec2(0.31, 0.24), 0.094, vec2(1.0, 1.15), vec2(-0.72, -0.66)) * 0.72 +
-    bubbleArc(bubbleUv, vec2(0.68, 0.34), 0.122, vec2(1.12, 0.86), vec2(-0.58, -0.82)) * 0.62 +
-    bubbleArc(bubbleUv, vec2(0.83, 0.48), 0.072, vec2(0.86, 1.2), vec2(-0.80, -0.54)) * 0.68
-  ) * interior;
+  vec2 pocketScale = vec2(18.0, 8.0);
+  vec2 pocketCell = floor(bubbleUv * pocketScale);
+  float pocketSeed = hash21(pocketCell);
+  vec2 pocketCenter = (pocketCell + vec2(0.34 + pocketSeed * 0.34, 0.38 + hash21(pocketCell + 4.2) * 0.28)) / pocketScale;
+  float pocketRadius = mix(0.012, 0.027, pocketSeed);
+  float pocketDistance = distance((bubbleUv - pocketCenter) * vec2(aspect, 1.0), vec2(0.0));
+  float pocketEnabled = smoothstep(0.72, 0.92, pocketSeed) * interior;
+  float bubbleBody = (1.0 - smoothstep(pocketRadius * 0.42, pocketRadius, pocketDistance)) * pocketEnabled * 0.34;
+  float bubbleRim = ridge(pocketDistance - pocketRadius, 0.0035) * pocketEnabled *
+    smoothstep(0.0, 0.85, 0.5 + 0.5 * dot(normalize(bubbleUv - pocketCenter + vec2(0.0001)), normalize(vec2(-0.7, -0.7))));
   letterBody -= vec3(0.050, 0.075, 0.15) * bubbleBody;
   letterBody += vec3(1.0, 0.995, 0.98) * bubbleRim * 0.74;
 

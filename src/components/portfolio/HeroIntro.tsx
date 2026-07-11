@@ -14,7 +14,7 @@ export default function HeroIntro() {
       </p>
       <p className="hero-intro-copy">{bio.bodyParagraphs[0]}</p>
       <a href="#projects" className="hero-intro__cta" data-cursor="hover">
-        <span>View featured work</span>
+        <span>Explore work</span>
         <ArrowDownRight className="hero-intro__cta-icon" aria-hidden="true" />
       </a>
     </div>

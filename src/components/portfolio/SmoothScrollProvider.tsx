@@ -20,6 +20,7 @@ export default function SmoothScrollProvider({
   useEffect(() => {
     let lastScrollY = window.scrollY;
     let lastScrollTime = performance.now();
+    let filteredVelocity = 0;
     let frame = 0;
     const root = document.documentElement;
     const previousInlineScrollBehavior = root.style.scrollBehavior;
@@ -31,11 +32,14 @@ export default function SmoothScrollProvider({
       const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
       const now = performance.now();
       const y = window.scrollY;
-      const dt = Math.max(16, now - lastScrollTime);
-      const velocity = ((y - lastScrollY) / dt) * 16 / Math.max(window.innerHeight, 1);
+      const dt = Math.max(8, Math.min(80, now - lastScrollTime));
+      const rawVelocity = ((y - lastScrollY) / dt) * 1000 / Math.max(window.innerHeight, 1);
+      const boundedVelocity = Math.max(-1.25, Math.min(1.25, rawVelocity));
+      const smoothing = 1 - Math.exp(-dt / 58);
+      filteredVelocity += (boundedVelocity - filteredVelocity) * smoothing;
       emitLiquidScroll({
         progress: y / max,
-        velocity,
+        velocity: filteredVelocity,
         depth: y / max,
       });
       lastScrollY = y;

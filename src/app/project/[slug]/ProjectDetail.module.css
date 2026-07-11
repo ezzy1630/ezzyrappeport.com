@@ -292,10 +292,23 @@
 }
 
 [data-project="flowe"] .heroMediaImage {
-  padding: 2.5rem 24%;
-  object-fit: cover;
-  object-position: center top;
+  padding: clamp(2rem, 7vw, 5rem) 28%;
+  object-fit: contain;
   background: radial-gradient(circle at 30% 15%, #073546, #061325 55%, #090d21);
+}
+
+[data-project="etch"] .heroMediaImage,
+[data-project="velox"] .heroMediaImage,
+[data-project="argyph"] .heroMediaImage,
+[data-project="mathpilot"] .heroMediaImage {
+  padding: clamp(2rem, 5vw, 4.5rem);
+  object-fit: contain;
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(222,235,250,0.76));
+}
+
+[data-project="etch"] .heroMediaImage,
+[data-project="argyph"] .heroMediaImage {
+  background: #050b16;
 }
 
 [data-project="nexarad"] .heroMediaImage {

@@ -4,14 +4,17 @@ import { bio } from "@/lib/portfolio/content";
 export default function ContactSection() {
   return (
     <section id="contact" className="contact-section" aria-labelledby="contact-title">
-      <div className="contact-section__glow" aria-hidden="true" />
       <div className="contact-section__inner">
-        <p className="contact-section__eyebrow"><i aria-hidden="true" /> Available for ambitious work</p>
-        <h2 id="contact-title">Have a difficult problem worth building?</h2>
-        <a className="contact-section__email" href={`mailto:${bio.email}`}>
-          <span>Let’s talk</span>
-          <ArrowUpRight aria-hidden="true" />
-        </a>
+        <div className="contact-basin">
+          <div className="contact-basin__copy">
+            <p className="contact-section__eyebrow"><i aria-hidden="true" /> Available for ambitious work</p>
+            <h2 id="contact-title">Let’s build something difficult—and make it real.</h2>
+          </div>
+          <a className="contact-section__email" href={`mailto:${bio.email}`}>
+            <span>{bio.email}</span>
+            <ArrowUpRight aria-hidden="true" />
+          </a>
+        </div>
 
         <footer className="contact-footer">
           <p>

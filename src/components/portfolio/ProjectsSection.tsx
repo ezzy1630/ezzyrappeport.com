@@ -8,13 +8,13 @@ export default function ProjectsSection() {
     <section id="projects" className={styles.section} aria-labelledby="work-title">
       <header className={styles.header}>
         <div>
-          <p className={styles.kicker}>Selected work / 05 projects</p>
-          <h2 id="work-title">Systems with evidence behind them.</h2>
+          <p className={styles.kicker}>Selected work / {String(projects.length).padStart(2, "0")} projects</p>
+          <h2 id="work-title">Seven systems. One standard: show the work.</h2>
         </div>
         <p className={styles.intro}>
           A compact index of products across agent security, research,
-          education, medical imaging, and hardware design. Open any case study
-          for the full boundary between shipped, demonstrated, and pending.
+          education, medical imaging, and hardware design. Explore a project
+          for the boundary between shipped, demonstrated, and still in progress.
         </p>
       </header>
 
@@ -34,7 +34,7 @@ export default function ProjectsSection() {
                 <ProjectTransitionLink
                   href={`/project/${project.slug}`}
                   className={styles.mediaLink}
-                  aria-label={`View the ${project.title} case study`}
+                  aria-label={`Explore the ${project.title} project`}
                   transitionName={`project-${project.slug}`}
                 >
                   <Image
@@ -67,7 +67,7 @@ export default function ProjectsSection() {
 
               <div className={styles.actions}>
                 <ProjectTransitionLink href={`/project/${project.slug}`} className={styles.primaryAction}>
-                  Case study <span aria-hidden="true">↗</span>
+                  Explore project <span aria-hidden="true">↗</span>
                 </ProjectTransitionLink>
                 {project.verifiedLinks.slice(0, 1).map((link) => (
                   <a

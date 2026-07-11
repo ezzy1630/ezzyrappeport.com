@@ -63,6 +63,15 @@
   border-bottom: 1px solid var(--rv-line);
 }
 
+/* The index has one content grammar, but not one repeated card silhouette. */
+.index > li:nth-child(even) .row {
+  grid-template-columns: 2.8rem minmax(0, 1fr) minmax(8.5rem, 17vw) auto;
+}
+.index > li:nth-child(even) .media { grid-column: 3; }
+.index > li:nth-child(even) .content { grid-column: 2; grid-row: 1; }
+.index > li:nth-child(even) .actions { grid-column: 4; grid-row: 1; }
+.index > li:nth-child(3n) .media { aspect-ratio: 1.75; }
+
 .rail {
   display: flex;
   align-self: stretch;
@@ -108,7 +117,11 @@
 .mediaLink:focus-visible .mediaImage { transform: scale(1.045); }
 
 .media[data-project="monkeyclaw"] .mediaImage,
-.media[data-project="nexarad"] .mediaImage { object-fit: contain; width: 82%; height: 82%; }
+.media[data-project="nexarad"] .mediaImage,
+.media[data-project="etch"] .mediaImage,
+.media[data-project="velox"] .mediaImage,
+.media[data-project="argyph"] .mediaImage,
+.media[data-project="mathpilot"] .mediaImage { object-fit: contain; width: 82%; height: 82%; }
 
 .media[data-project="flowe"] { background: #081a28; }
 .media[data-project="flowe"] .mediaImage { width: 58%; object-position: top; }
@@ -179,6 +192,10 @@
   .header { grid-template-columns: 1fr; gap: 1.25rem; }
   .row { grid-template-columns: 2.3rem minmax(6.5rem, 25vw) minmax(0, 1fr); gap: 0.9rem 1.15rem; }
   .actions { grid-column: 3; flex-direction: row; align-items: center; justify-content: flex-start; gap: 0.9rem; }
+  .index > li:nth-child(even) .row { grid-template-columns: 2.3rem minmax(6.5rem, 25vw) minmax(0, 1fr); }
+  .index > li:nth-child(even) .media { grid-column: 2; grid-row: 1; }
+  .index > li:nth-child(even) .content { grid-column: 3; grid-row: 1; }
+  .index > li:nth-child(even) .actions { grid-column: 3; grid-row: auto; }
 }
 
 @media (max-width: 560px) {

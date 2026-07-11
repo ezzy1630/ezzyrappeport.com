@@ -1171,3 +1171,64 @@ body {
   .site-nav { animation: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Cohesive pearl ending: one compact dark liquid-glass contact basin. */
+.contact-section {
+  padding: clamp(1.5rem, 4vw, 4rem) 0 0;
+  background: linear-gradient(180deg, var(--rv-pearl), var(--rv-pearl-blue));
+  color: var(--rv-ink);
+}
+.contact-section__inner { padding: 0 0 2rem; }
+.contact-basin {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(16rem, 0.75fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: end;
+  min-height: clamp(23rem, 42vw, 35rem);
+  overflow: hidden;
+  padding: clamp(2.4rem, 6vw, 5.5rem);
+  border: 1px solid rgba(255,255,255,0.24);
+  border-radius: clamp(2rem, 5vw, 5rem) clamp(3rem, 8vw, 8rem) clamp(2.2rem, 6vw, 6rem) clamp(3.5rem, 7vw, 7rem);
+  background:
+    radial-gradient(circle at 82% 18%, rgba(72,133,255,0.24), transparent 34%),
+    linear-gradient(145deg, #091427, #050b16 68%, #0d1d36);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.22) inset, 0 2.5rem 6rem -3rem rgba(14,35,70,0.52);
+  color: white;
+}
+.contact-basin::after {
+  content: "";
+  position: absolute;
+  inset: auto -8% -42% 36%;
+  height: 68%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(46,112,255,0.2), transparent 68%);
+  filter: blur(20px);
+}
+.contact-basin__copy { position: relative; z-index: 1; }
+.contact-section__eyebrow { margin-bottom: 1.2rem; }
+.contact-section h2 { max-width: 13ch; font-size: clamp(2.8rem, 5.4vw, 5.8rem); line-height: 0.94; }
+.contact-section__email {
+  position: relative;
+  z-index: 1;
+  justify-self: end;
+  max-width: 100%;
+  margin: 0;
+  font-size: clamp(1rem, 1.6vw, 1.35rem);
+  overflow-wrap: anywhere;
+}
+.contact-footer {
+  margin-top: clamp(2.2rem, 5vw, 4rem);
+  border-color: var(--rv-line);
+  color: var(--rv-ink);
+}
+.contact-footer p span,
+.contact-footer nav a { color: var(--rv-muted); }
+.contact-footer nav a:hover { color: var(--rv-ink); }
+
+@media (max-width: 760px) {
+  .contact-section__inner { padding-top: 0; }
+  .contact-basin { grid-template-columns: 1fr; min-height: 28rem; align-content: space-between; padding: 2rem; }
+  .contact-section h2 { font-size: clamp(2.8rem, 13vw, 4.25rem); }
+  .contact-section__email { justify-self: start; }
+}
