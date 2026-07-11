@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
+import styles from "./Navigation.module.css";
 
 type Props = {
   motionEnabled: boolean;
@@ -13,12 +14,44 @@ type Props = {
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const onHome = usePathname() === "/";
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileNavigationRef = useRef<HTMLDivElement>(null);
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false);
+    window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
+
+    const panel = mobileNavigationRef.current;
+    const focusableSelector =
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusFirstItem = () => panel?.querySelector<HTMLElement>(focusableSelector)?.focus();
+    window.requestAnimationFrame(focusFirstItem);
+
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setMenuOpen(false);
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeMenu();
+        return;
+      }
+      if (event.key !== "Tab" || !panel) return;
+
+      const focusable = [...panel.querySelectorAll<HTMLElement>(focusableSelector)];
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
+
     document.addEventListener("keydown", onKeyDown);
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -26,7 +59,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       document.removeEventListener("keydown", onKeyDown);
       document.body.style.overflow = previousOverflow;
     };
-  }, [menuOpen]);
+  }, [closeMenu, menuOpen]);
 
   const hrefFor = (href: string) => (onHome ? href : `/${href}`);
 
@@ -52,7 +85,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       <div className="site-nav-actions">
         <button
           type="button"
-          className="site-nav-motion"
+          className={`site-nav-motion ${styles.navigationControl}`}
           aria-pressed={motionEnabled}
           aria-label={motionEnabled ? "Turn motion off" : "Turn motion on"}
           title={motionEnabled ? "Turn motion off" : "Turn motion on"}
@@ -66,35 +99,56 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         </a>
         <button
           type="button"
-          className="site-nav-menu-button"
+          ref={menuButtonRef}
+          className={`site-nav-menu-button ${styles.navigationControl}`}
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
           aria-label={menuOpen ? "Close navigation" : "Open navigation"}
-          onClick={() => setMenuOpen((open) => !open)}
+          onClick={() => (menuOpen ? closeMenu() : setMenuOpen(true))}
         >
           {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
         </button>
       </div>
 
-      <div id="mobile-navigation" className="mobile-navigation" aria-hidden={!menuOpen} inert={!menuOpen}>
+      <div
+        ref={mobileNavigationRef}
+        id="mobile-navigation"
+        className="mobile-navigation"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        aria-hidden={!menuOpen}
+        inert={!menuOpen}
+      >
         <nav aria-label="Mobile navigation">
           {nav.links.map((link, index) => (
-            <a key={link.href} href={hrefFor(link.href)} onClick={() => setMenuOpen(false)}>
+            <a key={link.href} href={hrefFor(link.href)} onClick={closeMenu}>
               <span>0{index + 1}</span>{link.label}
             </a>
           ))}
         </nav>
         <div className="mobile-navigation__secondary">
           {bio.socials.filter((social) => social.label !== "Email").map((social) => (
-            <a key={social.label} href={social.href} target="_blank" rel="noopener noreferrer">
+            <a
+              key={social.label}
+              className={styles.mobileNavigationTouchTarget}
+              href={social.href}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               {social.label} ↗
             </a>
           ))}
-          <button type="button" onClick={onToggleMotion}>
+          <button
+            type="button"
+            className={styles.mobileNavigationTouchTarget}
+            aria-pressed={motionEnabled}
+            onClick={onToggleMotion}
+          >
             Motion: {motionEnabled ? "On" : "Off"}
           </button>
         </div>
-        <a className="mobile-navigation__contact" href={onHome ? "#contact" : "/#contact"} onClick={() => setMenuOpen(false)}>
+        <a className="mobile-navigation__contact" href={onHome ? "#contact" : "/#contact"} onClick={closeMenu}>
           Get in touch <span aria-hidden="true">↘</span>
         </a>
       </div>
