@@ -192,7 +192,7 @@ float textCov(vec2 uv) {
 }
 
 float titleBasin(vec2 uv, float time) {
-  vec2 px = 7.0 / max(u_resolution, vec2(1.0));
+  vec2 px = 22.0 / max(u_resolution, vec2(1.0));
   float field = texture(u_text, uv).r;
   field = max(field, texture(u_text, uv + vec2(px.x, 0.0)).r);
   field = max(field, texture(u_text, uv - vec2(px.x, 0.0)).r);
@@ -201,7 +201,7 @@ float titleBasin(vec2 uv, float time) {
   field = max(field, texture(u_text, uv + px).r);
   field = max(field, texture(u_text, uv - px).r);
   float breathing = sin(uv.x * 17.0 + uv.y * 11.0 + time * 0.16) * 0.018;
-  return smoothstep(0.055 + breathing, 0.43, field) * u_nameOpacity;
+  return smoothstep(0.025 + breathing, 0.38, field) * u_nameOpacity;
 }
 
 void main() {
@@ -272,9 +272,10 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
-  base *= 1.0 - basin * 0.052;
-  base -= vec3(0.035, 0.055, 0.09) * basinRim * 0.28;
-  base += white * basinRim * 0.14 + blue * basinRim * 0.035;
+  base *= 1.0 - basin * 0.078;
+  base -= vec3(0.035, 0.065, 0.13) * basin * 0.34;
+  base -= vec3(0.055, 0.085, 0.16) * basinRim * 0.48;
+  base += white * basinRim * 0.29 + blue * basinRim * 0.10;
   vec2 membraneWarp = targetNormal * targetScale *
     (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
   vec3 membraneRefraction = texture(
@@ -321,9 +322,9 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 letterBody = mix(refracted, vec3(0.72, 0.82, 0.95), 0.18);
-  letterBody += vec3(0.018, 0.032, 0.072) * dome;
-  letterBody -= vec3(0.045, 0.065, 0.12) * interior * smoothstep(0.38, 1.0, uv.y);
+  vec3 letterBody = mix(refracted, vec3(0.50, 0.68, 0.91), 0.28);
+  letterBody += vec3(0.016, 0.038, 0.10) * dome;
+  letterBody -= vec3(0.075, 0.105, 0.19) * interior * smoothstep(0.30, 1.0, uv.y);
   letterBody -= vec3(0.085, 0.105, 0.145) * mobilePoster * 0.42;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
@@ -337,12 +338,12 @@ void main() {
     1.0
   );
   vec3 bevelColor = mix(vec3(0.24, 0.40, 0.70), vec3(0.98, 0.995, 1.0), edgeLight);
-  letterBody += vec3(1.0, 0.995, 0.99) * topLeftHighlight * 0.52;
-  letterBody += blue * lowerRightBlue * 0.20;
-  letterBody -= vec3(0.060, 0.090, 0.16) * innerRim * (1.0 - edgeLight) * 0.70;
+  letterBody += vec3(1.0, 0.995, 0.99) * topLeftHighlight * 0.72;
+  letterBody += blue * lowerRightBlue * 0.32;
+  letterBody -= vec3(0.075, 0.115, 0.22) * innerRim * (1.0 - edgeLight) * 0.92;
 
   float cavity = dome * (0.25 + innerRim * 0.75);
-  letterBody -= vec3(0.045, 0.070, 0.135) * cavity;
+  letterBody -= vec3(0.085, 0.125, 0.23) * cavity;
 
   vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
     sin(time * 0.32 + uv.y * 9.0),
@@ -367,11 +368,11 @@ void main() {
   letterBody += blue * simulationObstacle.g * 0.06 * interior;
 
   vec3 color = base;
-  color = mix(color, letterBody, letterMask * 0.89);
+  color = mix(color, letterBody, letterMask * 0.94);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color = mix(color, bevelColor, clamp(outerRim * 0.76 + innerRim * 0.58, 0.0, 0.92));
-  color += vec3(1.0, 0.995, 0.99) * outerRim * (0.22 + mobilePoster * 0.05);
-  color += vec3(0.88, 0.95, 1.0) * innerRim * 0.28;
+  color = mix(color, bevelColor, clamp(outerRim * 0.92 + innerRim * 0.72, 0.0, 0.96));
+  color += vec3(1.0, 0.995, 0.99) * outerRim * (0.36 + mobilePoster * 0.05);
+  color += vec3(0.88, 0.95, 1.0) * innerRim * 0.40;
   color -= vec3(0.06, 0.09, 0.17) * innerRim * (1.0 - edgeLight) * 0.55;
   color += blue * innerRim * lowerRightBlue * 0.14;
   float titleCaustic = pow(caustic, 2.35) * (innerRim * 0.9 + outerRim * 0.65);

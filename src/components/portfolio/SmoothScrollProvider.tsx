@@ -54,12 +54,37 @@ export default function SmoothScrollProvider({
       });
     };
 
+    const alignHashBelowNavigation = () => {
+      const id = window.location.hash.slice(1);
+      if (!id) return;
+      const target = document.getElementById(id);
+      const navigation = document.querySelector<HTMLElement>(".site-nav");
+      if (!target || !navigation) return;
+      const minimumTop = navigation.getBoundingClientRect().bottom + 10;
+      const targetTop = target.getBoundingClientRect().top;
+      if (targetTop < minimumTop) {
+        window.scrollBy({ top: targetTop - minimumTop, behavior: "auto" });
+      }
+    };
+
+    const scheduleHashAlignment = () => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(alignHashBelowNavigation);
+      });
+      window.setTimeout(alignHashBelowNavigation, 120);
+    };
+
     emitNativeScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("pageshow", scheduleHashAlignment);
+    window.addEventListener("popstate", scheduleHashAlignment);
+    if (window.location.hash) scheduleHashAlignment();
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("pageshow", scheduleHashAlignment);
+      window.removeEventListener("popstate", scheduleHashAlignment);
       if (previousInlineScrollBehavior) {
         root.style.scrollBehavior = previousInlineScrollBehavior;
       } else {
