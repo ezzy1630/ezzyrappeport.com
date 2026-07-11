@@ -240,7 +240,7 @@ void main() {
   vec3 ripple = rippleField(uv, pointer, time);
   float basinDistance = titleBasinDistance(uv, time, mobilePoster);
   float basin = (1.0 - smoothstep(-0.008, 0.010, basinDistance)) * u_nameOpacity;
-  float basinRim = ridge(basinDistance, mix(0.007, 0.005, mobilePoster)) * u_nameOpacity;
+  float basinRim = ridge(basinDistance, mix(0.008, 0.011, mobilePoster)) * u_nameOpacity;
   float basinInner = ridge(basinDistance + 0.018, 0.020) * basin;
   float basinLowerRight = basinRim * smoothstep(-0.75, 0.85, dot(
     normalize(uv - mix(vec2(0.30, 0.28), vec2(0.42, 0.23), mobilePoster) + vec2(0.0001)),
@@ -285,11 +285,11 @@ void main() {
   vec2 basinWarp = (simulationNormal.xy * 0.010 + ripple.z * vec2(0.28, 0.13)) * basin;
   vec3 basinRefraction = texture(u_texture, clamp(flowUv + basinWarp, vec2(0.0), vec2(1.0))).rgb;
   base = mix(base, basinRefraction, basin * 0.28);
-  base = mix(base, vec3(0.80, 0.89, 0.985), basin * 0.105);
+  base = mix(base, vec3(0.80, 0.89, 0.985), basin * mix(0.105, 0.20, mobilePoster));
   base *= 1.0 - basin * 0.012;
   base -= vec3(0.018, 0.032, 0.065) * basin * 0.20;
-  base -= vec3(0.036, 0.055, 0.10) * basinInner * 0.30;
-  base += white * basinRim * 0.74 + blue * basinLowerRight * 0.24;
+  base -= vec3(0.036, 0.055, 0.10) * basinInner * mix(0.30, 0.48, mobilePoster);
+  base += white * basinRim * mix(0.74, 0.94, mobilePoster) + blue * basinLowerRight * mix(0.24, 0.42, mobilePoster);
   vec2 membraneWarp = targetNormal * targetScale *
     (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
   vec3 membraneRefraction = texture(
@@ -312,7 +312,8 @@ void main() {
   float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
   float thickness = titleField.g * u_nameOpacity;
   float bevel = titleField.b * u_nameOpacity;
-  float letterMask = smoothstep(-0.025, 0.035, signedDistance) * u_nameOpacity;
+  float titleAA = max(fwidth(signedDistance) * 1.35, mix(0.016, 0.024, mobilePoster));
+  float letterMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
   float interior = smoothstep(0.08, 0.68, thickness);
   vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
   float sdRight = texture(u_text, uv + vec2(textPixel.x, 0.0)).r;
@@ -321,7 +322,7 @@ void main() {
   float sdDown = texture(u_text, uv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   float edge = smoothstep(0.015, 0.10, length(coverageGradient)) + bevel * 0.34;
-  float outerRim = ridge(signedDistance + 0.02, 0.065) * (1.0 - letterMask * 0.42);
+  float outerRim = ridge(signedDistance + 0.02, mix(0.075, 0.095, mobilePoster)) * (1.0 - letterMask * 0.42);
   float innerRim = bevel * letterMask;
   float dome = pow(max(thickness, 0.0), 0.62);
   vec3 normal = normalize(vec3(-coverageGradient * (3.4 + dome * 2.1) + simulationNormal.xy * 0.11, 1.0));
@@ -360,7 +361,7 @@ void main() {
   letterBody -= vec3(0.060, 0.090, 0.17) * innerRim * (1.0 - edgeLight) * 0.78;
 
   float cavity = dome * (0.25 + innerRim * 0.75);
-  letterBody -= vec3(0.16, 0.22, 0.36) * cavity;
+  letterBody -= vec3(0.16, 0.22, 0.36) * cavity * mix(1.0, 1.34, mobilePoster);
 
   vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
     sin(time * 0.32 + uv.y * 9.0),
@@ -387,7 +388,7 @@ void main() {
   vec3 color = base;
   // The body stays optically clear; shape comes from refraction and the
   // directional inner/outer rims, not an opaque blue fill.
-  color = mix(color, letterBody, letterMask * 0.62);
+  color = mix(color, letterBody, letterMask * mix(0.62, 0.78, mobilePoster));
   color = mix(color, blue, letterMask * 0.018);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color = mix(color, bevelColor, clamp(outerRim * 0.64 + innerRim * 0.48, 0.0, 0.72));
