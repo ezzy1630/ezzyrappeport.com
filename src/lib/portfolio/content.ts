@@ -239,11 +239,10 @@ const projectRecords: Project[] = [
     cautionLabel: "Demo / Research / Not for Clinical Use",
     media: {
       cover: {
-        src: "/projects/nexarad/research-overview.webp",
-        alt: "NexaRad research overview for evidence-linked chest X-ray review",
-        width: 1200,
-        height: 630,
-        caption: "Public demo posture with explicit non-clinical boundaries.",
+        src: "/projects/nexarad/app-icon.png",
+        alt: "NexaRad radiology app icon",
+        width: 512,
+        height: 512,
       },
       gallery: [
         {
@@ -346,10 +345,10 @@ const projectRecords: Project[] = [
     proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
     media: {
       cover: {
-        src: "/projects/argyph/banner.svg",
-        alt: "Argyph code intelligence banner",
-        width: 900,
-        height: 260,
+        src: "/projects/argyph/social-card.png",
+        alt: "Argyph local-first code intelligence social card",
+        width: 1280,
+        height: 640,
       },
     },
     verifiedLinks: [
@@ -380,10 +379,10 @@ const projectRecords: Project[] = [
     proof: "1,080+ curated problems · 171 unit tests · 15 end-to-end tests",
     media: {
       cover: {
-        src: "/projects/mathpilot/app-icon.svg",
-        alt: "MathPilot app icon",
-        width: 1024,
-        height: 1024,
+        src: "/projects/mathpilot/mathpilot-icon-512.png",
+        alt: "MathPilot integral and mastery-curve app icon",
+        width: 512,
+        height: 512,
       },
     },
     verifiedLinks: [

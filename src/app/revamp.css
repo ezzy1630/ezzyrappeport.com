@@ -93,6 +93,12 @@ body {
   pointer-events: none;
 }
 
+/* The shader owns the moving basin. Keep the CSS membrane exclusively as the
+   still/low-power fallback so its surface never veils the live glyph cavities. */
+.fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-stage::before {
+  opacity: 0;
+}
+
 .content-layer {
   position: relative;
   z-index: var(--rv-layer-content);
@@ -120,8 +126,11 @@ body {
   align-items: center;
   width: 100%;
   padding: clamp(1.25rem, 2.4vw, 1.5rem) clamp(1.2rem, 2.9vw, 3rem);
-  background: linear-gradient(180deg, rgba(247,250,255,0.46), rgba(247,250,255,0.16) 72%, transparent);
-  backdrop-filter: none;
+  border-bottom: 1px solid rgba(112, 139, 177, 0.16);
+  background: linear-gradient(180deg, rgba(249, 252, 255, 0.94), rgba(244, 249, 255, 0.86));
+  box-shadow: 0 10px 30px -28px rgba(13, 37, 76, 0.72);
+  -webkit-backdrop-filter: blur(18px) saturate(1.08);
+  backdrop-filter: blur(18px) saturate(1.08);
   pointer-events: none;
   animation: rv-nav-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -263,6 +272,7 @@ body {
 
 .hero-name-stage {
   position: relative;
+  isolation: isolate;
   top: auto;
   left: auto;
   z-index: 2;
@@ -272,8 +282,37 @@ body {
   transform: none;
 }
 
+/* One connected water volume surrounds both title lines. The deliberately
+   asymmetric silhouette echoes the broad, joined lobes of the reference;
+   individual glyphs are cavities inside this membrane, never separate tiles. */
+.hero-name-stage::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  top: clamp(-0.75rem, -0.6vw, -0.35rem);
+  right: auto;
+  bottom: clamp(-1rem, -0.9vw, -0.5rem);
+  left: -1.4%;
+  width: 69%;
+  border: 1px solid rgba(253, 255, 255, 0.88);
+  border-radius: 28% 44% 31% 38% / 34% 26% 39% 31%;
+  background:
+    radial-gradient(ellipse at 16% 9%, rgba(255, 255, 255, 0.58), transparent 35%),
+    radial-gradient(ellipse at 84% 91%, rgba(42, 119, 219, 0.20), transparent 42%),
+    linear-gradient(145deg, rgba(241, 249, 255, 0.23), rgba(187, 220, 255, 0.10) 58%, rgba(83, 151, 232, 0.17));
+  box-shadow:
+    inset 3px 3px 7px rgba(255, 255, 255, 0.78),
+    inset -8px -10px 16px rgba(34, 94, 174, 0.12),
+    0 11px 20px -17px rgba(24, 62, 117, 0.68),
+    0 1px 0 rgba(255, 255, 255, 0.88);
+  clip-path: polygon(0.5% 2%, 48% 0, 53% 8%, 58% 32%, 96% 34%, 100% 50%, 97% 92%, 88% 100%, 4% 97%, 0 82%);
+  opacity: 0.84;
+  pointer-events: none;
+}
+
 .hero-name-fallback {
   position: relative;
+  z-index: 1;
   isolation: isolate;
   display: flex;
   flex-direction: column;
@@ -300,9 +339,9 @@ body {
   font-size: clamp(5rem, 11vw, 10.8rem);
   line-height: 0.76;
   letter-spacing: -0.04em;
-  color: rgba(229, 241, 255, 0.18);
-  -webkit-text-fill-color: rgba(229, 241, 255, 0.18);
-  -webkit-text-stroke: clamp(1px, 0.09vw, 1.7px) rgba(250, 253, 255, 0.94);
+  color: rgba(233, 245, 255, 0.07);
+  -webkit-text-fill-color: rgba(233, 245, 255, 0.07);
+  -webkit-text-stroke: clamp(1px, 0.09vw, 1.7px) rgba(54, 111, 185, 0.54);
   text-shadow:
     -1px -1px 0 rgba(255, 255, 255, 0.92),
     0 3px 8px rgba(25, 65, 120, 0.14),
@@ -315,24 +354,7 @@ body {
 .hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(5rem, 11vw, 10.8rem); }
 
 .hero-name-fallback__word::before,
-.hero-name-fallback__word::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.hero-name-fallback__word::before {
-  z-index: -1;
-  color: transparent;
-  -webkit-text-stroke: clamp(7px, 0.72vw, 12px) rgba(177, 211, 247, 0.18);
-  filter: blur(6px) saturate(1.08);
-}
-
-.hero-name-fallback__word::after {
-  color: transparent;
-  -webkit-text-stroke: clamp(0.7px, 0.07vw, 1.25px) rgba(45, 103, 178, 0.34);
-}
+.hero-name-fallback__word::after { content: none; }
 
 .hero-copy-row {
   position: relative;
@@ -1101,6 +1123,7 @@ body {
   .mobile-navigation__contact { display: flex; justify-content: space-between; margin-top: auto; padding: 1rem 1.15rem; border-radius: 999px; background: var(--rv-ink); color: white; }
   .hero-shell { display: flex; flex-direction: column; gap: 1.75rem; min-height: 0; padding: 6.5rem 1.1rem 1.5rem; overflow: visible; }
   .hero-name-stage { order: 0; width: 100%; margin: 0 0 2.5rem; }
+  .hero-name-stage::before { width: 100%; left: -1%; }
   .hero-name-fallback { align-items: flex-start; gap: 0.25rem; padding-left: 0; text-align: left; }
   .hero-name-fallback__line { text-align: left; }
   .hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(3.5rem, 18vw, 5.5rem); }
@@ -1192,6 +1215,14 @@ body {
   html { scroll-behavior: auto; }
   .site-nav { animation: none; }
   *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .site-nav {
+    background: rgb(247, 251, 255);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
 }
 
 /* Cohesive pearl ending: one compact dark liquid-glass contact basin. */

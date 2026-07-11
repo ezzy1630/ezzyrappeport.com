@@ -191,16 +191,21 @@ float textCov(vec2 uv) {
   return texture(u_text, uv).a * u_nameOpacity;
 }
 
-float titleBasin(vec2 uv, float time) {
-  // The red channel is already a signed-distance field. Expanding that field
-  // directly produces one smooth, text-derived membrane; offset max-sampling
-  // created blocky copies of each glyph at desktop widths.
-  float field = texture(u_text, uv).r;
-  float breathing = (
-    sin(uv.x * 15.0 + uv.y * 9.0 + time * 0.13) +
-    sin(uv.x * 7.0 - uv.y * 13.0 - time * 0.09)
-  ) * 0.009;
-  return smoothstep(0.035 + breathing, 0.39, field) * u_nameOpacity;
+float titleBasinDistance(vec2 uv, float time, float mobilePoster) {
+  // Two overlapping organic lobes form one continuous membrane around both
+  // lines. The title SDF is used later only for the inset glyph cavities.
+  vec2 upperCenter = mix(vec2(0.245, 0.195), vec2(0.285, 0.175), mobilePoster);
+  vec2 lowerCenter = mix(vec2(0.345, 0.365), vec2(0.470, 0.285), mobilePoster);
+  vec2 upperSize = mix(vec2(0.225, 0.125), vec2(0.275, 0.090), mobilePoster);
+  vec2 lowerSize = mix(vec2(0.325, 0.125), vec2(0.455, 0.082), mobilePoster);
+  float upper = roundedBox(uv - upperCenter, upperSize, mix(0.060, 0.046, mobilePoster));
+  float lower = roundedBox(uv - lowerCenter, lowerSize, mix(0.065, 0.042, mobilePoster));
+  float joined = min(upper, lower);
+  float edgeBreath = (
+    sin(uv.x * 13.0 + uv.y * 7.0 + time * 0.11) +
+    sin(uv.x * 5.0 - uv.y * 11.0 - time * 0.07)
+  ) * 0.0028;
+  return joined + edgeBreath;
 }
 
 void main() {
@@ -233,8 +238,14 @@ void main() {
     targetScale
   );
   vec3 ripple = rippleField(uv, pointer, time);
-  float basin = titleBasin(uv, time);
-  float basinRim = ridge(basin - 0.5, 0.32);
+  float basinDistance = titleBasinDistance(uv, time, mobilePoster);
+  float basin = (1.0 - smoothstep(-0.008, 0.010, basinDistance)) * u_nameOpacity;
+  float basinRim = ridge(basinDistance, mix(0.007, 0.005, mobilePoster)) * u_nameOpacity;
+  float basinInner = ridge(basinDistance + 0.018, 0.020) * basin;
+  float basinLowerRight = basinRim * smoothstep(-0.75, 0.85, dot(
+    normalize(uv - mix(vec2(0.30, 0.28), vec2(0.42, 0.23), mobilePoster) + vec2(0.0001)),
+    normalize(vec2(0.72, 0.68))
+  ));
   float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
 
   float flowA = 0.5 + 0.25 * (
@@ -271,10 +282,14 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
-  base *= 1.0 - basin * 0.018;
-  base -= vec3(0.020, 0.036, 0.072) * basin * 0.18;
-  base -= vec3(0.040, 0.060, 0.11) * basinRim * 0.24;
-  base += white * basinRim * 0.46 + blue * basinRim * 0.045;
+  vec2 basinWarp = (simulationNormal.xy * 0.010 + ripple.z * vec2(0.28, 0.13)) * basin;
+  vec3 basinRefraction = texture(u_texture, clamp(flowUv + basinWarp, vec2(0.0), vec2(1.0))).rgb;
+  base = mix(base, basinRefraction, basin * 0.28);
+  base = mix(base, vec3(0.80, 0.89, 0.985), basin * 0.105);
+  base *= 1.0 - basin * 0.012;
+  base -= vec3(0.018, 0.032, 0.065) * basin * 0.20;
+  base -= vec3(0.036, 0.055, 0.10) * basinInner * 0.30;
+  base += white * basinRim * 0.74 + blue * basinLowerRight * 0.24;
   vec2 membraneWarp = targetNormal * targetScale *
     (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
   vec3 membraneRefraction = texture(
@@ -345,7 +360,7 @@ void main() {
   letterBody -= vec3(0.060, 0.090, 0.17) * innerRim * (1.0 - edgeLight) * 0.78;
 
   float cavity = dome * (0.25 + innerRim * 0.75);
-  letterBody -= vec3(0.13, 0.18, 0.30) * cavity;
+  letterBody -= vec3(0.16, 0.22, 0.36) * cavity;
 
   vec2 bubbleWarp = simulationNormal.xy * 0.009 + vec2(
     sin(time * 0.32 + uv.y * 9.0),
@@ -372,7 +387,7 @@ void main() {
   vec3 color = base;
   // The body stays optically clear; shape comes from refraction and the
   // directional inner/outer rims, not an opaque blue fill.
-  color = mix(color, letterBody, letterMask * 0.42);
+  color = mix(color, letterBody, letterMask * 0.62);
   color = mix(color, blue, letterMask * 0.018);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color = mix(color, bevelColor, clamp(outerRim * 0.64 + innerRim * 0.48, 0.0, 0.72));
