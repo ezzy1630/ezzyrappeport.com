@@ -241,11 +241,7 @@ export function createHeroTextCanvas(
       ? top + sz * 0.82
       : top + size * lines[0].scale * 0.76 + size * 0.84;
     ctx.save();
-    if (index === 0 && !isMobilePoster) {
-      ctx.translate(titleLeft, 0);
-      ctx.scale(1.09, 1);
-    }
-    const drawLeft = index === 0 && !isMobilePoster ? 0 : titleLeft;
+    const drawLeft = titleLeft;
     ctx.font = `900 ${sz}px ${fontStack}`;
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = Math.max(1.5, sz * 0.012);

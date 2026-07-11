@@ -54,24 +54,44 @@ export default function SmoothScrollProvider({
       });
     };
 
+    const alignmentTimers: number[] = [];
+    let alignmentFrame = 0;
+    let cancelled = false;
+
     const alignHashBelowNavigation = () => {
+      if (cancelled) return;
       const id = window.location.hash.slice(1);
       if (!id) return;
       const target = document.getElementById(id);
       const navigation = document.querySelector<HTMLElement>(".site-nav");
       if (!target || !navigation) return;
-      const minimumTop = navigation.getBoundingClientRect().bottom + 10;
+      const minimumTop = navigation.getBoundingClientRect().bottom + 12;
       const targetTop = target.getBoundingClientRect().top;
-      if (targetTop < minimumTop) {
-        window.scrollBy({ top: targetTop - minimumTop, behavior: "auto" });
+      if (Math.abs(targetTop - minimumTop) > 2) {
+        const absoluteTop = window.scrollY + targetTop - minimumTop;
+        // `behavior: auto` inherits the root's CSS `scroll-behavior`; briefly
+        // force an instant correction so repeated layout checks cannot compete
+        // with a still-running smooth anchor animation.
+        const inlineBehavior = root.style.scrollBehavior;
+        root.style.scrollBehavior = "auto";
+        window.scrollTo({ top: Math.max(0, absoluteTop), behavior: "auto" });
+        if (inlineBehavior) root.style.scrollBehavior = inlineBehavior;
+        else root.style.removeProperty("scroll-behavior");
       }
     };
 
+    const afterStableLayout = () => {
+      if (cancelled) return;
+      alignmentFrame = window.requestAnimationFrame(alignHashBelowNavigation);
+      alignmentTimers.push(window.setTimeout(alignHashBelowNavigation, 250));
+      alignmentTimers.push(window.setTimeout(alignHashBelowNavigation, 700));
+    };
+
     const scheduleInitialHashAlignment = () => {
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(alignHashBelowNavigation);
-      });
-      window.setTimeout(alignHashBelowNavigation, 120);
+      void document.fonts.ready.then(afterStableLayout);
+      if (document.readyState !== "complete") {
+        window.addEventListener("load", afterStableLayout, { once: true });
+      }
     };
 
     emitNativeScroll();
@@ -82,7 +102,11 @@ export default function SmoothScrollProvider({
     if (window.location.hash) scheduleInitialHashAlignment();
 
     return () => {
+      cancelled = true;
       if (frame) window.cancelAnimationFrame(frame);
+      if (alignmentFrame) window.cancelAnimationFrame(alignmentFrame);
+      alignmentTimers.forEach((timer) => window.clearTimeout(timer));
+      window.removeEventListener("load", afterStableLayout);
       window.removeEventListener("scroll", onScroll);
       if (previousInlineScrollBehavior) {
         root.style.scrollBehavior = previousInlineScrollBehavior;

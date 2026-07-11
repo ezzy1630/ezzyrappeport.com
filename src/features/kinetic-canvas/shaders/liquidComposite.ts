@@ -200,7 +200,7 @@ float titleBasin(vec2 uv, float time) {
     sin(uv.x * 15.0 + uv.y * 9.0 + time * 0.13) +
     sin(uv.x * 7.0 - uv.y * 13.0 - time * 0.09)
   ) * 0.009;
-  return smoothstep(0.045 + breathing, 0.46, field) * u_nameOpacity;
+  return smoothstep(0.035 + breathing, 0.39, field) * u_nameOpacity;
 }
 
 void main() {
@@ -271,10 +271,10 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.11 * (0.65 + causticMask) * (1.0 - basin * 0.34);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
-  base *= 1.0 - basin * 0.045;
-  base -= vec3(0.030, 0.052, 0.10) * basin * 0.28;
-  base -= vec3(0.052, 0.078, 0.14) * basinRim * 0.38;
-  base += white * basinRim * 0.38 + blue * basinRim * 0.08;
+  base *= 1.0 - basin * 0.018;
+  base -= vec3(0.020, 0.036, 0.072) * basin * 0.18;
+  base -= vec3(0.040, 0.060, 0.11) * basinRim * 0.24;
+  base += white * basinRim * 0.46 + blue * basinRim * 0.045;
   vec2 membraneWarp = targetNormal * targetScale *
     (4.0 + targetLayer.a * 4.5) / max(u_resolution, vec2(1.0));
   vec3 membraneRefraction = texture(
@@ -324,10 +324,10 @@ void main() {
   // Keep the background legible through the title while giving the membrane
   // enough blue density to remain visible over the brightest parts of the
   // water photograph. Most of the material still comes from refraction.
-  vec3 letterBody = mix(refracted, vec3(0.42, 0.66, 0.91), 0.12);
-  letterBody += vec3(0.012, 0.026, 0.070) * dome;
-  letterBody -= vec3(0.060, 0.092, 0.17) * interior * smoothstep(0.30, 1.0, uv.y);
-  letterBody -= vec3(0.085, 0.105, 0.145) * mobilePoster * 0.42;
+  vec3 letterBody = mix(refracted, vec3(0.68, 0.82, 0.96), 0.045);
+  letterBody += vec3(0.008, 0.017, 0.040) * dome;
+  letterBody -= vec3(0.038, 0.060, 0.12) * interior * smoothstep(0.30, 1.0, uv.y);
+  letterBody -= vec3(0.050, 0.068, 0.10) * mobilePoster * 0.28;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   vec3 lowerRightLight = normalize(vec3(0.56, 0.50, 0.62));
@@ -341,8 +341,8 @@ void main() {
   );
   vec3 bevelColor = mix(vec3(0.35, 0.55, 0.82), vec3(0.92, 0.975, 1.0), edgeLight);
   letterBody += vec3(1.0, 0.995, 0.99) * topLeftHighlight * 0.72;
-  letterBody += blue * lowerRightBlue * 0.32;
-  letterBody -= vec3(0.075, 0.115, 0.22) * innerRim * (1.0 - edgeLight) * 0.92;
+  letterBody += blue * lowerRightBlue * 0.18;
+  letterBody -= vec3(0.060, 0.090, 0.17) * innerRim * (1.0 - edgeLight) * 0.78;
 
   float cavity = dome * (0.25 + innerRim * 0.75);
   letterBody -= vec3(0.13, 0.18, 0.30) * cavity;
@@ -372,13 +372,13 @@ void main() {
   vec3 color = base;
   // The body stays optically clear; shape comes from refraction and the
   // directional inner/outer rims, not an opaque blue fill.
-  color = mix(color, letterBody, letterMask * 0.58);
-  color = mix(color, blue, letterMask * 0.055);
+  color = mix(color, letterBody, letterMask * 0.42);
+  color = mix(color, blue, letterMask * 0.018);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color = mix(color, bevelColor, clamp(outerRim * 0.72 + innerRim * 0.74, 0.0, 0.86));
-  color += vec3(0.92, 0.97, 1.0) * outerRim * (0.28 + mobilePoster * 0.05);
-  color += blue * outerRim * 0.11;
-  color += vec3(0.88, 0.95, 1.0) * innerRim * 0.52;
+  color = mix(color, bevelColor, clamp(outerRim * 0.64 + innerRim * 0.48, 0.0, 0.72));
+  color += vec3(0.92, 0.97, 1.0) * outerRim * (0.36 + mobilePoster * 0.05);
+  color += blue * outerRim * 0.055;
+  color += vec3(0.88, 0.95, 1.0) * innerRim * 0.38;
   color -= vec3(0.06, 0.09, 0.17) * innerRim * (1.0 - edgeLight) * 0.55;
   color += blue * innerRim * lowerRightBlue * 0.14;
   float titleCaustic = pow(caustic, 2.35) * (innerRim * 0.9 + outerRim * 0.65);
