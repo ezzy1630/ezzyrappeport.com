@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import SmoothScrollProvider from "./SmoothScrollProvider";
 import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
+import { PortfolioMotionProvider } from "./PortfolioMotionContext";
 
 const FluidScene = dynamic(() => import("./FluidScene"), {
   ssr: false,
@@ -65,7 +66,13 @@ export default function PortfolioShell({
     });
   };
 
+  const motionState = useMemo(
+    () => ({ motionEnabled, reducedMotion: motionReduced }),
+    [motionEnabled, motionReduced],
+  );
+
   return (
+    <PortfolioMotionProvider value={motionState}>
       <SmoothScrollProvider reducedMotion={motionReduced}>
         <div id="top" className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}>
           <ErrorBoundary>
@@ -83,5 +90,6 @@ export default function PortfolioShell({
           {children}
         </div>
       </SmoothScrollProvider>
+    </PortfolioMotionProvider>
   );
 }

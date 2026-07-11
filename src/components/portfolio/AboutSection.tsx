@@ -1,4 +1,5 @@
 import { bio } from "@/lib/portfolio/content";
+import styles from "./AboutSection.module.css";
 
 const principles = [
   ["Systems over demos", "I care about the runtime, the failure modes, and the path from a promising prototype to dependable software."],
@@ -8,37 +9,37 @@ const principles = [
 
 export default function AboutSection() {
   return (
-    <section id="about" className="portfolio-section about-section" aria-labelledby="about-title">
-      <header className="section-heading section-heading--compact">
+    <section id="about" className={styles.section} aria-labelledby="about-title">
+      <header className={styles.header}>
         <div>
-          <p className="section-kicker">A working philosophy</p>
+          <p className={styles.kicker}>A working philosophy</p>
           <h2 id="about-title">Research taste. Production instincts.</h2>
         </div>
       </header>
 
-      <div className="about-layout">
+      <div className={styles.layout}>
         <blockquote>
           “I build at the intersection of engineering and intelligence—then stay
           for the hard part: making the system trustworthy, useful, and real.”
         </blockquote>
-        <div className="about-copy">
+        <div className={styles.copy}>
           {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-          <p className="about-signature">
+          <p className={styles.signature}>
             <span aria-hidden="true">ER</span>
             <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
           </p>
         </div>
       </div>
 
-      <div className="principles-grid" aria-label="Operating principles">
+      <ol className={styles.principles} aria-label="Operating principles">
         {principles.map(([title, description], index) => (
-          <article key={title}>
+          <li key={title}>
             <span>{String(index + 1).padStart(2, "0")}</span>
             <h3>{title}</h3>
             <p>{description}</p>
-          </article>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

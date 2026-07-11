@@ -1,104 +1,90 @@
 import Image from "next/image";
-import Link from "next/link";
 import { projects } from "@/lib/portfolio/content";
+import ProjectTransitionLink from "./ProjectTransitionLink";
+import styles from "./ProjectsSection.module.css";
 
 export default function ProjectsSection() {
   return (
-    <section id="projects" className="work-section" aria-labelledby="work-title">
-      <header className="work-header">
-        <div className="work-header__title-group">
-          <p className="work-header__label">Selected work</p>
+    <section id="projects" className={styles.section} aria-labelledby="work-title">
+      <header className={styles.header}>
+        <div>
+          <p className={styles.kicker}>Selected work / 05 projects</p>
           <h2 id="work-title">Systems with evidence behind them.</h2>
         </div>
-        <p className="work-header__intro">
-          Five products spanning agent security, research, education, medical
-          imaging, and hardware design. Every case study separates what works
-          today from what remains in progress.
+        <p className={styles.intro}>
+          A compact index of products across agent security, research,
+          education, medical imaging, and hardware design. Open any case study
+          for the full boundary between shipped, demonstrated, and pending.
         </p>
       </header>
 
-      <div className="work-list">
-        {projects.map((project, index) => (
-          <article
-            key={project.slug}
-            id={`project-${project.slug}`}
-            className={`work-item${index % 2 === 1 ? " work-item--reverse" : ""}`}
-          >
-            <figure className="work-item__media">
-              <Link
-                href={`/project/${project.slug}`}
-                className="work-item__cover"
-                aria-label={`View the ${project.title} case study`}
-              >
-                <Image
-                  src={project.media.cover.src}
-                  alt={project.media.cover.alt}
-                  width={project.media.cover.width}
-                  height={project.media.cover.height}
-                  sizes="(max-width: 720px) 100vw, (max-width: 1100px) 88vw, 58vw"
-                  unoptimized={project.media.cover.src.endsWith(".svg")}
-                />
-              </Link>
-              {project.media.cover.caption ? (
-                <figcaption className="work-item__caption">
-                  {project.media.cover.caption}
-                </figcaption>
-              ) : null}
-            </figure>
-
-            <div className="work-item__content">
-              <div className="work-item__meta">
-                <span className="work-item__index">
-                  {project.index} / <time dateTime={project.year}>{project.year}</time>
-                </span>
-                <span className="work-item__status">{project.status}</span>
+      <ol className={styles.index}>
+        {projects.map((project) => (
+          <li key={project.slug}>
+            <article
+              id={`project-${project.slug}`}
+              className={styles.row}
+            >
+              <div className={styles.rail} aria-hidden="true">
+                <span>{project.index}</span>
+                <span>{project.year}</span>
               </div>
 
-              <div className="work-item__heading">
-                <h3 className="work-item__title">{project.title}</h3>
-                <p className="work-item__subtitle">{project.subtitle}</p>
-              </div>
-
-              <p className="work-item__tagline">{project.tagline}</p>
-
-              <dl className="work-item__facts">
-                <div className="work-item__fact">
-                  <dt>Role</dt>
-                  <dd>{project.role}</dd>
-                </div>
-                <div className="work-item__fact">
-                  <dt>Proof</dt>
-                  <dd>{project.proof}</dd>
-                </div>
-              </dl>
-
-              {project.cautionLabel ? (
-                <p className="work-item__caution">{project.cautionLabel}</p>
-              ) : null}
-
-              <div className="work-item__actions">
-                <Link
+              <figure className={styles.media} data-project={project.slug}>
+                <ProjectTransitionLink
                   href={`/project/${project.slug}`}
-                  className="work-item__link work-item__link--primary"
+                  className={styles.mediaLink}
+                  aria-label={`View the ${project.title} case study`}
+                  transitionName={`project-${project.slug}`}
                 >
-                  View case study <span aria-hidden="true">↗</span>
-                </Link>
-                {project.verifiedLinks.map((link) => (
+                  <Image
+                    src={project.media.cover.src}
+                    alt={project.media.cover.alt}
+                    width={project.media.cover.width}
+                    height={project.media.cover.height}
+                    sizes="(max-width: 680px) 28vw, 15vw"
+                    className={styles.mediaImage}
+                    unoptimized={project.media.cover.src.endsWith(".svg")}
+                  />
+                </ProjectTransitionLink>
+              </figure>
+
+              <div className={styles.content}>
+                <div className={styles.meta}>
+                  <span>{project.status}</span>
+                  {project.cautionLabel ? <span>{project.cautionLabel}</span> : null}
+                </div>
+                <div className={styles.heading}>
+                  <h3>{project.title}</h3>
+                  <p>{project.subtitle}</p>
+                </div>
+                <p className={styles.tagline}>{project.tagline}</p>
+                <div className={styles.details}>
+                  <p><span>Role</span>{project.role}</p>
+                  <p><span>Proof</span>{project.proof}</p>
+                </div>
+              </div>
+
+              <div className={styles.actions}>
+                <ProjectTransitionLink href={`/project/${project.slug}`} className={styles.primaryAction}>
+                  Case study <span aria-hidden="true">↗</span>
+                </ProjectTransitionLink>
+                {project.verifiedLinks.slice(0, 1).map((link) => (
                   <a
                     key={`${project.slug}-${link.href}`}
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="work-item__link"
+                    className={styles.secondaryAction}
                   >
                     {link.label} <span aria-hidden="true">↗</span>
                   </a>
                 ))}
               </div>
-            </div>
-          </article>
+            </article>
+          </li>
         ))}
-      </div>
+      </ol>
     </section>
   );
 }

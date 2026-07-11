@@ -11,6 +11,8 @@ import {
   emitLiquidRipple,
   emitLiquidTarget,
 } from "@/lib/portfolio/liquid-interaction";
+import { navigateWithProjectTransition } from "@/lib/portfolio/project-transition";
+import { usePortfolioMotion } from "./PortfolioMotionContext";
 
 type LiquidGlassCardProps = {
   project: Pick<Project, "slug" | "title" | "subtitle" | "index" | "status">;
@@ -20,20 +22,6 @@ type LiquidGlassCardProps = {
 };
 
 export type LiquidCardGeometryRegistrar = (measure: () => void) => () => void;
-
-const heroSubtitles: Partial<Record<Project["slug"], string>> = {
-  monkeyclaw: "Multi-Agent Security System",
-  velox: "Agent-First Browser",
-  flowe: "Intelligent Student App",
-  nexarad: "Medical Imaging AI",
-};
-
-const heroStatuses: Partial<Record<Project["slug"], string>> = {
-  monkeyclaw: "PUBLIC DEMO",
-  velox: "PUBLIC ALPHA",
-  flowe: "PRIVATE BUILD",
-  nexarad: "ACQUIRED / RESEARCH",
-};
 
 export default function LiquidGlassCard({
   project,
@@ -47,7 +35,7 @@ export default function LiquidGlassCard({
   const hoverTargetRef = useRef(0);
   const pointerFrameRef = useRef(0);
   const pendingPointerRef = useRef<{ x: number; y: number } | null>(null);
-  const displaySubtitle = heroSubtitles[project.slug] ?? project.subtitle;
+  const { motionEnabled } = usePortfolioMotion();
   const targetId = `card-${project.slug}`;
   const material = PERSONALITY_PRESETS[personality];
 
@@ -143,12 +131,12 @@ export default function LiquidGlassCard({
 
   const onClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    if (!("startViewTransition" in document)) return;
     event.preventDefault();
-    const transitionDocument = document as Document & {
-      startViewTransition: (callback: () => void) => void;
-    };
-    transitionDocument.startViewTransition(() => router.push(`/project/${project.slug}`));
+    const href = `/project/${project.slug}`;
+    navigateWithProjectTransition({
+      motionEnabled,
+      navigate: () => router.push(href),
+    });
   };
 
   const onPointerDown = () => {
@@ -168,18 +156,17 @@ export default function LiquidGlassCard({
       onFocus={onFocus}
       onBlur={onBlur}
       onClick={onClick}
-      style={{ viewTransitionName: `project-${project.slug}` }}
       data-cursor="hover"
-      aria-label={`Open ${project.title}: ${displaySubtitle}`}
+      aria-label={`Open ${project.title}: ${project.subtitle}`}
     >
       <span className="liquid-glass-surface" aria-hidden="true" />
       <div className="liquid-glass-content">
         <span className="liquid-glass-meta">
           <span className="liquid-glass-index">{project.index}</span>
-          <span className="liquid-glass-status">{heroStatuses[project.slug] ?? project.status.toUpperCase()}</span>
+          <span className="liquid-glass-status">{project.status.toUpperCase()}</span>
         </span>
         <h3 className="liquid-glass-title">{project.title}</h3>
-        <p className="liquid-glass-subtitle">{displaySubtitle}</p>
+        <p className="liquid-glass-subtitle">{project.subtitle}</p>
       </div>
       <span className="liquid-glass-arrow" aria-hidden="true">
         <ArrowUpRight className="liquid-glass-arrow-icon" strokeWidth={2.2} />

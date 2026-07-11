@@ -8,7 +8,6 @@ import ProjectsSection from "@/components/portfolio/ProjectsSection";
 import ExperienceSection from "@/components/portfolio/ExperienceSection";
 import AboutSection from "@/components/portfolio/AboutSection";
 import ContactSection from "@/components/portfolio/ContactSection";
-import SectionAnchors from "@/components/portfolio/SectionAnchors";
 import { projects } from "@/lib/portfolio/content";
 
 function ProjectListFallback() {
@@ -36,13 +35,6 @@ export default function Home() {
     <PortfolioShell heroName>
       <div className="content-layer">
         <section aria-labelledby="portfolio-title" className="hero-shell">
-          <div className="hero-scroll-cue" aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-          </div>
-
           <div className="hero-name-stage">
             <HeroName />
           </div>
@@ -57,8 +49,6 @@ export default function Home() {
               <ProjectGrid />
             </ErrorBoundary>
           </div>
-
-          <SectionAnchors />
         </section>
 
         <main>
