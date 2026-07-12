@@ -113,6 +113,7 @@ precision highp float;
 uniform int u_pass;
 uniform vec2 u_resolution;
 uniform vec4 u_pointer;
+uniform vec2 u_pointerVelocity;
 uniform vec4 u_ripples[8];
 uniform vec4 u_scroll;
 uniform float u_time;
@@ -163,6 +164,7 @@ void main() {
   vec2 uv = v_uv;
   vec2 e = texel();
   vec2 pointer = u_pointer.xy;
+  vec2 pointerVelocity = u_pointerVelocity;
   float text = texture(u_text, uv).a;
   vec2 textGrad = vec2(
     texture(u_text, uv + vec2(e.x, 0.0)).a - texture(u_text, uv - vec2(e.x, 0.0)).a,
@@ -250,8 +252,23 @@ void main() {
     float lap = hL + hR + hB + hT - 4.0 * h.r;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
-    float next = (h.r * 2.0 - h.g + lap * 0.42) * 0.986 + pulse * 0.18 + edge * 0.002;
-    next *= 1.0 - obstacle * 0.32;
+    vec2 fromPointer = uv - pointer;
+    float pointerDistance = length(fromPointer);
+    vec2 velocityDirection = normalize(pointerVelocity + vec2(0.00001));
+    float directionalTrail = exp(-pointerDistance * 7.5)
+      * dot(normalize(fromPointer + vec2(0.00001)), velocityDirection)
+      * min(length(pointerVelocity) * 5.0, 1.0)
+      * u_pointer.z;
+    float edgePressure = exp(-pointerDistance * 8.5) * edge * u_pointer.z;
+    float ambientSurface = sin(uv.x * 19.0 + u_time * 0.72)
+      * cos(uv.y * 15.0 - u_time * 0.58) * 0.00042;
+    float next = (h.r * 2.0 - h.g + lap * 0.47) * 0.992
+      + pulse * 0.30
+      + directionalTrail * 0.075
+      + edgePressure * 0.038
+      + edge * 0.0035
+      + ambientSurface;
+    next *= 1.0 - obstacle * 0.18;
     outColor = vec4(next, h.r, blue, 1.0);
     return;
   }
@@ -347,6 +364,7 @@ export function startFluidRenderer(
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
   const simResolutionLocation = gl.getUniformLocation(simProgram, "u_resolution");
   const simPointerLocation = gl.getUniformLocation(simProgram, "u_pointer");
+  const simPointerVelocityLocation = gl.getUniformLocation(simProgram, "u_pointerVelocity");
   const simTimeLocation = gl.getUniformLocation(simProgram, "u_time");
   const simDeltaLocation = gl.getUniformLocation(simProgram, "u_delta");
   const simScrollLocation = gl.getUniformLocation(simProgram, "u_scroll");
@@ -486,6 +504,11 @@ export function startFluidRenderer(
       1 - pointer.y / Math.max(height, 1),
       pointer.energy,
       pointer.vy / Math.max(height, 1),
+    );
+    gl.uniform2f(
+      simPointerVelocityLocation,
+      pointer.vx / Math.max(width, 1),
+      -pointer.vy / Math.max(height, 1),
     );
     gl.uniform1f(simTimeLocation, t);
     gl.uniform1f(simDeltaLocation, delta);
@@ -656,7 +679,6 @@ export function startFluidRenderer(
       frame = 0;
       return; // single static frame; the name still renders
     }
-    const physics = getPhysics();
     const compositeFps = quality.targetFps;
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;

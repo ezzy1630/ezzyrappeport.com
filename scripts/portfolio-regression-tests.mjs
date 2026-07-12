@@ -54,11 +54,11 @@ const tests = [
     assert.equal(downgradeQualityTier("balanced"), "low");
     assert.equal(downgradeQualityTier("low"), "low");
   }],
-  ["Movement wakes are throttled and clamped", () => {
+  ["Movement wakes stay responsive, throttled, and clamped", () => {
     assert.equal(resolveMovementSplat({ distance: 10, now: 1000, lastAt: 0 }), null);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.3);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1100, lastAt: 1000 }), null);
-    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.17555555555555555) < 1e-12);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.52);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1080, lastAt: 1000 }), null);
+    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.25142857142857145) < 1e-12);
   }],
   ["Every ordered project has one media presentation", () => {
     const presentationBlock = contentSource.match(/export const projectMediaPresentation = \{([\s\S]*?)\n\} satisfies Record/)?.[1] ?? "";
