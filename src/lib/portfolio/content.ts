@@ -1,6 +1,6 @@
 import { portfolioIdentity } from "./identity";
 
-type ProjectCardPersonality =
+export type ProjectSlug =
   | "monkeyclaw"
   | "etch"
   | "flowe"
@@ -38,7 +38,7 @@ export type ProjectLink = {
 };
 
 export type Project = {
-  slug: string;
+  slug: ProjectSlug;
   index: string;
   title: string;
   subtitle: string;
@@ -51,7 +51,7 @@ export type Project = {
   year: string;
   role: string;
   accent: "blue-strong" | "blue-medium" | "blue-low" | "blue-flow";
-  personality: ProjectCardPersonality;
+  personality: ProjectSlug;
   status: string;
   proof: string;
   cautionLabel?: string;
@@ -401,7 +401,7 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
   },
 ];
 
-const projectMediaPresentation: Record<string, ProjectMediaPresentation> = {
+export const projectMediaPresentation = {
   monkeyclaw: {
     aspectRatio: "1 / 1",
     fit: "contain",
@@ -458,14 +458,16 @@ const projectMediaPresentation: Record<string, ProjectMediaPresentation> = {
     offsetY: "-3%",
     wellColor: "#eaf1f7",
   },
-};
+} satisfies Record<ProjectSlug, ProjectMediaPresentation>;
 
-const projectOrder = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
+export const projectOrder: ProjectSlug[] = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
 
 export const projects: Project[] = projectOrder.map((slug) => {
   const project = projectRecords.find((candidate) => candidate.slug === slug);
   if (!project) throw new Error(`Missing portfolio project: ${slug}`);
-  return { ...project, mediaPresentation: projectMediaPresentation[slug] };
+  const mediaPresentation = projectMediaPresentation[slug];
+  if (!mediaPresentation) throw new Error(`Missing media presentation: ${slug}`);
+  return { ...project, mediaPresentation };
 });
 
 export const bio = {

@@ -160,10 +160,10 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  // Keep the background legible through the title while giving the membrane
-  // enough blue density to remain visible over the brightest parts of the
-  // water photograph. Most of the material still comes from refraction.
-  vec3 letterBody = mix(refracted, vec3(0.36, 0.56, 0.82), 0.18);
+  // Keep the background legible through the glyphs while adding enough blue
+  // density on narrow screens that the live title does not become a watermark.
+  vec3 titleTint = mix(vec3(0.36, 0.56, 0.82), vec3(0.20, 0.37, 0.68), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, mix(0.18, 0.34, mobilePoster));
   letterBody += vec3(0.010, 0.022, 0.055) * dome;
   letterBody -= vec3(0.038, 0.060, 0.12) * interior * smoothstep(0.30, 1.0, uv.y);
   letterBody -= vec3(0.050, 0.068, 0.10) * mobilePoster * 0.28;
@@ -176,7 +176,7 @@ void main() {
   vec3 color = base;
   // The body stays optically clear; shape comes from refraction and one soft
   // directional highlight derived from each glyph's signed-distance field.
-  color = mix(color, letterBody, letterMask * mix(0.78, 0.86, mobilePoster));
+  color = mix(color, letterBody, letterMask * mix(0.78, 0.92, mobilePoster));
   color = mix(color, blue, letterMask * 0.018);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color += white * innerBevel * 0.13;

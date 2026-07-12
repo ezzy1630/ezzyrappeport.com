@@ -84,9 +84,9 @@ body {
   mix-blend-mode: normal;
 }
 
-/* The canvas owns the hero title once its text mask is ready. The DOM title
-   remains in place as an accessible and low-power fallback, but never stacks
-   a second glass treatment over the shader material. */
+/* Desktop hands title rendering to the glyph material once its mask is ready.
+   Mobile keeps a restrained DOM fill over the live field so narrow screens do
+   not trade legibility for refraction. */
 .fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
   opacity: 0;
   visibility: hidden;
@@ -122,10 +122,8 @@ body {
   min-height: 4.75rem;
   padding: 0.7rem clamp(1.2rem, 2.9vw, 3rem);
   border: 0;
-  background: linear-gradient(180deg, rgba(250, 253, 255, 0.62), rgba(250, 253, 255, 0));
+  background: transparent;
   box-shadow: none;
-  -webkit-backdrop-filter: blur(8px) saturate(1.04);
-  backdrop-filter: blur(8px) saturate(1.04);
   pointer-events: none;
   animation: rv-nav-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -389,7 +387,6 @@ body {
   box-shadow: none;
   font-size: 0.82rem;
   font-weight: 560;
-  box-shadow: 0 1px 0 white inset, 0 16px 30px -26px rgba(14, 38, 76, 0.48);
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, box-shadow 220ms ease;
 }
 
@@ -403,7 +400,7 @@ body {
 .hero-intro__cta-icon {
   width: 1.05rem;
   height: 1.05rem;
-  color: var(--rv-ink);
+  color: currentColor;
   transition: transform 220ms ease;
 }
 
@@ -425,7 +422,7 @@ body {
   box-shadow: none;
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
-  transition: background-color 240ms ease;
+  transition: background 240ms ease;
 }
 
 .location-capsule:hover {
@@ -1079,14 +1076,15 @@ body {
   .hero-name-stage { order: 0; width: calc(100vw - 2rem); margin: 0 0 1.1rem; }
   .hero-name-fallback { align-items: flex-start; gap: 0.18rem; padding-left: 0; text-align: left; }
   .hero-name-fallback__line { text-align: left; }
-  .hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(3.2rem, 17vw, 5.5rem); }
-  .hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(2.35rem, 11.7vw, 4rem); }
+  .fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback { opacity: 1; visibility: visible; }
+  .hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(3.8rem, 19vw, 5.8rem); }
+  .hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(3rem, 15vw, 4.25rem); }
   .hero-name-fallback__word {
     line-height: 0.81;
     letter-spacing: -0.035em;
     white-space: nowrap;
-    color: rgba(92, 133, 190, 0.42);
-    -webkit-text-fill-color: rgba(92, 133, 190, 0.42);
+    color: rgba(71, 113, 177, 0.34);
+    -webkit-text-fill-color: rgba(71, 113, 177, 0.34);
     -webkit-text-stroke: 0;
     text-shadow: 0 1px 0 rgba(255,255,255,0.78), 0 4px 12px rgba(21,62,123,0.13);
   }

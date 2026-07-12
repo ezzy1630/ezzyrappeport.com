@@ -1,5 +1,7 @@
 "use client";
 
+import { resolveMovementSplat } from "./interaction-policy";
+
 export type LiquidPointerState = {
   x: number;
   y: number;
@@ -177,8 +179,12 @@ function applyPendingPointer() {
   // distance and elapsed-time gates keep it legible as water motion instead
   // of turning a fast sweep into a particle trail.
   const movementDistance = Math.hypot(dx, dy);
-  if (movementDistance > 18 && now - lastMovementSplatAt > 160) {
-    const movementIntensity = Math.min(0.3, Math.max(0.12, 0.12 + movementDistance / 360));
+  const movementIntensity = resolveMovementSplat({
+    distance: movementDistance,
+    now,
+    lastAt: lastMovementSplatAt,
+  });
+  if (movementIntensity !== null) {
     pushRipple(x, y, movementIntensity, now);
     lastMovementSplatAt = now;
   }

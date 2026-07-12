@@ -196,9 +196,9 @@ export function createHeroTextCanvas(
       const horizontalScale = line.width / Math.max(1, measuredWidth);
       const verticalScale = line.height / Math.max(1, glyphHeight);
 
-    ctx.save();
-    ctx.translate(line.x, line.y);
-    ctx.scale(horizontalScale, verticalScale);
+      ctx.save();
+      ctx.translate(line.x, line.y);
+      ctx.scale(horizontalScale, verticalScale);
       ctx.fillStyle = "#ffffff";
       drawTrackedText(ctx, text, 0, metrics.actualBoundingBoxAscent, fontSize, fontStack, tracking);
       ctx.restore();

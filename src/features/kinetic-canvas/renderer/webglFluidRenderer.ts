@@ -13,6 +13,12 @@ import {
   resolveKineticQuality,
   type KineticQuality,
 } from "./quality";
+import {
+  pixelBudgetedDpr,
+  QUALITY_PIXEL_BUDGETS,
+  downgradeQualityTier,
+  TARGET_FPS_BY_TIER,
+} from "./quality-policy";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 
 type DoubleBuffer = {
@@ -264,31 +270,34 @@ void main() {
 }
 `;
 
-function lowerQualityProfile(current: KineticQuality): KineticQuality {
-  if (current.tier === "high") {
+function lowerQualityProfile(current: KineticQuality, width: number, height: number): KineticQuality {
+  const nextTier = downgradeQualityTier(current.tier);
+  if (nextTier === "balanced") {
     return {
       ...current,
       tier: "balanced",
-      dpr: Math.min(current.dpr, 1.25),
+      dpr: pixelBudgetedDpr(width, height, current.dpr, 1.25, QUALITY_PIXEL_BUDGETS.balanced),
       maxDpr: 1.25,
-      targetFps: 30,
+      targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 192,
       textMaxDim: 1536,
       activeRipples: 6,
       renderScale: 0.9,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.balanced,
     };
   }
-  if (current.tier === "balanced") {
+  if (nextTier === "low") {
     return {
       ...current,
       tier: "low",
-      dpr: Math.min(current.dpr, 1),
+      dpr: pixelBudgetedDpr(width, height, current.dpr, 1, QUALITY_PIXEL_BUDGETS.low),
       maxDpr: 1,
-      targetFps: 24,
+      targetFps: TARGET_FPS_BY_TIER.low,
       simWidth: 128,
       textMaxDim: 1024,
       activeRipples: 4,
       renderScale: 0.8,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.low,
     };
   }
   return current;
@@ -535,8 +544,9 @@ export function startFluidRenderer(
     // Keep the glyph field sharp independently from the simulation grid. The
     // fluid solver stays pixel-budgeted while the title gets a stable raster
     // floor on high-DPR and balanced displays.
-    const textFloor = Math.round(width * (quality.tier === "high" ? 1.5 : 1.25));
-    const texW = Math.min(Math.max(canvas.width, textFloor), quality.textMaxDim);
+    const textScale = quality.tier === "high" ? 1.6 : quality.tier === "balanced" ? 1.45 : 1.25;
+    const textFloor = Math.round(width * textScale);
+    const texW = Math.min(Math.max(960, textFloor), quality.textMaxDim);
     const texH = Math.max(1, Math.round(texW * (height / Math.max(width, 1))));
     const scaleX = texW / Math.max(width, 1);
     const scaleY = texH / Math.max(height, 1);
@@ -565,7 +575,7 @@ export function startFluidRenderer(
     height = window.innerHeight;
     quality = resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
     for (let level = 0; level < adaptiveLevel; level++) {
-      quality = lowerQualityProfile(quality);
+      quality = lowerQualityProfile(quality, width, height);
     }
     if (quality.tier === "static") return;
     canvas.dataset.quality = quality.tier;
@@ -647,8 +657,7 @@ export function startFluidRenderer(
       return; // single static frame; the name still renders
     }
     const physics = getPhysics();
-    const interactive = physics.pointer.active;
-    const compositeFps = interactive ? (quality.tier === "low" ? 30 : 45) : quality.targetFps;
+    const compositeFps = quality.targetFps;
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {

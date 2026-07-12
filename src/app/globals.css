@@ -418,50 +418,6 @@ body {
   background: linear-gradient(90deg, rgba(0, 102, 255, 0.24), rgba(255, 255, 255, 0.78), transparent);
 }
 
-.location-capsule {
-  isolation: isolate;
-  overflow: hidden;
-  background:
-    linear-gradient(124deg, rgba(255, 255, 255, 0.58), rgba(238, 247, 255, 0.28) 42%, rgba(255, 255, 255, 0.18)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(214, 231, 248, 0.14));
-  backdrop-filter: blur(22px) saturate(128%) contrast(1.06);
-  -webkit-backdrop-filter: blur(22px) saturate(128%) contrast(1.06);
-  border: 1px solid rgba(255, 255, 255, 0.74);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.98) inset,
-    0 -1px 0 rgba(18, 80, 154, 0.12) inset,
-    0 -18px 30px rgba(0, 102, 255, 0.038) inset,
-    0 20px 42px -34px rgba(8, 36, 82, 0.50);
-}
-
-.location-capsule::before,
-.location-capsule::after {
-  content: "";
-  position: absolute;
-  pointer-events: none;
-  z-index: -1;
-}
-
-.location-capsule::before {
-  inset: 7px 8px;
-  border-radius: 25px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.70) inset,
-    0 -9px 18px rgba(0, 102, 255, 0.035) inset;
-}
-
-.location-capsule::after {
-  left: 13%;
-  right: 13%;
-  bottom: 8px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.88), rgba(0, 102, 255, 0.32), transparent);
-  opacity: 0.86;
-  filter: blur(0.25px);
-}
-
 .location-capsule__status {
   background: rgba(0, 102, 255, 0.96);
   box-shadow:
