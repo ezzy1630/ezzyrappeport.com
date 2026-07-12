@@ -84,12 +84,12 @@ body {
   mix-blend-mode: normal;
 }
 
-/* Desktop hands title rendering to the glyph material once its mask is ready.
-   Mobile keeps a restrained DOM fill over the live field so narrow screens do
-   not trade legibility for refraction. */
+/* Keep a crisp, translucent shell over the live glyph material. The WebGL
+   layer supplies refraction and water interaction; this per-glyph skin adds
+   the molded plastic rim and highlights that remain legible in bright water. */
 .fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 0.92;
+  visibility: visible;
   pointer-events: none;
 }
 
