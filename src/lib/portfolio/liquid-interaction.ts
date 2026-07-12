@@ -168,7 +168,7 @@ function applyPendingPointer() {
   state.pointer.vy += (dy / dt - state.pointer.vy) * velocityResponse;
   state.pointer.speed = speed;
   state.pointer.active = true;
-  const trailEnergy = Math.min(0.82, Math.max(0.24, 0.22 + speed * 0.14));
+  const trailEnergy = Math.min(0.58, Math.max(0.16, 0.14 + speed * 0.1));
   state.pointer.energy = Math.max(state.pointer.energy, trailEnergy);
   state.pointer.time = now;
 
@@ -232,7 +232,7 @@ function tick(now: number) {
     state.pointer.active = false;
   }
   const targetEnergy = state.pointer.active
-    ? Math.min(0.82, Math.max(0.24, 0.22 + state.pointer.speed * 0.14))
+    ? Math.min(0.58, Math.max(0.16, 0.14 + state.pointer.speed * 0.1))
     : 0;
   const energyResponse = 1 - Math.exp(-(state.pointer.active ? 7.5 : 5.5) * tickDelta);
   state.pointer.energy += (targetEnergy - state.pointer.energy) * energyResponse;
