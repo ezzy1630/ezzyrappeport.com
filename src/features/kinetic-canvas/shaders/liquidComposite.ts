@@ -16,7 +16,6 @@ uniform float u_energy;
 uniform vec2 u_pointer;
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
-uniform vec2 u_textResolution;
 uniform sampler2D u_normalField;
 uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
@@ -130,10 +129,10 @@ void main() {
 
   // Each glyph is a clear, water-filled volume: a thick optical wall around a
   // transparent refractive core, with light and shadow derived from its SDF.
-  // Keep the signed-distance field in screen space. Warping the mask itself
-  // makes neighboring texels cross over each other, which produced the
-  // cellular seams inside the large title.
-  vec2 titleUv = uv;
+  vec2 titleUv = uv
+    + simulationNormal.xy * (0.006 + abs(simulationHeight) * 0.018)
+    + ripple.z * vec2(0.16, 0.07)
+    + lensOffset * 0.18;
   vec4 titleField = texture(u_text, clamp(titleUv, vec2(0.0), vec2(1.0)));
   float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
   float thickness = titleField.g * u_nameOpacity;
@@ -150,18 +149,18 @@ void main() {
   float depthField = texture(u_text, clamp(titleUv + vec2(0.006, -0.010), vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
   float depthMask = smoothstep(-titleAA, titleAA, depthField) * u_nameOpacity;
   float extrusion = max(depthMask - letterMask, 0.0);
-  vec2 textPixel = 1.0 / max(u_textResolution, vec2(1.0));
+  vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
   float sdRight = texture(u_text, titleUv + vec2(textPixel.x, 0.0)).r;
   float sdLeft = texture(u_text, titleUv - vec2(textPixel.x, 0.0)).r;
   float sdUp = texture(u_text, titleUv + vec2(0.0, textPixel.y)).r;
   float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   float dome = pow(max(thickness, 0.0), 0.48);
-  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.035, 0.82));
+  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.14, 0.82));
 
-  vec2 sampleWarp = ripple.z * vec2(0.12, 0.06) + simulationNormal.xy * 0.006 + lensOffset * 0.12;
-  vec2 refraction = uv + sampleWarp + normal.xy * (0.006 + glassWall * 0.010) * letterMask;
-  vec2 chroma = normal.xy * (0.0008 + glassWall * 0.0010);
+  vec2 sampleWarp = ripple.z * vec2(0.72, 0.34) + simulationNormal.xy * 0.026 + lensOffset * 0.62;
+  vec2 refraction = uv + sampleWarp + normal.xy * (0.017 + glassWall * 0.026) * letterMask;
+  vec2 chroma = normal.xy * (0.0014 + glassWall * 0.0018);
   vec3 refracted = vec3(
     texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
     texture(u_texture, clamp(refraction, vec2(0.0), vec2(1.0))).g * 0.99,
@@ -181,7 +180,7 @@ void main() {
   letterBody += white * directionalHighlight * (0.26 + glassWall * 0.64);
   letterBody += white * fresnel * glassWall * 0.32;
   letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
-  letterBody += blue * simulationObstacle.g * 0.024 * interior;
+  letterBody += blue * (simulationObstacle.g * 0.055 + caustic * 0.028) * interior;
 
   vec3 color = base;
   color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;
@@ -191,10 +190,12 @@ void main() {
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color += white * innerBevel * 0.25;
   color += white * edgeRim * 0.29;
-  color += white * outerMeniscus * 0.22;
+  color += white * outerMeniscus * 0.38;
   color -= vec3(0.035, 0.075, 0.15) * innerMeniscus * 0.22;
   color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
   color += blue * glassWall * 0.032;
+  float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
+  color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
   color += white * ripple.y * 0.24 + blue * ripple.x * 0.18;
   color += white * simulationHeight * 0.08;
   color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;
