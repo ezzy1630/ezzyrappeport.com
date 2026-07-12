@@ -14,6 +14,9 @@ export const QUALITY_PIXEL_BUDGETS: Record<Exclude<KineticQualityTier, "static">
   low: 1_500_000,
 };
 
+/** A bounded safety floor for very large CSS viewports; normal viewports stay at DPR 1+. */
+export const MIN_PIXEL_BUDGET_DPR = 0.7;
+
 export type QualitySignals = {
   coarsePointer: boolean;
   saveData: boolean;
@@ -56,5 +59,6 @@ export function pixelBudgetedDpr(
 ) {
   const cssPixels = Math.max(1, width) * Math.max(1, height);
   const budgetDpr = Math.sqrt(Math.max(1, pixelBudget) / cssPixels);
-  return Math.max(1, Math.min(requestedDpr || 1, maxDpr, budgetDpr));
+  const floor = cssPixels > pixelBudget ? MIN_PIXEL_BUDGET_DPR : 1;
+  return Math.max(floor, Math.min(requestedDpr || 1, maxDpr, budgetDpr));
 }

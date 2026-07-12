@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { downgradeQualityTier, pixelBudgetedDpr, resolveQualityTier } from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
+import { downgradeQualityTier, MIN_PIXEL_BUDGET_DPR, pixelBudgetedDpr, resolveQualityTier } from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
 import { resolveMovementSplat } from "../src/lib/portfolio/interaction-policy.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
@@ -10,6 +10,12 @@ const tests = [
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
     assert.ok(dpr <= 1.11);
     assert.ok(2560 * dpr * 1440 * dpr <= 4_500_000 + 1);
+  }],
+  ["Oversized CSS viewports can use a sub-1 DPR", () => {
+    const dpr = pixelBudgetedDpr(3840, 2160, 2, 1.75, 4_500_000);
+    assert.ok(dpr < 1);
+    assert.ok(dpr >= MIN_PIXEL_BUDGET_DPR);
+    assert.ok(3840 * dpr * 2160 * dpr <= 4_500_000 + 1);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({

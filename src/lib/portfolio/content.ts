@@ -405,7 +405,7 @@ export const projectMediaPresentation = {
   monkeyclaw: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.88",
+    scale: "1",
     position: "center",
     offsetY: "0%",
     wellColor: "#dceceb",
@@ -413,7 +413,7 @@ export const projectMediaPresentation = {
   etch: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.78",
+    scale: "1",
     position: "center",
     offsetY: "0%",
     wellColor: "#030509",
@@ -421,7 +421,7 @@ export const projectMediaPresentation = {
   flowe: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.84",
+    scale: "1",
     position: "center",
     offsetY: "0%",
     wellColor: "#080b11",
@@ -429,7 +429,7 @@ export const projectMediaPresentation = {
   velox: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.78",
+    scale: "1",
     position: "center",
     offsetY: "0%",
     wellColor: "#ffffff",
@@ -445,7 +445,7 @@ export const projectMediaPresentation = {
   nexarad: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.86",
+    scale: "1",
     position: "center",
     offsetY: "0%",
     wellColor: "#e4eef4",
@@ -453,7 +453,7 @@ export const projectMediaPresentation = {
   mathpilot: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "0.89",
+    scale: "1",
     position: "center 44%",
     offsetY: "-3%",
     wellColor: "#eaf1f7",
