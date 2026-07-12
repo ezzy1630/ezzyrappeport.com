@@ -84,13 +84,8 @@ body {
   mix-blend-mode: normal;
 }
 
-/* Once WebGL is ready, the title belongs entirely to the simulated scene.
-   The DOM title is only the startup/static fallback and semantic layout mask. */
-.fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
+/* The DOM title is the single rendering path. WebGL stays below it as an
+   ambient material, so the name cannot disappear or inherit shader artifacts. */
 
 .content-layer {
   position: relative;
@@ -334,21 +329,21 @@ body {
 .hero-name-fallback__glyph {
   position: relative;
   display: inline-block;
-  color: rgba(81, 132, 198, 0.3);
-  -webkit-text-fill-color: rgba(81, 132, 198, 0.3);
+  color: rgba(58, 104, 155, 0.82);
+  -webkit-text-fill-color: rgba(58, 104, 155, 0.82);
   text-shadow:
-    0 -0.025em 0.035em rgba(255, 255, 255, 0.94),
-    0 0.045em 0.075em rgba(29, 83, 151, 0.22),
-    0 0.12em 0.24em rgba(31, 78, 137, 0.13);
-  filter: drop-shadow(0 0.015em 0 rgba(255, 255, 255, 0.82));
+    0 -0.02em 0.03em rgba(255, 255, 255, 0.72),
+    0 0.04em 0.065em rgba(29, 83, 151, 0.18),
+    0 0.10em 0.20em rgba(31, 78, 137, 0.10);
+  filter: drop-shadow(0 0.012em 0 rgba(255, 255, 255, 0.62));
 }
 
 .hero-name-fallback__glyph::before {
   content: attr(data-glyph);
   position: absolute;
   inset: 0;
-  color: rgba(255, 255, 255, 0.2);
-  -webkit-text-fill-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.16);
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.16);
   transform: translateY(-0.018em) scaleY(0.97);
   transform-origin: center;
   text-shadow: 0 -0.045em 0.06em rgba(255, 255, 255, 0.92);

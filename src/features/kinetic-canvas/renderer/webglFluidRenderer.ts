@@ -2,11 +2,6 @@
 
 import type { LiquidPhysics } from "../input/liquidInput";
 import {
-  clearHeroTextCanvasCache,
-  createHeroTextCanvas,
-  type HeroTextLineLayout,
-} from "../materials/heroTextMask";
-import {
   FLUID_TEXTURE_FALLBACK_SRC,
   FLUID_TEXTURE_SRC,
   RIPPLE_COUNT,
@@ -158,8 +153,6 @@ uniform sampler2D u_dye;
 uniform sampler2D u_height;
 uniform sampler2D u_pressure;
 uniform sampler2D u_divergence;
-uniform sampler2D u_obstacle;
-uniform sampler2D u_text;
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -209,19 +202,6 @@ void main() {
   vec2 e = texel();
   vec2 pointer = u_pointer.xy;
   vec2 pointerVelocity = u_pointerVelocity;
-  float text = texture(u_text, uv).a;
-  vec2 textGrad = vec2(
-    texture(u_text, uv + vec2(e.x, 0.0)).a - texture(u_text, uv - vec2(e.x, 0.0)).a,
-    texture(u_text, uv + vec2(0.0, e.y)).a - texture(u_text, uv - vec2(0.0, e.y)).a
-  );
-  float obstacle = clamp(text * 0.95, 0.0, 1.0);
-  float edge = clamp(length(textGrad) * 14.0, 0.0, 1.0);
-
-  if (u_pass == 0) {
-    outColor = vec4(obstacle, edge, text, 0.0);
-    return;
-  }
-
   if (u_pass == 1) {
     vec2 vel = decodeVelocity(texture(u_velocity, uv)) * 0.986;
     float blue = 0.0;
@@ -235,9 +215,6 @@ void main() {
     vel += u_pointer.zw * 0.00009;
     float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
     vel += vec2(0.0, -scrollImpulse * 0.018);
-    vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
-    vel += obstacleNormal * edge * (0.014 + abs(scrollImpulse) * 0.004);
-    vel *= 1.0 - obstacle * 0.92;
     outColor = encodeVelocity(vel);
     return;
   }
@@ -259,7 +236,7 @@ void main() {
     float pB = texture(u_pressure, uv - vec2(0.0, e.y)).r;
     float pT = texture(u_pressure, uv + vec2(0.0, e.y)).r;
     float p = (pL + pR + pB + pT - div) * 0.25;
-    outColor = vec4(mix(p, 0.5, obstacle), 0.0, 0.0, 1.0);
+    outColor = vec4(p, 0.0, 0.0, 1.0);
     return;
   }
 
@@ -270,7 +247,6 @@ void main() {
     float pB = texture(u_pressure, uv - vec2(0.0, e.y)).r;
     float pT = texture(u_pressure, uv + vec2(0.0, e.y)).r;
     vel -= vec2(pR - pL, pT - pB) * 0.22;
-    vel *= 1.0 - obstacle * 0.96;
     outColor = encodeVelocity(vel);
     return;
   }
@@ -282,7 +258,6 @@ void main() {
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
     dye.rgb += vec3(0.08, 0.44, 1.0) * blue * 0.18 + vec3(1.0) * abs(pulse) * 0.08;
-    dye.rgb += vec3(0.08, 0.42, 1.0) * edge * 0.018;
     outColor = vec4(clamp(dye.rgb, 0.0, 1.0), 1.0);
     return;
   }
@@ -305,7 +280,6 @@ void main() {
       * dot(normalize(fromPointer + vec2(0.00001)), velocityDirection)
       * min(length(pointerVelocity) * 5.0, 1.0)
       * u_pointer.z;
-    float edgePressure = exp(-pointerDistance * 8.5) * edge * u_pointer.z;
     float deltaScale = clamp(u_delta * 60.0, 0.5, 1.35);
     float ambientSurface = (
       sin(uv.x * 17.0 + uv.y * 7.0 + u_time * 0.58)
@@ -314,10 +288,7 @@ void main() {
     float next = (currentHeight * 2.0 - previousHeight + lap * (0.43 * deltaScale)) * pow(0.994, deltaScale)
       + pulse * 0.22 * deltaScale
       + directionalTrail * 0.035 * deltaScale
-      + edgePressure * 0.018 * deltaScale
-      + edge * 0.0025 * deltaScale
       + ambientSurface;
-    next *= 1.0 - obstacle * 0.18;
     next = clamp(next, -0.12, 0.12);
     outColor = vec4(encodeHeight(next), encodeHeight(currentHeight));
     return;
@@ -348,7 +319,6 @@ function lowerQualityProfile(current: KineticQuality, width: number, height: num
       maxDpr: 1.25,
       targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 224,
-      textMaxDim: 1536,
       activeRipples: 6,
       renderScale: 0.9,
       pixelBudget: QUALITY_PIXEL_BUDGETS.balanced,
@@ -362,7 +332,6 @@ function lowerQualityProfile(current: KineticQuality, width: number, height: num
       maxDpr: 1,
       targetFps: TARGET_FPS_BY_TIER.low,
       simWidth: 128,
-      textMaxDim: 1024,
       activeRipples: 4,
       renderScale: 0.8,
       pixelBudget: QUALITY_PIXEL_BUDGETS.low,
@@ -405,12 +374,9 @@ export function startFluidRenderer(
   const timeLocation = gl.getUniformLocation(program, "u_time");
   const energyLocation = gl.getUniformLocation(program, "u_energy");
   const pointerLocation = gl.getUniformLocation(program, "u_pointer");
-  const nameOpacityLocation = gl.getUniformLocation(program, "u_nameOpacity");
   const sceneIntensityLocation = gl.getUniformLocation(program, "u_sceneIntensity");
   const textureLocation = gl.getUniformLocation(program, "u_texture");
-  const textLocation = gl.getUniformLocation(program, "u_text");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
-  const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
   const simResolutionLocation = gl.getUniformLocation(simProgram, "u_resolution");
@@ -423,8 +389,6 @@ export function startFluidRenderer(
     gl.getUniformLocation(simProgram, `u_ripples[${i}]`),
   );
   const simHeightLocationRead = gl.getUniformLocation(simProgram, "u_height");
-  const simObstacleLocationRead = gl.getUniformLocation(simProgram, "u_obstacle");
-  const simTextLocationRead = gl.getUniformLocation(simProgram, "u_text");
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -462,16 +426,6 @@ export function startFluidRenderer(
   image.addEventListener("error", onFluidImageError);
   loadFluidImage(FLUID_TEXTURE_SRC);
 
-  // hero-name coverage texture
-  const textTexture = gl.createTexture();
-  gl.bindTexture(gl.TEXTURE_2D, textTexture);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 0]));
-
   let width = 0;
   let height = 0;
   let dpr = 1;
@@ -491,7 +445,6 @@ export function startFluidRenderer(
   let simWidth = 1;
   let simHeight = 1;
   let heightField: DoubleBuffer | null = null;
-  let obstacle: SingleBuffer | null = null;
   let normal: SingleBuffer | null = null;
 
   const renderInternalFormat = supportsFloatTargets ? gl.RGBA16F : gl.RGBA8;
@@ -509,19 +462,16 @@ export function startFluidRenderer(
     const textures = [
       heightField?.read,
       heightField?.write,
-      obstacle?.texture,
       normal?.texture,
     ];
     const fbos = [
       heightField?.readFbo,
       heightField?.writeFbo,
-      obstacle?.fbo,
       normal?.fbo,
     ];
     textures.forEach((tex) => tex && gl.deleteTexture(tex));
     fbos.forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
     heightField = null;
-    obstacle = null;
     normal = null;
   }
 
@@ -530,21 +480,18 @@ export function startFluidRenderer(
     simHeight = Math.max(96, Math.round(simWidth * (height / Math.max(width, 1))));
     disposeSimBuffers();
     let nextHeightField: DoubleBuffer | null = null;
-    let nextObstacle: SingleBuffer | null = null;
     let nextNormal: SingleBuffer | null = null;
     try {
       nextHeightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-      nextObstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
       nextNormal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     } catch (error) {
-      [nextHeightField?.read, nextHeightField?.write, nextObstacle?.texture, nextNormal?.texture]
+      [nextHeightField?.read, nextHeightField?.write, nextNormal?.texture]
         .forEach((texture) => texture && gl.deleteTexture(texture));
-      [nextHeightField?.readFbo, nextHeightField?.writeFbo, nextObstacle?.fbo, nextNormal?.fbo]
+      [nextHeightField?.readFbo, nextHeightField?.writeFbo, nextNormal?.fbo]
         .forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
       throw error;
     }
     heightField = nextHeightField;
-    obstacle = nextObstacle;
     normal = nextNormal;
 
     // Packed height values must not be interpolated byte-by-byte. Normals are
@@ -565,7 +512,6 @@ export function startFluidRenderer(
     const packedZeroLow = 128 / 255;
     clearBuffer(heightField.readFbo, packedZeroHigh, packedZeroLow, packedZeroHigh, packedZeroLow);
     clearBuffer(heightField.writeFbo, packedZeroHigh, packedZeroLow, packedZeroHigh, packedZeroLow);
-    clearBuffer(obstacle.fbo, 0, 0, 0);
     clearBuffer(normal.fbo, 0.5, 0.5, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
@@ -620,52 +566,17 @@ export function startFluidRenderer(
   }
 
   function updateSimulation(physics: LiquidPhysics, t: number) {
-    if (!heightField || !obstacle || !normal) return;
+    if (!heightField || !normal) return;
     const delta = lastSimTime > 0 ? Math.min(0.05, t - lastSimTime) : 1 / 60;
     lastSimTime = t;
     gl.useProgram(simProgram);
     setSimUniforms(physics, t, delta);
     bindTexture(2, heightField.read, simHeightLocationRead);
-    bindTexture(5, obstacle.texture, simObstacleLocationRead);
-    bindTexture(6, textTexture, simTextLocationRead);
-
-    drawSim(0, obstacle.fbo);
     drawSim(6, heightField.writeFbo);
     heightField.swap();
     bindTexture(2, heightField.read, simHeightLocationRead);
     drawSim(7, normal.fbo);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-  }
-
-  function regenerateText() {
-    if (!heroNameRef.current) return;
-    // Keep the glyph field sharp independently from the simulation grid. The
-    // fluid solver stays pixel-budgeted while the title gets a stable raster
-    // floor on high-DPR and balanced displays.
-    const textScale = quality.tier === "high" ? 1.6 : quality.tier === "balanced" ? 1.45 : 1.25;
-    const textFloor = Math.round(width * textScale);
-    const texW = Math.min(Math.max(960, textFloor), quality.textMaxDim);
-    const texH = Math.max(1, Math.round(texW * (height / Math.max(width, 1))));
-    const scaleX = texW / Math.max(width, 1);
-    const scaleY = texH / Math.max(height, 1);
-    const titleLayout = Array.from(
-      document.querySelectorAll<HTMLElement>(".hero-name-fallback__word"),
-    ).map<HeroTextLineLayout>((word) => {
-      const rect = word.getBoundingClientRect();
-      const style = getComputedStyle(word);
-      return {
-        x: rect.left * scaleX,
-        y: (rect.top + window.scrollY) * scaleY,
-        width: rect.width * scaleX,
-        height: rect.height * scaleY,
-        fontSize: Number.parseFloat(style.fontSize) * scaleY,
-        tracking: Number.parseFloat(style.letterSpacing) * scaleX,
-      };
-    });
-    const textCanvas = createHeroTextCanvas(texW, texH, titleLayout);
-    gl.bindTexture(gl.TEXTURE_2D, textTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
   }
 
   function configure() {
@@ -688,7 +599,6 @@ export function startFluidRenderer(
     }
     gl.viewport(0, 0, canvas.width, canvas.height);
     configureSim();
-    regenerateText();
   }
 
   function onResize() {
@@ -706,14 +616,6 @@ export function startFluidRenderer(
       updateSimulation(physics, t);
     }
     const pointer = physics.pointer;
-    const scrollY = heroNameRef.current ? window.scrollY : 9999;
-    const fadeStart = height * 0.14;
-    const fadeEnd = height * 0.56;
-    const fadeProgress = Math.min(1, Math.max(0, (scrollY - fadeStart) / Math.max(1, fadeEnd - fadeStart)));
-    const nameOpacity = heroNameRef.current ? 1 - fadeProgress * fadeProgress * (3 - 2 * fadeProgress) : 0;
-    // Keep the text field resident while it fades. Clearing and rebuilding the
-    // texture at a scroll threshold caused visible flashes and simulation gaps.
-
     gl.useProgram(program);
     gl.bindVertexArray(vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -721,19 +623,14 @@ export function startFluidRenderer(
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
     gl.uniform1i(textureLocation, 0);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, textTexture);
-    gl.uniform1i(textLocation, 1);
     gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
     gl.uniform1f(timeLocation, t);
     gl.uniform1f(energyLocation, pointer.energy);
-    gl.uniform1f(nameOpacityLocation, nameOpacity);
     gl.uniform1f(sceneIntensityLocation, heroNameRef.current ? 1 : 0);
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
-    if (heightField && normal && obstacle) {
+    if (heightField && normal) {
       bindTexture(5, normal.texture, simNormalLocation);
-      bindTexture(6, obstacle.texture, simObstacleLocation);
     }
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
@@ -842,19 +739,6 @@ export function startFluidRenderer(
     onReady?.();
   });
 
-  // Re-rasterize once the hero font has loaded; repaint a static frame in
-  // frozen mode so the real glyphs appear.
-  if (typeof document !== "undefined" && document.fonts?.status !== "loaded") {
-    document.fonts.ready
-      .then(() => {
-        if (disposed) return;
-        clearHeroTextCanvasCache();
-        regenerateText();
-        if (reducedMotionRef.current || staticModeRef.current) paint(0);
-      })
-      .catch(() => {});
-  }
-
   return () => {
     disposed = true;
     running = false;
@@ -869,7 +753,6 @@ export function startFluidRenderer(
     image.removeEventListener("error", onFluidImageError);
     image.src = "";
     gl.deleteTexture(texture);
-    gl.deleteTexture(textTexture);
     disposeSimBuffers();
     gl.deleteBuffer(positionBuffer);
     gl.deleteVertexArray(vao);
