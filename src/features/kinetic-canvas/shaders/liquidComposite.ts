@@ -131,30 +131,31 @@ void main() {
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
 
-  // One glyph material: low-depth refraction, a soft body, and one directional
-  // bevel derived from the fill-generated signed-distance field.
+  // Each glyph is a clear, water-filled volume: a thick optical wall around a
+  // transparent refractive core, with light and shadow derived from its SDF.
   vec4 titleField = texture(u_text, uv);
   float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
   float thickness = titleField.g * u_nameOpacity;
   float bevel = titleField.b * u_nameOpacity;
   float titleAA = max(fwidth(signedDistance) * 1.35, mix(0.016, 0.024, mobilePoster));
   float letterMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
-  float interior = smoothstep(0.08, 0.68, thickness);
+  float interior = smoothstep(0.18, 0.72, thickness);
   float innerBevel = bevel * letterMask;
-  float outerHalo = (smoothstep(-0.12, -0.018, signedDistance) - letterMask) * u_nameOpacity;
-  float edgeRim = smoothstep(0.02, 0.22, thickness) * (1.0 - smoothstep(0.22, 0.58, thickness)) * letterMask;
+  float outerHalo = (smoothstep(-0.075, -0.012, signedDistance) - letterMask) * u_nameOpacity;
+  float glassWall = (1.0 - smoothstep(0.08, 0.52, thickness)) * letterMask;
+  float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
   float sdRight = texture(u_text, uv + vec2(textPixel.x, 0.0)).r;
   float sdLeft = texture(u_text, uv - vec2(textPixel.x, 0.0)).r;
   float sdUp = texture(u_text, uv + vec2(0.0, textPixel.y)).r;
   float sdDown = texture(u_text, uv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
-  float dome = pow(max(thickness, 0.0), 0.62);
-  vec3 normal = normalize(vec3(-coverageGradient * (3.4 + dome * 2.1) + simulationNormal.xy * 0.11, 1.0));
+  float dome = pow(max(thickness, 0.0), 0.48);
+  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.14, 0.82));
 
   vec2 sampleWarp = ripple.z * vec2(0.55, 0.24) + simulationNormal.xy * 0.012 + lensOffset * 0.38;
-  vec2 refraction = uv + sampleWarp + normal.xy * 0.024 * letterMask;
-  vec2 chroma = normal.xy * 0.0015;
+  vec2 refraction = uv + sampleWarp + normal.xy * (0.017 + glassWall * 0.026) * letterMask;
+  vec2 chroma = normal.xy * (0.0014 + glassWall * 0.0018);
   vec3 refracted = vec3(
     texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
     texture(u_texture, clamp(refraction, vec2(0.0), vec2(1.0))).g * 0.99,
@@ -162,31 +163,27 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  // Keep the background legible through the glyphs while adding enough blue
-  // density on narrow screens that the live title does not become a watermark.
-  vec3 titleTint = mix(vec3(0.28, 0.50, 0.79), vec3(0.17, 0.34, 0.65), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, mix(0.26, 0.4, mobilePoster));
-  letterBody += vec3(0.010, 0.022, 0.055) * dome;
-  letterBody -= vec3(0.038, 0.060, 0.12) * interior * smoothstep(0.30, 1.0, uv.y);
-  letterBody -= vec3(0.050, 0.068, 0.10) * mobilePoster * 0.28;
+  vec3 titleTint = mix(vec3(0.31, 0.55, 0.88), vec3(0.20, 0.40, 0.75), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, 0.055 + glassWall * 0.24 + mobilePoster * 0.07);
+  letterBody += white * interior * 0.025;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
-  float directionalHighlight = pow(max(dot(normal, topLeftLight), 0.0), 7.0);
-  letterBody += vec3(1.0, 0.995, 0.99) * directionalHighlight * (0.24 + innerBevel * 0.32);
-  float domeGlint = pow(max(dot(normal, normalize(vec3(-0.34, -0.58, 0.74))), 0.0), 18.0);
-  letterBody += white * domeGlint * (0.34 + 0.28 * dome);
-  letterBody += blue * simulationObstacle.g * 0.045 * interior;
+  float lightFacing = max(dot(normal, topLeftLight), 0.0);
+  float directionalHighlight = pow(lightFacing, 8.0);
+  float oppositeShade = pow(max(dot(normal, -topLeftLight), 0.0), 3.0);
+  float fresnel = pow(1.0 - clamp(normal.z, 0.0, 1.0), 2.1);
+  letterBody += white * directionalHighlight * (0.26 + glassWall * 0.64);
+  letterBody += white * fresnel * glassWall * 0.32;
+  letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
+  letterBody += blue * (simulationObstacle.g * 0.055 + caustic * 0.028) * interior;
 
   vec3 color = base;
-  color -= vec3(0.035, 0.070, 0.13) * outerHalo * 0.52;
-  // The body stays optically clear; shape comes from refraction and one soft
-  // directional highlight derived from each glyph's signed-distance field.
-  color = mix(color, letterBody, letterMask * mix(0.78, 0.92, mobilePoster));
-  color = mix(color, blue, letterMask * 0.018);
+  color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
+  color = mix(color, letterBody, letterMask * mix(0.92, 0.96, mobilePoster));
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color += white * innerBevel * 0.21;
-  color += white * edgeRim * 0.15;
-  color += blue * edgeRim * 0.045;
+  color += white * innerBevel * 0.25;
+  color += white * edgeRim * 0.29;
+  color += blue * glassWall * 0.032;
   float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
   color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
   color += white * ripple.y * 0.24 + blue * ripple.x * 0.18;
