@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter_Tight } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { portfolioIdentity } from "@/lib/portfolio/identity";
 import "./globals.css";
 import "./revamp.css";
@@ -74,6 +75,7 @@ export default function RootLayout({
           }}
         />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
