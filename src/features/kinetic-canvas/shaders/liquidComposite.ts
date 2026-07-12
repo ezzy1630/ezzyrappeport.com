@@ -141,6 +141,8 @@ void main() {
   float letterMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
   float interior = smoothstep(0.08, 0.68, thickness);
   float innerBevel = bevel * letterMask;
+  float outerHalo = (smoothstep(-0.12, -0.018, signedDistance) - letterMask) * u_nameOpacity;
+  float edgeRim = smoothstep(0.02, 0.22, thickness) * (1.0 - smoothstep(0.22, 0.58, thickness)) * letterMask;
   vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
   float sdRight = texture(u_text, uv + vec2(textPixel.x, 0.0)).r;
   float sdLeft = texture(u_text, uv - vec2(textPixel.x, 0.0)).r;
@@ -162,8 +164,8 @@ void main() {
 
   // Keep the background legible through the glyphs while adding enough blue
   // density on narrow screens that the live title does not become a watermark.
-  vec3 titleTint = mix(vec3(0.36, 0.56, 0.82), vec3(0.20, 0.37, 0.68), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, mix(0.18, 0.34, mobilePoster));
+  vec3 titleTint = mix(vec3(0.28, 0.50, 0.79), vec3(0.17, 0.34, 0.65), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, mix(0.26, 0.4, mobilePoster));
   letterBody += vec3(0.010, 0.022, 0.055) * dome;
   letterBody -= vec3(0.038, 0.060, 0.12) * interior * smoothstep(0.30, 1.0, uv.y);
   letterBody -= vec3(0.050, 0.068, 0.10) * mobilePoster * 0.28;
@@ -171,17 +173,22 @@ void main() {
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float directionalHighlight = pow(max(dot(normal, topLeftLight), 0.0), 7.0);
   letterBody += vec3(1.0, 0.995, 0.99) * directionalHighlight * (0.24 + innerBevel * 0.32);
+  float domeGlint = pow(max(dot(normal, normalize(vec3(-0.34, -0.58, 0.74))), 0.0), 18.0);
+  letterBody += white * domeGlint * (0.34 + 0.28 * dome);
   letterBody += blue * simulationObstacle.g * 0.045 * interior;
 
   vec3 color = base;
+  color -= vec3(0.035, 0.070, 0.13) * outerHalo * 0.52;
   // The body stays optically clear; shape comes from refraction and one soft
   // directional highlight derived from each glyph's signed-distance field.
   color = mix(color, letterBody, letterMask * mix(0.78, 0.92, mobilePoster));
   color = mix(color, blue, letterMask * 0.018);
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color += white * innerBevel * 0.13;
-  float titleCaustic = pow(caustic, 2.2) * innerBevel * 0.35;
-  color += white * titleCaustic * 0.10 + blue * titleCaustic * 0.045;
+  color += white * innerBevel * 0.21;
+  color += white * edgeRim * 0.15;
+  color += blue * edgeRim * 0.045;
+  float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
+  color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
   color += white * ripple.y * 0.24 + blue * ripple.x * 0.18;
   color += white * simulationHeight * 0.08;
   color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;

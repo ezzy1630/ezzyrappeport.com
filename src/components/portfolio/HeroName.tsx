@@ -5,7 +5,17 @@ const [LINE_1, LINE_2] = portfolioIdentity.titleLines;
 function HeroLine({ text, className }: { text: string; className?: string }) {
   return (
     <span className={`hero-name-fallback__line ${className ?? ""}`}>
-      <span className="hero-name-fallback__word" data-text={text}>{text}</span>
+      <span className="hero-name-fallback__word" data-text={text}>
+        {[...text].map((glyph, index) => (
+          <span
+            className="hero-name-fallback__glyph"
+            data-glyph={glyph}
+            key={`${glyph}-${index}`}
+          >
+            {glyph}
+          </span>
+        ))}
+      </span>
     </span>
   );
 }
