@@ -51,7 +51,7 @@ type PhysicsSubscriber = (state: LiquidPhysics) => void;
 
 const RIPPLE_LIFETIME = 3.2;
 const MAX_RIPPLES = 16;
-const POINTER_WAKE_RADIUS = 220;
+const POINTER_WAKE_RADIUS = 260;
 const RIPPLE_SPEED = 155;
 
 const defaultX = typeof window !== "undefined" ? window.innerWidth * 0.62 : 0;
@@ -89,6 +89,7 @@ let raf = 0;
 let nextIdleRipple = 8;
 let lastInputTime = 0;
 let lastTickAt = 0;
+let lastMovementSplatAt = 0;
 let rootVarsKey = "";
 let pendingPointer: { x: number; y: number; time: number } | null = null;
 let runtimeVisible = true;
@@ -160,15 +161,27 @@ function applyPendingPointer() {
 
   state.pointer.x = x;
   state.pointer.y = y;
-  state.pointer.vx += (dx / dt - state.pointer.vx) * 0.25;
-  state.pointer.vy += (dy / dt - state.pointer.vy) * 0.25;
+  const velocityResponse = 1 - Math.exp(-10 * dt);
+  state.pointer.vx += (dx / dt - state.pointer.vx) * velocityResponse;
+  state.pointer.vy += (dy / dt - state.pointer.vy) * velocityResponse;
   state.pointer.speed = speed;
   state.pointer.active = true;
-  state.pointer.energy = Math.min(1.0, Math.max(state.pointer.energy, 0.14 + speed * 0.32));
+  const trailEnergy = Math.min(0.3, Math.max(0.12, 0.12 + speed * 0.045));
+  state.pointer.energy = Math.max(state.pointer.energy, trailEnergy);
   state.pointer.time = now;
 
   emitPointer();
   emitPhysics();
+
+  // Add an occasional low-energy wake to ordinary pointer travel. The
+  // distance and elapsed-time gates keep it legible as water motion instead
+  // of turning a fast sweep into a particle trail.
+  const movementDistance = Math.hypot(dx, dy);
+  if (movementDistance > 18 && now - lastMovementSplatAt > 160) {
+    const movementIntensity = Math.min(0.3, Math.max(0.12, 0.12 + movementDistance / 360));
+    pushRipple(x, y, movementIntensity, now);
+    lastMovementSplatAt = now;
+  }
 
 }
 
@@ -212,12 +225,14 @@ function tick(now: number) {
   if (state.pointer.active && now - lastInputTime > 620) {
     state.pointer.active = false;
   }
-  const targetEnergy = state.pointer.active ? 0.42 : 0;
-  const k = state.pointer.active ? 0.19 : 0.12;
-  state.pointer.energy += (targetEnergy - state.pointer.energy) * k;
-  state.pointer.speed *= state.pointer.active ? 0.84 : 0.68;
-  state.pointer.vx *= 0.82;
-  state.pointer.vy *= 0.82;
+  const targetEnergy = state.pointer.active
+    ? Math.min(0.3, Math.max(0.12, 0.12 + state.pointer.speed * 0.045))
+    : 0;
+  const energyResponse = 1 - Math.exp(-(state.pointer.active ? 7.5 : 5.5) * tickDelta);
+  state.pointer.energy += (targetEnergy - state.pointer.energy) * energyResponse;
+  state.pointer.speed *= Math.exp(-(state.pointer.active ? 5.5 : 8.5) * tickDelta);
+  state.pointer.vx *= Math.exp(-8.5 * tickDelta);
+  state.pointer.vy *= Math.exp(-8.5 * tickDelta);
   state.scroll.velocity *= Math.exp(-7.5 * tickDelta);
   state.scroll.depth +=
     (state.scroll.progress - state.scroll.depth) * (1 - Math.exp(-3.2 * tickDelta));
@@ -267,6 +282,7 @@ function start() {
   const now = performance.now();
   lastInputTime = now;
   lastTickAt = 0;
+  lastMovementSplatAt = 0;
   runtimeVisible = true;
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });

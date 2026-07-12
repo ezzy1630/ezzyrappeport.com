@@ -143,7 +143,6 @@ function drawTrackedText(
   fontSize: number,
   fontStack: string,
   tracking: number,
-  paint: "fill" | "stroke" = "fill",
 ) {
   const lineW = measureHeroLine(ctx, text, fontSize, fontStack, tracking);
   let x = startX;
@@ -153,8 +152,7 @@ function drawTrackedText(
 
   for (let i = 0; i < text.length; i++) {
     const glyph = text[i];
-    if (paint === "stroke") ctx.strokeText(glyph, x, baseline);
-    else ctx.fillText(glyph, x, baseline);
+    ctx.fillText(glyph, x, baseline);
     x += ctx.measureText(glyph).width + (i < text.length - 1 ? tracking : 0);
   }
 
@@ -198,12 +196,9 @@ export function createHeroTextCanvas(
       const horizontalScale = line.width / Math.max(1, measuredWidth);
       const verticalScale = line.height / Math.max(1, glyphHeight);
 
-      ctx.save();
-      ctx.translate(line.x, line.y);
-      ctx.scale(horizontalScale, verticalScale);
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = Math.max(1.5, fontSize * 0.012);
-      drawTrackedText(ctx, text, 0, metrics.actualBoundingBoxAscent, fontSize, fontStack, tracking, "stroke");
+    ctx.save();
+    ctx.translate(line.x, line.y);
+    ctx.scale(horizontalScale, verticalScale);
       ctx.fillStyle = "#ffffff";
       drawTrackedText(ctx, text, 0, metrics.actualBoundingBoxAscent, fontSize, fontStack, tracking);
       ctx.restore();
@@ -243,9 +238,6 @@ export function createHeroTextCanvas(
     ctx.save();
     const drawLeft = titleLeft;
     ctx.font = `900 ${sz}px ${fontStack}`;
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = Math.max(1.5, sz * 0.012);
-    drawTrackedText(ctx, line.text, drawLeft, baseline, sz, fontStack, tracking, "stroke");
     ctx.fillStyle = "#ffffff";
     drawTrackedText(ctx, line.text, drawLeft, baseline, sz, fontStack, tracking);
     ctx.restore();

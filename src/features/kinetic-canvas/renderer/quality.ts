@@ -2,7 +2,7 @@
 
 import { portfolioIdentity } from "@/lib/portfolio/identity";
 
-export const TARGET_FPS = 30;
+export const TARGET_FPS = 45;
 export const RIPPLE_COUNT = 8;
 export const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.webp";
 export const FLUID_TEXTURE_FALLBACK_SRC = "/assets/pearl-liquid-background.png";
@@ -50,19 +50,18 @@ export function resolveKineticQuality(
   const saveData = getConnectionSaveData();
   const memory = getDeviceMemory();
   const cores = navigator.hardwareConcurrency ?? 8;
-  const shortViewport = Math.min(window.innerWidth, window.innerHeight) < 720;
   const lowPower = saveData || memory <= 4 || cores <= 4;
 
   let tier: KineticQualityTier = "balanced";
   if (reducedMotion || staticModeOverride || saveData) {
     tier = "static";
-  } else if (coarsePointer || lowPower || shortViewport) {
+  } else if (coarsePointer || lowPower) {
     tier = "low";
   } else if (
-    window.devicePixelRatio >= 1.5 &&
+    !coarsePointer &&
     memory >= 8 &&
     cores >= 8 &&
-    window.innerWidth >= 1280
+    window.innerWidth >= 1024
   ) {
     tier = "high";
   }
@@ -70,11 +69,11 @@ export function resolveKineticQuality(
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {
       tier: "high",
-      dpr: Math.min(window.devicePixelRatio || 1, 1.25),
-      maxDpr: 1.25,
-      targetFps: 30,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.75),
+      maxDpr: 1.75,
+      targetFps: 45,
       simWidth: 256,
-      textMaxDim: 1280,
+      textMaxDim: 1800,
       pressureIterations: 0,
       activeRipples: 8,
       startDelayMs: 45,
@@ -82,11 +81,11 @@ export function resolveKineticQuality(
     },
     balanced: {
       tier: "balanced",
-      dpr: Math.min(window.devicePixelRatio || 1, 1),
-      maxDpr: 1,
-      targetFps: 24,
+      dpr: Math.min(window.devicePixelRatio || 1, 1.25),
+      maxDpr: 1.25,
+      targetFps: 30,
       simWidth: 192,
-      textMaxDim: 1080,
+      textMaxDim: 1536,
       pressureIterations: 0,
       activeRipples: 6,
       startDelayMs: 70,
@@ -94,15 +93,15 @@ export function resolveKineticQuality(
     },
     low: {
       tier: "low",
-      dpr: Math.min(window.devicePixelRatio || 1, 0.78),
-      maxDpr: 0.78,
-      targetFps: 18,
+      dpr: Math.min(window.devicePixelRatio || 1, 1),
+      maxDpr: 1,
+      targetFps: 24,
       simWidth: 128,
-      textMaxDim: 720,
+      textMaxDim: 1024,
       pressureIterations: 0,
       activeRipples: 4,
       startDelayMs: 110,
-      renderScale: 0.7,
+      renderScale: 0.8,
     },
     static: {
       tier: "static",
