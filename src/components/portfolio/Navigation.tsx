@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
 import styles from "./Navigation.module.css";
@@ -69,7 +70,16 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         className="site-nav-brand"
         aria-label={`${nav.fullName} — home`}
       >
-        <span className="site-nav-monogram">{nav.brand}</span>
+        <span className="site-nav-monogram">
+          <Image
+            src="/assets/ezzy-headshot.jpg"
+            alt=""
+            width={46}
+            height={46}
+            sizes="46px"
+            className="site-nav-headshot"
+          />
+        </span>
         <span className="site-nav-name">{nav.fullName}</span>
       </Link>
 

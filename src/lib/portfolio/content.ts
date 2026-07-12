@@ -1,6 +1,6 @@
 import { portfolioIdentity } from "./identity";
 
-type ProjectCardPersonality =
+export type ProjectSlug =
   | "monkeyclaw"
   | "etch"
   | "flowe"
@@ -22,6 +22,15 @@ export type ProjectMedia = {
   gallery?: ProjectMediaAsset[];
 };
 
+export type ProjectMediaPresentation = {
+  aspectRatio: string;
+  fit: "contain" | "cover";
+  scale: string;
+  position: string;
+  offsetY: string;
+  wellColor: string;
+};
+
 export type ProjectLink = {
   kind: "source" | "site" | "releases";
   label: string;
@@ -29,7 +38,7 @@ export type ProjectLink = {
 };
 
 export type Project = {
-  slug: string;
+  slug: ProjectSlug;
   index: string;
   title: string;
   subtitle: string;
@@ -42,15 +51,16 @@ export type Project = {
   year: string;
   role: string;
   accent: "blue-strong" | "blue-medium" | "blue-low" | "blue-flow";
-  personality: ProjectCardPersonality;
+  personality: ProjectSlug;
   status: string;
   proof: string;
   cautionLabel?: string;
   media: ProjectMedia;
+  mediaPresentation: ProjectMediaPresentation;
   verifiedLinks: ProjectLink[];
 };
 
-const projectRecords: Project[] = [
+const projectRecords: Omit<Project, "mediaPresentation">[] = [
   {
     slug: "monkeyclaw",
     index: "01",
@@ -128,10 +138,10 @@ const projectRecords: Project[] = [
     proof: "Visible agent tabs · no-key demo · Markdown and JSON export",
     media: {
       cover: {
-        src: "/projects/velox/velox-logo.svg",
-        alt: "Velox predictive-cursor wordmark",
-        width: 420,
-        height: 112,
+        src: "/projects/velox/velox-icon.png",
+        alt: "Velox application icon on a pale background",
+        width: 1024,
+        height: 1024,
       },
       gallery: [
         {
@@ -391,12 +401,73 @@ const projectRecords: Project[] = [
   },
 ];
 
-const projectOrder = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
+export const projectMediaPresentation = {
+  monkeyclaw: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#dceceb",
+  },
+  etch: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#030509",
+  },
+  flowe: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#080b11",
+  },
+  velox: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#ffffff",
+  },
+  argyph: {
+    aspectRatio: "2 / 1",
+    fit: "cover",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#0a1424",
+  },
+  nexarad: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#e4eef4",
+  },
+  mathpilot: {
+    aspectRatio: "1 / 1",
+    fit: "contain",
+    scale: "1",
+    position: "center 44%",
+    offsetY: "-3%",
+    wellColor: "#eaf1f7",
+  },
+} satisfies Record<ProjectSlug, ProjectMediaPresentation>;
 
-export const projects = projectOrder.map((slug) => {
+export const projectOrder: ProjectSlug[] = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
+
+export const projects: Project[] = projectOrder.map((slug) => {
   const project = projectRecords.find((candidate) => candidate.slug === slug);
   if (!project) throw new Error(`Missing portfolio project: ${slug}`);
-  return project;
+  const mediaPresentation = projectMediaPresentation[slug];
+  if (!mediaPresentation) throw new Error(`Missing media presentation: ${slug}`);
+  return { ...project, mediaPresentation };
 });
 
 export const bio = {

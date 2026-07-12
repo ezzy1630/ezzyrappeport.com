@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { CSSProperties } from "react";
 import { projects } from "@/lib/portfolio/content";
 import ProjectTransitionLink from "./ProjectTransitionLink";
 import styles from "./ProjectsSection.module.css";
@@ -30,7 +31,20 @@ export default function ProjectsSection() {
                 <span>{project.year}</span>
               </div>
 
-              <figure className={styles.media} data-project={project.slug}>
+              <figure
+                className={styles.media}
+                data-project={project.slug}
+                style={
+                  {
+                    "--project-aspect": project.mediaPresentation.aspectRatio,
+                    "--project-fit": project.mediaPresentation.fit,
+                    "--project-scale": project.mediaPresentation.scale,
+                    "--project-position": project.mediaPresentation.position,
+                    "--project-offset-y": project.mediaPresentation.offsetY,
+                    "--project-well": project.mediaPresentation.wellColor,
+                  } as CSSProperties
+                }
+              >
                 <ProjectTransitionLink
                   href={`/project/${project.slug}`}
                   className={styles.mediaLink}

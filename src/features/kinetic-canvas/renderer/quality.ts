@@ -1,14 +1,21 @@
 "use client";
 
 import { portfolioIdentity } from "@/lib/portfolio/identity";
+import {
+  pixelBudgetedDpr,
+  QUALITY_PIXEL_BUDGETS,
+  resolveQualityTier,
+  TARGET_FPS_BY_TIER,
+  type KineticQualityTier,
+} from "./quality-policy";
 
-export const TARGET_FPS = 30;
 export const RIPPLE_COUNT = 8;
 export const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.webp";
 export const FLUID_TEXTURE_FALLBACK_SRC = "/assets/pearl-liquid-background.png";
 export const [HERO_LINE_1, HERO_LINE_2] = portfolioIdentity.titleLines;
 
-export type KineticQualityTier = "high" | "balanced" | "low" | "static";
+export { TARGET_FPS } from "./quality-policy";
+export type { KineticQualityTier } from "./quality-policy";
 
 export type KineticQuality = {
   tier: KineticQualityTier;
@@ -25,6 +32,7 @@ export type KineticQuality = {
   saveData: boolean;
   lowPower: boolean;
   renderScale: number;
+  pixelBudget: number;
 };
 
 function getConnectionSaveData() {
@@ -50,59 +58,56 @@ export function resolveKineticQuality(
   const saveData = getConnectionSaveData();
   const memory = getDeviceMemory();
   const cores = navigator.hardwareConcurrency ?? 8;
-  const shortViewport = Math.min(window.innerWidth, window.innerHeight) < 720;
-  const lowPower = saveData || memory <= 4 || cores <= 4;
-
-  let tier: KineticQualityTier = "balanced";
-  if (reducedMotion || staticModeOverride || saveData) {
-    tier = "static";
-  } else if (coarsePointer || lowPower || shortViewport) {
-    tier = "low";
-  } else if (
-    window.devicePixelRatio >= 1.5 &&
-    memory >= 8 &&
-    cores >= 8 &&
-    window.innerWidth >= 1280
-  ) {
-    tier = "high";
-  }
+  const lowPower = saveData || memory <= 2;
+  const tier = resolveQualityTier({
+    coarsePointer,
+    saveData,
+    deviceMemory: memory,
+    hardwareConcurrency: cores,
+    viewportWidth: window.innerWidth,
+    reducedMotion,
+    staticMode: staticModeOverride,
+  });
 
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {
       tier: "high",
-      dpr: Math.min(window.devicePixelRatio || 1, 1.25),
-      maxDpr: 1.25,
-      targetFps: 30,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.75, QUALITY_PIXEL_BUDGETS.high),
+      maxDpr: 1.75,
+      targetFps: TARGET_FPS_BY_TIER.high,
       simWidth: 256,
-      textMaxDim: 1280,
+      textMaxDim: 1800,
       pressureIterations: 0,
       activeRipples: 8,
       startDelayMs: 45,
       renderScale: 1,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.high,
     },
     balanced: {
       tier: "balanced",
-      dpr: Math.min(window.devicePixelRatio || 1, 1),
-      maxDpr: 1,
-      targetFps: 24,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.25, QUALITY_PIXEL_BUDGETS.balanced),
+      maxDpr: 1.25,
+      targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 192,
-      textMaxDim: 1080,
+      textMaxDim: 1536,
       pressureIterations: 0,
       activeRipples: 6,
       startDelayMs: 70,
       renderScale: 0.9,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.balanced,
     },
     low: {
       tier: "low",
-      dpr: Math.min(window.devicePixelRatio || 1, 0.78),
-      maxDpr: 0.78,
-      targetFps: 18,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1, QUALITY_PIXEL_BUDGETS.low),
+      maxDpr: 1,
+      targetFps: TARGET_FPS_BY_TIER.low,
       simWidth: 128,
-      textMaxDim: 720,
+      textMaxDim: 1024,
       pressureIterations: 0,
       activeRipples: 4,
       startDelayMs: 110,
-      renderScale: 0.7,
+      renderScale: 0.8,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.low,
     },
     static: {
       tier: "static",
@@ -115,6 +120,7 @@ export function resolveKineticQuality(
       activeRipples: 0,
       startDelayMs: 0,
       renderScale: 0,
+      pixelBudget: 0,
     },
   };
 

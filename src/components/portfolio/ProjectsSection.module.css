@@ -73,8 +73,6 @@
     "rail content media"
     "rail actions media";
 }
-.index > li:nth-child(3n) .media { aspect-ratio: 16 / 9; }
-
 .rail {
   grid-area: rail;
   display: flex;
@@ -90,24 +88,36 @@
 .rail span:last-child { color: var(--rv-muted); }
 
 .media {
+  position: relative;
   grid-area: media;
   display: grid;
   place-items: center;
   width: 100%;
-  aspect-ratio: 5 / 4;
+  aspect-ratio: var(--project-aspect, 5 / 4);
   margin: 0;
   overflow: hidden;
-  border: 1px solid color-mix(in oklch, var(--rv-ink) 13%, transparent);
-  border-radius: 1rem;
-  background: rgba(232, 241, 251, 0.72);
-  transition: border-color 260ms cubic-bezier(0.22, 1, 0.36, 1), background 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  border-radius: 1.1rem;
+  background: var(--project-well, rgba(232, 241, 251, 0.72));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.56),
+    inset 0 -1rem 1.6rem rgba(16, 51, 91, 0.11);
+  isolation: isolate;
+  transition: background-color 240ms ease, box-shadow 240ms ease;
 }
 
-.media:focus-within {
-  border-color: color-mix(in oklch, var(--rv-blue) 58%, transparent);
+.media::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0.35rem 1.2rem rgba(255, 255, 255, 0.16);
+  pointer-events: none;
 }
 
 .mediaLink {
+  position: relative;
+  z-index: 0;
   display: grid;
   place-items: center;
   width: 100%;
@@ -116,33 +126,33 @@
 }
 
 .mediaImage {
+  display: block;
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: var(--project-fit, contain);
+  object-position: var(--project-position, center);
+  transform: translateY(var(--project-offset-y, 0%)) scale(var(--project-scale, 1));
+  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), filter 240ms ease;
+}
+
+.media[data-project="argyph"] .mediaImage {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .mediaLink:hover .mediaImage,
-.mediaLink:focus-visible .mediaImage { transform: scale(1.025); }
-
-.media[data-project="monkeyclaw"] {
-  background:
-    radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.94), transparent 58%),
-    #dfe7ec;
+.mediaLink:focus-visible .mediaImage {
+  transform: translateY(calc(var(--project-offset-y, 0%) - 2px)) scale(var(--project-scale, 1));
+  filter: saturate(1.04) brightness(1.015);
 }
-.media[data-project="monkeyclaw"] .mediaImage { width: 82%; height: 82%; object-fit: contain; }
-.media[data-project="etch"] { background: #020202; }
-.media[data-project="etch"] .mediaImage { width: 68%; height: 68%; object-fit: contain; }
-.media[data-project="flowe"] { background: #111116; }
-.media[data-project="flowe"] .mediaImage { width: 100%; height: 100%; object-fit: cover; object-position: center 48%; }
-.media[data-project="velox"] { background: #070912; }
-.media[data-project="velox"] .mediaImage { width: 76%; height: auto; object-fit: contain; }
-.media[data-project="argyph"] { aspect-ratio: 2 / 1; background: #071021; }
-.media[data-project="argyph"] .mediaImage { width: 100%; height: 100%; object-fit: cover; object-position: center; }
-.media[data-project="nexarad"] { aspect-ratio: 5 / 4; background: #08141d; }
-.media[data-project="nexarad"] .mediaImage { width: 66%; height: 66%; object-fit: contain; object-position: center; }
-.media[data-project="mathpilot"] { background: transparent; }
-.media[data-project="mathpilot"] .mediaImage { width: 100%; height: 100%; object-fit: cover; object-position: center; }
+
+.media:focus-within {
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, var(--rv-blue) 42%, white),
+    inset 0 -1rem 1.6rem rgba(16, 51, 91, 0.13);
+}
 
 .content { grid-area: content; align-self: center; min-width: 0; }
 
