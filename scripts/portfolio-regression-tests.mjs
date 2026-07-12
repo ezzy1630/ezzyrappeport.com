@@ -48,17 +48,23 @@ const tests = [
     assert.match(fluidRendererSource, /decodeHeight\(h\.ba\)/);
     assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
   }],
-  ["The title field uses its own stable sampling grid", () => {
+  ["The title keeps a stable silhouette and a live fluid material", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
-    assert.match(liquidCompositeSource, /vec2 titleUv = uv;/);
+    assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.18/);
+    assert.match(liquidCompositeSource, /vec2 titleUv = uv \+ titleMaskWarp/);
     assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.035/);
-    assert.doesNotMatch(liquidCompositeSource, /titleCaustic/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.14/);
+    assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.72, 0\.34\)/);
+    assert.match(liquidCompositeSource, /lensOffset \* 0\.62/);
+    assert.match(liquidCompositeSource, /float titleCaustic/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
   }],
-  ["The clear-glass title keeps a readable body tint", () => {
-    assert.match(liquidCompositeSource, /0\.28 \+ glassWall \* 0\.24/);
-    assert.match(liquidCompositeSource, /vec3\(0\.20, 0\.40, 0\.72\)/);
+  ["Background displacement stays below the title material response", () => {
+    assert.match(liquidCompositeSource, /vec2 baseUv = uv \+ lensOffset \+ vec2/);
+    assert.doesNotMatch(liquidCompositeSource, /baseUv = uv \+ lensOffset \+ simulationNormal/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.026 \+ lensOffset \* 0\.62/);
+    assert.match(liquidCompositeSource, /blue \* ripple\.x \* 0\.18\) \* letterMask/);
+    assert.match(liquidCompositeSource, /simulationHeight \* 0\.08 \* letterMask/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({
