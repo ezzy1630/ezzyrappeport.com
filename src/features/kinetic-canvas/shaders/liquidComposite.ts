@@ -15,10 +15,7 @@ uniform float u_time;
 uniform float u_energy;
 uniform vec2 u_pointer;
 uniform sampler2D u_texture;
-uniform sampler2D u_text;
 uniform sampler2D u_normalField;
-uniform sampler2D u_obstacleField;
-uniform float u_nameOpacity;
 uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
 
@@ -58,14 +55,12 @@ void main() {
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec2 plane = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
-  float mobilePoster = smoothstep(0.82, 0.56, aspect);
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
   vec3 surfaceSample = texture(u_normalField, uv).rgb;
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
-  vec4 simulationObstacle = texture(u_obstacleField, uv);
   // The height field is the single source of truth for ripples. This removes
   // the second full-resolution eight-ripple loop and keeps refraction, light,
   // and wave propagation on the same physical surface.
@@ -105,15 +100,15 @@ void main() {
     texture(u_texture, flowUv).g,
     texture(u_texture, clamp(flowUv - surfaceChroma, vec2(0.0), vec2(1.0))).b
   );
-  base = mix(base, white, 0.08);
-  base += vec3(0.004, 0.006, 0.012);
+  base = mix(base, white, 0.04);
+  base += vec3(0.002, 0.003, 0.006);
 
   float caustic = caustics(plane * 3.1 + vec2(time * 0.035, -time * 0.026), time * 0.42);
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
   float liquidRidge = ridge(flowA - 0.52, 0.20) * 0.34 + ridge(flowB - 0.48, 0.18) * 0.22;
-  base += vec3(0.90, 0.96, 1.0) * caustic * 0.09 * (0.65 + causticMask);
-  base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
-  base += silver * liquidRidge * 0.05;
+  base += vec3(0.90, 0.96, 1.0) * caustic * 0.028 * (0.65 + causticMask);
+  base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.012;
+  base += silver * liquidRidge * 0.02;
 
   // Studio-lit water: the simulated height field controls the optical response
   // instead of acting as a decorative warp layered over unrelated highlights.
@@ -124,86 +119,13 @@ void main() {
   float surfaceSpecular = pow(max(dot(simulationNormal, halfVector), 0.0), 72.0);
   float focusedCaustic = pow(clamp(1.0 - length(simulationNormal.xy) * 1.7, 0.0, 1.0), 9.0);
   base = mix(base, white, surfaceFresnel * 0.12);
-  base += white * surfaceSpecular * (0.10 + u_energy * 0.08);
-  base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.42;
+  base += white * surfaceSpecular * (0.045 + u_energy * 0.035);
+  base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.16;
+  base += white * ripple.y * 0.10 + blue * ripple.x * 0.075;
+  base += white * lensStrength * 0.012 + blue * lensStrength * 0.004;
 
-  // Each glyph is a clear, water-filled volume: a thick optical wall around a
-  // transparent refractive core, with light and shadow derived from its SDF.
-  vec2 titleUv = uv
-    + simulationNormal.xy * (0.006 + abs(simulationHeight) * 0.018)
-    + ripple.z * vec2(0.16, 0.07)
-    + lensOffset * 0.18;
-  vec4 titleField = texture(u_text, clamp(titleUv, vec2(0.0), vec2(1.0)));
-  float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
-  float thickness = titleField.g * u_nameOpacity;
-  float bevel = titleField.b * u_nameOpacity;
-  float titleAA = max(fwidth(signedDistance) * 1.35, mix(0.016, 0.024, mobilePoster));
-  float letterMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
-  float interior = smoothstep(0.18, 0.72, thickness);
-  float innerBevel = bevel * letterMask;
-  float outerHalo = (smoothstep(-0.075, -0.012, signedDistance) - letterMask) * u_nameOpacity;
-  float glassWall = (1.0 - smoothstep(0.015, 0.24, signedDistance)) * letterMask;
-  float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
-  float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
-  float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
-  float depthField = texture(u_text, clamp(titleUv + vec2(0.006, -0.010), vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
-  float depthMask = smoothstep(-titleAA, titleAA, depthField) * u_nameOpacity;
-  float extrusion = max(depthMask - letterMask, 0.0);
-  vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
-  float sdRight = texture(u_text, titleUv + vec2(textPixel.x, 0.0)).r;
-  float sdLeft = texture(u_text, titleUv - vec2(textPixel.x, 0.0)).r;
-  float sdUp = texture(u_text, titleUv + vec2(0.0, textPixel.y)).r;
-  float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
-  vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
-  float dome = pow(max(thickness, 0.0), 0.48);
-  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.14, 0.82));
-
-  vec2 sampleWarp = ripple.z * vec2(0.72, 0.34) + simulationNormal.xy * 0.026 + lensOffset * 0.62;
-  vec2 refraction = uv + sampleWarp + normal.xy * (0.017 + glassWall * 0.026) * letterMask;
-  vec2 chroma = normal.xy * (0.0014 + glassWall * 0.0018);
-  vec3 refracted = vec3(
-    texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
-    texture(u_texture, clamp(refraction, vec2(0.0), vec2(1.0))).g * 0.99,
-    texture(u_texture, clamp(refraction - chroma, vec2(0.0), vec2(1.0))).b * 1.02
-  );
-  refracted += vec3(0.010, 0.014, 0.026);
-
-  vec3 titleTint = mix(vec3(0.31, 0.55, 0.88), vec3(0.20, 0.40, 0.75), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.025 + glassWall * 0.19 + mobilePoster * 0.055);
-  letterBody += white * interior * 0.025;
-
-  vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
-  float lightFacing = max(dot(normal, topLeftLight), 0.0);
-  float directionalHighlight = pow(lightFacing, 8.0);
-  float oppositeShade = pow(max(dot(normal, -topLeftLight), 0.0), 3.0);
-  float fresnel = pow(1.0 - clamp(normal.z, 0.0, 1.0), 2.1);
-  letterBody += white * directionalHighlight * (0.26 + glassWall * 0.64);
-  letterBody += white * fresnel * glassWall * 0.32;
-  letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
-  letterBody += blue * (simulationObstacle.g * 0.055 + caustic * 0.028) * interior;
-
-  vec3 color = base;
-  color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;
-  color += blue * extrusion * 0.075;
-  color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
-  color = mix(color, letterBody, letterMask * mix(0.92, 0.96, mobilePoster));
-  color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color += white * innerBevel * 0.25;
-  color += white * edgeRim * 0.29;
-  color += white * outerMeniscus * 0.38;
-  color -= vec3(0.035, 0.075, 0.15) * innerMeniscus * 0.22;
-  color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
-  color += blue * glassWall * 0.032;
-  float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
-  color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
-  color += white * ripple.y * 0.24 + blue * ripple.x * 0.18;
-  color += white * simulationHeight * 0.08;
-  color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;
-
-  float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
-  color = mix(color * white, color, vignette);
-  float peak = max(max(color.r, color.g), color.b);
-  if (peak > 1.0) color /= peak;
-  outColor = vec4(pow(max(color, vec3(0.0)), vec3(0.97)), 1.0);
+  // The hero type is intentionally CSS-only. It stays crisp and accessible;
+  // this shader owns the continuous ambient water surface beneath it.
+  outColor = vec4(pow(clamp(base, 0.0, 1.0), vec3(1.02)), 1.0);
 }
 `;
