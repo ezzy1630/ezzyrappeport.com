@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { downgradeQualityTier, MIN_PIXEL_BUDGET_DPR, pixelBudgetedDpr, resolveQualityTier } from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
+import {
+  downgradeQualityTier,
+  MIN_PIXEL_BUDGET_DPR,
+  pixelBudgetedDpr,
+  QUALITY_PIXEL_BUDGETS,
+  resolveQualityTier,
+  TARGET_FPS_BY_TIER,
+} from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
 import { resolveMovementSplat } from "../src/lib/portfolio/interaction-policy.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
@@ -16,6 +23,11 @@ const tests = [
     assert.ok(dpr < 1);
     assert.ok(dpr >= MIN_PIXEL_BUDGET_DPR);
     assert.ok(3840 * dpr * 2160 * dpr <= 4_500_000 + 1);
+  }],
+  ["Animated tiers stay inside their fill-rate budgets", () => {
+    assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 270_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 90_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.low * TARGET_FPS_BY_TIER.low <= 45_000_000);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({

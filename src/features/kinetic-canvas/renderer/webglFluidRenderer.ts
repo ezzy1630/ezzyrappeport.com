@@ -260,13 +260,16 @@ void main() {
       * min(length(pointerVelocity) * 5.0, 1.0)
       * u_pointer.z;
     float edgePressure = exp(-pointerDistance * 8.5) * edge * u_pointer.z;
-    float ambientSurface = sin(uv.x * 19.0 + u_time * 0.72)
-      * cos(uv.y * 15.0 - u_time * 0.58) * 0.00042;
-    float next = (h.r * 2.0 - h.g + lap * 0.47) * 0.992
-      + pulse * 0.30
-      + directionalTrail * 0.075
-      + edgePressure * 0.038
-      + edge * 0.0035
+    float deltaScale = clamp(u_delta * 60.0, 0.5, 1.35);
+    float ambientSurface = (
+      sin(uv.x * 17.0 + uv.y * 7.0 + u_time * 0.58)
+      + cos(uv.y * 13.0 - uv.x * 5.0 - u_time * 0.46)
+    ) * 0.00018;
+    float next = (h.r * 2.0 - h.g + lap * (0.43 * deltaScale)) * pow(0.994, deltaScale)
+      + pulse * 0.22 * deltaScale
+      + directionalTrail * 0.055 * deltaScale
+      + edgePressure * 0.028 * deltaScale
+      + edge * 0.0025 * deltaScale
       + ambientSurface;
     next *= 1.0 - obstacle * 0.18;
     outColor = vec4(next, h.r, blue, 1.0);
@@ -296,7 +299,7 @@ function lowerQualityProfile(current: KineticQuality, width: number, height: num
       dpr: pixelBudgetedDpr(width, height, current.dpr, 1.25, QUALITY_PIXEL_BUDGETS.balanced),
       maxDpr: 1.25,
       targetFps: TARGET_FPS_BY_TIER.balanced,
-      simWidth: 192,
+      simWidth: 224,
       textMaxDim: 1536,
       activeRipples: 6,
       renderScale: 0.9,
@@ -352,9 +355,6 @@ export function startFluidRenderer(
   const pointerLocation = gl.getUniformLocation(program, "u_pointer");
   const nameOpacityLocation = gl.getUniformLocation(program, "u_nameOpacity");
   const sceneIntensityLocation = gl.getUniformLocation(program, "u_sceneIntensity");
-  const rippleLocations = Array.from({ length: RIPPLE_COUNT }, (_, i) =>
-    gl.getUniformLocation(program, `u_ripples[${i}]`),
-  );
   const textureLocation = gl.getUniformLocation(program, "u_texture");
   const textLocation = gl.getUniformLocation(program, "u_text");
   const simHeightLocation = gl.getUniformLocation(program, "u_heightField");
@@ -425,7 +425,6 @@ export function startFluidRenderer(
   let height = 0;
   let dpr = 1;
   let frame = 0;
-  let frameTimer = 0;
   let resizeFrame = 0;
   let resizeTimer = 0;
   let revealFrame = 0;
@@ -626,7 +625,8 @@ export function startFluidRenderer(
 
   function paint(t: number) {
     const physics = getPhysics();
-    if (lastSimTime === 0 || t - lastSimTime >= 1 / 30) {
+    const simulationFps = Math.min(60, quality.targetFps);
+    if (lastSimTime === 0 || t - lastSimTime >= 1 / simulationFps) {
       updateSimulation(physics, t);
     }
     const pointer = physics.pointer;
@@ -655,15 +655,6 @@ export function startFluidRenderer(
     gl.uniform1f(sceneIntensityLocation, heroNameRef.current ? 1 : 0);
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
-    const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
-    for (let i = 0; i < RIPPLE_COUNT; i++) {
-      const ripple = physics.ripples[rippleOffset + i];
-      if (ripple && i < quality.activeRipples) {
-        gl.uniform4f(rippleLocations[i], ripple.x * dpr, ripple.y * dpr, t - ripple.age, ripple.intensity * quality.renderScale);
-      } else {
-        gl.uniform4f(rippleLocations[i], -9999, -9999, -9999, 0);
-      }
-    }
     if (heightField && normal && obstacle) {
       bindTexture(4, heightField.read, simHeightLocation);
       bindTexture(5, normal.texture, simNormalLocation);
@@ -683,7 +674,7 @@ export function startFluidRenderer(
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {
-      scheduleRender(interval - elapsed);
+    scheduleRender();
       return;
     }
     if (lastRenderTime > 0 && elapsed > interval * 1.2 && elapsed < interval * 4) {
@@ -706,27 +697,23 @@ export function startFluidRenderer(
       renderedFrames = 0;
     }
 
-    if (lateFrames >= 6 && quality.tier !== "low") {
+    // Require sustained misses before reallocating the simulation. A handful
+    // of delayed frames during hydration or DevTools activity should not cause
+    // a permanent resolution drop and a visible reconfiguration hitch.
+    if (lateFrames >= 45 && quality.tier !== "low") {
       adaptiveLevel += 1;
       lateFrames = 0;
       configure();
       canvas.dataset.adaptive = "true";
     }
-    const nextInterval = 1000 / compositeFps;
-    const phase = now - lastRenderTime;
-    scheduleRender(Math.max(0, nextInterval - phase));
+    scheduleRender();
   }
 
-  function scheduleRender(delay = 0) {
+  function scheduleRender() {
     if (!running) return;
-    window.clearTimeout(frameTimer);
-    if (delay > 8) {
-      frameTimer = window.setTimeout(() => {
-        if (running) frame = requestAnimationFrame(render);
-      }, Math.max(0, delay - 4));
-    } else {
-      frame = requestAnimationFrame(render);
-    }
+    // Stay aligned to display vsync. Combining setTimeout with rAF frequently
+    // misses the next refresh and turns a nominal 45–60 FPS tier into ~30 FPS.
+    frame = requestAnimationFrame(render);
   }
 
   function syncRunning() {
@@ -734,7 +721,6 @@ export function startFluidRenderer(
     if (shouldRun === running) return;
     running = shouldRun;
     cancelAnimationFrame(frame);
-    window.clearTimeout(frameTimer);
     if (running) {
       delete canvas.dataset.paused;
       lastRenderTime = 0;
@@ -798,7 +784,6 @@ export function startFluidRenderer(
     disposed = true;
     running = false;
     cancelAnimationFrame(frame);
-    window.clearTimeout(frameTimer);
     window.clearTimeout(resizeTimer);
     cancelAnimationFrame(resizeFrame);
     cancelAnimationFrame(revealFrame);
