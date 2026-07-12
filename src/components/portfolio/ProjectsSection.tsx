@@ -10,12 +10,12 @@ export default function ProjectsSection() {
       <header className={styles.header}>
         <div>
           <p className={styles.kicker}>Selected work / {String(projects.length).padStart(2, "0")} projects</p>
-          <h2 id="work-title">Seven systems. One standard: show the work.</h2>
+          <h2 id="work-title">Systems built to survive contact with reality.</h2>
         </div>
         <p className={styles.intro}>
-          Products across agent security, hardware, education, medical imaging,
-          and code intelligence. Each entry separates what is shipped, what is
-          demonstrated, and what is still in progress.
+          A selected body of work across agent security, hardware, education,
+          medical imaging, and code intelligence—presented with the evidence,
+          constraints, and current state intact.
         </p>
       </header>
 
@@ -26,7 +26,7 @@ export default function ProjectsSection() {
               id={`project-${project.slug}`}
               className={styles.row}
             >
-              <div className={styles.rail} aria-hidden="true">
+              <div className={styles.rail} aria-label={`Project ${project.index}, ${project.year}`}>
                 <span>{project.index}</span>
                 <span>{project.year}</span>
               </div>
@@ -56,7 +56,7 @@ export default function ProjectsSection() {
                     alt={project.media.cover.alt}
                     width={project.media.cover.width}
                     height={project.media.cover.height}
-                    sizes="(max-width: 900px) 90vw, (max-width: 1440px) 28vw, 400px"
+                    sizes="(max-width: 900px) 92vw, (max-width: 1440px) 52vw, 760px"
                     className={styles.mediaImage}
                     unoptimized={project.media.cover.src.endsWith(".svg")}
                   />
