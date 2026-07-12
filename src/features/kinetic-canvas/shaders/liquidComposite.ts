@@ -14,7 +14,6 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_energy;
 uniform vec2 u_pointer;
-uniform vec4 u_ripples[8];
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
 uniform sampler2D u_heightField;
@@ -54,33 +53,6 @@ vec2 cursorLens(vec2 uv, vec2 pointer, out float lens) {
   return normal * lens * 0.022;
 }
 
-vec3 rippleField(vec2 position, vec2 pointer, float time) {
-  float blue = 0.0;
-  float white = 0.0;
-  float warp = 0.0;
-  float distanceToPointer = distance(position, pointer);
-  float pulse = sin(distanceToPointer * 28.0 - time * 5.5);
-  float envelope = exp(-distanceToPointer * 3.6) * u_energy;
-  blue += max(pulse, 0.0) * envelope * 0.20;
-  white += ridge(distanceToPointer - 0.078 - sin(time * 1.2) * 0.009, 0.026) * envelope * 0.20;
-  warp += pulse * envelope * 0.030;
-
-  for (int i = 0; i < 8; i++) {
-    vec4 ripple = u_ripples[i];
-    float age = time - ripple.z;
-    if (age > 0.0 && age < 3.2 && ripple.w > 0.001) {
-      float distanceToRipple = distance(position * u_resolution, ripple.xy);
-      float radius = 24.0 + age * 155.0;
-      float ring = sin((distanceToRipple - radius) * 0.058);
-      float rippleEnvelope = exp(-abs(distanceToRipple - radius) / 86.0) * (1.0 - age / 3.2) * ripple.w;
-      blue += max(ring, 0.0) * rippleEnvelope * 0.30;
-      white += max(-ring, 0.0) * rippleEnvelope * 0.34;
-      warp += ring * rippleEnvelope * 0.028;
-    }
-  }
-  return vec3(blue, white, warp);
-}
-
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
@@ -91,10 +63,17 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
-  vec3 simulationNormal = vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0);
+  vec3 simulationNormal = normalize(vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0));
   float simulationHeight = texture(u_heightField, uv).r;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
-  vec3 ripple = rippleField(uv, pointer, time);
+  // The height field is the single source of truth for ripples. This removes
+  // the second full-resolution eight-ripple loop and keeps refraction, light,
+  // and wave propagation on the same physical surface.
+  vec3 ripple = vec3(
+    max(-simulationHeight, 0.0) * 0.70,
+    max(simulationHeight, 0.0) * 0.85,
+    simulationHeight * 0.55
+  );
   float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
 
   float flowA = 0.5 + 0.25 * (
@@ -120,7 +99,12 @@ void main() {
   vec3 blue = vec3(0.14, 0.40, 0.78);
   vec3 white = vec3(0.969, 0.976, 0.988);
   vec3 silver = vec3(0.867, 0.890, 0.925);
-  vec3 base = texture(u_texture, flowUv).rgb;
+  vec2 surfaceChroma = simulationNormal.xy * 0.0011;
+  vec3 base = vec3(
+    texture(u_texture, clamp(flowUv + surfaceChroma, vec2(0.0), vec2(1.0))).r,
+    texture(u_texture, flowUv).g,
+    texture(u_texture, clamp(flowUv - surfaceChroma, vec2(0.0), vec2(1.0))).b
+  );
   base = mix(base, white, 0.08);
   base += vec3(0.004, 0.006, 0.012);
 
@@ -130,6 +114,18 @@ void main() {
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.09 * (0.65 + causticMask);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
+
+  // Studio-lit water: the simulated height field controls the optical response
+  // instead of acting as a decorative warp layered over unrelated highlights.
+  vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+  vec3 surfaceLight = normalize(vec3(-0.42, -0.58, 0.70));
+  vec3 halfVector = normalize(surfaceLight + viewDirection);
+  float surfaceFresnel = 0.02 + 0.98 * pow(1.0 - max(dot(simulationNormal, viewDirection), 0.0), 5.0);
+  float surfaceSpecular = pow(max(dot(simulationNormal, halfVector), 0.0), 72.0);
+  float focusedCaustic = pow(clamp(1.0 - length(simulationNormal.xy) * 1.7, 0.0, 1.0), 9.0);
+  base = mix(base, white, surfaceFresnel * 0.12);
+  base += white * surfaceSpecular * (0.10 + u_energy * 0.08);
+  base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.42;
 
   // Each glyph is a clear, water-filled volume: a thick optical wall around a
   // transparent refractive core, with light and shadow derived from its SDF.

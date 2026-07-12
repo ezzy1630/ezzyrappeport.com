@@ -1,10 +1,10 @@
 export type KineticQualityTier = "high" | "balanced" | "low" | "static";
 
-export const TARGET_FPS = 45;
+export const TARGET_FPS = 60;
 export const TARGET_FPS_BY_TIER: Record<KineticQualityTier, number> = {
   high: TARGET_FPS,
   balanced: 30,
-  low: 24,
+  low: 30,
   static: 0,
 };
 
