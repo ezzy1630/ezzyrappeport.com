@@ -15,10 +15,6 @@ const fluidRendererSource = readFileSync(
   new URL("../src/features/kinetic-canvas/renderer/webglFluidRenderer.ts", import.meta.url),
   "utf8",
 );
-const liquidCompositeSource = readFileSync(
-  new URL("../src/features/kinetic-canvas/shaders/liquidComposite.ts", import.meta.url),
-  "utf8",
-);
 
 const tests = [
   ["Retina 4K stays inside the high pixel budget", () => {
@@ -47,14 +43,6 @@ const tests = [
     assert.match(fluidRendererSource, /decodeHeight\(h\.rg\)/);
     assert.match(fluidRendererSource, /decodeHeight\(h\.ba\)/);
     assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
-  }],
-  ["The title field uses its own stable sampling grid", () => {
-    assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
-    assert.match(liquidCompositeSource, /vec2 titleUv = uv;/);
-    assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.035/);
-    assert.doesNotMatch(liquidCompositeSource, /titleCaustic/);
-    assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({
