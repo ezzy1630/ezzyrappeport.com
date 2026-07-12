@@ -15,11 +15,6 @@ const fluidRendererSource = readFileSync(
   new URL("../src/features/kinetic-canvas/renderer/webglFluidRenderer.ts", import.meta.url),
   "utf8",
 );
-const liquidCompositeSource = readFileSync(
-  new URL("../src/features/kinetic-canvas/shaders/liquidComposite.ts", import.meta.url),
-  "utf8",
-);
-const revampSource = readFileSync(new URL("../src/app/revamp.css", import.meta.url), "utf8");
 
 const tests = [
   ["Retina 4K stays inside the high pixel budget", () => {
@@ -48,14 +43,6 @@ const tests = [
     assert.match(fluidRendererSource, /decodeHeight\(h\.rg\)/);
     assert.match(fluidRendererSource, /decodeHeight\(h\.ba\)/);
     assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
-  }],
-  ["The hero title stays on the stable DOM rendering path", () => {
-    assert.doesNotMatch(liquidCompositeSource, /u_text|u_nameOpacity|u_obstacleField/);
-    assert.doesNotMatch(fluidRendererSource, /heroTextMask|textTexture|regenerateText/);
-    assert.doesNotMatch(
-      revampSource,
-      /\.fluid-canvas\[data-fluid="ready"\]\s*~\s*\.content-layer\s+\.hero-name-fallback/,
-    );
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({

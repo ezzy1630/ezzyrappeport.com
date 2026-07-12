@@ -23,6 +23,7 @@ export type KineticQuality = {
   maxDpr: number;
   targetFps: number;
   simWidth: number;
+  textMaxDim: number;
   pressureIterations: number;
   activeRipples: number;
   startDelayMs: number;
@@ -75,6 +76,7 @@ export function resolveKineticQuality(
       maxDpr: 1.75,
       targetFps: TARGET_FPS_BY_TIER.high,
       simWidth: 288,
+      textMaxDim: 1800,
       pressureIterations: 0,
       activeRipples: 8,
       startDelayMs: 45,
@@ -87,6 +89,7 @@ export function resolveKineticQuality(
       maxDpr: 1.25,
       targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 224,
+      textMaxDim: 1536,
       pressureIterations: 0,
       activeRipples: 6,
       startDelayMs: 70,
@@ -99,6 +102,7 @@ export function resolveKineticQuality(
       maxDpr: 1,
       targetFps: TARGET_FPS_BY_TIER.low,
       simWidth: 128,
+      textMaxDim: 1024,
       pressureIterations: 0,
       activeRipples: 4,
       startDelayMs: 110,
@@ -111,6 +115,7 @@ export function resolveKineticQuality(
       maxDpr: 1,
       targetFps: 0,
       simWidth: 0,
+      textMaxDim: 0,
       pressureIterations: 0,
       activeRipples: 0,
       startDelayMs: 0,
