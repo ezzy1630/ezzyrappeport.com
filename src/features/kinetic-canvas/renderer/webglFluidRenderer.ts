@@ -84,17 +84,33 @@ function createFramebuffer(gl: WebGL2RenderingContext, texture: WebGLTexture) {
   if (!fbo) throw new Error("Unable to create fluid framebuffer");
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+  if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+    gl.deleteFramebuffer(fbo);
+    throw new Error("Fluid framebuffer is incomplete");
+  }
   return fbo;
 }
 
 function createSingleBuffer(gl: WebGL2RenderingContext, width: number, height: number, internalFormat: number, format: number, type: number): SingleBuffer {
   const texture = createRenderTexture(gl, width, height, internalFormat, format, type);
-  return { texture, fbo: createFramebuffer(gl, texture) };
+  try {
+    return { texture, fbo: createFramebuffer(gl, texture) };
+  } catch (error) {
+    gl.deleteTexture(texture);
+    throw error;
+  }
 }
 
 function createDoubleBuffer(gl: WebGL2RenderingContext, width: number, height: number, internalFormat: number, format: number, type: number): DoubleBuffer {
   const a = createSingleBuffer(gl, width, height, internalFormat, format, type);
-  const b = createSingleBuffer(gl, width, height, internalFormat, format, type);
+  let b: SingleBuffer;
+  try {
+    b = createSingleBuffer(gl, width, height, internalFormat, format, type);
+  } catch (error) {
+    gl.deleteTexture(a.texture);
+    gl.deleteFramebuffer(a.fbo);
+    throw error;
+  }
   return {
     read: a.texture,
     write: b.texture,
@@ -105,6 +121,25 @@ function createDoubleBuffer(gl: WebGL2RenderingContext, width: number, height: n
       [this.readFbo, this.writeFbo] = [this.writeFbo, this.readFbo];
     },
   };
+}
+
+function supportsRenderTarget(
+  gl: WebGL2RenderingContext,
+  internalFormat: number,
+  format: number,
+  type: number,
+) {
+  const texture = createRenderTexture(gl, 2, 2, internalFormat, format, type);
+  try {
+    const fbo = createFramebuffer(gl, texture);
+    gl.deleteFramebuffer(fbo);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    gl.deleteTexture(texture);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
 }
 
 const SIM_FRAGMENT_SOURCE = `#version 300 es
@@ -132,6 +167,8 @@ out vec4 outColor;
 vec2 texel() { return 1.0 / max(u_resolution, vec2(1.0)); }
 vec2 decodeVelocity(vec4 v) { return (v.xy - 0.5) * 2.0; }
 vec4 encodeVelocity(vec2 v) { return vec4(clamp(v * 0.5 + 0.5, 0.0, 1.0), 0.5, 1.0); }
+float decodeHeight(float value) { return (value - 0.5) * 0.25; }
+float encodeHeight(float value) { return clamp(value * 4.0 + 0.5, 0.0, 1.0); }
 
 float roundedBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
@@ -245,11 +282,13 @@ void main() {
 
   if (u_pass == 6) {
     vec4 h = texture(u_height, uv);
-    float hL = texture(u_height, uv - vec2(e.x, 0.0)).r;
-    float hR = texture(u_height, uv + vec2(e.x, 0.0)).r;
-    float hB = texture(u_height, uv - vec2(0.0, e.y)).r;
-    float hT = texture(u_height, uv + vec2(0.0, e.y)).r;
-    float lap = hL + hR + hB + hT - 4.0 * h.r;
+    float currentHeight = decodeHeight(h.r);
+    float previousHeight = decodeHeight(h.g);
+    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).r);
+    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).r);
+    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).r);
+    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).r);
+    float lap = hL + hR + hB + hT - 4.0 * currentHeight;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
     vec2 fromPointer = uv - pointer;
@@ -265,24 +304,25 @@ void main() {
       sin(uv.x * 17.0 + uv.y * 7.0 + u_time * 0.58)
       + cos(uv.y * 13.0 - uv.x * 5.0 - u_time * 0.46)
     ) * 0.00018;
-    float next = (h.r * 2.0 - h.g + lap * (0.43 * deltaScale)) * pow(0.994, deltaScale)
+    float next = (currentHeight * 2.0 - previousHeight + lap * (0.43 * deltaScale)) * pow(0.994, deltaScale)
       + pulse * 0.22 * deltaScale
       + directionalTrail * 0.055 * deltaScale
       + edgePressure * 0.028 * deltaScale
       + edge * 0.0025 * deltaScale
       + ambientSurface;
     next *= 1.0 - obstacle * 0.18;
-    outColor = vec4(next, h.r, blue, 1.0);
+    next = clamp(next, -0.12, 0.12);
+    outColor = vec4(encodeHeight(next), encodeHeight(currentHeight), blue, 1.0);
     return;
   }
 
   if (u_pass == 7) {
-    float hL = texture(u_height, uv - vec2(e.x, 0.0)).r;
-    float hR = texture(u_height, uv + vec2(e.x, 0.0)).r;
-    float hB = texture(u_height, uv - vec2(0.0, e.y)).r;
-    float hT = texture(u_height, uv + vec2(0.0, e.y)).r;
+    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).r);
+    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).r);
+    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).r);
+    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).r);
     vec3 n = normalize(vec3((hL - hR) * 22.0, (hB - hT) * 22.0, 1.0));
-    outColor = vec4(n.xy * 0.5 + 0.5, texture(u_height, uv).r, 1.0);
+    outColor = vec4(n.xy * 0.5 + 0.5, encodeHeight(decodeHeight(texture(u_height, uv).r)), 1.0);
     return;
   }
 
@@ -342,7 +382,8 @@ export function startFluidRenderer(
   });
   if (!glContext) throw new Error("WebGL2 unavailable");
   const gl: WebGL2RenderingContext = glContext;
-  gl.getExtension("EXT_color_buffer_float");
+  const supportsFloatTargets = Boolean(gl.getExtension("EXT_color_buffer_float"))
+    && supportsRenderTarget(gl, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT);
 
   const program = createProgram(gl, VERTEX_SOURCE, FRAGMENT_SOURCE);
   const simProgram = createProgram(gl, VERTEX_SOURCE, SIM_FRAGMENT_SOURCE);
@@ -443,9 +484,9 @@ export function startFluidRenderer(
   let obstacle: SingleBuffer | null = null;
   let normal: SingleBuffer | null = null;
 
-  const renderInternalFormat = gl.RGBA16F;
+  const renderInternalFormat = supportsFloatTargets ? gl.RGBA16F : gl.RGBA8;
   const renderFormat = gl.RGBA;
-  const renderType = gl.HALF_FLOAT;
+  const renderType = supportsFloatTargets ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
 
   function bindTexture(unit: number, tex: WebGLTexture | null, uniform: WebGLUniformLocation | null) {
     if (!tex || !uniform) return;
@@ -478,17 +519,31 @@ export function startFluidRenderer(
     simWidth = Math.max(1, quality.simWidth);
     simHeight = Math.max(96, Math.round(simWidth * (height / Math.max(width, 1))));
     disposeSimBuffers();
-    heightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    obstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-    normal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+    let nextHeightField: DoubleBuffer | null = null;
+    let nextObstacle: SingleBuffer | null = null;
+    let nextNormal: SingleBuffer | null = null;
+    try {
+      nextHeightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextObstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextNormal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+    } catch (error) {
+      [nextHeightField?.read, nextHeightField?.write, nextObstacle?.texture, nextNormal?.texture]
+        .forEach((texture) => texture && gl.deleteTexture(texture));
+      [nextHeightField?.readFbo, nextHeightField?.writeFbo, nextObstacle?.fbo, nextNormal?.fbo]
+        .forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
+      throw error;
+    }
+    heightField = nextHeightField;
+    obstacle = nextObstacle;
+    normal = nextNormal;
 
     const clearBuffer = (fbo: WebGLFramebuffer, r: number, g: number, b: number) => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       gl.clearColor(r, g, b, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
     };
-    clearBuffer(heightField.readFbo, 0, 0, 0);
-    clearBuffer(heightField.writeFbo, 0, 0, 0);
+    clearBuffer(heightField.readFbo, 0.5, 0.5, 0);
+    clearBuffer(heightField.writeFbo, 0.5, 0.5, 0);
     clearBuffer(obstacle.fbo, 0, 0, 0);
     clearBuffer(normal.fbo, 0.5, 0.5, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);

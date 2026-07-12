@@ -11,6 +11,10 @@ import {
 import { resolveMovementSplat } from "../src/lib/portfolio/interaction-policy.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
+const fluidRendererSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/renderer/webglFluidRenderer.ts", import.meta.url),
+  "utf8",
+);
 
 const tests = [
   ["Retina 4K stays inside the high pixel budget", () => {
@@ -28,6 +32,14 @@ const tests = [
     assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 270_000_000);
     assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 90_000_000);
     assert.ok(QUALITY_PIXEL_BUDGETS.low * TARGET_FPS_BY_TIER.low <= 45_000_000);
+  }],
+  ["Fluid framebuffers fail closed and support non-float targets", () => {
+    assert.match(fluidRendererSource, /checkFramebufferStatus\(gl\.FRAMEBUFFER\)/);
+    assert.match(fluidRendererSource, /supportsRenderTarget\(gl, gl\.RGBA16F, gl\.RGBA, gl\.HALF_FLOAT\)/);
+    assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.RGBA16F : gl\.RGBA8/);
+    assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.HALF_FLOAT : gl\.UNSIGNED_BYTE/);
+    assert.match(fluidRendererSource, /encodeHeight\(next\)/);
+    assert.match(fluidRendererSource, /decodeHeight\(h\.r\)/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({
