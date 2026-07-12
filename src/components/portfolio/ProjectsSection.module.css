@@ -142,6 +142,18 @@
   height: 100%;
 }
 
+.media[data-project="nexarad"],
+.media[data-project="mathpilot"] {
+  overflow: visible;
+  background: transparent;
+  box-shadow: none;
+}
+
+.media[data-project="nexarad"]::before,
+.media[data-project="mathpilot"]::before {
+  display: none;
+}
+
 .mediaLink:hover .mediaImage,
 .mediaLink:focus-visible .mediaImage {
   transform: translateY(calc(var(--project-offset-y, 0%) - 2px)) scale(var(--project-scale, 1));
