@@ -64,7 +64,7 @@ void main() {
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
   vec3 simulationNormal = normalize(vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0));
-  float simulationHeight = texture(u_heightField, uv).r;
+  float simulationHeight = (texture(u_heightField, uv).r - 0.5) * 0.25;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
   // The height field is the single source of truth for ripples. This removes
   // the second full-resolution eight-ripple loop and keeps refraction, light,
