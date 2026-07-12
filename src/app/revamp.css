@@ -270,10 +270,10 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto auto;
-  gap: clamp(1.1rem, 2.4vh, 2rem);
+  gap: clamp(0.65rem, 1.5vh, 1.15rem);
   width: 100%;
   min-height: max(48rem, 100svh);
-  padding: clamp(5.8rem, 10.5vh, 7.25rem) 0 clamp(1.5rem, 3vh, 2.5rem);
+  padding: clamp(5.4rem, 9vh, 6.6rem) 0 clamp(1.8rem, 4vh, 3.2rem);
   overflow: clip;
   align-content: start;
 }
@@ -284,7 +284,7 @@ body {
   top: auto;
   left: auto;
   z-index: 2;
-  width: min(94vw, 104rem);
+  width: min(97vw, 112rem);
   min-width: 0;
   margin: 0 auto;
   transform: none;
@@ -351,8 +351,8 @@ body {
 }
 
 .hero-name-fallback__line { text-align: left; white-space: nowrap; }
-.hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(6.2rem, 17vw, 17.5rem); }
-.hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(4.8rem, 12.5vw, 12.8rem); }
+.hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(7rem, 19.5vw, 20rem); }
+.hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(5.4rem, 14.4vw, 15rem); }
 
 .hero-name-fallback__word::before,
 .hero-name-fallback__word::after { content: none; }
@@ -364,26 +364,21 @@ body {
   left: auto;
   z-index: 4;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(19rem, 22rem);
-  align-items: stretch;
-  width: min(94vw, 104rem);
+  grid-template-columns: minmax(0, 42rem) minmax(18rem, 21rem);
+  align-items: end;
+  justify-content: space-between;
+  width: min(86vw, 92rem);
   max-width: 100%;
   box-sizing: border-box;
   min-width: 0;
-  margin: clamp(0.8rem, 2vh, 1.25rem) auto 0;
-  padding: clamp(1.2rem, 2.2vw, 1.8rem) clamp(1.25rem, 4.2vw, 4.6rem) 0;
-  gap: clamp(2rem, 5vw, 5.5rem);
-  border-top: 1px solid color-mix(in oklch, var(--rv-ink) 16%, transparent);
+  margin: clamp(0.45rem, 1.2vh, 0.9rem) auto 0;
+  padding: 0;
+  gap: clamp(3rem, 8vw, 9rem);
+  border: 0;
 }
 
 .hero-copy-row::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  left: clamp(1.25rem, 4.2vw, 4.6rem);
-  width: clamp(4.5rem, 8vw, 8rem);
-  height: 2px;
-  background: var(--rv-blue);
+  display: none;
 }
 
 .hero-intro {
@@ -434,18 +429,23 @@ body {
   padding: 0.72rem 1.05rem 0.72rem 1.25rem;
   border: 0;
   border-radius: 999px;
-  color: white;
-  background: var(--rv-ink);
-  box-shadow: none;
+  color: var(--rv-ink);
+  background: rgba(247, 251, 255, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 0.8rem 2rem -1.4rem rgba(19, 69, 132, 0.62);
+  -webkit-backdrop-filter: blur(12px) saturate(1.12);
+  backdrop-filter: blur(12px) saturate(1.12);
   font-size: 0.82rem;
   font-weight: 560;
   transition: transform 220ms cubic-bezier(0.22, 1, 0.36, 1), background 220ms ease, box-shadow 220ms ease;
 }
 
 .hero-intro__cta:hover {
-  color: var(--rv-ink);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: none;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 1px 0 white,
+    0 1.1rem 2.4rem -1.45rem rgba(19, 69, 132, 0.7);
   transform: translateY(-2px);
 }
 
@@ -466,13 +466,14 @@ body {
   width: min(22rem, 100%);
   max-width: 100%;
   box-sizing: border-box;
-  min-height: 100%;
-  padding: 0.1rem 0 0.25rem clamp(1.25rem, 2.5vw, 2rem);
+  justify-self: end;
+  min-height: 0;
+  padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-  border-left: 1px solid color-mix(in oklch, var(--rv-ink) 13%, transparent);
+  border: 0;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   transition: background 240ms ease;
@@ -1211,10 +1212,10 @@ body {
     padding-top: 6.4rem;
     padding-bottom: 1rem;
   }
-  .hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(5.2rem, 14vw, 12.5rem); }
-  .hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(4rem, 10.5vw, 9.6rem); }
+  .hero-name-fallback__line--first .hero-name-fallback__word { font-size: clamp(6.2rem, 16.5vw, 14rem); }
+  .hero-name-fallback__line--second .hero-name-fallback__word { font-size: clamp(4.8rem, 12.2vw, 10.5rem); }
   .hero-copy-row {
-    width: min(94vw, 104rem);
+    width: min(86vw, 92rem);
     margin-top: 0.7rem;
   }
   .project-buttons-row__card { height: 7.4rem; min-height: 7.4rem; }

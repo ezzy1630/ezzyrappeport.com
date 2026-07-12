@@ -150,6 +150,9 @@ void main() {
   float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
   float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
+  float depthField = texture(u_text, clamp(titleUv + vec2(0.006, -0.010), vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
+  float depthMask = smoothstep(-titleAA, titleAA, depthField) * u_nameOpacity;
+  float extrusion = max(depthMask - letterMask, 0.0);
   vec2 textPixel = 1.6 / max(u_resolution, vec2(1.0));
   float sdRight = texture(u_text, titleUv + vec2(textPixel.x, 0.0)).r;
   float sdLeft = texture(u_text, titleUv - vec2(textPixel.x, 0.0)).r;
@@ -184,6 +187,8 @@ void main() {
   letterBody += blue * (simulationObstacle.g * 0.055 + caustic * 0.028) * interior;
 
   vec3 color = base;
+  color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;
+  color += blue * extrusion * 0.075;
   color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
   color = mix(color, letterBody, letterMask * mix(0.92, 0.96, mobilePoster));
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
