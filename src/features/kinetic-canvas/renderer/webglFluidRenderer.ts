@@ -13,6 +13,12 @@ import {
   resolveKineticQuality,
   type KineticQuality,
 } from "./quality";
+import {
+  pixelBudgetedDpr,
+  QUALITY_PIXEL_BUDGETS,
+  downgradeQualityTier,
+  TARGET_FPS_BY_TIER,
+} from "./quality-policy";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 
 type DoubleBuffer = {
@@ -135,10 +141,10 @@ float ripplePulse(vec2 uv, vec2 pointer, out float blue) {
   blue = 0.0;
   float pulse = 0.0;
   float dp = distance(uv, pointer);
-  float pointerRing = sin(dp * 82.0 - u_time * 10.0);
-  float pointerEnv = exp(-dp * 6.0) * u_pointer.z;
-  pulse += pointerRing * pointerEnv * 0.12;
-  blue += max(pointerRing, 0.0) * pointerEnv * 0.35 + exp(-dp * 8.0) * u_pointer.z * 0.55;
+  float pointerRing = sin(dp * 68.0 - u_time * 10.0);
+  float pointerEnv = exp(-dp * 5.2) * u_pointer.z;
+  pulse += pointerRing * pointerEnv * 0.08;
+  blue += max(pointerRing, 0.0) * pointerEnv * 0.22 + exp(-dp * 7.0) * u_pointer.z * 0.42;
   for (int i = 0; i < 8; i++) {
     vec4 r = u_ripples[i];
     float age = u_time - r.z;
@@ -176,9 +182,11 @@ void main() {
     float pulse = ripplePulse(uv, pointer, blue);
     vec2 dir = uv - pointer;
     float len = max(length(dir), 0.001);
-    float wake = exp(-len * 6.2) * u_pointer.z;
-    vel += normalize(dir) * (wake * 0.018 + pulse * 0.020);
-    vel += u_pointer.zw * 0.000020;
+    float wake = exp(-len * 4.2) * u_pointer.z;
+    // Normal pointer travel is a visible, low-energy splat. Click ripples
+    // still arrive through the dedicated ripple field at a higher intensity.
+    vel += normalize(dir) * (wake * 0.052 + pulse * 0.032);
+    vel += u_pointer.zw * 0.00009;
     float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
     vel += vec2(0.0, -scrollImpulse * 0.018);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
@@ -262,31 +270,34 @@ void main() {
 }
 `;
 
-function lowerQualityProfile(current: KineticQuality): KineticQuality {
-  if (current.tier === "high") {
+function lowerQualityProfile(current: KineticQuality, width: number, height: number): KineticQuality {
+  const nextTier = downgradeQualityTier(current.tier);
+  if (nextTier === "balanced") {
     return {
       ...current,
       tier: "balanced",
-      dpr: Math.min(current.dpr, 1),
-      maxDpr: 1,
-      targetFps: 24,
+      dpr: pixelBudgetedDpr(width, height, current.dpr, 1.25, QUALITY_PIXEL_BUDGETS.balanced),
+      maxDpr: 1.25,
+      targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 192,
-      textMaxDim: 1080,
+      textMaxDim: 1536,
       activeRipples: 6,
       renderScale: 0.9,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.balanced,
     };
   }
-  if (current.tier === "balanced") {
+  if (nextTier === "low") {
     return {
       ...current,
       tier: "low",
-      dpr: Math.min(current.dpr, 0.78),
-      maxDpr: 0.78,
-      targetFps: 18,
+      dpr: pixelBudgetedDpr(width, height, current.dpr, 1, QUALITY_PIXEL_BUDGETS.low),
+      maxDpr: 1,
+      targetFps: TARGET_FPS_BY_TIER.low,
       simWidth: 128,
-      textMaxDim: 720,
+      textMaxDim: 1024,
       activeRipples: 4,
-      renderScale: 0.7,
+      renderScale: 0.8,
+      pixelBudget: QUALITY_PIXEL_BUDGETS.low,
     };
   }
   return current;
@@ -530,7 +541,12 @@ export function startFluidRenderer(
 
   function regenerateText() {
     if (!heroNameRef.current) return;
-    const texW = Math.min(canvas.width, quality.textMaxDim);
+    // Keep the glyph field sharp independently from the simulation grid. The
+    // fluid solver stays pixel-budgeted while the title gets a stable raster
+    // floor on high-DPR and balanced displays.
+    const textScale = quality.tier === "high" ? 1.6 : quality.tier === "balanced" ? 1.45 : 1.25;
+    const textFloor = Math.round(width * textScale);
+    const texW = Math.min(Math.max(960, textFloor), quality.textMaxDim);
     const texH = Math.max(1, Math.round(texW * (height / Math.max(width, 1))));
     const scaleX = texW / Math.max(width, 1);
     const scaleY = texH / Math.max(height, 1);
@@ -559,7 +575,7 @@ export function startFluidRenderer(
     height = window.innerHeight;
     quality = resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
     for (let level = 0; level < adaptiveLevel; level++) {
-      quality = lowerQualityProfile(quality);
+      quality = lowerQualityProfile(quality, width, height);
     }
     if (quality.tier === "static") return;
     canvas.dataset.quality = quality.tier;
@@ -641,8 +657,7 @@ export function startFluidRenderer(
       return; // single static frame; the name still renders
     }
     const physics = getPhysics();
-    const interactive = physics.pointer.active;
-    const compositeFps = interactive ? (quality.tier === "low" ? 30 : 45) : quality.targetFps;
+    const compositeFps = quality.targetFps;
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {

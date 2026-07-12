@@ -13,13 +13,13 @@ function HeroLine({ text, className }: { text: string; className?: string }) {
 /**
  * HeroName
  * --------
- * The visual hero name ("EZZY RAPPEPORT") is rendered as one restrained
- * CSS glass treatment above the ambient fluid background.
+ * The visual hero name ("EZZY RAPPEPORT") is rendered as individual glyph
+ * volumes above the ambient fluid background.
  *
  * This component provides:
  *  - a visually-hidden, screen-reader-accessible `<h1>` for SEO + a11y, and
- *  - a CSS fallback that yields to the single WebGL water-material title when
- *    the renderer is ready.
+ *  - a CSS fallback that mirrors the WebGL glyph material when the renderer
+ *    is unavailable or still starting.
  */
 export default function HeroName() {
   return (
