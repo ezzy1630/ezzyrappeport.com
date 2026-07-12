@@ -84,12 +84,11 @@ body {
   mix-blend-mode: normal;
 }
 
-/* Keep a crisp, translucent shell over the live glyph material. The WebGL
-   layer supplies refraction and water interaction; this per-glyph skin adds
-   the molded plastic rim and highlights that remain legible in bright water. */
+/* Once WebGL is ready, the title belongs entirely to the simulated scene.
+   The DOM title is only the startup/static fallback and semantic layout mask. */
 .fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
-  opacity: 0.92;
-  visibility: visible;
+  opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 

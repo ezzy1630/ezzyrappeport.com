@@ -10,9 +10,9 @@ export function resolveMovementSplat({
   distance,
   now,
   lastAt,
-  minDistance = 18,
-  minInterval = 160,
+  minDistance = 10,
+  minInterval = 90,
 }: MovementSplatInput) {
   if (distance <= minDistance || now - lastAt <= minInterval) return null;
-  return Math.min(0.3, Math.max(0.12, 0.12 + distance / 360));
+  return Math.min(0.52, Math.max(0.2, 0.18 + distance / 280));
 }
