@@ -44,9 +44,11 @@ const tests = [
     assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.RGBA16F : gl\.RGBA8/);
     assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.HALF_FLOAT : gl\.UNSIGNED_BYTE/);
     assert.match(fluidRendererSource, /encodeHeight\(next\)/);
-    assert.match(fluidRendererSource, /decodeHeight\(h\.rg\)/);
-    assert.match(fluidRendererSource, /decodeHeight\(h\.ba\)/);
+    assert.match(fluidRendererSource, /u_packedHeight \? decodeHeight\(value\.rg\) : value\.r/);
+    assert.match(fluidRendererSource, /u_packedHeight \? decodeHeight\(value\.ba\) : value\.g/);
+    assert.match(fluidRendererSource, /if \(!supportsFloatTargets\)/);
     assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
+    assert.match(fluidRendererSource, /clearBuffer\(heightField\.readFbo, 0, 0, 0, 1\)/);
   }],
   ["The title keeps a stable silhouette and a live fluid material", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
@@ -59,12 +61,15 @@ const tests = [
     assert.match(liquidCompositeSource, /float titleCaustic/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
   }],
-  ["Background displacement stays below the title material response", () => {
-    assert.match(liquidCompositeSource, /vec2 baseUv = uv \+ lensOffset \+ vec2/);
-    assert.doesNotMatch(liquidCompositeSource, /baseUv = uv \+ lensOffset \+ simulationNormal/);
+  ["The background keeps organic motion without exposing simulation texels", () => {
+    assert.match(liquidCompositeSource, /vec4 sampleSmoothField/);
+    assert.match(liquidCompositeSource, /texture\(field, position\) \* 0\.40/);
+    assert.match(liquidCompositeSource, /physicalRipple \+ rippleField\(uv, pointer, time\)/);
+    assert.match(liquidCompositeSource, /baseUv = uv \+ lensOffset \+ simulationNormal/);
     assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.026 \+ lensOffset \* 0\.62/);
-    assert.match(liquidCompositeSource, /blue \* ripple\.x \* 0\.18\) \* letterMask/);
-    assert.match(liquidCompositeSource, /simulationHeight \* 0\.08 \* letterMask/);
+    assert.match(liquidCompositeSource, /surfaceSpecular/);
+    assert.match(liquidCompositeSource, /focusedCaustic/);
+    assert.match(fluidRendererSource, /gl\.getUniformLocation\(program, `u_ripples\[\$\{i\}\]`\)/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({

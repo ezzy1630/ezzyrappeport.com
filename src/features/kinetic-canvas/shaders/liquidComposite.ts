@@ -14,6 +14,7 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_energy;
 uniform vec2 u_pointer;
+uniform vec4 u_ripples[8];
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
 uniform vec2 u_textResolution;
@@ -53,6 +54,46 @@ vec2 cursorLens(vec2 uv, vec2 pointer, out float lens) {
   return normal * lens * 0.022;
 }
 
+vec3 rippleField(vec2 position, vec2 pointer, float time) {
+  float blue = 0.0;
+  float white = 0.0;
+  float warp = 0.0;
+  float distanceToPointer = distance(position, pointer);
+  float pulse = sin(distanceToPointer * 28.0 - time * 5.5);
+  float envelope = exp(-distanceToPointer * 3.6) * u_energy;
+  blue += max(pulse, 0.0) * envelope * 0.20;
+  white += ridge(distanceToPointer - 0.078 - sin(time * 1.2) * 0.009, 0.026) * envelope * 0.20;
+  warp += pulse * envelope * 0.030;
+
+  for (int i = 0; i < 8; i++) {
+    vec4 ripple = u_ripples[i];
+    float age = time - ripple.z;
+    if (age <= 0.0 || age >= 3.2 || ripple.w <= 0.001) continue;
+    float distanceToRipple = distance(position * u_resolution, ripple.xy);
+    float radius = 24.0 + age * 155.0;
+    float ring = sin((distanceToRipple - radius) * 0.058);
+    float rippleEnvelope = exp(-abs(distanceToRipple - radius) / 86.0) * (1.0 - age / 3.2) * ripple.w;
+    blue += max(ring, 0.0) * rippleEnvelope * 0.30;
+    white += max(-ring, 0.0) * rippleEnvelope * 0.34;
+    warp += ring * rippleEnvelope * 0.028;
+  }
+  return vec3(blue, white, warp);
+}
+
+vec4 sampleSmoothField(sampler2D field, vec2 uv) {
+  vec2 size = vec2(textureSize(field, 0));
+  vec2 texel = 1.0 / size;
+  vec2 position = clamp(uv, vec2(0.0), vec2(1.0));
+  // The solver carries broad mass and momentum. A compact reconstruction
+  // suppresses its enlarged texel lattice; the independent full-resolution
+  // ripple field below supplies the crisp wave fronts and pointer detail.
+  return texture(field, position) * 0.40
+    + texture(field, position + vec2(texel.x, 0.0)) * 0.15
+    + texture(field, position - vec2(texel.x, 0.0)) * 0.15
+    + texture(field, position + vec2(0.0, texel.y)) * 0.15
+    + texture(field, position - vec2(0.0, texel.y)) * 0.15;
+}
+
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
@@ -63,18 +104,18 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
-  vec3 surfaceSample = texture(u_normalField, uv).rgb;
+  vec3 surfaceSample = sampleSmoothField(u_normalField, uv).rgb;
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
-  // The height field is the single source of truth for ripples. This removes
-  // the second full-resolution eight-ripple loop and keeps refraction, light,
-  // and wave propagation on the same physical surface.
-  vec3 ripple = vec3(
+  vec3 physicalRipple = vec3(
     max(-simulationHeight, 0.0) * 0.70,
     max(simulationHeight, 0.0) * 0.85,
     simulationHeight * 0.55
   );
+  // The physical solver supplies the evolving surface while this full-screen
+  // analytic field preserves fine rings between simulation texels.
+  vec3 ripple = physicalRipple + rippleField(uv, pointer, time);
   float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
 
   float flowA = 0.5 + 0.25 * (
@@ -87,12 +128,10 @@ void main() {
   );
   float flowC = 0.5 + 0.5 * sin(dot(plane, vec2(6.2, -4.7)) + time * 0.72);
 
-  plane.x += (flowA - 0.5) * 0.034 + scrollImpulse * 0.004;
-  plane.y += (flowB - 0.5) * 0.026 - scrollImpulse * 0.006;
+  plane.x += (flowA - 0.5) * 0.034 + ripple.z * 0.82 + simulationNormal.x * 0.028 + scrollImpulse * 0.004;
+  plane.y += (flowB - 0.5) * 0.026 + ripple.z * 0.34 + simulationNormal.y * 0.024 - scrollImpulse * 0.006;
 
-  // Keep low-resolution simulation normals inside the title material. The
-  // background retains smooth flow, cursor lensing, scroll, and caustics.
-  vec2 baseUv = uv + lensOffset + vec2(0.0, -scrollImpulse * 0.003);
+  vec2 baseUv = uv + lensOffset + simulationNormal.xy * 0.022 + ripple.z * vec2(0.34, 0.16) + vec2(0.0, -scrollImpulse * 0.003);
   vec2 flowUv = clamp(
     baseUv + vec2((flowA - 0.5) * 0.018, (flowB - 0.5) * 0.014),
     vec2(0.0),
@@ -118,13 +157,24 @@ void main() {
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
 
+  vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+  vec3 surfaceLight = normalize(vec3(-0.42, -0.58, 0.70));
+  vec3 halfVector = normalize(surfaceLight + viewDirection);
+  float surfaceFresnel = 0.02 + 0.98 * pow(1.0 - max(dot(simulationNormal, viewDirection), 0.0), 5.0);
+  float surfaceSpecular = pow(max(dot(simulationNormal, halfVector), 0.0), 54.0);
+  float focusedCaustic = pow(clamp(1.0 - length(simulationNormal.xy) * 1.5, 0.0, 1.0), 7.0);
+  base = mix(base, white, surfaceFresnel * 0.10);
+  base += white * surfaceSpecular * (0.085 + u_energy * 0.07);
+  base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.34;
+  base += white * ripple.y * 0.11 + blue * ripple.x * 0.075;
+
   // Each glyph is a clear, water-filled volume: a thick optical wall around a
   // transparent refractive core, with light and shadow derived from its SDF.
   // Let the smooth cursor lens bend the glyph boundary, but keep the
   // high-frequency simulation normal and ripple field out of the SDF lookup.
   // Those fields still drive the material below; sampling the mask with them
   // was what made neighboring texels cross into cellular seams.
-  vec2 titleMaskWarp = lensOffset * 0.18;
+  vec2 titleMaskWarp = lensOffset * 0.18 + ripple.z * vec2(0.035, 0.016);
   vec2 titleUv = uv + titleMaskWarp;
   vec4 titleField = texture(u_text, clamp(titleUv, vec2(0.0), vec2(1.0)));
   float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
