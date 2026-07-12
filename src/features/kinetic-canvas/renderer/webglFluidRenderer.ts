@@ -167,8 +167,15 @@ out vec4 outColor;
 vec2 texel() { return 1.0 / max(u_resolution, vec2(1.0)); }
 vec2 decodeVelocity(vec4 v) { return (v.xy - 0.5) * 2.0; }
 vec4 encodeVelocity(vec2 v) { return vec4(clamp(v * 0.5 + 0.5, 0.0, 1.0), 0.5, 1.0); }
-float decodeHeight(float value) { return (value - 0.5) * 0.25; }
-float encodeHeight(float value) { return clamp(value * 4.0 + 0.5, 0.0, 1.0); }
+vec2 packUnitFloat(float value) {
+  vec2 packed = fract(clamp(value, 0.0, 0.99999) * vec2(1.0, 255.0));
+  packed.x -= packed.y / 255.0;
+  return packed;
+}
+float unpackUnitFloat(vec2 packed) { return packed.x + packed.y / 255.0; }
+float decodeHeight(vec2 packed) { return (unpackUnitFloat(packed) - 0.5) * 0.25; }
+vec2 encodeHeight(float value) { return packUnitFloat(clamp(value * 4.0 + 0.5, 0.0, 1.0)); }
+float encodeDisplayHeight(float value) { return clamp(value * 4.0 + 0.5, 0.0, 1.0); }
 
 float roundedBox(vec2 p, vec2 b, float r) {
   vec2 q = abs(p) - b + r;
@@ -181,8 +188,8 @@ float ripplePulse(vec2 uv, vec2 pointer, out float blue) {
   float dp = distance(uv, pointer);
   float pointerRing = sin(dp * 68.0 - u_time * 10.0);
   float pointerEnv = exp(-dp * 5.2) * u_pointer.z;
-  pulse += pointerRing * pointerEnv * 0.08;
-  blue += max(pointerRing, 0.0) * pointerEnv * 0.22 + exp(-dp * 7.0) * u_pointer.z * 0.42;
+  pulse += pointerRing * pointerEnv * 0.05;
+  blue += max(pointerRing, 0.0) * pointerEnv * 0.14 + exp(-dp * 7.0) * u_pointer.z * 0.28;
   for (int i = 0; i < 8; i++) {
     vec4 r = u_ripples[i];
     float age = u_time - r.z;
@@ -282,12 +289,12 @@ void main() {
 
   if (u_pass == 6) {
     vec4 h = texture(u_height, uv);
-    float currentHeight = decodeHeight(h.r);
-    float previousHeight = decodeHeight(h.g);
-    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).r);
-    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).r);
-    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).r);
-    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).r);
+    float currentHeight = decodeHeight(h.rg);
+    float previousHeight = decodeHeight(h.ba);
+    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).rg);
+    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).rg);
+    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).rg);
+    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).rg);
     float lap = hL + hR + hB + hT - 4.0 * currentHeight;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
@@ -306,23 +313,24 @@ void main() {
     ) * 0.00018;
     float next = (currentHeight * 2.0 - previousHeight + lap * (0.43 * deltaScale)) * pow(0.994, deltaScale)
       + pulse * 0.22 * deltaScale
-      + directionalTrail * 0.055 * deltaScale
-      + edgePressure * 0.028 * deltaScale
+      + directionalTrail * 0.035 * deltaScale
+      + edgePressure * 0.018 * deltaScale
       + edge * 0.0025 * deltaScale
       + ambientSurface;
     next *= 1.0 - obstacle * 0.18;
     next = clamp(next, -0.12, 0.12);
-    outColor = vec4(encodeHeight(next), encodeHeight(currentHeight), blue, 1.0);
+    outColor = vec4(encodeHeight(next), encodeHeight(currentHeight));
     return;
   }
 
   if (u_pass == 7) {
-    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).r);
-    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).r);
-    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).r);
-    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).r);
+    float hL = decodeHeight(texture(u_height, uv - vec2(e.x, 0.0)).rg);
+    float hR = decodeHeight(texture(u_height, uv + vec2(e.x, 0.0)).rg);
+    float hB = decodeHeight(texture(u_height, uv - vec2(0.0, e.y)).rg);
+    float hT = decodeHeight(texture(u_height, uv + vec2(0.0, e.y)).rg);
     vec3 n = normalize(vec3((hL - hR) * 22.0, (hB - hT) * 22.0, 1.0));
-    outColor = vec4(n.xy * 0.5 + 0.5, encodeHeight(decodeHeight(texture(u_height, uv).r)), 1.0);
+    float displayHeight = decodeHeight(texture(u_height, uv).rg);
+    outColor = vec4(n.xy * 0.5 + 0.5, encodeDisplayHeight(displayHeight), 1.0);
     return;
   }
 
@@ -382,7 +390,10 @@ export function startFluidRenderer(
   });
   if (!glContext) throw new Error("WebGL2 unavailable");
   const gl: WebGL2RenderingContext = glContext;
-  const supportsFloatTargets = Boolean(gl.getExtension("EXT_color_buffer_float"))
+  const supportsFloatTargets = Boolean(
+    gl.getExtension("EXT_color_buffer_float")
+    && gl.getExtension("OES_texture_float_linear"),
+  )
     && supportsRenderTarget(gl, gl.RGBA16F, gl.RGBA, gl.HALF_FLOAT);
 
   const program = createProgram(gl, VERTEX_SOURCE, FRAGMENT_SOURCE);
@@ -398,7 +409,6 @@ export function startFluidRenderer(
   const sceneIntensityLocation = gl.getUniformLocation(program, "u_sceneIntensity");
   const textureLocation = gl.getUniformLocation(program, "u_texture");
   const textLocation = gl.getUniformLocation(program, "u_text");
-  const simHeightLocation = gl.getUniformLocation(program, "u_heightField");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
@@ -537,13 +547,24 @@ export function startFluidRenderer(
     obstacle = nextObstacle;
     normal = nextNormal;
 
-    const clearBuffer = (fbo: WebGLFramebuffer, r: number, g: number, b: number) => {
+    // Packed height values must not be interpolated byte-by-byte. Normals are
+    // derived at simulation resolution and remain linearly filtered, which
+    // produces a smooth full-resolution optical surface.
+    [heightField.read, heightField.write].forEach((texture) => {
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    });
+
+    const clearBuffer = (fbo: WebGLFramebuffer, r: number, g: number, b: number, a = 1) => {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
-      gl.clearColor(r, g, b, 1);
+      gl.clearColor(r, g, b, a);
       gl.clear(gl.COLOR_BUFFER_BIT);
     };
-    clearBuffer(heightField.readFbo, 0.5, 0.5, 0);
-    clearBuffer(heightField.writeFbo, 0.5, 0.5, 0);
+    const packedZeroHigh = 127 / 255;
+    const packedZeroLow = 128 / 255;
+    clearBuffer(heightField.readFbo, packedZeroHigh, packedZeroLow, packedZeroHigh, packedZeroLow);
+    clearBuffer(heightField.writeFbo, packedZeroHigh, packedZeroLow, packedZeroHigh, packedZeroLow);
     clearBuffer(obstacle.fbo, 0, 0, 0);
     clearBuffer(normal.fbo, 0.5, 0.5, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -711,7 +732,6 @@ export function startFluidRenderer(
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
     if (heightField && normal && obstacle) {
-      bindTexture(4, heightField.read, simHeightLocation);
       bindTexture(5, normal.texture, simNormalLocation);
       bindTexture(6, obstacle.texture, simObstacleLocation);
     }

@@ -16,7 +16,6 @@ uniform float u_energy;
 uniform vec2 u_pointer;
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
-uniform sampler2D u_heightField;
 uniform sampler2D u_normalField;
 uniform sampler2D u_obstacleField;
 uniform float u_nameOpacity;
@@ -63,8 +62,9 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
-  vec3 simulationNormal = normalize(vec3(texture(u_normalField, uv).xy * 2.0 - 1.0, 1.0));
-  float simulationHeight = (texture(u_heightField, uv).r - 0.5) * 0.25;
+  vec3 surfaceSample = texture(u_normalField, uv).rgb;
+  vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
+  float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
   // The height field is the single source of truth for ripples. This removes
   // the second full-resolution eight-ripple loop and keeps refraction, light,

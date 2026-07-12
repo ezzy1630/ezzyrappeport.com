@@ -36,10 +36,13 @@ const tests = [
   ["Fluid framebuffers fail closed and support non-float targets", () => {
     assert.match(fluidRendererSource, /checkFramebufferStatus\(gl\.FRAMEBUFFER\)/);
     assert.match(fluidRendererSource, /supportsRenderTarget\(gl, gl\.RGBA16F, gl\.RGBA, gl\.HALF_FLOAT\)/);
+    assert.match(fluidRendererSource, /OES_texture_float_linear/);
     assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.RGBA16F : gl\.RGBA8/);
     assert.match(fluidRendererSource, /supportsFloatTargets \? gl\.HALF_FLOAT : gl\.UNSIGNED_BYTE/);
     assert.match(fluidRendererSource, /encodeHeight\(next\)/);
-    assert.match(fluidRendererSource, /decodeHeight\(h\.r\)/);
+    assert.match(fluidRendererSource, /decodeHeight\(h\.rg\)/);
+    assert.match(fluidRendererSource, /decodeHeight\(h\.ba\)/);
+    assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({
@@ -80,9 +83,9 @@ const tests = [
   }],
   ["Movement wakes stay responsive, throttled, and clamped", () => {
     assert.equal(resolveMovementSplat({ distance: 10, now: 1000, lastAt: 0 }), null);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.52);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.34);
     assert.equal(resolveMovementSplat({ distance: 180, now: 1080, lastAt: 1000 }), null);
-    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.25142857142857145) < 1e-12);
+    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.1576190476190476) < 1e-12);
   }],
   ["Every ordered project has one media presentation", () => {
     const presentationBlock = contentSource.match(/export const projectMediaPresentation = \{([\s\S]*?)\n\} satisfies Record/)?.[1] ?? "";
