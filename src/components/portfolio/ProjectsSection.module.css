@@ -96,11 +96,14 @@
   aspect-ratio: var(--project-aspect, 5 / 4);
   margin: 0;
   overflow: hidden;
-  border-radius: 1.1rem;
-  background: var(--project-well, rgba(232, 241, 251, 0.72));
+  overflow: visible;
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 50% 34%, rgba(255, 255, 255, 0.54), transparent 52%),
+    color-mix(in oklch, var(--project-well, #e8f1fb) 72%, transparent);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.56),
-    inset 0 -1rem 1.6rem rgba(16, 51, 91, 0.11);
+    0 2.4rem 4.8rem -3.4rem rgba(13, 43, 82, 0.58),
+    inset 0 1px 0 rgba(255, 255, 255, 0.66);
   isolation: isolate;
   transition: background-color 240ms ease, box-shadow 240ms ease;
 }
@@ -108,10 +111,23 @@
 .media::before {
   content: "";
   position: absolute;
+  right: 11%;
+  bottom: -5%;
+  left: 11%;
+  z-index: -1;
+  height: 16%;
+  border-radius: 50%;
+  background: rgba(14, 43, 76, 0.25);
+  filter: blur(1.15rem);
+  pointer-events: none;
+}
+
+.media::after {
+  content: "";
+  position: absolute;
   inset: 0;
-  z-index: 1;
   border-radius: inherit;
-  box-shadow: inset 0 0.35rem 1.2rem rgba(255, 255, 255, 0.16);
+  background: linear-gradient(145deg, rgba(255,255,255,0.24), transparent 32% 72%, rgba(24,76,138,0.06));
   pointer-events: none;
 }
 
@@ -134,7 +150,8 @@
   object-fit: var(--project-fit, contain);
   object-position: var(--project-position, center);
   transform: translateY(var(--project-offset-y, 0%)) scale(var(--project-scale, 1));
-  transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1), filter 240ms ease;
+  filter: drop-shadow(0 1.1rem 1.25rem rgba(12, 39, 72, 0.18));
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), filter 260ms ease;
 }
 
 .media[data-project="argyph"] .mediaImage {
@@ -142,28 +159,16 @@
   height: 100%;
 }
 
-.media[data-project="nexarad"],
-.media[data-project="mathpilot"] {
-  overflow: visible;
-  background: transparent;
-  box-shadow: none;
-}
-
-.media[data-project="nexarad"]::before,
-.media[data-project="mathpilot"]::before {
-  display: none;
-}
-
 .mediaLink:hover .mediaImage,
 .mediaLink:focus-visible .mediaImage {
-  transform: translateY(calc(var(--project-offset-y, 0%) - 2px)) scale(var(--project-scale, 1));
-  filter: saturate(1.04) brightness(1.015);
+  transform: translateY(calc(var(--project-offset-y, 0%) - 6px)) scale(var(--project-scale, 1));
+  filter: drop-shadow(0 1.5rem 1.45rem rgba(12, 39, 72, 0.24)) saturate(1.04) brightness(1.015);
 }
 
 .media:focus-within {
   box-shadow:
-    inset 0 1px 0 color-mix(in oklch, var(--rv-blue) 42%, white),
-    inset 0 -1rem 1.6rem rgba(16, 51, 91, 0.13);
+    0 2.7rem 5rem -3.2rem rgba(13, 43, 82, 0.65),
+    inset 0 1px 0 color-mix(in oklch, var(--rv-blue) 42%, white);
 }
 
 .content { grid-area: content; align-self: center; min-width: 0; }
