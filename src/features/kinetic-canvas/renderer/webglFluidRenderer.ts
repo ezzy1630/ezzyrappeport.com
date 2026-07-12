@@ -409,6 +409,7 @@ export function startFluidRenderer(
   const sceneIntensityLocation = gl.getUniformLocation(program, "u_sceneIntensity");
   const textureLocation = gl.getUniformLocation(program, "u_texture");
   const textLocation = gl.getUniformLocation(program, "u_text");
+  const textResolutionLocation = gl.getUniformLocation(program, "u_textResolution");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
@@ -474,6 +475,8 @@ export function startFluidRenderer(
 
   let width = 0;
   let height = 0;
+  let textWidth = 1;
+  let textHeight = 1;
   let dpr = 1;
   let frame = 0;
   let resizeFrame = 0;
@@ -663,6 +666,8 @@ export function startFluidRenderer(
       };
     });
     const textCanvas = createHeroTextCanvas(texW, texH, titleLayout);
+    textWidth = texW;
+    textHeight = texH;
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textCanvas);
@@ -724,6 +729,7 @@ export function startFluidRenderer(
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
     gl.uniform1i(textLocation, 1);
+    gl.uniform2f(textResolutionLocation, textWidth, textHeight);
     gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
     gl.uniform1f(timeLocation, t);
     gl.uniform1f(energyLocation, pointer.energy);
