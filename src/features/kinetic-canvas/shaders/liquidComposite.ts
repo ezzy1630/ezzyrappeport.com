@@ -124,10 +124,17 @@ void main() {
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec2 simulationUv = vec2(uv.x, 1.0 - uv.y);
-  float transition = smoothstep(0.04, 0.92, u_scroll.z);
-  float transitionFront = 1.08 - transition * 1.22;
-  float waterline = exp(-abs(uv.y - transitionFront) * 34.0) * transition;
-  uv.y += transition * transition * 0.028 + sin(uv.x * 9.0 + u_time * 0.7) * waterline * 0.004;
+  float transition = smoothstep(0.03, 0.94, u_scroll.z);
+  float frontWave = sin(uv.x * 7.5 + u_time * 0.62) * 0.012
+    + sin(uv.x * 15.0 - u_time * 0.38) * 0.004;
+  float transitionFront = 1.12 - transition * 1.36 + frontWave * transition;
+  float frontDistance = uv.y - transitionFront;
+  float waterline = exp(-abs(frontDistance) * 30.0) * transition;
+  float crestUnderside = exp(-abs(frontDistance + 0.034) * 42.0) * transition;
+  float submergedTransition = (1.0 - smoothstep(-0.18, 0.14, frontDistance)) * transition;
+  float surfacePull = waterline * (0.012 + abs(u_scroll.y) * 0.022);
+  uv.x += sin(uv.y * 11.0 + u_time * 0.55) * surfacePull;
+  uv.y += transition * transition * 0.032 - surfacePull * 0.72;
   vec2 plane = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
   float mobilePoster = smoothstep(0.82, 0.56, aspect);
 
@@ -202,11 +209,14 @@ void main() {
   base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.34;
   base += white * ripple.y * 0.11 + blue * ripple.x * 0.075;
   base += transportedLight * vec3(0.12, 0.20, 0.32) * 0.08;
-  // The hero exits through a lifted refractive waterline, rather than a fade.
-  // Compression, a narrow crest and a short settling veil connect the canvas
-  // material to the first content section without obscuring its typography.
-  base = mix(base, vec3(0.965, 0.977, 0.992), transition * 0.18);
-  base += white * waterline * 0.16 + blue * waterline * 0.035;
+  // The hero exits through a moving optical surface: the scene compresses at
+  // the crest, catches a thin caustic edge, then settles into the pearl field
+  // behind the work section. This is intentionally more than an opacity fade.
+  base = mix(base, vec3(0.958, 0.976, 0.997), transition * 0.12 + submergedTransition * 0.08);
+  base += white * waterline * (0.20 + abs(scrollImpulse) * 0.08);
+  base += vec3(0.38, 0.66, 1.0) * waterline * 0.10;
+  base -= vec3(0.040, 0.085, 0.160) * crestUnderside * 0.16;
+  base -= vec3(0.018, 0.036, 0.068) * submergedTransition * (1.0 - waterline) * 0.12;
 
   // Each glyph is a clear, water-filled volume: a thick optical wall around a
   // transparent refractive core, with light and shadow derived from its SDF.
@@ -229,9 +239,17 @@ void main() {
   float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
   float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
-  float depthField = texture(u_text, clamp(titleUv + vec2(0.006, -0.010), vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
-  float depthMask = smoothstep(-titleAA, titleAA, depthField) * u_nameOpacity;
-  float extrusion = max(depthMask - letterMask, 0.0);
+  vec2 extrusionDirection = vec2(0.006, -0.010);
+  float shallowDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 0.55, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
+  float midDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 1.25, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
+  float deepDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 2.1, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
+  float shallowDepthMask = smoothstep(-titleAA, titleAA, shallowDepthField) * u_nameOpacity;
+  float midDepthMask = smoothstep(-titleAA, titleAA, midDepthField) * u_nameOpacity;
+  float deepDepthMask = smoothstep(-titleAA, titleAA, deepDepthField) * u_nameOpacity;
+  float shallowExtrusion = max(shallowDepthMask - letterMask, 0.0);
+  float midExtrusion = max(midDepthMask - max(letterMask, shallowDepthMask), 0.0);
+  float deepExtrusion = max(deepDepthMask - max(midDepthMask, max(letterMask, shallowDepthMask)), 0.0);
+  float extrusion = max(shallowExtrusion, max(midExtrusion, deepExtrusion));
   vec2 textPixel = 1.0 / max(u_textResolution, vec2(1.0));
   float sdRight = texture(u_text, titleUv + vec2(textPixel.x, 0.0)).r;
   float sdLeft = texture(u_text, titleUv - vec2(textPixel.x, 0.0)).r;
@@ -257,6 +275,10 @@ void main() {
   vec3 titleTint = mix(vec3(0.26, 0.48, 0.80), vec3(0.18, 0.36, 0.68), mobilePoster);
   vec3 letterBody = mix(refracted, titleTint, 0.10 + glassWall * 0.24 + mobilePoster * 0.08);
   letterBody += white * interior * 0.018;
+  float volumeCore = interior * letterMask;
+  float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.7) * volumeCore;
+  letterBody = mix(letterBody, refracted * vec3(0.96, 0.995, 1.035), volumeCore * 0.16);
+  letterBody -= vec3(0.018, 0.048, 0.105) * internalDepth * 0.42;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);
@@ -269,14 +291,17 @@ void main() {
   letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
-  color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;
-  color += blue * extrusion * 0.075;
+  color -= vec3(0.020, 0.028, 0.042) * shallowExtrusion * 0.52;
+  color -= vec3(0.036, 0.048, 0.070) * midExtrusion * 0.66;
+  color -= vec3(0.052, 0.068, 0.095) * deepExtrusion * 0.78;
+  color += blue * (shallowExtrusion * 0.08 + midExtrusion * 0.055 + deepExtrusion * 0.035);
   color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
   color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));
   color -= vec3(0.018, 0.035, 0.070) * interior * letterMask;
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color += white * innerBevel * 0.25;
   color += white * edgeRim * 0.29;
+  color += white * shallowExtrusion * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
   color += white * outerMeniscus * 0.38;
   color -= vec3(0.035, 0.075, 0.15) * innerMeniscus * 0.22;
   color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;

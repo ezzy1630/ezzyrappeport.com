@@ -60,6 +60,10 @@ const tests = [
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.72, 0\.34\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.62/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
+    assert.match(liquidCompositeSource, /float shallowDepthField/);
+    assert.match(liquidCompositeSource, /float midDepthField/);
+    assert.match(liquidCompositeSource, /float deepDepthField/);
+    assert.match(liquidCompositeSource, /float internalDepth/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
   }],
   ["The background keeps organic motion without exposing simulation texels", () => {
@@ -70,6 +74,8 @@ const tests = [
     assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.012 \+ lensOffset \* 0\.62/);
     assert.match(liquidCompositeSource, /surfaceSpecular/);
     assert.match(liquidCompositeSource, /focusedCaustic/);
+    assert.match(liquidCompositeSource, /float crestUnderside/);
+    assert.match(liquidCompositeSource, /float submergedTransition/);
     assert.match(fluidRendererSource, /gl\.getUniformLocation\(program, `u_ripples\[\$\{i\}\]`\)/);
     assert.match(liquidCompositeSource, /vec3 samplePearlSurface/);
     assert.match(liquidCompositeSource, /vec3 sampleTransportedLight/);
