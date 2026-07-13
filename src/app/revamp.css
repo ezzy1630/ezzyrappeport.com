@@ -132,29 +132,44 @@ body {
   box-shadow: none;
   pointer-events: none;
   animation: rv-nav-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: min-height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .site-nav::before {
   content: "";
   position: absolute;
-  inset: 0 0 -3.5rem;
+  inset: 0 0 -2.25rem;
   z-index: -1;
   background: linear-gradient(
     180deg,
-    rgba(247, 251, 255, 0.94) 0%,
-    rgba(247, 251, 255, 0.72) 42%,
-    rgba(247, 251, 255, 0.24) 72%,
+    rgba(247, 251, 255, 0.92) 0%,
+    rgba(247, 251, 255, 0.66) 46%,
+    rgba(247, 251, 255, 0.18) 76%,
     transparent 100%
   );
-  -webkit-backdrop-filter: blur(10px) saturate(1.06);
-  backdrop-filter: blur(10px) saturate(1.06);
+  -webkit-backdrop-filter: blur(9px) saturate(1.08);
+  backdrop-filter: blur(9px) saturate(1.08);
   -webkit-mask-image: linear-gradient(#000 0 58%, transparent 100%);
   mask-image: linear-gradient(#000 0 58%, transparent 100%);
   pointer-events: none;
+  transition: inset 320ms cubic-bezier(0.22, 1, 0.36, 1), background 320ms ease, box-shadow 320ms ease;
+}
+
+.site-nav[data-scrolled="true"] {
+  min-height: 4.15rem;
+  padding-block: 0.45rem;
+}
+
+.site-nav[data-scrolled="true"]::before {
+  inset: 0 0 -0.8rem;
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.96), rgba(247, 251, 255, 0.86) 64%, transparent);
+  box-shadow: 0 1px 0 rgba(63, 104, 155, 0.08);
 }
 
 .site-nav a { pointer-events: auto; }
 .site-nav button { pointer-events: auto; }
+.site-nav-brand,
+.site-nav-actions { position: relative; z-index: 2; }
 
 .site-nav-brand {
   display: inline-flex;
@@ -162,7 +177,10 @@ body {
   justify-self: start;
   gap: 0.9rem;
   color: var(--rv-ink);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+.site-nav-brand:hover { transform: translateY(-1px); }
 
 .site-nav-monogram {
   display: grid;
@@ -172,8 +190,14 @@ body {
   border-radius: 50%;
   overflow: hidden;
   background: rgba(239, 247, 255, 0.3);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.72), 0 8px 20px -16px rgba(19, 68, 132, 0.55);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(72, 126, 192, 0.08),
+    0 10px 24px -17px rgba(19, 68, 132, 0.62);
+  transition: width 320ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 260ms ease;
 }
+
+.site-nav[data-scrolled="true"] .site-nav-monogram { width: 2.5rem; }
 
 .site-nav-headshot { width: 100%; height: 100%; object-fit: cover; object-position: 50% 39%; }
 
@@ -181,6 +205,7 @@ body {
   font-size: 0.86rem;
   font-weight: 560;
   letter-spacing: -0.01em;
+  transition: color 220ms ease;
 }
 
 .site-nav-links {
@@ -379,6 +404,10 @@ body {
   box-sizing: border-box;
   min-width: 0;
   margin: clamp(0.45rem, 1.2vh, 0.9rem) auto 0;
+  opacity: clamp(0, calc(1 - var(--liquid-depth, 0) * 2.6), 1);
+  transform: translate3d(0, calc(var(--liquid-depth, 0) * -0.9rem), 0);
+  transition: opacity 90ms linear;
+  will-change: opacity, transform;
   padding: 0;
   gap: clamp(3rem, 8vw, 9rem);
   border: 0;
@@ -1103,6 +1132,7 @@ body {
   .site-nav-menu-button { display: grid; }
   .site-nav-cta { display: inline-flex; min-height: 2.75rem; padding-left: 1rem; }
   .site-nav-cta span { font-size: 0.7rem; }
+  .site-nav[data-menu-open="true"] .site-nav-cta { opacity: 0; pointer-events: none; }
   .mobile-navigation {
     position: fixed;
     inset: 4.8rem 0 auto;

@@ -56,7 +56,7 @@ const tests = [
     assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.18/);
     assert.match(liquidCompositeSource, /vec2 titleUv = uv \+ titleMaskWarp/);
     assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.14/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.06/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.72, 0\.34\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.62/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
@@ -64,14 +64,16 @@ const tests = [
   }],
   ["The background keeps organic motion without exposing simulation texels", () => {
     assert.match(liquidCompositeSource, /vec4 sampleSmoothField/);
-    assert.match(liquidCompositeSource, /texture\(field, position\) \* 0\.40/);
+    assert.match(liquidCompositeSource, /texture\(field, position\) \* 0\.28/);
     assert.match(liquidCompositeSource, /physicalRipple \+ rippleField\(uv, pointer, time\)/);
     assert.match(liquidCompositeSource, /baseUv = uv \+ lensOffset \+ simulationNormal/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.026 \+ lensOffset \* 0\.62/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.012 \+ lensOffset \* 0\.62/);
     assert.match(liquidCompositeSource, /surfaceSpecular/);
     assert.match(liquidCompositeSource, /focusedCaustic/);
     assert.match(fluidRendererSource, /gl\.getUniformLocation\(program, `u_ripples\[\$\{i\}\]`\)/);
     assert.match(liquidCompositeSource, /vec3 samplePearlSurface/);
+    assert.match(liquidCompositeSource, /vec3 sampleTransportedLight/);
+    assert.match(fluidRendererSource, /nextDyeField = createDoubleBuffer\(gl, simWidth, simHeight, renderInternalFormat/);
     assert.match(fluidRendererSource, /drawSim\(1, velocityField\.writeFbo\)/);
     assert.match(fluidRendererSource, /drawSim\(2, divergence\.fbo\)/);
     assert.match(fluidRendererSource, /drawSim\(4, velocityField\.writeFbo\)/);

@@ -14,12 +14,30 @@ type Props = {
 
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, []);
+
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      setScrolled(window.scrollY > Math.min(72, window.innerHeight * 0.08));
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.cancelAnimationFrame(frame);
+    };
   }, []);
 
   useEffect(() => {
@@ -64,7 +82,11 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const hrefFor = (href: string) => `/${href}`;
 
   return (
-    <header className="site-nav" data-menu-open={menuOpen ? "true" : "false"}>
+    <header
+      className="site-nav"
+      data-menu-open={menuOpen ? "true" : "false"}
+      data-scrolled={scrolled ? "true" : "false"}
+    >
       <Link
         href="/#top"
         className="site-nav-brand"
