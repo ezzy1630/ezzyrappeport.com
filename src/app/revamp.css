@@ -85,11 +85,11 @@ body {
   mix-blend-mode: normal;
 }
 
-/* WebGL supplies the moving volume; the DOM glyphs remain as a restrained
-   optical face/rim. Keeping this layer resident also makes context recovery
-   and renderer restarts visually continuous. */
+/* WebGL owns the one visible moving volume once ready. The measured DOM
+   glyphs remain resident for layout and rasterization, then crossfade back in
+   automatically for startup, static mode, failure, and context recovery. */
 .fluid-canvas[data-fluid="ready"] ~ .content-layer .hero-name-fallback {
-  opacity: 0.09;
+  opacity: 0;
   visibility: visible;
   pointer-events: none;
 }

@@ -19,6 +19,7 @@ uniform sampler2D u_texture;
 uniform sampler2D u_text;
 uniform vec2 u_textResolution;
 uniform sampler2D u_normalField;
+uniform sampler2D u_velocityField;
 uniform sampler2D u_obstacleField;
 uniform sampler2D u_dyeField;
 uniform float u_nameOpacity;
@@ -99,6 +100,18 @@ vec4 sampleSmoothField(sampler2D field, vec2 uv) {
     + texture(field, position + vec2(-texel.x, texel.y)) * 0.06;
 }
 
+vec2 sampleFluidVelocity(vec2 uv) {
+  vec2 size = vec2(textureSize(u_velocityField, 0));
+  vec2 texel = 1.0 / max(size, vec2(1.0));
+  vec2 p = clamp(uv, vec2(0.0), vec2(1.0));
+  vec2 velocity = (texture(u_velocityField, p).xy - 0.5) * 2.0 * 0.46;
+  velocity += (texture(u_velocityField, clamp(p + vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).xy - 0.5) * 2.0 * 0.135;
+  velocity += (texture(u_velocityField, clamp(p - vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).xy - 0.5) * 2.0 * 0.135;
+  velocity += (texture(u_velocityField, clamp(p + vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).xy - 0.5) * 2.0 * 0.135;
+  velocity += (texture(u_velocityField, clamp(p - vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).xy - 0.5) * 2.0 * 0.135;
+  return clamp(velocity, vec2(-0.24), vec2(0.24));
+}
+
 vec3 sampleTransportedLight(vec2 uv) {
   vec2 size = vec2(textureSize(u_dyeField, 0));
   vec2 texel = 1.65 / max(size, vec2(1.0));
@@ -143,6 +156,7 @@ void main() {
   vec3 surfaceSample = sampleSmoothField(u_normalField, simulationUv).rgb;
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
+  vec2 fluidVelocity = sampleFluidVelocity(simulationUv);
   vec4 simulationObstacle = texture(u_obstacleField, simulationUv);
   vec3 transportedLight = sampleTransportedLight(simulationUv);
   vec3 physicalRipple = vec3(
@@ -224,7 +238,12 @@ void main() {
   // high-frequency simulation normal and ripple field out of the SDF lookup.
   // Those fields still drive the material below; sampling the mask with them
   // was what made neighboring texels cross into cellular seams.
-  vec2 titleMaskWarp = lensOffset * 0.18 + ripple.z * vec2(0.035, 0.016);
+  // The face follows only the broad, damped part of the same solver that
+  // moves the water. Fine normals remain material-only so glyph edges stay
+  // readable and never turn into a cursor-tracking wobble.
+  vec2 titleMaskWarp = lensOffset * 0.12
+    + ripple.z * vec2(0.024, 0.011)
+    + fluidVelocity * vec2(0.010, -0.008);
   vec2 titleUv = uv + titleMaskWarp;
   vec4 titleField = texture(u_text, clamp(titleUv, vec2(0.0), vec2(1.0)));
   float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
@@ -239,7 +258,9 @@ void main() {
   float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
   float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
-  vec2 extrusionDirection = vec2(0.0065, -0.0105);
+  vec2 extrusionDirection = vec2(0.0068, -0.0108)
+    + fluidVelocity * vec2(0.0045, -0.003)
+    + simulationHeight * vec2(0.012, -0.008);
   float shallowDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 0.55, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
   float midDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 1.25, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
   float deepDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 2.1, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
@@ -257,13 +278,22 @@ void main() {
   float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   float dome = pow(max(thickness, 0.0), 0.48);
-  vec3 normal = normalize(vec3(-coverageGradient * (6.4 + dome * 3.2) + simulationNormal.xy * 0.085, 0.78));
+  vec3 normal = normalize(vec3(
+    -coverageGradient * (7.2 + dome * 3.8)
+      + simulationNormal.xy * 0.14
+      + fluidVelocity * 0.22,
+    0.74
+  ));
 
   // The silhouette stays stable, but the material inside it keeps the full
   // fluid displacement. This preserves the original depth and pointer/wave
   // response without dragging SDF texels across glyph boundaries.
-  vec2 sampleWarp = ripple.z * vec2(0.72, 0.34) + simulationNormal.xy * 0.012 + lensOffset * 0.62;
-  vec2 refraction = uv + sampleWarp + normal.xy * (0.017 + glassWall * 0.026) * letterMask;
+  float faceDepth = mix(0.55, 1.0, dome);
+  vec2 sampleWarp = ripple.z * vec2(0.62, 0.29)
+    + simulationNormal.xy * (0.011 + faceDepth * 0.010)
+    + fluidVelocity * (0.024 + faceDepth * 0.018)
+    + lensOffset * 0.50;
+  vec2 refraction = uv + sampleWarp + normal.xy * (0.019 + glassWall * 0.031) * letterMask;
   vec2 chroma = normal.xy * (0.0014 + glassWall * 0.0018);
   vec3 refracted = vec3(
     texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
@@ -272,44 +302,50 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 titleTint = mix(vec3(0.20, 0.43, 0.76), vec3(0.15, 0.32, 0.64), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.14 + glassWall * 0.30 + mobilePoster * 0.08);
+  vec3 titleTint = mix(vec3(0.18, 0.39, 0.72), vec3(0.13, 0.29, 0.60), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, 0.20 + glassWall * 0.34 + mobilePoster * 0.08);
   letterBody += white * interior * 0.018;
   float volumeCore = interior * letterMask;
   float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.7) * volumeCore;
   letterBody = mix(letterBody, refracted * vec3(0.96, 0.995, 1.035), volumeCore * 0.16);
-  letterBody -= vec3(0.024, 0.060, 0.128) * internalDepth * 0.58;
+  letterBody -= vec3(0.030, 0.070, 0.145) * internalDepth * 0.72;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);
   float directionalHighlight = pow(lightFacing, 8.0);
   float oppositeShade = pow(max(dot(normal, -topLeftLight), 0.0), 3.0);
   float fresnel = pow(1.0 - clamp(normal.z, 0.0, 1.0), 2.1);
-  letterBody += white * directionalHighlight * (0.26 + glassWall * 0.64);
-  letterBody += white * fresnel * glassWall * 0.32;
+  letterBody += white * directionalHighlight * (0.30 + glassWall * 0.72);
+  letterBody += white * fresnel * glassWall * 0.38;
   letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
   letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
-  color -= vec3(0.026, 0.040, 0.066) * shallowExtrusion * 0.56;
-  color -= vec3(0.044, 0.066, 0.105) * midExtrusion * 0.68;
-  color -= vec3(0.070, 0.098, 0.150) * deepExtrusion * 0.82;
-  color += blue * (shallowExtrusion * 0.08 + midExtrusion * 0.055 + deepExtrusion * 0.035);
+  // Tint the exposed depth planes as translucent water-glass instead of
+  // merely darkening the background; this makes them read as side walls,
+  // not duplicated text or a conventional drop shadow.
+  float sideDepth = shallowExtrusion * 0.24 + midExtrusion * 0.62 + deepExtrusion;
+  vec3 sideWall = mix(vec3(0.79, 0.85, 0.93), vec3(0.52, 0.64, 0.80), sideDepth);
+  color = mix(color, sideWall, extrusion * 0.52);
+  color += white * shallowExtrusion * 0.055;
+  color += blue * (shallowExtrusion * 0.07 + midExtrusion * 0.055 + deepExtrusion * 0.04);
   color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
   color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));
   color -= vec3(0.018, 0.035, 0.070) * interior * letterMask;
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color += white * innerBevel * 0.25;
-  color += white * edgeRim * 0.29;
+  color += white * innerBevel * 0.29;
+  color += white * edgeRim * 0.36;
   color += white * shallowExtrusion * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
-  color += white * outerMeniscus * 0.38;
+  color += white * outerMeniscus * 0.44;
   color -= vec3(0.035, 0.075, 0.15) * innerMeniscus * 0.22;
   color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
   color += blue * glassWall * 0.032;
   float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
   color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
-  color += (white * ripple.y * 0.24 + blue * ripple.x * 0.18) * letterMask;
-  color += white * simulationHeight * 0.08 * letterMask;
+  float movingHighlight = clamp(dot(fluidVelocity, normalize(vec2(-0.72, -0.69))) * 2.8 + 0.5, 0.0, 1.0);
+  color += (white * ripple.y * 0.30 + blue * ripple.x * 0.22) * letterMask;
+  color += white * simulationHeight * 0.13 * letterMask;
+  color += mix(blue, white, movingHighlight) * length(fluidVelocity) * 0.22 * (innerBevel + glassWall);
   color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));
