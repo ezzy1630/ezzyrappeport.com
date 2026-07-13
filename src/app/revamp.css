@@ -1353,10 +1353,24 @@ body {
   border: 0;
   border-radius: 0;
   background:
+    linear-gradient(180deg, rgba(176, 211, 243, 0.2), rgba(27, 54, 88, 0.04) 18%, transparent 34%),
     radial-gradient(circle at 82% 18%, rgba(72,133,255,0.24), transparent 34%),
     linear-gradient(145deg, #091427, #050b16 68%, #0d1d36);
   box-shadow: none;
   color: white;
+}
+.contact-basin::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: clamp(7rem, 14vw, 12rem);
+  background:
+    radial-gradient(64% 95% at 18% -18%, rgba(229, 244, 255, 0.34), transparent 70%),
+    radial-gradient(52% 88% at 74% -28%, rgba(99, 176, 247, 0.25), transparent 72%),
+    linear-gradient(180deg, rgba(188, 219, 247, 0.16), transparent);
+  mix-blend-mode: screen;
+  opacity: 0.82;
+  pointer-events: none;
 }
 .contact-basin::after {
   content: "";
