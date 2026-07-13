@@ -55,15 +55,17 @@ export default function ProjectsSection() {
                   {project.slug === "velox" ? (
                     <VeloxMark className={styles.veloxMark} />
                   ) : (
-                    <Image
-                      src={project.media.cover.src}
-                      alt={project.media.cover.alt}
-                      width={project.media.cover.width}
-                      height={project.media.cover.height}
-                      sizes="(max-width: 900px) 92vw, (max-width: 1440px) 52vw, 760px"
-                      className={styles.mediaImage}
-                      unoptimized={project.media.cover.src.endsWith(".svg")}
-                    />
+                    <span className={styles.artifact}>
+                      <Image
+                        src={project.media.cover.src}
+                        alt={project.media.cover.alt}
+                        width={project.media.cover.width}
+                        height={project.media.cover.height}
+                        sizes="(max-width: 900px) 72vw, (max-width: 1440px) 38vw, 540px"
+                        className={styles.mediaImage}
+                        unoptimized={project.media.cover.src.endsWith(".svg")}
+                      />
+                    </span>
                   )}
                 </ProjectTransitionLink>
               </figure>
