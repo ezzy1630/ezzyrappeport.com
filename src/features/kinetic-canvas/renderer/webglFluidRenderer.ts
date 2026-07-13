@@ -226,7 +226,9 @@ void main() {
   }
 
   if (u_pass == 1) {
-    vec2 vel = decodeVelocity(texture(u_velocity, uv)) * 0.986;
+    vec2 priorVelocity = decodeVelocity(texture(u_velocity, uv));
+    vec2 advectedUv = clamp(uv - priorVelocity * 0.018, vec2(0.0), vec2(1.0));
+    vec2 vel = decodeVelocity(texture(u_velocity, advectedUv)) * 0.991;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
     vec2 dir = uv - pointer;
@@ -236,6 +238,11 @@ void main() {
     // still arrive through the dedicated ripple field at a higher intensity.
     vel += normalize(dir) * (wake * 0.052 + pulse * 0.032);
     vel += pointerVelocity * wake * 0.18;
+    vec2 ambientCurrent = vec2(
+      sin(uv.y * 8.0 + u_time * 0.31) + cos((uv.x + uv.y) * 5.0 - u_time * 0.23),
+      cos(uv.x * 7.0 - u_time * 0.27) - sin((uv.x - uv.y) * 4.0 + u_time * 0.19)
+    ) * 0.00055;
+    vel += ambientCurrent;
     float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
     vel += vec2(0.0, -scrollImpulse * 0.018);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
@@ -344,6 +351,14 @@ void main() {
 }
 `;
 
+const COPY_FRAGMENT_SOURCE = `#version 300 es
+precision highp float;
+uniform sampler2D u_source;
+in vec2 v_uv;
+out vec4 outColor;
+void main() { outColor = texture(u_source, v_uv); }
+`;
+
 function lowerQualityProfile(current: KineticQuality, width: number, height: number): KineticQuality {
   const nextTier = downgradeQualityTier(current.tier);
   if (nextTier === "balanced") {
@@ -385,6 +400,7 @@ export function startFluidRenderer(
   heroNameRef: { current: boolean },
   initialQuality?: KineticQuality,
   onReady?: () => void,
+  onRecover?: () => void,
 ): () => void {
   let quality = initialQuality ?? resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
   if (quality.tier === "static") return () => {};
@@ -404,6 +420,8 @@ export function startFluidRenderer(
 
   const program = createProgram(gl, VERTEX_SOURCE, FRAGMENT_SOURCE);
   const simProgram = createProgram(gl, VERTEX_SOURCE, SIM_FRAGMENT_SOURCE);
+  const copyProgram = createProgram(gl, VERTEX_SOURCE, COPY_FRAGMENT_SOURCE);
+  const copySourceLocation = gl.getUniformLocation(copyProgram, "u_source");
   gl.useProgram(program);
 
   const positionLocation = gl.getAttribLocation(program, "a_position");
@@ -503,7 +521,8 @@ export function startFluidRenderer(
   let lastSimTime = 0;
   let statsStartedAt = performance.now();
   let renderedFrames = 0;
-  let lateFrames = 0;
+  let poorPerformanceWindows = 0;
+  let healthyPerformanceWindows = 0;
   let adaptiveLevel = 0;
   const startedAt = performance.now();
   let simWidth = 1;
@@ -565,10 +584,41 @@ export function startFluidRenderer(
     normal = null;
   }
 
+  function deleteDoubleBuffer(buffer: DoubleBuffer | null) {
+    if (!buffer) return;
+    gl.deleteTexture(buffer.read);
+    gl.deleteTexture(buffer.write);
+    gl.deleteFramebuffer(buffer.readFbo);
+    gl.deleteFramebuffer(buffer.writeFbo);
+  }
+
+  function deleteSingleBuffer(buffer: SingleBuffer | null) {
+    if (!buffer) return;
+    gl.deleteTexture(buffer.texture);
+    gl.deleteFramebuffer(buffer.fbo);
+  }
+
+  function copyTexture(source: WebGLTexture, target: WebGLFramebuffer, targetWidth: number, targetHeight: number) {
+    gl.useProgram(copyProgram);
+    gl.bindVertexArray(vao);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
+    gl.viewport(0, 0, targetWidth, targetHeight);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, source);
+    gl.uniform1i(copySourceLocation, 0);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
   function configureSim() {
+    const previousHeightField = heightField;
+    const previousVelocityField = velocityField;
+    const previousDyeField = dyeField;
+    const previousPressureField = pressureField;
+    const previousDivergence = divergence;
+    const previousObstacle = obstacle;
+    const previousNormal = normal;
     simWidth = Math.max(1, quality.simWidth);
     simHeight = Math.max(96, Math.round(simWidth * (height / Math.max(width, 1))));
-    disposeSimBuffers();
     let nextHeightField: DoubleBuffer | null = null;
     let nextVelocityField: DoubleBuffer | null = null;
     let nextDyeField: DoubleBuffer | null = null;
@@ -633,6 +683,27 @@ export function startFluidRenderer(
     [dyeField.readFbo, dyeField.writeFbo].forEach((fbo) => clearBuffer(fbo, 0, 0, 0));
     [pressureField.readFbo, pressureField.writeFbo].forEach((fbo) => clearBuffer(fbo, 0.5, 0, 0));
     clearBuffer(divergence.fbo, 0.5, 0, 0);
+
+    // Preserve the live field through resize and adaptive-tier changes. The
+    // GPU resamples into the new dimensions before old resources are deleted,
+    // preventing water resets, blank frames, and dropped active ripples.
+    if (previousHeightField && previousVelocityField && previousDyeField && previousPressureField) {
+      copyTexture(previousHeightField.read, heightField.readFbo, simWidth, simHeight);
+      copyTexture(previousHeightField.write, heightField.writeFbo, simWidth, simHeight);
+      copyTexture(previousVelocityField.read, velocityField.readFbo, simWidth, simHeight);
+      copyTexture(previousVelocityField.write, velocityField.writeFbo, simWidth, simHeight);
+      copyTexture(previousDyeField.read, dyeField.readFbo, simWidth, simHeight);
+      copyTexture(previousDyeField.write, dyeField.writeFbo, simWidth, simHeight);
+      copyTexture(previousPressureField.read, pressureField.readFbo, simWidth, simHeight);
+      copyTexture(previousPressureField.write, pressureField.writeFbo, simWidth, simHeight);
+    }
+    deleteDoubleBuffer(previousHeightField);
+    deleteDoubleBuffer(previousVelocityField);
+    deleteDoubleBuffer(previousDyeField);
+    deleteDoubleBuffer(previousPressureField);
+    deleteSingleBuffer(previousDivergence);
+    deleteSingleBuffer(previousObstacle);
+    deleteSingleBuffer(previousNormal);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -848,17 +919,8 @@ export function startFluidRenderer(
     const interval = 1000 / compositeFps;
     const elapsed = now - lastRenderTime;
     if (elapsed < interval) {
-    scheduleRender();
+      scheduleRender();
       return;
-    }
-    if (lastRenderTime > 0 && elapsed > interval * 1.2 && elapsed < interval * 4) {
-      lateFrames += 1;
-    } else if (elapsed >= interval * 4) {
-      // Tab switches, screenshots, and main-thread pauses are not evidence that
-      // the sustained quality tier is too high.
-      lateFrames = 0;
-    } else {
-      lateFrames = Math.max(0, lateFrames - 1);
     }
     lastRenderTime = now - (elapsed % interval);
     paint((now - startedAt) / 1000);
@@ -866,19 +928,32 @@ export function startFluidRenderer(
 
     const statsElapsed = now - statsStartedAt;
     if (statsElapsed >= 2000) {
-      canvas.dataset.fps = Math.round((renderedFrames * 1000) / statsElapsed).toString();
+      const measuredFps = (renderedFrames * 1000) / statsElapsed;
+      canvas.dataset.fps = Math.round(measuredFps).toString();
+      // Only react to sustained frame-rate evidence. Long windows are usually
+      // screenshots, tab suspension, or DevTools pauses and must not lower the
+      // user's quality tier. Three genuinely poor windows are required before
+      // reallocating; recovery is deliberately slower to avoid oscillation.
+      if (statsElapsed < 3200 && measuredFps < quality.targetFps * 0.72) {
+        poorPerformanceWindows += 1;
+        healthyPerformanceWindows = 0;
+      } else if (statsElapsed < 3200 && measuredFps > quality.targetFps * 0.92) {
+        healthyPerformanceWindows += 1;
+        poorPerformanceWindows = Math.max(0, poorPerformanceWindows - 1);
+      }
       statsStartedAt = now;
       renderedFrames = 0;
-    }
-
-    // Require sustained misses before reallocating the simulation. A handful
-    // of delayed frames during hydration or DevTools activity should not cause
-    // a permanent resolution drop and a visible reconfiguration hitch.
-    if (lateFrames >= 45 && quality.tier !== "low") {
-      adaptiveLevel += 1;
-      lateFrames = 0;
-      configure();
-      canvas.dataset.adaptive = "true";
+      if (poorPerformanceWindows >= 3 && quality.tier !== "low") {
+        adaptiveLevel += 1;
+        poorPerformanceWindows = 0;
+        configure();
+        canvas.dataset.adaptive = "true";
+      } else if (healthyPerformanceWindows >= 8 && adaptiveLevel > 0) {
+        adaptiveLevel -= 1;
+        healthyPerformanceWindows = 0;
+        configure();
+        canvas.dataset.adaptive = adaptiveLevel > 0 ? "true" : "recovered";
+      }
     }
     scheduleRender();
   }
@@ -911,6 +986,20 @@ export function startFluidRenderer(
     syncRunning();
   }
 
+  function onContextLost(event: Event) {
+    event.preventDefault();
+    running = false;
+    cancelAnimationFrame(frame);
+    canvas.dataset.paused = "context-lost";
+  }
+
+  function onContextRestored() {
+    // A restored WebGL context does not retain reliable program/FBO state.
+    // Recreate the renderer through its owner instead of attempting to paint
+    // with stale handles and risking a blank or checkerboard canvas.
+    onRecover?.();
+  }
+
   canvas.style.opacity = "0";
   canvas.style.mixBlendMode = "normal";
   canvas.style.filter = "none";
@@ -918,6 +1007,8 @@ export function startFluidRenderer(
   configure();
   window.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
+  canvas.addEventListener("webglcontextlost", onContextLost);
+  canvas.addEventListener("webglcontextrestored", onContextRestored);
 
   const renderSurface = document.querySelector<HTMLElement>(
     heroNameRef.current ? ".hero-shell" : ".case-hero",
@@ -964,6 +1055,8 @@ export function startFluidRenderer(
     surfaceObserver?.disconnect();
     window.removeEventListener("resize", onResize);
     document.removeEventListener("visibilitychange", onVisibility);
+    canvas.removeEventListener("webglcontextlost", onContextLost);
+    canvas.removeEventListener("webglcontextrestored", onContextRestored);
     image.removeEventListener("load", onFluidImageLoad);
     image.removeEventListener("error", onFluidImageError);
     image.src = "";
@@ -974,5 +1067,6 @@ export function startFluidRenderer(
     gl.deleteVertexArray(vao);
     gl.deleteProgram(program);
     gl.deleteProgram(simProgram);
+    gl.deleteProgram(copyProgram);
   };
 }

@@ -1,5 +1,5 @@
 export const VERTEX_SOURCE = `#version 300 es
-in vec2 a_position;
+layout(location = 0) in vec2 a_position;
 out vec2 v_uv;
 void main() {
   v_uv = a_position * 0.5 + 0.5;
@@ -95,6 +95,14 @@ vec4 sampleSmoothField(sampler2D field, vec2 uv) {
     + texture(field, position - vec2(0.0, texel.y)) * 0.15;
 }
 
+vec3 samplePearlSurface(vec2 uv) {
+  vec2 texel = 1.35 / max(u_resolution, vec2(1.0));
+  vec2 p = clamp(uv, vec2(0.0), vec2(1.0));
+  return texture(u_texture, p).rgb * 0.58
+    + texture(u_texture, clamp(p + texel, vec2(0.0), vec2(1.0))).rgb * 0.21
+    + texture(u_texture, clamp(p - texel, vec2(0.0), vec2(1.0))).rgb * 0.21;
+}
+
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
@@ -149,13 +157,17 @@ void main() {
   vec3 white = vec3(0.969, 0.976, 0.988);
   vec3 silver = vec3(0.867, 0.890, 0.925);
   vec2 surfaceChroma = simulationNormal.xy * 0.0011;
-  vec3 base = vec3(
+  vec3 pearlSurface = samplePearlSurface(flowUv);
+  vec3 chromaticSurface = vec3(
     texture(u_texture, clamp(flowUv + surfaceChroma, vec2(0.0), vec2(1.0))).r,
-    texture(u_texture, flowUv).g,
+    pearlSurface.g,
     texture(u_texture, clamp(flowUv - surfaceChroma, vec2(0.0), vec2(1.0))).b
   );
-  base = mix(base, white, 0.08);
+  vec3 base = mix(pearlSurface, chromaticSurface, 0.32);
+  base = mix(base, white, 0.12);
   base += vec3(0.004, 0.006, 0.012);
+  float depthVeil = smoothstep(0.04, 1.0, uv.y);
+  base = mix(base, vec3(0.91, 0.95, 0.995), depthVeil * 0.035);
 
   float caustic = caustics(plane * 3.1 + vec2(time * 0.035, -time * 0.026), time * 0.42);
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;

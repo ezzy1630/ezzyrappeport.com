@@ -1,3 +1,4 @@
+/* eslint-disable no-console -- this script is a CLI regression reporter */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
@@ -70,6 +71,17 @@ const tests = [
     assert.match(liquidCompositeSource, /surfaceSpecular/);
     assert.match(liquidCompositeSource, /focusedCaustic/);
     assert.match(fluidRendererSource, /gl\.getUniformLocation\(program, `u_ripples\[\$\{i\}\]`\)/);
+    assert.match(liquidCompositeSource, /vec3 samplePearlSurface/);
+    assert.match(fluidRendererSource, /drawSim\(1, velocityField\.writeFbo\)/);
+    assert.match(fluidRendererSource, /drawSim\(2, divergence\.fbo\)/);
+    assert.match(fluidRendererSource, /drawSim\(4, velocityField\.writeFbo\)/);
+    assert.match(fluidRendererSource, /drawSim\(5, dyeField\.writeFbo\)/);
+  }],
+  ["WebGL loss recovers through a fresh single renderer owner", () => {
+    assert.match(fluidRendererSource, /webglcontextlost/);
+    assert.match(fluidRendererSource, /webglcontextrestored/);
+    assert.match(fluidRendererSource, /event\.preventDefault\(\)/);
+    assert.match(fluidRendererSource, /onRecover\?\.\(\)/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({
