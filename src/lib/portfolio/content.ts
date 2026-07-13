@@ -355,10 +355,10 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
     media: {
       cover: {
-        src: "/projects/argyph/social-card.png",
-        alt: "Argyph local-first code intelligence social card",
-        width: 1280,
-        height: 640,
+        src: "/projects/argyph/argyph-identity.png",
+        alt: "Argyph local-first code intelligence identity artwork",
+        width: 1254,
+        height: 1254,
       },
     },
     verifiedLinks: [
@@ -435,8 +435,8 @@ export const projectMediaPresentation = {
     wellColor: "#ffffff",
   },
   argyph: {
-    aspectRatio: "2 / 1",
-    fit: "cover",
+    aspectRatio: "1 / 1",
+    fit: "contain",
     scale: "1",
     position: "center",
     offsetY: "0%",

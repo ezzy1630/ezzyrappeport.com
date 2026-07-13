@@ -256,6 +256,219 @@
   filter: drop-shadow(0 1rem 0.85rem rgba(6, 24, 49, 0.22)) saturate(1.035) brightness(1.015);
 }
 
+/* Each identity sits in a tailored material stage. This keeps the project
+   grid airy like Velox while allowing icons, marks, and editorial artwork to
+   feel intentionally made for this surface rather than dropped into it. */
+.artifact {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: min(72%, 29rem);
+  aspect-ratio: var(--project-aspect, 1 / 1);
+  overflow: hidden;
+  isolation: isolate;
+  border: 1px solid color-mix(in srgb, white 55%, transparent);
+  border-radius: 1.65rem;
+  background: color-mix(in oklch, var(--project-well, #e8f1fb) 12%, rgba(255, 255, 255, 0.02));
+  box-shadow:
+    0 1.7rem 3rem -2rem color-mix(in srgb, var(--project-well, #355f96) 86%, transparent),
+    0 0.15rem 0.45rem rgba(20, 39, 63, 0.07);
+  transform: translateY(var(--project-offset-y, 0%)) scale(var(--project-scale, 1));
+  transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 330ms ease, filter 280ms ease;
+}
+
+.artifact::before,
+.artifact::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.artifact::before {
+  inset: 0;
+  border: 1px solid color-mix(in srgb, white 56%, transparent);
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.artifact::after {
+  right: 7%;
+  bottom: -17%;
+  left: 7%;
+  height: 35%;
+  border-radius: 50%;
+  background: color-mix(in oklch, var(--project-well, #8ab4df) 62%, transparent);
+  filter: blur(1.1rem);
+  opacity: 0.26;
+  mix-blend-mode: screen;
+}
+
+.media .artifact .mediaImage {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  border-radius: inherit;
+  box-shadow: none;
+  object-fit: var(--project-fit, contain);
+  object-position: var(--project-position, center);
+  transform: none;
+  filter: none;
+}
+
+.media[data-project="monkeyclaw"]::after {
+  inset: 4% 0;
+  display: block;
+  background:
+    radial-gradient(ellipse at 50% 48%, rgba(27, 132, 132, 0.2), transparent 46%),
+    radial-gradient(ellipse at 76% 64%, rgba(93, 238, 222, 0.15), transparent 38%);
+}
+.media[data-project="monkeyclaw"] .artifact {
+  width: min(82%, 32rem);
+  border-radius: 2.2rem;
+  background: #020809;
+  box-shadow:
+    0 2.25rem 3.6rem -2.25rem rgba(1, 29, 34, 0.72),
+    0 0 0 0.55rem rgba(86, 232, 221, 0.055),
+    0 0 4.5rem rgba(33, 206, 192, 0.15);
+}
+.media[data-project="monkeyclaw"] .artifact::after { background: #2fe1d5; opacity: 0.14; }
+
+.media[data-project="etch"]::before {
+  display: block;
+  background: rgba(98, 150, 240, 0.14);
+  opacity: 0.36;
+}
+.media[data-project="etch"]::after {
+  inset: 7% 10%;
+  display: block;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(107, 155, 238, 0.16), transparent 46%),
+    linear-gradient(90deg, transparent 49.8%, rgba(122, 166, 240, 0.13) 50%, transparent 50.2%),
+    linear-gradient(0deg, transparent 49.8%, rgba(122, 166, 240, 0.13) 50%, transparent 50.2%);
+  filter: none;
+}
+.media[data-project="etch"] .artifact {
+  width: min(68%, 27rem);
+  border-radius: 1.15rem;
+  background: #030407;
+  box-shadow:
+    0 2.1rem 3.4rem -2.3rem rgba(2, 13, 29, 0.88),
+    0 0 0 1px rgba(126, 166, 235, 0.14),
+    0 0 3rem rgba(90, 140, 230, 0.12);
+}
+.media[data-project="etch"] .artifact::after { background: #93b8ff; opacity: 0.14; }
+
+.media[data-project="flowe"]::before {
+  display: block;
+  background: rgba(52, 153, 238, 0.18);
+  opacity: 0.36;
+}
+.media[data-project="flowe"]::after {
+  inset: 5% 8%;
+  display: block;
+  background:
+    radial-gradient(circle at 46% 30%, rgba(104, 225, 255, 0.22), transparent 36%),
+    radial-gradient(circle at 54% 69%, rgba(77, 124, 243, 0.16), transparent 48%);
+}
+.media[data-project="flowe"] .artifact {
+  width: min(63%, 25.5rem);
+  border-radius: 2.25rem;
+  background: #08101d;
+  box-shadow:
+    0 2.1rem 3.6rem -2.15rem rgba(6, 18, 42, 0.74),
+    0 0 0 0.55rem rgba(55, 149, 235, 0.045),
+    0 0 4rem rgba(63, 156, 249, 0.13);
+}
+.media[data-project="flowe"] .artifact::after { background: #4faeff; opacity: 0.17; }
+
+.media[data-project="argyph"] {
+  min-height: clamp(21rem, 31vw, 29rem);
+  aspect-ratio: auto;
+}
+.media[data-project="argyph"]::before {
+  display: block;
+  background: rgba(83, 112, 240, 0.2);
+  opacity: 0.4;
+}
+.media[data-project="argyph"]::after {
+  inset: 4% 5%;
+  display: block;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(128, 153, 255, 0.22), transparent 38%),
+    radial-gradient(circle at 50% 68%, rgba(59, 104, 223, 0.15), transparent 48%);
+}
+.media[data-project="argyph"] .artifact {
+  width: min(74%, 29rem);
+  border-radius: 1.65rem;
+  background: #080c15;
+  box-shadow:
+    0 2.3rem 3.8rem -2.35rem rgba(7, 12, 31, 0.8),
+    0 0 0 0.55rem rgba(107, 129, 255, 0.045),
+    0 0 4.4rem rgba(84, 113, 240, 0.16);
+}
+.media[data-project="argyph"] .artifact::after { background: #7f92ff; opacity: 0.13; }
+
+.media[data-project="nexarad"]::after {
+  inset: 3% 5%;
+  display: block;
+  background:
+    radial-gradient(circle at 52% 38%, rgba(133, 177, 255, 0.22), transparent 36%),
+    radial-gradient(circle at 48% 75%, rgba(58, 93, 172, 0.18), transparent 48%);
+}
+.media[data-project="nexarad"] .artifact {
+  width: min(64%, 25rem);
+  border-radius: 2.65rem;
+  background: #111722;
+  box-shadow:
+    0 2.25rem 3.6rem -2.2rem rgba(5, 19, 42, 0.72),
+    0 0 0 0.55rem rgba(112, 157, 238, 0.05),
+    0 0 4rem rgba(91, 141, 232, 0.13);
+}
+.media[data-project="nexarad"] .artifact::after { background: #8da9ff; opacity: 0.14; }
+
+.media[data-project="mathpilot"]::before {
+  display: block;
+  background: rgba(41, 129, 238, 0.16);
+  opacity: 0.4;
+}
+.media[data-project="mathpilot"]::after {
+  inset: 4% 4%;
+  display: block;
+  background:
+    radial-gradient(circle at 66% 35%, rgba(65, 176, 255, 0.23), transparent 34%),
+    radial-gradient(circle at 34% 70%, rgba(39, 91, 205, 0.17), transparent 48%);
+}
+.media[data-project="mathpilot"] .artifact {
+  width: min(65%, 25.5rem);
+  border-radius: 2rem;
+  background: #061837;
+  box-shadow:
+    0 2.25rem 3.6rem -2.25rem rgba(4, 29, 78, 0.68),
+    0 0 0 0.55rem rgba(68, 166, 255, 0.045),
+    0 0 4rem rgba(47, 142, 255, 0.15);
+}
+.media[data-project="mathpilot"] .artifact::after { background: #42aaff; opacity: 0.16; }
+
+.mediaLink:hover .artifact,
+.mediaLink:focus-visible .artifact {
+  transform: translateY(calc(var(--project-offset-y, 0%) - 8px)) scale(1.012) scale(var(--project-scale, 1));
+  box-shadow:
+    0 2.6rem 4.1rem -2.35rem color-mix(in srgb, var(--project-well, #355f96) 86%, transparent),
+    0 0.3rem 0.7rem rgba(20, 39, 63, 0.09);
+  filter: saturate(1.04) brightness(1.02);
+}
+.mediaLink:hover .artifact .mediaImage,
+.mediaLink:focus-visible .artifact .mediaImage {
+  transform: none;
+  filter: brightness(1.03) saturate(1.045);
+}
+
 .media:focus-within {
   outline: 2px solid color-mix(in oklch, var(--rv-blue) 58%, white);
   outline-offset: 0.5rem;
@@ -357,9 +570,9 @@
   .rail { font-size: 0.62rem; }
   .media { min-height: 19rem; border-radius: 1rem; }
   .media[data-project="argyph"] { min-height: 0; }
-  .media[data-project="etch"] .mediaImage,
-  .media[data-project="flowe"] .mediaImage,
-  .media[data-project="mathpilot"] .mediaImage { width: 76%; }
+  .media[data-project="etch"] .artifact,
+  .media[data-project="flowe"] .artifact,
+  .media[data-project="mathpilot"] .artifact { width: min(76%, 25rem); }
   .veloxMark { width: min(94%, 31rem); }
   .heading h3 { font-size: clamp(2.2rem, 11vw, 3.25rem); }
   .heading p { font-size: 0.86rem; line-height: 1.3; }
@@ -371,6 +584,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mediaImage,
+  .artifact,
   .veloxSignalPale,
   .veloxSignalMid,
   .veloxSignalLead { transition: none; }
