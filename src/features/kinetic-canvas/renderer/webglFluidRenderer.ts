@@ -517,6 +517,7 @@ export function startFluidRenderer(
   let revealFrame = 0;
   let running = false;
   let surfaceVisible = true;
+  let observedDevicePixelRatio = window.devicePixelRatio;
   let lastRenderTime = 0;
   let lastSimTime = 0;
   let statsStartedAt = performance.now();
@@ -811,8 +812,12 @@ export function startFluidRenderer(
       const rect = word.getBoundingClientRect();
       const style = getComputedStyle(word);
       return {
-        x: rect.left * scaleX,
-        y: rect.top * scaleY,
+        // The title lives in document space while the WebGL surface is fixed
+        // to the viewport. A resize/zoom can fire while the hero is offscreen;
+        // using raw viewport-relative bounds in that state rasterized the
+        // glyphs above the texture and cached a blank title for the return trip.
+        x: (rect.left + window.scrollX) * scaleX,
+        y: (rect.top + window.scrollY) * scaleY,
         width: rect.width * scaleX,
         height: rect.height * scaleY,
         fontSize: Number.parseFloat(style.fontSize) * scaleY,
@@ -835,6 +840,7 @@ export function startFluidRenderer(
       quality = lowerQualityProfile(quality, width, height);
     }
     if (quality.tier === "static") return;
+    observedDevicePixelRatio = window.devicePixelRatio;
     canvas.dataset.quality = quality.tier;
     if (canvas.parentElement) canvas.parentElement.dataset.quality = quality.tier;
     dpr = quality.dpr;
@@ -909,6 +915,10 @@ export function startFluidRenderer(
   }
   function render(now = performance.now()) {
     if (!running) return;
+    if (Math.abs(window.devicePixelRatio - observedDevicePixelRatio) > 0.01) {
+      onResize();
+      observedDevicePixelRatio = window.devicePixelRatio;
+    }
     const frozen = reducedMotionRef.current || staticModeRef.current;
     if (frozen) {
       paint(0);
@@ -983,6 +993,7 @@ export function startFluidRenderer(
   }
 
   function onVisibility() {
+    if (!document.hidden) configure();
     syncRunning();
   }
 
@@ -1006,6 +1017,7 @@ export function startFluidRenderer(
   canvas.style.transition = "opacity 420ms ease";
   configure();
   window.addEventListener("resize", onResize, { passive: true });
+  window.visualViewport?.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
   canvas.addEventListener("webglcontextlost", onContextLost);
   canvas.addEventListener("webglcontextrestored", onContextRestored);
@@ -1054,6 +1066,7 @@ export function startFluidRenderer(
     cancelAnimationFrame(revealFrame);
     surfaceObserver?.disconnect();
     window.removeEventListener("resize", onResize);
+    window.visualViewport?.removeEventListener("resize", onResize);
     document.removeEventListener("visibilitychange", onVisibility);
     canvas.removeEventListener("webglcontextlost", onContextLost);
     canvas.removeEventListener("webglcontextrestored", onContextRestored);

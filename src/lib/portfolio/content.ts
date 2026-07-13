@@ -138,10 +138,10 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     proof: "Visible agent tabs · no-key demo · Markdown and JSON export",
     media: {
       cover: {
-        src: "/projects/velox/velox-icon.png",
-        alt: "Velox application icon on a pale background",
-        width: 1024,
-        height: 1024,
+        src: "/projects/velox/velox-mark.svg",
+        alt: "Velox predictive cursor mark",
+        width: 96,
+        height: 96,
       },
       gallery: [
         {
@@ -429,7 +429,7 @@ export const projectMediaPresentation = {
   velox: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "1",
+    scale: "0.84",
     position: "center",
     offsetY: "0%",
     wellColor: "#ffffff",
