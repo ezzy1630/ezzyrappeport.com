@@ -88,11 +88,26 @@ vec4 sampleSmoothField(sampler2D field, vec2 uv) {
   // The solver carries broad mass and momentum. A compact reconstruction
   // suppresses its enlarged texel lattice; the independent full-resolution
   // ripple field below supplies the crisp wave fronts and pointer detail.
-  return texture(field, position) * 0.40
-    + texture(field, position + vec2(texel.x, 0.0)) * 0.15
-    + texture(field, position - vec2(texel.x, 0.0)) * 0.15
-    + texture(field, position + vec2(0.0, texel.y)) * 0.15
-    + texture(field, position - vec2(0.0, texel.y)) * 0.15;
+  return texture(field, position) * 0.28
+    + texture(field, position + vec2(texel.x, 0.0)) * 0.12
+    + texture(field, position - vec2(texel.x, 0.0)) * 0.12
+    + texture(field, position + vec2(0.0, texel.y)) * 0.12
+    + texture(field, position - vec2(0.0, texel.y)) * 0.12
+    + texture(field, position + texel) * 0.06
+    + texture(field, position - texel) * 0.06
+    + texture(field, position + vec2(texel.x, -texel.y)) * 0.06
+    + texture(field, position + vec2(-texel.x, texel.y)) * 0.06;
+}
+
+vec3 sampleTransportedLight(vec2 uv) {
+  vec2 size = vec2(textureSize(u_dyeField, 0));
+  vec2 texel = 1.65 / max(size, vec2(1.0));
+  vec2 p = clamp(uv, vec2(0.0), vec2(1.0));
+  return texture(u_dyeField, p).rgb * 0.40
+    + texture(u_dyeField, clamp(p + vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).rgb * 0.15
+    + texture(u_dyeField, clamp(p - vec2(texel.x, 0.0), vec2(0.0), vec2(1.0))).rgb * 0.15
+    + texture(u_dyeField, clamp(p + vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).rgb * 0.15
+    + texture(u_dyeField, clamp(p - vec2(0.0, texel.y), vec2(0.0), vec2(1.0))).rgb * 0.15;
 }
 
 vec3 samplePearlSurface(vec2 uv) {
@@ -122,7 +137,7 @@ void main() {
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
   vec4 simulationObstacle = texture(u_obstacleField, simulationUv);
-  vec3 transportedLight = sampleSmoothField(u_dyeField, simulationUv).rgb;
+  vec3 transportedLight = sampleTransportedLight(simulationUv);
   vec3 physicalRipple = vec3(
     max(-simulationHeight, 0.0) * 0.70,
     max(simulationHeight, 0.0) * 0.85,
@@ -180,13 +195,13 @@ void main() {
   vec3 surfaceLight = normalize(vec3(-0.42, -0.58, 0.70));
   vec3 halfVector = normalize(surfaceLight + viewDirection);
   float surfaceFresnel = 0.02 + 0.98 * pow(1.0 - max(dot(simulationNormal, viewDirection), 0.0), 5.0);
-  float surfaceSpecular = pow(max(dot(simulationNormal, halfVector), 0.0), 54.0);
+  float surfaceSpecular = pow(max(dot(simulationNormal, halfVector), 0.0), 42.0);
   float focusedCaustic = pow(clamp(1.0 - length(simulationNormal.xy) * 1.5, 0.0, 1.0), 7.0);
   base = mix(base, white, surfaceFresnel * 0.10);
   base += white * surfaceSpecular * (0.085 + u_energy * 0.07);
   base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.34;
   base += white * ripple.y * 0.11 + blue * ripple.x * 0.075;
-  base += transportedLight * vec3(0.12, 0.20, 0.32) * 0.18;
+  base += transportedLight * vec3(0.12, 0.20, 0.32) * 0.08;
   // The hero exits through a lifted refractive waterline, rather than a fade.
   // Compression, a narrow crest and a short settling veil connect the canvas
   // material to the first content section without obscuring its typography.
@@ -224,12 +239,12 @@ void main() {
   float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   float dome = pow(max(thickness, 0.0), 0.48);
-  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.14, 0.82));
+  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.06, 0.82));
 
   // The silhouette stays stable, but the material inside it keeps the full
   // fluid displacement. This preserves the original depth and pointer/wave
   // response without dragging SDF texels across glyph boundaries.
-  vec2 sampleWarp = ripple.z * vec2(0.72, 0.34) + simulationNormal.xy * 0.026 + lensOffset * 0.62;
+  vec2 sampleWarp = ripple.z * vec2(0.72, 0.34) + simulationNormal.xy * 0.012 + lensOffset * 0.62;
   vec2 refraction = uv + sampleWarp + normal.xy * (0.017 + glassWall * 0.026) * letterMask;
   vec2 chroma = normal.xy * (0.0014 + glassWall * 0.0018);
   vec3 refracted = vec3(
@@ -251,7 +266,7 @@ void main() {
   letterBody += white * directionalHighlight * (0.26 + glassWall * 0.64);
   letterBody += white * fresnel * glassWall * 0.32;
   letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
-  letterBody += blue * (simulationObstacle.g * 0.055 + caustic * 0.028) * interior;
+  letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
   color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;

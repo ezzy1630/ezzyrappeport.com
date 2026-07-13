@@ -628,10 +628,10 @@ export function startFluidRenderer(
     let nextNormal: SingleBuffer | null = null;
     try {
       nextHeightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
-      nextVelocityField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
-      nextDyeField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
-      nextPressureField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
-      nextDivergence = createSingleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+      nextVelocityField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextDyeField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextPressureField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextDivergence = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
       nextObstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
       nextNormal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     } catch (error) {
