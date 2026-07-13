@@ -1,6 +1,6 @@
-import Image from "next/image";
 import type { CSSProperties } from "react";
 import { projects } from "@/lib/portfolio/content";
+import ProjectIdentity from "./ProjectIdentity";
 import ProjectTransitionLink from "./ProjectTransitionLink";
 import VeloxMark from "./VeloxMark";
 import styles from "./ProjectsSection.module.css";
@@ -55,17 +55,11 @@ export default function ProjectsSection() {
                   {project.slug === "velox" ? (
                     <VeloxMark className={styles.veloxMark} />
                   ) : (
-                    <span className={styles.artifact}>
-                      <Image
-                        src={project.media.cover.src}
-                        alt={project.media.cover.alt}
-                        width={project.media.cover.width}
-                        height={project.media.cover.height}
-                        sizes="(max-width: 900px) 72vw, (max-width: 1440px) 38vw, 540px"
-                        className={styles.mediaImage}
-                        unoptimized={project.media.cover.src.endsWith(".svg")}
-                      />
-                    </span>
+                    <ProjectIdentity
+                      slug={project.slug}
+                      media={project.media.cover}
+                      className={styles.projectIdentity}
+                    />
                   )}
                 </ProjectTransitionLink>
               </figure>
