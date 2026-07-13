@@ -2,6 +2,7 @@ import Image from "next/image";
 import type { CSSProperties } from "react";
 import { projects } from "@/lib/portfolio/content";
 import ProjectTransitionLink from "./ProjectTransitionLink";
+import VeloxMark from "./VeloxMark";
 import styles from "./ProjectsSection.module.css";
 
 export default function ProjectsSection() {
@@ -51,15 +52,21 @@ export default function ProjectsSection() {
                   aria-label={`Explore the ${project.title} project`}
                   transitionName={`project-${project.slug}`}
                 >
-                  <Image
-                    src={project.media.cover.src}
-                    alt={project.media.cover.alt}
-                    width={project.media.cover.width}
-                    height={project.media.cover.height}
-                    sizes="(max-width: 900px) 92vw, (max-width: 1440px) 52vw, 760px"
-                    className={styles.mediaImage}
-                    unoptimized={project.media.cover.src.endsWith(".svg")}
-                  />
+                  {project.slug === "velox" ? (
+                    <VeloxMark className={styles.veloxMark} />
+                  ) : (
+                    <span className={styles.artifact}>
+                      <Image
+                        src={project.media.cover.src}
+                        alt={project.media.cover.alt}
+                        width={project.media.cover.width}
+                        height={project.media.cover.height}
+                        sizes="(max-width: 900px) 72vw, (max-width: 1440px) 38vw, 540px"
+                        className={styles.mediaImage}
+                        unoptimized={project.media.cover.src.endsWith(".svg")}
+                      />
+                    </span>
+                  )}
                 </ProjectTransitionLink>
               </figure>
 
