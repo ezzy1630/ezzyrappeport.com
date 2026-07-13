@@ -100,6 +100,7 @@ void main() {
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
+  vec2 simulationUv = vec2(uv.x, 1.0 - uv.y);
   float transition = smoothstep(0.04, 0.92, u_scroll.z);
   float transitionFront = 1.08 - transition * 1.22;
   float waterline = exp(-abs(uv.y - transitionFront) * 34.0) * transition;
@@ -109,11 +110,11 @@ void main() {
 
   float lensStrength;
   vec2 lensOffset = cursorLens(uv, pointer, lensStrength);
-  vec3 surfaceSample = sampleSmoothField(u_normalField, uv).rgb;
+  vec3 surfaceSample = sampleSmoothField(u_normalField, simulationUv).rgb;
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
-  vec4 simulationObstacle = texture(u_obstacleField, uv);
-  vec3 transportedLight = sampleSmoothField(u_dyeField, uv).rgb;
+  vec4 simulationObstacle = texture(u_obstacleField, simulationUv);
+  vec3 transportedLight = sampleSmoothField(u_dyeField, simulationUv).rgb;
   vec3 physicalRipple = vec3(
     max(-simulationHeight, 0.0) * 0.70,
     max(simulationHeight, 0.0) * 0.85,

@@ -235,7 +235,7 @@ void main() {
     // Normal pointer travel is a visible, low-energy splat. Click ripples
     // still arrive through the dedicated ripple field at a higher intensity.
     vel += normalize(dir) * (wake * 0.052 + pulse * 0.032);
-    vel += u_pointer.zw * 0.00009;
+    vel += pointerVelocity * wake * 0.18;
     float scrollImpulse = clamp(u_scroll.y, -0.22, 0.22);
     vel += vec2(0.0, -scrollImpulse * 0.018);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
@@ -668,7 +668,7 @@ export function startFluidRenderer(
         gl.uniform4f(
           simRippleLocations[i],
           ripple.x / Math.max(width, 1) * simWidth,
-          ripple.y / Math.max(height, 1) * simHeight,
+          (1 - ripple.y / Math.max(height, 1)) * simHeight,
           t - ripple.age,
           ripple.intensity * quality.renderScale,
         );
@@ -696,11 +696,10 @@ export function startFluidRenderer(
     bindTexture(0, velocityField.read, simVelocityLocationRead);
     bindTexture(1, dyeField.read, simDyeLocationRead);
     bindTexture(3, pressureField.read, simPressureLocationRead);
-    bindTexture(4, divergence.texture, simDivergenceLocationRead);
-    bindTexture(5, obstacle.texture, simObstacleLocationRead);
     bindTexture(6, textTexture, simTextLocationRead);
 
     drawSim(0, obstacle.fbo);
+    bindTexture(5, obstacle.texture, simObstacleLocationRead);
     drawSim(1, velocityField.writeFbo);
     velocityField.swap();
     bindTexture(0, velocityField.read, simVelocityLocationRead);
