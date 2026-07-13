@@ -20,6 +20,7 @@ uniform sampler2D u_text;
 uniform vec2 u_textResolution;
 uniform sampler2D u_normalField;
 uniform sampler2D u_obstacleField;
+uniform sampler2D u_dyeField;
 uniform float u_nameOpacity;
 uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
@@ -99,6 +100,10 @@ void main() {
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
+  float transition = smoothstep(0.04, 0.92, u_scroll.z);
+  float transitionFront = 1.08 - transition * 1.22;
+  float waterline = exp(-abs(uv.y - transitionFront) * 34.0) * transition;
+  uv.y += transition * transition * 0.028 + sin(uv.x * 9.0 + u_time * 0.7) * waterline * 0.004;
   vec2 plane = vec2((uv.x - 0.5) * aspect, uv.y - 0.5);
   float mobilePoster = smoothstep(0.82, 0.56, aspect);
 
@@ -108,6 +113,7 @@ void main() {
   vec3 simulationNormal = normalize(vec3(surfaceSample.xy * 2.0 - 1.0, 1.0));
   float simulationHeight = (surfaceSample.z - 0.5) * 0.25;
   vec4 simulationObstacle = texture(u_obstacleField, uv);
+  vec3 transportedLight = sampleSmoothField(u_dyeField, uv).rgb;
   vec3 physicalRipple = vec3(
     max(-simulationHeight, 0.0) * 0.70,
     max(simulationHeight, 0.0) * 0.85,
@@ -167,6 +173,12 @@ void main() {
   base += white * surfaceSpecular * (0.085 + u_energy * 0.07);
   base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.34;
   base += white * ripple.y * 0.11 + blue * ripple.x * 0.075;
+  base += transportedLight * vec3(0.12, 0.20, 0.32) * 0.18;
+  // The hero exits through a lifted refractive waterline, rather than a fade.
+  // Compression, a narrow crest and a short settling veil connect the canvas
+  // material to the first content section without obscuring its typography.
+  base = mix(base, vec3(0.965, 0.977, 0.992), transition * 0.18);
+  base += white * waterline * 0.16 + blue * waterline * 0.035;
 
   // Each glyph is a clear, water-filled volume: a thick optical wall around a
   // transparent refractive core, with light and shadow derived from its SDF.
@@ -214,9 +226,9 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 titleTint = mix(vec3(0.31, 0.55, 0.88), vec3(0.20, 0.40, 0.75), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.025 + glassWall * 0.19 + mobilePoster * 0.055);
-  letterBody += white * interior * 0.025;
+  vec3 titleTint = mix(vec3(0.26, 0.48, 0.80), vec3(0.18, 0.36, 0.68), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, 0.10 + glassWall * 0.24 + mobilePoster * 0.08);
+  letterBody += white * interior * 0.018;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);
@@ -232,7 +244,8 @@ void main() {
   color -= vec3(0.035, 0.085, 0.17) * extrusion * 0.58;
   color += blue * extrusion * 0.075;
   color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
-  color = mix(color, letterBody, letterMask * mix(0.92, 0.96, mobilePoster));
+  color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));
+  color -= vec3(0.018, 0.035, 0.070) * interior * letterMask;
   color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
   color += white * innerBevel * 0.25;
   color += white * edgeRim * 0.29;
