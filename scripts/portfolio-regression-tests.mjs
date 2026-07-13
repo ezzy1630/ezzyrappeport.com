@@ -53,25 +53,28 @@ const tests = [
   }],
   ["The title keeps a stable silhouette and a live fluid material", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
-    assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.18/);
+    assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.12/);
     assert.match(liquidCompositeSource, /vec2 titleUv = uv \+ titleMaskWarp/);
     assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.085/);
-    assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.72, 0\.34\)/);
-    assert.match(liquidCompositeSource, /lensOffset \* 0\.62/);
+    assert.match(liquidCompositeSource, /uniform sampler2D u_velocityField/);
+    assert.match(liquidCompositeSource, /vec2 sampleFluidVelocity/);
+    assert.match(liquidCompositeSource, /fluidVelocity \* vec2\(0\.010, -0\.008\)/);
+    assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
+    assert.match(liquidCompositeSource, /lensOffset \* 0\.50/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
     assert.match(liquidCompositeSource, /float shallowDepthField/);
     assert.match(liquidCompositeSource, /float midDepthField/);
     assert.match(liquidCompositeSource, /float deepDepthField/);
     assert.match(liquidCompositeSource, /float internalDepth/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
+    assert.match(fluidRendererSource, /bindTexture\(8, velocityField\?\.read \?\? null, velocityLocation\)/);
   }],
   ["The background keeps organic motion without exposing simulation texels", () => {
     assert.match(liquidCompositeSource, /vec4 sampleSmoothField/);
     assert.match(liquidCompositeSource, /texture\(field, position\) \* 0\.28/);
     assert.match(liquidCompositeSource, /physicalRipple \+ rippleField\(uv, pointer, time\)/);
     assert.match(liquidCompositeSource, /baseUv = uv \+ lensOffset \+ simulationNormal/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.012 \+ lensOffset \* 0\.62/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* \(0\.011 \+ faceDepth \* 0\.010\)/);
     assert.match(liquidCompositeSource, /surfaceSpecular/);
     assert.match(liquidCompositeSource, /focusedCaustic/);
     assert.match(liquidCompositeSource, /float crestUnderside/);

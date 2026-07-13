@@ -438,6 +438,7 @@ export function startFluidRenderer(
   const textLocation = gl.getUniformLocation(program, "u_text");
   const textResolutionLocation = gl.getUniformLocation(program, "u_textResolution");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
+  const velocityLocation = gl.getUniformLocation(program, "u_velocityField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
   const dyeLocation = gl.getUniformLocation(program, "u_dyeField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
@@ -718,10 +719,12 @@ export function startFluidRenderer(
       pointer.energy,
       pointer.vy / Math.max(height, 1),
     );
+    const normalizedPointerVx = Math.max(-1.2, Math.min(1.2, pointer.vx / Math.max(width, 1)));
+    const normalizedPointerVy = Math.max(-1.2, Math.min(1.2, -pointer.vy / Math.max(height, 1)));
     gl.uniform2f(
       simPointerVelocityLocation,
-      pointer.vx / Math.max(width, 1),
-      -pointer.vy / Math.max(height, 1),
+      normalizedPointerVx,
+      normalizedPointerVy,
     );
     gl.uniform1f(simTimeLocation, t);
     gl.uniform1f(simDeltaLocation, delta);
@@ -910,6 +913,7 @@ export function startFluidRenderer(
       bindTexture(5, normal.texture, simNormalLocation);
       bindTexture(6, obstacle.texture, simObstacleLocation);
       bindTexture(7, dyeField?.read ?? null, dyeLocation);
+      bindTexture(8, velocityField?.read ?? null, velocityLocation);
     }
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
