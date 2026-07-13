@@ -56,7 +56,7 @@ const tests = [
     assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.18/);
     assert.match(liquidCompositeSource, /vec2 titleUv = uv \+ titleMaskWarp/);
     assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
-    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.06/);
+    assert.match(liquidCompositeSource, /simulationNormal\.xy \* 0\.085/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.72, 0\.34\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.62/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
@@ -90,6 +90,12 @@ const tests = [
     assert.match(fluidRendererSource, /webglcontextrestored/);
     assert.match(fluidRendererSource, /event\.preventDefault\(\)/);
     assert.match(fluidRendererSource, /onRecover\?\.\(\)/);
+  }],
+  ["Hero title rasterization stays in document space across offscreen resizes", () => {
+    assert.match(fluidRendererSource, /rect\.left \+ window\.scrollX/);
+    assert.match(fluidRendererSource, /rect\.top \+ window\.scrollY/);
+    assert.match(fluidRendererSource, /window\.visualViewport\?\.addEventListener\("resize", onResize/);
+    assert.match(fluidRendererSource, /window\.devicePixelRatio - observedDevicePixelRatio/);
   }],
   ["A fine-pointer four-core desktop is not forced low", () => {
     assert.equal(resolveQualityTier({

@@ -124,7 +124,7 @@ void main() {
   vec2 pointer = vec2(u_pointer.x / u_resolution.x, 1.0 - u_pointer.y / u_resolution.y);
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec2 simulationUv = vec2(uv.x, 1.0 - uv.y);
-  float transition = smoothstep(0.03, 0.94, u_scroll.z);
+  float transition = smoothstep(0.035, 0.84, u_scroll.z);
   float frontWave = sin(uv.x * 7.5 + u_time * 0.62) * 0.012
     + sin(uv.x * 15.0 - u_time * 0.38) * 0.004;
   float transitionFront = 1.12 - transition * 1.36 + frontWave * transition;
@@ -239,7 +239,7 @@ void main() {
   float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
   float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
-  vec2 extrusionDirection = vec2(0.006, -0.010);
+  vec2 extrusionDirection = vec2(0.0065, -0.0105);
   float shallowDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 0.55, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
   float midDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 1.25, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
   float deepDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 2.1, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
@@ -257,7 +257,7 @@ void main() {
   float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   float dome = pow(max(thickness, 0.0), 0.48);
-  vec3 normal = normalize(vec3(-coverageGradient * (5.8 + dome * 2.8) + simulationNormal.xy * 0.06, 0.82));
+  vec3 normal = normalize(vec3(-coverageGradient * (6.4 + dome * 3.2) + simulationNormal.xy * 0.085, 0.78));
 
   // The silhouette stays stable, but the material inside it keeps the full
   // fluid displacement. This preserves the original depth and pointer/wave
@@ -272,13 +272,13 @@ void main() {
   );
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 titleTint = mix(vec3(0.26, 0.48, 0.80), vec3(0.18, 0.36, 0.68), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.10 + glassWall * 0.24 + mobilePoster * 0.08);
+  vec3 titleTint = mix(vec3(0.20, 0.43, 0.76), vec3(0.15, 0.32, 0.64), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, 0.14 + glassWall * 0.30 + mobilePoster * 0.08);
   letterBody += white * interior * 0.018;
   float volumeCore = interior * letterMask;
   float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.7) * volumeCore;
   letterBody = mix(letterBody, refracted * vec3(0.96, 0.995, 1.035), volumeCore * 0.16);
-  letterBody -= vec3(0.018, 0.048, 0.105) * internalDepth * 0.42;
+  letterBody -= vec3(0.024, 0.060, 0.128) * internalDepth * 0.58;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);
@@ -291,9 +291,9 @@ void main() {
   letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
-  color -= vec3(0.020, 0.028, 0.042) * shallowExtrusion * 0.52;
-  color -= vec3(0.036, 0.048, 0.070) * midExtrusion * 0.66;
-  color -= vec3(0.052, 0.068, 0.095) * deepExtrusion * 0.78;
+  color -= vec3(0.026, 0.040, 0.066) * shallowExtrusion * 0.56;
+  color -= vec3(0.044, 0.066, 0.105) * midExtrusion * 0.68;
+  color -= vec3(0.070, 0.098, 0.150) * deepExtrusion * 0.82;
   color += blue * (shallowExtrusion * 0.08 + midExtrusion * 0.055 + deepExtrusion * 0.035);
   color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.42;
   color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));

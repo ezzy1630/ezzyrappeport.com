@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">Velox mark</title>
+  <desc id="desc">Three forward cursor shapes, ending in the Velox blue predictive cursor.</desc>
+  <defs>
+    <linearGradient id="veloxMarkGradient" x1="27" y1="17" x2="73" y2="82" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2931ff"/>
+      <stop offset="0.45" stop-color="#4b1dff"/>
+      <stop offset="1" stop-color="#0a0718"/>
+    </linearGradient>
+    <linearGradient id="veloxGhostGradient" x1="3" y1="21" x2="57" y2="75" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#eef0ff"/>
+      <stop offset="1" stop-color="#8e8cff"/>
+    </linearGradient>
+  </defs>
+  <path d="M4 28 31 48 4 68 16 48Z" fill="url(#veloxGhostGradient)" opacity=".2"/>
+  <path d="M22 20 58 48 22 76 36 48Z" fill="url(#veloxGhostGradient)" opacity=".43"/>
+  <path d="M48 16 86 48 48 80 63 48Z" fill="url(#veloxMarkGradient)"/>
+</svg>
