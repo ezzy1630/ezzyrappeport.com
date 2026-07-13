@@ -291,7 +291,8 @@ void main() {
   }
 
   if (u_pass == 6) {
-    vec4 h = texture(u_height, uv);
+    vec2 transportedUv = clamp(uv - decodeVelocity(texture(u_velocity, uv)) * 0.012, vec2(0.0), vec2(1.0));
+    vec4 h = texture(u_height, transportedUv);
     float heightNow = currentHeight(h);
     float heightPrevious = previousHeight(h);
     float hL = currentHeight(texture(u_height, uv - vec2(e.x, 0.0)));
@@ -420,6 +421,7 @@ export function startFluidRenderer(
   const textResolutionLocation = gl.getUniformLocation(program, "u_textResolution");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
+  const dyeLocation = gl.getUniformLocation(program, "u_dyeField");
   const scrollLocation = gl.getUniformLocation(program, "u_scroll");
   const simPassLocation = gl.getUniformLocation(simProgram, "u_pass");
   const simResolutionLocation = gl.getUniformLocation(simProgram, "u_resolution");
@@ -433,6 +435,10 @@ export function startFluidRenderer(
     gl.getUniformLocation(simProgram, `u_ripples[${i}]`),
   );
   const simHeightLocationRead = gl.getUniformLocation(simProgram, "u_height");
+  const simVelocityLocationRead = gl.getUniformLocation(simProgram, "u_velocity");
+  const simDyeLocationRead = gl.getUniformLocation(simProgram, "u_dye");
+  const simPressureLocationRead = gl.getUniformLocation(simProgram, "u_pressure");
+  const simDivergenceLocationRead = gl.getUniformLocation(simProgram, "u_divergence");
   const simObstacleLocationRead = gl.getUniformLocation(simProgram, "u_obstacle");
   const simTextLocationRead = gl.getUniformLocation(simProgram, "u_text");
 
@@ -503,6 +509,10 @@ export function startFluidRenderer(
   let simWidth = 1;
   let simHeight = 1;
   let heightField: DoubleBuffer | null = null;
+  let velocityField: DoubleBuffer | null = null;
+  let dyeField: DoubleBuffer | null = null;
+  let pressureField: DoubleBuffer | null = null;
+  let divergence: SingleBuffer | null = null;
   let obstacle: SingleBuffer | null = null;
   let normal: SingleBuffer | null = null;
 
@@ -521,18 +531,36 @@ export function startFluidRenderer(
     const textures = [
       heightField?.read,
       heightField?.write,
+      velocityField?.read,
+      velocityField?.write,
+      dyeField?.read,
+      dyeField?.write,
+      pressureField?.read,
+      pressureField?.write,
+      divergence?.texture,
       obstacle?.texture,
       normal?.texture,
     ];
     const fbos = [
       heightField?.readFbo,
       heightField?.writeFbo,
+      velocityField?.readFbo,
+      velocityField?.writeFbo,
+      dyeField?.readFbo,
+      dyeField?.writeFbo,
+      pressureField?.readFbo,
+      pressureField?.writeFbo,
+      divergence?.fbo,
       obstacle?.fbo,
       normal?.fbo,
     ];
     textures.forEach((tex) => tex && gl.deleteTexture(tex));
     fbos.forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
     heightField = null;
+    velocityField = null;
+    dyeField = null;
+    pressureField = null;
+    divergence = null;
     obstacle = null;
     normal = null;
   }
@@ -542,20 +570,36 @@ export function startFluidRenderer(
     simHeight = Math.max(96, Math.round(simWidth * (height / Math.max(width, 1))));
     disposeSimBuffers();
     let nextHeightField: DoubleBuffer | null = null;
+    let nextVelocityField: DoubleBuffer | null = null;
+    let nextDyeField: DoubleBuffer | null = null;
+    let nextPressureField: DoubleBuffer | null = null;
+    let nextDivergence: SingleBuffer | null = null;
     let nextObstacle: SingleBuffer | null = null;
     let nextNormal: SingleBuffer | null = null;
     try {
       nextHeightField = createDoubleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
+      nextVelocityField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+      nextDyeField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+      nextPressureField = createDoubleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
+      nextDivergence = createSingleBuffer(gl, simWidth, simHeight, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE);
       nextObstacle = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
       nextNormal = createSingleBuffer(gl, simWidth, simHeight, renderInternalFormat, renderFormat, renderType);
     } catch (error) {
-      [nextHeightField?.read, nextHeightField?.write, nextObstacle?.texture, nextNormal?.texture]
+      [nextHeightField?.read, nextHeightField?.write, nextVelocityField?.read, nextVelocityField?.write,
+        nextDyeField?.read, nextDyeField?.write, nextPressureField?.read, nextPressureField?.write,
+        nextDivergence?.texture, nextObstacle?.texture, nextNormal?.texture]
         .forEach((texture) => texture && gl.deleteTexture(texture));
-      [nextHeightField?.readFbo, nextHeightField?.writeFbo, nextObstacle?.fbo, nextNormal?.fbo]
+      [nextHeightField?.readFbo, nextHeightField?.writeFbo, nextVelocityField?.readFbo, nextVelocityField?.writeFbo,
+        nextDyeField?.readFbo, nextDyeField?.writeFbo, nextPressureField?.readFbo, nextPressureField?.writeFbo,
+        nextDivergence?.fbo, nextObstacle?.fbo, nextNormal?.fbo]
         .forEach((fbo) => fbo && gl.deleteFramebuffer(fbo));
       throw error;
     }
     heightField = nextHeightField;
+    velocityField = nextVelocityField;
+    dyeField = nextDyeField;
+    pressureField = nextPressureField;
+    divergence = nextDivergence;
     obstacle = nextObstacle;
     normal = nextNormal;
 
@@ -584,7 +628,11 @@ export function startFluidRenderer(
       clearBuffer(heightField.writeFbo, packedZeroHigh, packedZeroLow, packedZeroHigh, packedZeroLow);
     }
     clearBuffer(obstacle.fbo, 0, 0, 0);
-    clearBuffer(normal.fbo, 0.5, 0.5, 0);
+    clearBuffer(normal.fbo, 0.5, 0.5, 0.5);
+    [velocityField.readFbo, velocityField.writeFbo].forEach((fbo) => clearBuffer(fbo, 0.5, 0.5, 0.5));
+    [dyeField.readFbo, dyeField.writeFbo].forEach((fbo) => clearBuffer(fbo, 0, 0, 0));
+    [pressureField.readFbo, pressureField.writeFbo].forEach((fbo) => clearBuffer(fbo, 0.5, 0, 0));
+    clearBuffer(divergence.fbo, 0.5, 0, 0);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
@@ -639,16 +687,36 @@ export function startFluidRenderer(
   }
 
   function updateSimulation(physics: LiquidPhysics, t: number) {
-    if (!heightField || !obstacle || !normal) return;
+    if (!heightField || !velocityField || !dyeField || !pressureField || !divergence || !obstacle || !normal) return;
     const delta = lastSimTime > 0 ? Math.min(0.05, t - lastSimTime) : 1 / 60;
     lastSimTime = t;
     gl.useProgram(simProgram);
     setSimUniforms(physics, t, delta);
     bindTexture(2, heightField.read, simHeightLocationRead);
+    bindTexture(0, velocityField.read, simVelocityLocationRead);
+    bindTexture(1, dyeField.read, simDyeLocationRead);
+    bindTexture(3, pressureField.read, simPressureLocationRead);
+    bindTexture(4, divergence.texture, simDivergenceLocationRead);
     bindTexture(5, obstacle.texture, simObstacleLocationRead);
     bindTexture(6, textTexture, simTextLocationRead);
 
     drawSim(0, obstacle.fbo);
+    drawSim(1, velocityField.writeFbo);
+    velocityField.swap();
+    bindTexture(0, velocityField.read, simVelocityLocationRead);
+    drawSim(2, divergence.fbo);
+    bindTexture(4, divergence.texture, simDivergenceLocationRead);
+    for (let i = 0; i < quality.pressureIterations; i++) {
+      bindTexture(3, pressureField.read, simPressureLocationRead);
+      drawSim(3, pressureField.writeFbo);
+      pressureField.swap();
+    }
+    bindTexture(3, pressureField.read, simPressureLocationRead);
+    drawSim(4, velocityField.writeFbo);
+    velocityField.swap();
+    bindTexture(0, velocityField.read, simVelocityLocationRead);
+    drawSim(5, dyeField.writeFbo);
+    dyeField.swap();
     drawSim(6, heightField.writeFbo);
     heightField.swap();
     bindTexture(2, heightField.read, simHeightLocationRead);
@@ -674,7 +742,7 @@ export function startFluidRenderer(
       const style = getComputedStyle(word);
       return {
         x: rect.left * scaleX,
-        y: (rect.top + window.scrollY) * scaleY,
+        y: rect.top * scaleY,
         width: rect.width * scaleX,
         height: rect.height * scaleY,
         fontSize: Number.parseFloat(style.fontSize) * scaleY,
@@ -765,6 +833,7 @@ export function startFluidRenderer(
     if (heightField && normal && obstacle) {
       bindTexture(5, normal.texture, simNormalLocation);
       bindTexture(6, obstacle.texture, simObstacleLocation);
+      bindTexture(7, dyeField?.read ?? null, dyeLocation);
     }
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

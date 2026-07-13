@@ -40,7 +40,9 @@ export default function SmoothScrollProvider({
       emitLiquidScroll({
         progress: y / max,
         velocity: filteredVelocity,
-        depth: y / max,
+        // Hero-local depth drives the waterline transition independently from
+        // the much longer document progress.
+        depth: Math.max(0, Math.min(1, y / Math.max(window.innerHeight, 1))),
       });
       lastScrollY = y;
       lastScrollTime = now;
