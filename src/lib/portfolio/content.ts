@@ -138,10 +138,10 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     proof: "Visible agent tabs · no-key demo · Markdown and JSON export",
     media: {
       cover: {
-        src: "/projects/velox/velox-icon.png",
-        alt: "Velox application icon on a pale background",
-        width: 1024,
-        height: 1024,
+        src: "/projects/velox/velox-mark.svg",
+        alt: "Velox predictive cursor mark",
+        width: 96,
+        height: 96,
       },
       gallery: [
         {
@@ -355,10 +355,10 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
     media: {
       cover: {
-        src: "/projects/argyph/social-card.png",
-        alt: "Argyph local-first code intelligence social card",
-        width: 1280,
-        height: 640,
+        src: "/projects/argyph/argyph-identity.png",
+        alt: "Argyph local-first code intelligence identity artwork",
+        width: 1254,
+        height: 1254,
       },
     },
     verifiedLinks: [
@@ -429,14 +429,14 @@ export const projectMediaPresentation = {
   velox: {
     aspectRatio: "1 / 1",
     fit: "contain",
-    scale: "1",
+    scale: "0.84",
     position: "center",
     offsetY: "0%",
     wellColor: "#ffffff",
   },
   argyph: {
-    aspectRatio: "2 / 1",
-    fit: "cover",
+    aspectRatio: "1 / 1",
+    fit: "contain",
     scale: "1",
     position: "center",
     offsetY: "0%",
