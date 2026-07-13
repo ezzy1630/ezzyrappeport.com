@@ -66,6 +66,7 @@ export default function KineticCanvas({
         return;
       }
       cleanup();
+      rendererCanvas?.remove();
       cleanup = rendererCleanup;
       rendererCanvas = canvas;
       container.appendChild(canvas);
@@ -105,6 +106,13 @@ export default function KineticCanvas({
           quality,
           () => {
             if (!disposed) container.dataset.fluid = "ready";
+          },
+          () => {
+            if (disposed) return;
+            container.dataset.fluid = "recovering";
+            window.requestAnimationFrame(() => {
+              if (!disposed) void startInteractiveRenderer();
+            });
           },
         );
         attachRenderer(canvas, rendererCleanup, "starting");
