@@ -1,4 +1,5 @@
 import { HERO_GLYPH_COUNT } from "../materials/heroTextMask";
+import { GLYPH_STATE_CODEC_SOURCE } from "./glyphStateCodec";
 
 /**
  * A 13x4 GPU state texture stores, per visible glyph:
@@ -29,6 +30,8 @@ uniform sampler2D u_velocity;
 uniform sampler2D u_normal;
 uniform sampler2D u_pressure;
 
+${GLYPH_STATE_CODEC_SOURCE}
+
 out vec4 outColor;
 
 vec2 decodeVelocity(vec4 value) { return (value.xy - 0.5) * 2.0; }
@@ -36,16 +39,17 @@ float cross2(vec2 a, vec2 b) { return a.x * b.y - a.y * b.x; }
 
 void main() {
   int index = int(floor(gl_FragCoord.x));
-  int row = int(floor(gl_FragCoord.y));
+  int physicalRow = int(floor(gl_FragCoord.y));
+  int row = u_packedGlyphState ? physicalRow / 2 : physicalRow;
   if (index < 0 || index >= GLYPH_COUNT) {
     outColor = vec4(0.0);
     return;
   }
 
-  vec4 transform = texelFetch(u_state, ivec2(index, 0), 0);
-  vec4 velocity = texelFetch(u_state, ivec2(index, 1), 0);
-  vec4 orientation = texelFetch(u_state, ivec2(index, 2), 0);
-  vec4 angularVelocity = texelFetch(u_state, ivec2(index, 3), 0);
+  vec4 transform = readGlyphState(u_state, index, 0);
+  vec4 velocity = readGlyphState(u_state, index, 1);
+  vec4 orientation = readGlyphState(u_state, index, 2);
+  vec4 angularVelocity = readGlyphState(u_state, index, 3);
   vec4 rest = u_glyphRest[index];
   vec4 physical = u_glyphPhysics[index];
   vec4 material = u_glyphMaterial[index];
@@ -172,9 +176,10 @@ void main() {
     if (abs(orientation[axis]) >= rotationLimit[axis] * 0.999) angularVelocity[axis] *= 0.38;
   }
 
-  if (row == 0) outColor = transform;
-  else if (row == 1) outColor = velocity;
-  else if (row == 2) outColor = orientation;
-  else outColor = angularVelocity;
+  vec4 nextState = row == 0 ? transform
+    : row == 1 ? velocity
+    : row == 2 ? orientation
+    : angularVelocity;
+  outColor = writeGlyphState(nextState, row, physicalRow);
 }
 `;

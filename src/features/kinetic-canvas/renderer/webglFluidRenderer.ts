@@ -22,6 +22,7 @@ import {
 } from "./quality-policy";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 import { GLYPH_PHYSICS_FRAGMENT_SOURCE } from "../shaders/glyphPhysics";
+import { GLYPH_STATE_CODEC_SOURCE } from "../shaders/glyphStateCodec";
 
 type DoubleBuffer = {
   read: WebGLTexture;
@@ -168,6 +169,8 @@ uniform vec4 u_glyphRest[${HERO_GLYPH_COUNT}];
 uniform vec4 u_glyphAtlas[${HERO_GLYPH_COUNT}];
 uniform float u_glyphDynamics;
 
+${GLYPH_STATE_CODEC_SOURCE}
+
 in vec2 v_uv;
 out vec4 outColor;
 
@@ -231,9 +234,9 @@ vec3 glyphBoundary(vec2 solverUv) {
     vec4 rest = u_glyphRest[index];
     if (abs(screenUv.y - rest.y) > rest.w * 1.35 + 0.032) continue;
     if (abs(screenUv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
-    vec4 transform = texelFetch(u_glyphState, ivec2(index, 0), 0) * u_glyphDynamics;
-    vec4 velocity = texelFetch(u_glyphState, ivec2(index, 1), 0) * u_glyphDynamics;
-    vec3 orientation = texelFetch(u_glyphState, ivec2(index, 2), 0).xyz * u_glyphDynamics;
+    vec4 transform = readGlyphState(u_glyphState, index, 0) * u_glyphDynamics;
+    vec4 velocity = readGlyphState(u_glyphState, index, 1) * u_glyphDynamics;
+    vec3 orientation = readGlyphState(u_glyphState, index, 2).xyz * u_glyphDynamics;
     float scale = 1.0 + transform.z * 2.4;
     vec2 tiltScale = max(vec2(cos(orientation.y), cos(orientation.x)), vec2(0.90));
     vec2 center = rest.xy + transform.xy + vec2(0.0, transform.w)
@@ -448,6 +451,16 @@ function lowerQualityProfile(current: KineticQuality, width: number, height: num
   return current;
 }
 
+function applyPackedTargetProfile(current: KineticQuality): KineticQuality {
+  if (current.tier === "high") {
+    return { ...current, simWidth: 256, pressureIterations: 6 };
+  }
+  if (current.tier === "balanced") {
+    return { ...current, simWidth: 208, pressureIterations: 4 };
+  }
+  return current;
+}
+
 export function startFluidRenderer(
   canvas: HTMLCanvasElement,
   getPhysics: () => LiquidPhysics,
@@ -468,7 +481,8 @@ export function startFluidRenderer(
   });
   if (!glContext) throw new Error("WebGL2 unavailable");
   const gl: WebGL2RenderingContext = glContext;
-  const supportsFloatTargets = Boolean(
+  const forcePackedGlyphState = new URLSearchParams(window.location.search).get("glyphState") === "packed";
+  const supportsFloatTargets = !forcePackedGlyphState && Boolean(
     gl.getExtension("EXT_color_buffer_float")
     && gl.getExtension("OES_texture_float_linear"),
   )
@@ -476,9 +490,7 @@ export function startFluidRenderer(
 
   const program = createProgram(gl, VERTEX_SOURCE, FRAGMENT_SOURCE);
   const simProgram = createProgram(gl, VERTEX_SOURCE, SIM_FRAGMENT_SOURCE);
-  const glyphPhysicsProgram = supportsFloatTargets
-    ? createProgram(gl, VERTEX_SOURCE, GLYPH_PHYSICS_FRAGMENT_SOURCE)
-    : null;
+  const glyphPhysicsProgram = createProgram(gl, VERTEX_SOURCE, GLYPH_PHYSICS_FRAGMENT_SOURCE);
   const copyProgram = createProgram(gl, VERTEX_SOURCE, COPY_FRAGMENT_SOURCE);
   const copySourceLocation = gl.getUniformLocation(copyProgram, "u_source");
   gl.useProgram(program);
@@ -500,6 +512,7 @@ export function startFluidRenderer(
   const glyphRestLocation = gl.getUniformLocation(program, "u_glyphRest[0]");
   const glyphAtlasLocation = gl.getUniformLocation(program, "u_glyphAtlas[0]");
   const glyphDynamicsLocation = gl.getUniformLocation(program, "u_glyphDynamics");
+  const packedGlyphStateLocation = gl.getUniformLocation(program, "u_packedGlyphState");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const velocityLocation = gl.getUniformLocation(program, "u_velocityField");
   const simObstacleLocation = gl.getUniformLocation(program, "u_obstacleField");
@@ -527,22 +540,25 @@ export function startFluidRenderer(
   const simGlyphRestLocation = gl.getUniformLocation(simProgram, "u_glyphRest[0]");
   const simGlyphAtlasLocation = gl.getUniformLocation(simProgram, "u_glyphAtlas[0]");
   const simGlyphDynamicsLocation = gl.getUniformLocation(simProgram, "u_glyphDynamics");
+  const simPackedGlyphStateLocation = gl.getUniformLocation(simProgram, "u_packedGlyphState");
 
-  const glyphDeltaLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_delta");
-  const glyphTimeLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_time");
-  const glyphRestPhysicsLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_glyphRest[0]");
-  const glyphPropertiesLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_glyphPhysics[0]");
-  const glyphMaterialLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_glyphMaterial[0]");
-  const glyphStateReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_state");
-  const glyphVelocityReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_velocity");
-  const glyphNormalReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_normal");
-  const glyphPressureReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pressure");
-  const glyphViewportLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_viewport");
-  const glyphPointerLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pointer");
-  const glyphPointerVelocityLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pointerVelocity");
-  const glyphRippleLocations = glyphPhysicsProgram
-    ? Array.from({ length: RIPPLE_COUNT }, (_, i) => gl.getUniformLocation(glyphPhysicsProgram, `u_ripples[${i}]`))
-    : [];
+  const glyphDeltaLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_delta");
+  const glyphTimeLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_time");
+  const glyphRestPhysicsLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_glyphRest[0]");
+  const glyphPropertiesLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_glyphPhysics[0]");
+  const glyphMaterialLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_glyphMaterial[0]");
+  const glyphStateReadLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_state");
+  const glyphVelocityReadLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_velocity");
+  const glyphNormalReadLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_normal");
+  const glyphPressureReadLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pressure");
+  const glyphViewportLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_viewport");
+  const glyphPointerLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pointer");
+  const glyphPointerVelocityLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pointerVelocity");
+  const glyphPackedStateLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_packedGlyphState");
+  const glyphRippleLocations = Array.from(
+    { length: RIPPLE_COUNT },
+    (_, i) => gl.getUniformLocation(glyphPhysicsProgram, `u_ripples[${i}]`),
+  );
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -626,11 +642,13 @@ export function startFluidRenderer(
   const renderInternalFormat = supportsFloatTargets ? gl.RGBA16F : gl.RGBA8;
   const renderFormat = gl.RGBA;
   const renderType = supportsFloatTargets ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+  const glyphStateHeight = supportsFloatTargets ? 4 : 8;
+  canvas.dataset.glyphState = supportsFloatTargets ? "float16" : "packed16";
 
   glyphState = createDoubleBuffer(
     gl,
     HERO_GLYPH_COUNT,
-    4,
+    glyphStateHeight,
     renderInternalFormat,
     renderFormat,
     renderType,
@@ -642,7 +660,8 @@ export function startFluidRenderer(
   });
   [glyphState.readFbo, glyphState.writeFbo].forEach((stateFbo) => {
     gl.bindFramebuffer(gl.FRAMEBUFFER, stateFbo);
-    gl.clearColor(0, 0, 0, 0);
+    if (supportsFloatTargets) gl.clearColor(0, 0, 0, 0);
+    else gl.clearColor(128 / 255, 0, 128 / 255, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
   });
   gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -667,22 +686,23 @@ export function startFluidRenderer(
     gl.useProgram(program);
     gl.uniform4fv(glyphRestLocation, rests);
     gl.uniform4fv(glyphAtlasLocation, atlasRegions);
-    gl.uniform1f(glyphDynamicsLocation, supportsFloatTargets ? 1 : 0);
+    gl.uniform1f(glyphDynamicsLocation, 1);
+    gl.uniform1i(packedGlyphStateLocation, supportsFloatTargets ? 0 : 1);
     gl.useProgram(simProgram);
     gl.uniform4fv(simGlyphRestLocation, rests);
     gl.uniform4fv(simGlyphAtlasLocation, atlasRegions);
-    gl.uniform1f(simGlyphDynamicsLocation, supportsFloatTargets ? 1 : 0);
-    if (glyphPhysicsProgram) {
-      gl.useProgram(glyphPhysicsProgram);
-      gl.uniform4fv(glyphRestPhysicsLocation, rests);
-      gl.uniform4fv(glyphPropertiesLocation, flattenGlyphMetadata((glyph) => glyph.physics));
-      gl.uniform4fv(glyphMaterialLocation, flattenGlyphMetadata((glyph) => glyph.material));
-    }
+    gl.uniform1f(simGlyphDynamicsLocation, 1);
+    gl.uniform1i(simPackedGlyphStateLocation, supportsFloatTargets ? 0 : 1);
+    gl.useProgram(glyphPhysicsProgram);
+    gl.uniform4fv(glyphRestPhysicsLocation, rests);
+    gl.uniform4fv(glyphPropertiesLocation, flattenGlyphMetadata((glyph) => glyph.physics));
+    gl.uniform4fv(glyphMaterialLocation, flattenGlyphMetadata((glyph) => glyph.material));
+    gl.uniform1i(glyphPackedStateLocation, supportsFloatTargets ? 0 : 1);
   }
 
   function updateGlyphPhysics(physics: LiquidPhysics, t: number) {
     if (
-      !glyphPhysicsProgram || !glyphState || !velocityField || !normal || !pressureField
+      !glyphState || !velocityField || !normal || !pressureField
       || glyphMetadata.length !== HERO_GLYPH_COUNT
     ) return;
     const delta = lastGlyphTime > 0 ? Math.min(0.034, t - lastGlyphTime) : 1 / 60;
@@ -690,7 +710,7 @@ export function startFluidRenderer(
     gl.useProgram(glyphPhysicsProgram);
     gl.bindVertexArray(vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, glyphState.writeFbo);
-    gl.viewport(0, 0, HERO_GLYPH_COUNT, 4);
+    gl.viewport(0, 0, HERO_GLYPH_COUNT, glyphStateHeight);
     gl.uniform1f(glyphDeltaLocation, delta);
     gl.uniform1f(glyphTimeLocation, t);
     gl.uniform2f(glyphViewportLocation, width, height);
@@ -1002,6 +1022,10 @@ export function startFluidRenderer(
     for (let level = 0; level < adaptiveLevel; level++) {
       quality = lowerQualityProfile(quality, width, height);
     }
+    // Integer-packed fields require extra encode/decode work in every solver
+    // pass. Preserve the display DPR, volumetric material, ripple count, and
+    // 60 FPS target while modestly reducing only fluid-grid work.
+    if (!supportsFloatTargets) quality = applyPackedTargetProfile(quality);
     if (quality.tier === "static") return;
     observedDevicePixelRatio = window.devicePixelRatio;
     canvas.dataset.quality = quality.tier;

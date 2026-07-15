@@ -10,6 +10,11 @@ import {
   TARGET_FPS_BY_TIER,
 } from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
 import { resolveMovementSplat } from "../src/lib/portfolio/interaction-policy.ts";
+import {
+  GLYPH_STATE_RANGES,
+  packGlyphSigned16,
+  unpackGlyphSigned16,
+} from "../src/features/kinetic-canvas/shaders/glyphStateCodec.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
 const fluidRendererSource = readFileSync(
@@ -26,6 +31,10 @@ const heroTextMaskSource = readFileSync(
 );
 const glyphPhysicsSource = readFileSync(
   new URL("../src/features/kinetic-canvas/shaders/glyphPhysics.ts", import.meta.url),
+  "utf8",
+);
+const glyphStateCodecSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/shaders/glyphStateCodec.ts", import.meta.url),
   "utf8",
 );
 const heroNameSource = readFileSync(
@@ -74,11 +83,41 @@ const tests = [
     assert.match(heroTextMaskSource, /maximumInteriorDistance/);
     assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
-    assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*4,/);
+    assert.match(fluidRendererSource, /glyphStateHeight = supportsFloatTargets \? 4 : 8/);
+    assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*glyphStateHeight,/);
     assert.match(glyphPhysicsSource, /row 0: planar position, depth, buoyancy/);
     assert.match(glyphPhysicsSource, /row 2: X tilt, Y tilt, screen rotation/);
     assert.match(fluidRendererSource, /gl\.texParameteri\(gl\.TEXTURE_2D, gl\.TEXTURE_MIN_FILTER, gl\.NEAREST\)/);
     assert.doesNotMatch(fluidRendererSource, /readPixels\(/);
+  }],
+  ["Packed glyph state preserves subpixel physics without float color targets", () => {
+    assert.match(fluidRendererSource, /get\("glyphState"\) === "packed"/);
+    assert.match(fluidRendererSource, /createProgram\(gl, VERTEX_SOURCE, GLYPH_PHYSICS_FRAGMENT_SOURCE\)/);
+    assert.doesNotMatch(fluidRendererSource, /supportsFloatTargets\s*\?\s*createProgram\(gl, VERTEX_SOURCE, GLYPH_PHYSICS_FRAGMENT_SOURCE\)/);
+    assert.match(fluidRendererSource, /canvas\.dataset\.glyphState = supportsFloatTargets \? "float16" : "packed16"/);
+    assert.match(fluidRendererSource, /gl\.clearColor\(128 \/ 255, 0, 128 \/ 255, 0\)/);
+    assert.match(fluidRendererSource, /gl\.uniform1i\(glyphPackedStateLocation, supportsFloatTargets \? 0 : 1\)/);
+    assert.match(fluidRendererSource, /if \(!supportsFloatTargets\) quality = applyPackedTargetProfile\(quality\)/);
+    assert.match(fluidRendererSource, /simWidth: 256, pressureIterations: 6/);
+    assert.match(glyphStateCodecSource, /packGlyphUnit16/);
+    assert.match(glyphStateCodecSource, /readGlyphState/);
+    assert.match(glyphStateCodecSource, /writeGlyphState/);
+    assert.match(glyphPhysicsSource, /physicalRow \/ 2 : physicalRow/);
+
+    for (let row = 0; row < GLYPH_STATE_RANGES.length; row++) {
+      for (let component = 0; component < 4; component++) {
+        const range = GLYPH_STATE_RANGES[row][component];
+        for (const fraction of [-1, -0.73, -0.09, 0, 0.11, 0.68, 1]) {
+          const value = range * fraction;
+          const decoded = unpackGlyphSigned16(
+            packGlyphSigned16(value, row, component),
+            row,
+            component,
+          );
+          assert.ok(Math.abs(decoded - value) <= range / 32_767 + Number.EPSILON);
+        }
+      }
+    }
   }],
   ["Glyph physics samples the live solver locally and returns to rest", () => {
     assert.match(glyphPhysicsSource, /vec2 left = center/);
@@ -100,9 +139,9 @@ const tests = [
   ["The transformed glyph field drives both obstacles and volumetric rendering", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
     assert.match(liquidCompositeSource, /uniform sampler2D u_glyphState/);
-    assert.match(liquidCompositeSource, /texelFetch\(u_glyphState, ivec2\(glyphIndex, 0\), 0\)/);
+    assert.match(liquidCompositeSource, /readGlyphState\(u_glyphState, glyphIndex, 0\)/);
     assert.match(liquidCompositeSource, /sampleGlyphField\(glyphIndex, local\)/);
-    assert.match(liquidCompositeSource, /texelFetch\(u_glyphState, ivec2\(glyphIndex, 2\), 0\)/);
+    assert.match(liquidCompositeSource, /readGlyphState\(u_glyphState, glyphIndex, 2\)/);
     assert.match(liquidCompositeSource, /orientGlyphNormal/);
     assert.match(liquidCompositeSource, /float opticalPath/);
     assert.match(liquidCompositeSource, /vec3 refractedBack/);
