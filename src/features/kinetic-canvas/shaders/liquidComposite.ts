@@ -165,6 +165,11 @@ vec4 sampleGlyphField(int index, vec2 local) {
   return texture(u_text, atlasUv);
 }
 
+float glyphDome(float depth) {
+  float normalizedDepth = clamp(depth, 0.0, 1.0);
+  return sqrt(max(0.0, normalizedDepth * (2.0 - normalizedDepth)));
+}
+
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
@@ -309,8 +314,8 @@ void main() {
       }
     }
   }
-  signedDistance = (signedDistance + 0.16) * u_nameOpacity;
-  float thickness = max(titleField.g, smoothstep(-0.14, 0.24, signedDistance) * 0.15) * u_nameOpacity;
+  signedDistance = (signedDistance + 0.035) * u_nameOpacity;
+  float thickness = max(titleField.g, smoothstep(-0.08, 0.16, signedDistance) * 0.055) * u_nameOpacity;
   float bevel = titleField.b * u_nameOpacity;
   float titleAA = max(fwidth(signedDistance) * 1.25, mix(0.0045, 0.0075, mobilePoster));
   float letterMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
@@ -319,19 +324,19 @@ void main() {
   float outerHalo = (smoothstep(-0.075, -0.012, signedDistance) - letterMask) * u_nameOpacity;
   float glassWall = (1.0 - smoothstep(0.10, 0.42, thickness)) * letterMask;
   float edgeRim = smoothstep(0.025, 0.12, thickness) * (1.0 - smoothstep(0.32, 0.58, thickness)) * letterMask;
-  float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
-  float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
+  float outerMeniscus = exp(-abs(signedDistance) * 34.0) * u_nameOpacity;
+  float innerMeniscus = exp(-abs(thickness - 0.19) * 13.0) * letterMask;
   vec2 extrusionDirection = rotateGlyph(
-    vec2(0.028, -0.042) + glyphOrientation.xy * vec2(0.22, -0.22)
-      + fluidVelocity * vec2(0.018, -0.014),
+    vec2(0.046, -0.058) + glyphOrientation.xy * vec2(0.090, -0.090)
+      + fluidVelocity * vec2(0.010, -0.008),
     -glyphOrientation.z
-  ) * (1.0 + glyphTransform.z * 8.0);
+  ) * (1.0 + glyphTransform.z * 4.0);
   float shallowDepthField = activeGlyph >= 0
-    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 0.75).r * 2.0 - 1.0 : -1.0;
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 0.70).r * 2.0 - 1.0 : -1.0;
   float midDepthField = activeGlyph >= 0
-    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 1.7).r * 2.0 - 1.0 : -1.0;
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 1.45).r * 2.0 - 1.0 : -1.0;
   float deepDepthField = activeGlyph >= 0
-    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 2.8).r * 2.0 - 1.0 : -1.0;
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 2.20).r * 2.0 - 1.0 : -1.0;
   float shallowDepthMask = smoothstep(-titleAA, titleAA, shallowDepthField) * u_nameOpacity;
   float midDepthMask = smoothstep(-titleAA, titleAA, midDepthField) * u_nameOpacity;
   float deepDepthMask = smoothstep(-titleAA, titleAA, deepDepthField) * u_nameOpacity;
@@ -346,15 +351,27 @@ void main() {
   vec4 fieldLeft = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal - vec2(atlasPixel.x, 0.0)) : vec4(0.0);
   vec4 fieldUp = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + vec2(0.0, atlasPixel.y)) : vec4(0.0);
   vec4 fieldDown = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal - vec2(0.0, atlasPixel.y)) : vec4(0.0);
+  vec4 fieldUpperRight = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + atlasPixel) : vec4(0.0);
+  vec4 fieldUpperLeft = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + vec2(-atlasPixel.x, atlasPixel.y)) : vec4(0.0);
+  vec4 fieldLowerRight = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + vec2(atlasPixel.x, -atlasPixel.y)) : vec4(0.0);
+  vec4 fieldLowerLeft = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal - atlasPixel) : vec4(0.0);
   float sdRight = fieldRight.r;
   float sdLeft = fieldLeft.r;
   float sdUp = fieldUp.r;
   float sdDown = fieldDown.r;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
   coverageGradient = rotateGlyph(coverageGradient, glyphOrientation.z);
-  vec2 volumeGradient = vec2(fieldRight.g - fieldLeft.g, fieldUp.g - fieldDown.g);
-  float dome = sqrt(max(0.0, 1.0 - (1.0 - clamp(thickness, 0.0, 1.0)) * (1.0 - clamp(thickness, 0.0, 1.0))));
-  vec3 normal = orientGlyphNormal(normalize(vec3(-volumeGradient * 11.0, 0.52 + dome * 0.82)), glyphOrientation);
+  vec2 volumeGradient = vec2(
+    glyphDome(fieldUpperRight.g) + 2.0 * glyphDome(fieldRight.g) + glyphDome(fieldLowerRight.g)
+      - glyphDome(fieldUpperLeft.g) - 2.0 * glyphDome(fieldLeft.g) - glyphDome(fieldLowerLeft.g),
+    glyphDome(fieldUpperLeft.g) + 2.0 * glyphDome(fieldUp.g) + glyphDome(fieldUpperRight.g)
+      - glyphDome(fieldLowerLeft.g) - 2.0 * glyphDome(fieldDown.g) - glyphDome(fieldLowerRight.g)
+  ) * 0.25;
+  float dome = glyphDome(thickness);
+  // The thickness channel spans the entire stroke. Scale its two-texel
+  // derivative into a true dome normal; the former low multiplier left most
+  // of the face front-facing and therefore visually flat.
+  vec3 normal = orientGlyphNormal(normalize(vec3(-volumeGradient * 24.0, 0.42 + dome * 0.48)), glyphOrientation);
   normal = normalize(vec3(normal.xy + simulationNormal.xy * 0.09 + fluidVelocity * 0.16, normal.z));
 
   // Fine solver detail remains optical while the broad GPU state moves the
@@ -377,53 +394,72 @@ void main() {
   vec3 refracted = mix(refractedBack, refractedFront, 0.54 + dome * 0.18);
   refracted += vec3(0.010, 0.014, 0.026);
 
-  vec3 titleTint = mix(vec3(0.52, 0.63, 0.77), vec3(0.42, 0.55, 0.72), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.52 + glassWall * 0.14 + opticalPath * 0.06 + mobilePoster * 0.04);
-  letterBody += white * interior * (0.024 + dome * 0.012);
+  vec3 titleTint = mix(vec3(0.56, 0.67, 0.80), vec3(0.54, 0.66, 0.81), mobilePoster);
+  vec3 letterBody = mix(refracted, titleTint, 0.34 + glassWall * 0.20 + opticalPath * 0.060 + mobilePoster * 0.025);
+  letterBody += white * interior * (0.010 + dome * 0.008);
   float volumeCore = interior * letterMask;
   float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.25) * volumeCore;
-  letterBody = mix(letterBody, refracted * vec3(0.95, 0.99, 1.04), volumeCore * 0.20);
-  letterBody -= vec3(0.040, 0.082, 0.155) * internalDepth;
-  letterBody -= vec3(0.024, 0.046, 0.078) * opticalPath * (0.52 + dome * 0.38);
+  float curvedWall = pow(clamp(1.0 - normal.z, 0.0, 1.0), 0.72) * letterMask;
+  letterBody = mix(letterBody, refracted * vec3(0.97, 1.0, 1.035), volumeCore * 0.20);
+  letterBody -= vec3(0.048, 0.090, 0.155) * internalDepth;
+  letterBody -= vec3(0.018, 0.042, 0.080) * opticalPath * (0.36 + dome * 0.24);
+  letterBody -= vec3(0.032, 0.070, 0.125) * glassWall;
+  letterBody -= vec3(0.055, 0.095, 0.145) * curvedWall * 0.86;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);
   float directionalHighlight = pow(lightFacing, 4.2);
   float oppositeShade = pow(max(dot(normal, -topLeftLight), 0.0), 3.0);
   float fresnel = pow(1.0 - clamp(normal.z, 0.0, 1.0), 2.1);
-  letterBody += white * directionalHighlight * (0.17 + glassWall * 0.34);
-  letterBody += white * fresnel * (0.12 + glassWall * 0.30);
-  letterBody -= vec3(0.055, 0.095, 0.17) * oppositeShade * (0.22 + glassWall * 0.72);
+  float upperLeftCurve = glassWall * smoothstep(
+    0.08,
+    0.72,
+    dot(normal.xy, normalize(vec2(-0.58, -0.82)))
+  );
+  float lowerRightCurve = glassWall * smoothstep(
+    0.04,
+    0.70,
+    dot(normal.xy, normalize(vec2(0.54, 0.84)))
+  );
+  letterBody += white * lightFacing * 0.075;
+  letterBody += white * directionalHighlight * (0.34 + glassWall * 0.34);
+  letterBody += white * fresnel * (0.24 + glassWall * 0.31);
+  letterBody += white * upperLeftCurve * 0.43;
+  letterBody -= vec3(0.070, 0.125, 0.205) * lowerRightCurve;
+  letterBody -= vec3(0.042, 0.080, 0.145) * oppositeShade * (0.22 + glassWall * 0.56);
   letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
   // Tint the exposed depth planes as translucent water-glass instead of
   // merely darkening the background; this makes them read as side walls,
   // not duplicated text or a conventional drop shadow.
-  float sideDepth = shallowExtrusion * 0.24 + midExtrusion * 0.62 + deepExtrusion;
-  vec3 sideWall = mix(vec3(0.79, 0.85, 0.93), vec3(0.52, 0.64, 0.80), sideDepth);
-  sideWall = mix(sideWall, refracted, 0.18 + clamp(glyphTransform.z * 4.0, 0.0, 0.14));
-  color = mix(color, sideWall, extrusion * 0.68);
-  color += white * shallowExtrusion * 0.055;
-  color += blue * (shallowExtrusion * 0.07 + midExtrusion * 0.055 + deepExtrusion * 0.04);
-  color -= vec3(0.028, 0.055, 0.105) * outerHalo * 0.62;
+  float sideDepth = shallowExtrusion * 0.20 + midExtrusion * 0.54 + deepExtrusion;
+  vec3 sideWallTint = mix(vec3(0.76, 0.85, 0.95), vec3(0.53, 0.67, 0.82), sideDepth);
+  vec3 sideWall = mix(refracted, sideWallTint, 0.38 + sideDepth * 0.22);
+  color = mix(color, sideWall, extrusion * 0.90);
+  color += white * shallowExtrusion * 0.10;
+  color += blue * (shallowExtrusion * 0.040 + midExtrusion * 0.032 + deepExtrusion * 0.022);
+  color -= vec3(0.024, 0.055, 0.105) * outerHalo * 0.62;
   color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));
   // Preserve a readable glass body even when the refracted pearl background is
   // nearly white. Highlights are layered afterward, so this is optical density
   // rather than a flat fill painted over the volume.
-  color = mix(color, vec3(0.64, 0.72, 0.82), letterMask * (0.27 + interior * 0.16));
-  color -= vec3(0.018, 0.035, 0.070) * interior * letterMask;
-  color -= vec3(0.10, 0.12, 0.16) * letterMask * mobilePoster * 0.35;
-  color += white * innerBevel * 0.16;
-  color += white * edgeRim * 0.23;
+  vec3 volumeAbsorption = vec3(0.16, 0.105, 0.046)
+    * (0.78 + opticalPath * 0.46 + glassWall * 0.38);
+  color *= vec3(1.0) - volumeAbsorption * letterMask;
+  color += vec3(0.008, 0.016, 0.030) * interior * letterMask;
+  color -= vec3(0.008, 0.020, 0.044) * interior * letterMask;
+  color -= vec3(0.035, 0.055, 0.085) * letterMask * mobilePoster * 0.20;
+  color += white * innerBevel * 0.20;
+  color += white * edgeRim * 0.30;
   float curvedSheen = exp(
     -pow(glyphLocal.x + 0.30 + glyphOrientation.y * 1.8, 2.0) * 5.5
     -pow(glyphLocal.y + 0.36 - glyphOrientation.x * 1.8, 2.0) * 12.0
   ) * smoothstep(0.08, 0.46, thickness) * letterMask;
-  color += white * curvedSheen * 0.16;
+  color += white * curvedSheen * 0.36;
   color += white * shallowExtrusion * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
-  color += white * outerMeniscus * 0.24;
-  color -= vec3(0.035, 0.075, 0.15) * innerMeniscus * 0.22;
+  color += white * outerMeniscus * 0.30;
+  color -= vec3(0.022, 0.052, 0.105) * innerMeniscus * 0.16;
   color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
   color += blue * glassWall * 0.032;
   float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;

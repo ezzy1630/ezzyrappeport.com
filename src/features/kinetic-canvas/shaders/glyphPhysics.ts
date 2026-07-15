@@ -103,21 +103,21 @@ void main() {
     vec2 hitOffset = centerTop - ripple.xy;
     float distancePixels = length(hitOffset * u_viewport);
     float glyphPixels = max(length(rest.zw * u_viewport), 28.0);
-    float immediate = exp(-distancePixels / (glyphPixels * 0.78 + 26.0))
-      * exp(-age * 18.0) * ripple.w;
+    float immediate = exp(-distancePixels / (glyphPixels * 0.48 + 18.0))
+      * exp(-age * 11.0) * ripple.w;
     float ringRadius = 22.0 + age * 185.0;
     float ring = exp(-abs(distancePixels - ringRadius) / 54.0)
       * (1.0 - age / 3.2) * ripple.w;
     vec2 radial = length(hitOffset) > 0.0001 ? normalize(hitOffset) : vec2(0.0, -1.0);
     vec2 impulseDirection = normalize(radial + vec2(0.0, -0.34));
-    vec2 impulse = impulseDirection * (immediate * 4.4 + ring * 0.46);
+    vec2 impulse = impulseDirection * (immediate * 6.2 + ring * 0.52);
     directForce += impulse;
     vec2 localHit = (ripple.xy - centerTop) / max(rest.zw, vec2(0.001));
-    directTorque.x += -localHit.y * (immediate * 2.1 + ring * 0.28);
-    directTorque.y += localHit.x * (immediate * 2.1 + ring * 0.28);
-    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 1.85 + ring * 0.26)
-      + localHit.x * (immediate * -0.82);
-    depthImpulse -= immediate * 0.058;
+    directTorque.x += -localHit.y * (immediate * 3.0 + ring * 0.32);
+    directTorque.y += localHit.x * (immediate * 3.0 + ring * 0.32);
+    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 2.65 + ring * 0.30)
+      + localHit.x * (immediate * -1.16);
+    depthImpulse -= immediate * 0.078;
     depthImpulse += ring * 0.010;
   }
 

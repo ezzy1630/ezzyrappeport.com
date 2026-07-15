@@ -46,37 +46,61 @@ export function clearHeroTextCanvasCache() {
   cachedField = null;
 }
 
-function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
-  const diagonal = Math.SQRT2;
-  const distance = new Float32Array(width * height);
-  distance.fill(1e6);
-  for (let i = 0; i < seeds.length; i++) {
-    if (seeds[i]) distance[i] = 0;
+function squaredDistanceTransform1D(source: Float64Array, target: Float64Array) {
+  const length = source.length;
+  const locations = new Int32Array(length);
+  const boundaries = new Float64Array(length + 1);
+  let envelope = 0;
+  locations[0] = 0;
+  boundaries[0] = Number.NEGATIVE_INFINITY;
+  boundaries[1] = Number.POSITIVE_INFINITY;
+
+  for (let position = 1; position < length; position++) {
+    let previous = locations[envelope];
+    let boundary = (
+      source[position] + position * position - source[previous] - previous * previous
+    ) / (2 * position - 2 * previous);
+    while (boundary <= boundaries[envelope]) {
+      envelope -= 1;
+      previous = locations[envelope];
+      boundary = (
+        source[position] + position * position - source[previous] - previous * previous
+      ) / (2 * position - 2 * previous);
+    }
+    envelope += 1;
+    locations[envelope] = position;
+    boundaries[envelope] = boundary;
+    boundaries[envelope + 1] = Number.POSITIVE_INFINITY;
   }
 
+  envelope = 0;
+  for (let position = 0; position < length; position++) {
+    while (boundaries[envelope + 1] < position) envelope += 1;
+    const delta = position - locations[envelope];
+    target[position] = delta * delta + source[locations[envelope]];
+  }
+}
+
+/** Exact Euclidean distance field; the former eight-neighbor chamfer pass
+ * produced the triangular planes visible across the inflated letter faces. */
+function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
+  const unreachable = 1e12;
+  const horizontal = new Float64Array(width * height);
+  const result = new Float32Array(width * height);
+  const source = new Float64Array(Math.max(width, height));
+  const target = new Float64Array(Math.max(width, height));
+
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const i = y * width + x;
-      let value = distance[i];
-      if (x > 0) value = Math.min(value, distance[i - 1] + 1);
-      if (y > 0) value = Math.min(value, distance[i - width] + 1);
-      if (x > 0 && y > 0) value = Math.min(value, distance[i - width - 1] + diagonal);
-      if (x + 1 < width && y > 0) value = Math.min(value, distance[i - width + 1] + diagonal);
-      distance[i] = value;
-    }
+    for (let x = 0; x < width; x++) source[x] = seeds[y * width + x] ? 0 : unreachable;
+    squaredDistanceTransform1D(source.subarray(0, width), target.subarray(0, width));
+    for (let x = 0; x < width; x++) horizontal[y * width + x] = target[x];
   }
-  for (let y = height - 1; y >= 0; y--) {
-    for (let x = width - 1; x >= 0; x--) {
-      const i = y * width + x;
-      let value = distance[i];
-      if (x + 1 < width) value = Math.min(value, distance[i + 1] + 1);
-      if (y + 1 < height) value = Math.min(value, distance[i + width] + 1);
-      if (x + 1 < width && y + 1 < height) value = Math.min(value, distance[i + width + 1] + diagonal);
-      if (x > 0 && y + 1 < height) value = Math.min(value, distance[i + width - 1] + diagonal);
-      distance[i] = value;
-    }
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) source[y] = horizontal[y * width + x];
+    squaredDistanceTransform1D(source.subarray(0, height), target.subarray(0, height));
+    for (let y = 0; y < height; y++) result[y * width + x] = Math.sqrt(target[y]);
   }
-  return distance;
+  return result;
 }
 
 /** Pack signed distance, dome height, inner bevel, and hard coverage into RGBA. */
@@ -125,10 +149,12 @@ function encodeTitleField(
   const distanceToInside = distanceFromSeeds(cropWidth, cropHeight, insideSeeds);
   const distanceToOutside = distanceFromSeeds(cropWidth, cropHeight, outsideSeeds);
   let maximumInteriorDistance = 1;
-  for (let i = 0; i < insideSeeds.length; i++) {
-    if (insideSeeds[i]) maximumInteriorDistance = Math.max(maximumInteriorDistance, distanceToOutside[i]);
+  for (let index = 0; index < distanceToOutside.length; index += 1) {
+    if (insideSeeds[index] > 0) {
+      maximumInteriorDistance = Math.max(maximumInteriorDistance, distanceToOutside[index]);
+    }
   }
-  const bevelWidth = Math.max(2.5, Math.min(12, maximumInteriorDistance * 0.42));
+  const bevelWidth = Math.max(3, Math.min(14, range * 0.40));
   for (let y = 0; y < cropHeight; y++) {
     for (let x = 0; x < cropWidth; x++) {
       const cropIndex = y * cropWidth + x;
@@ -137,8 +163,9 @@ function encodeTitleField(
       const signed = inside ? distanceToOutside[cropIndex] : -distanceToInside[cropIndex];
       const distanceIn = inside ? distanceToOutside[cropIndex] : 0;
       image.data[imageIndex] = Math.max(0, Math.min(255, Math.round(127.5 + (signed / range) * 127.5)));
-      // Normalize the medial depth per glyph. The old range-based channel
-      // saturated through most strokes and produced a flat front plateau.
+      // Store physical distance into the body, not a value normalized by the
+      // deepest corner of the glyph. That makes straight strokes and counters
+      // inflate consistently while retaining a smoothly curved front dome.
       image.data[imageIndex + 1] = Math.max(
         0,
         Math.min(255, Math.round((distanceIn / maximumInteriorDistance) * 255)),
