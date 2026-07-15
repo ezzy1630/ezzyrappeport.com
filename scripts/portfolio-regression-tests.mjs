@@ -20,6 +20,18 @@ const liquidCompositeSource = readFileSync(
   new URL("../src/features/kinetic-canvas/shaders/liquidComposite.ts", import.meta.url),
   "utf8",
 );
+const heroTextMaskSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/materials/heroTextMask.ts", import.meta.url),
+  "utf8",
+);
+const glyphPhysicsSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/shaders/glyphPhysics.ts", import.meta.url),
+  "utf8",
+);
+const heroNameSource = readFileSync(
+  new URL("../src/components/portfolio/HeroName.tsx", import.meta.url),
+  "utf8",
+);
 
 const tests = [
   ["Retina 4K stays inside the high pixel budget", () => {
@@ -51,14 +63,38 @@ const tests = [
     assert.match(fluidRendererSource, /TEXTURE_MIN_FILTER, gl\.NEAREST/);
     assert.match(fluidRendererSource, /clearBuffer\(heightField\.readFbo, 0, 0, 0, 1\)/);
   }],
-  ["The title keeps a stable silhouette and a live fluid material", () => {
+  ["Every visible title glyph retains isolated identity and GPU state", () => {
+    assert.match(heroTextMaskSource, /HERO_GLYPH_COUNT = HERO_LINE_1\.length \+ HERO_LINE_2\.length/);
+    assert.match(heroTextMaskSource, /querySelectorAll<HTMLElement>\("\.hero-name-fallback__glyph"\)/);
+    assert.match(heroTextMaskSource, /index,\s*glyph,\s*rest:/);
+    assert.match(heroTextMaskSource, /atlas:/);
+    assert.match(heroTextMaskSource, /physics:/);
+    assert.match(heroTextMaskSource, /material:/);
+    assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
+    assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*2,/);
+    assert.match(fluidRendererSource, /gl\.texParameteri\(gl\.TEXTURE_2D, gl\.TEXTURE_MIN_FILTER, gl\.NEAREST\)/);
+    assert.doesNotMatch(fluidRendererSource, /readPixels\(/);
+  }],
+  ["Glyph physics samples the live solver locally and returns to rest", () => {
+    assert.match(glyphPhysicsSource, /vec2 left = center/);
+    assert.match(glyphPhysicsSource, /vec2 right = center/);
+    assert.match(glyphPhysicsSource, /vec2 upper = center/);
+    assert.match(glyphPhysicsSource, /vec2 lower = center/);
+    assert.match(glyphPhysicsSource, /texture\(u_velocity, center\)/);
+    assert.match(glyphPhysicsSource, /texture\(u_normal, upper\)/);
+    assert.match(glyphPhysicsSource, /texture\(u_pressure, left\)/);
+    assert.match(glyphPhysicsSource, /displacementForce = -transform\.xy \* physical\.y/);
+    assert.match(glyphPhysicsSource, /transform\.z \* material\.y/);
+    assert.match(glyphPhysicsSource, /maxTranslation = physical\.w/);
+  }],
+  ["The transformed glyph field drives both obstacles and volumetric rendering", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
-    assert.match(liquidCompositeSource, /vec2 titleMaskWarp = lensOffset \* 0\.12/);
-    assert.match(liquidCompositeSource, /vec2 titleUv = uv \+ titleMaskWarp/);
-    assert.match(liquidCompositeSource, /1\.0 \/ max\(u_textResolution, vec2\(1\.0\)\)/);
+    assert.match(liquidCompositeSource, /uniform sampler2D u_glyphState/);
+    assert.match(liquidCompositeSource, /texelFetch\(u_glyphState, ivec2\(glyphIndex, 0\), 0\)/);
+    assert.match(liquidCompositeSource, /sampleGlyphField\(glyphIndex, local\)/);
+    assert.match(liquidCompositeSource, /rotateGlyph\(uv - rest\.xy - state\.xy, -state\.z\)/);
     assert.match(liquidCompositeSource, /uniform sampler2D u_velocityField/);
     assert.match(liquidCompositeSource, /vec2 sampleFluidVelocity/);
-    assert.match(liquidCompositeSource, /fluidVelocity \* vec2\(0\.010, -0\.008\)/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.50/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
@@ -66,6 +102,9 @@ const tests = [
     assert.match(liquidCompositeSource, /float midDepthField/);
     assert.match(liquidCompositeSource, /float deepDepthField/);
     assert.match(liquidCompositeSource, /float internalDepth/);
+    assert.match(fluidRendererSource, /float glyphObstacle\(vec2 solverUv\)/);
+    assert.match(fluidRendererSource, /glyphObstacle\(uv \+ vec2\(e\.x, 0\.0\)\)/);
+    assert.match(fluidRendererSource, /bindTexture\(9, glyphState\?\.read \?\? null, simGlyphStateLocation\)/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
     assert.match(fluidRendererSource, /bindTexture\(8, velocityField\?\.read \?\? null, velocityLocation\)/);
   }],
@@ -95,8 +134,8 @@ const tests = [
     assert.match(fluidRendererSource, /onRecover\?\.\(\)/);
   }],
   ["Hero title rasterization stays in document space across offscreen resizes", () => {
-    assert.match(fluidRendererSource, /rect\.left \+ window\.scrollX/);
-    assert.match(fluidRendererSource, /rect\.top \+ window\.scrollY/);
+    assert.match(heroTextMaskSource, /rect\.left \+ rect\.width \* 0\.5 \+ window\.scrollX/);
+    assert.match(heroTextMaskSource, /rect\.top \+ rect\.height \* 0\.5 \+ window\.scrollY/);
     assert.match(fluidRendererSource, /window\.visualViewport\?\.addEventListener\("resize", onResize/);
     assert.match(fluidRendererSource, /window\.devicePixelRatio - observedDevicePixelRatio/);
   }],

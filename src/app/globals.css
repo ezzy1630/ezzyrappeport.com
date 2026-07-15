@@ -285,6 +285,11 @@ body {
   gap: clamp(0.35rem, 1.2vw, 0.85rem);
   pointer-events: none;
   opacity: 1;
+  transition: opacity 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html[data-hero-renderer="ready"] .hero-name-fallback {
+  opacity: 0;
 }
 
 .hero-name-fallback__line {
