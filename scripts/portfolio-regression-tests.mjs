@@ -80,7 +80,9 @@ const tests = [
     assert.match(heroTextMaskSource, /physics:/);
     assert.match(heroTextMaskSource, /material:/);
     assert.match(heroTextMaskSource, /Math\.round\(rangeOverride\)/);
-    assert.match(heroTextMaskSource, /maximumInteriorDistance/);
+    assert.match(heroTextMaskSource, /squaredDistanceTransform1D/);
+    assert.match(heroTextMaskSource, /Math\.sqrt\(target\[y\]\)/);
+  assert.match(heroTextMaskSource, /distanceIn \/ maximumInteriorDistance/);
     assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
     assert.match(fluidRendererSource, /glyphStateHeight = supportsFloatTargets \? 4 : 8/);
