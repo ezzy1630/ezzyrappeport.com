@@ -70,8 +70,13 @@ const tests = [
     assert.match(heroTextMaskSource, /atlas:/);
     assert.match(heroTextMaskSource, /physics:/);
     assert.match(heroTextMaskSource, /material:/);
+    assert.match(heroTextMaskSource, /Math\.round\(rangeOverride\)/);
+    assert.match(heroTextMaskSource, /maximumInteriorDistance/);
+    assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
-    assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*2,/);
+    assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*4,/);
+    assert.match(glyphPhysicsSource, /row 0: planar position, depth, buoyancy/);
+    assert.match(glyphPhysicsSource, /row 2: X tilt, Y tilt, screen rotation/);
     assert.match(fluidRendererSource, /gl\.texParameteri\(gl\.TEXTURE_2D, gl\.TEXTURE_MIN_FILTER, gl\.NEAREST\)/);
     assert.doesNotMatch(fluidRendererSource, /readPixels\(/);
   }],
@@ -84,15 +89,25 @@ const tests = [
     assert.match(glyphPhysicsSource, /texture\(u_normal, upper\)/);
     assert.match(glyphPhysicsSource, /texture\(u_pressure, left\)/);
     assert.match(glyphPhysicsSource, /displacementForce = -transform\.xy \* physical\.y/);
-    assert.match(glyphPhysicsSource, /transform\.z \* material\.y/);
+    assert.match(glyphPhysicsSource, /angularVelocity\.xyz \+= angularAcceleration \* dt/);
+    assert.match(glyphPhysicsSource, /vec3 rotationLimit/);
     assert.match(glyphPhysicsSource, /maxTranslation = physical\.w/);
+    assert.match(glyphPhysicsSource, /float immediate = exp/);
+    assert.match(glyphPhysicsSource, /float ringRadius = 22\.0 \+ age \* 185\.0/);
+    assert.match(glyphPhysicsSource, /vec2 localHit = \(ripple\.xy - centerTop\)/);
+    assert.match(glyphPhysicsSource, /cross2\(localHit, impulseDirection\)/);
   }],
   ["The transformed glyph field drives both obstacles and volumetric rendering", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);
     assert.match(liquidCompositeSource, /uniform sampler2D u_glyphState/);
     assert.match(liquidCompositeSource, /texelFetch\(u_glyphState, ivec2\(glyphIndex, 0\), 0\)/);
     assert.match(liquidCompositeSource, /sampleGlyphField\(glyphIndex, local\)/);
-    assert.match(liquidCompositeSource, /rotateGlyph\(uv - rest\.xy - state\.xy, -state\.z\)/);
+    assert.match(liquidCompositeSource, /texelFetch\(u_glyphState, ivec2\(glyphIndex, 2\), 0\)/);
+    assert.match(liquidCompositeSource, /orientGlyphNormal/);
+    assert.match(liquidCompositeSource, /float opticalPath/);
+    assert.match(liquidCompositeSource, /vec3 refractedBack/);
+    assert.match(liquidCompositeSource, /max\(abs\(local\.x\), abs\(local\.y\)\) >= 0\.995/);
+    assert.match(liquidCompositeSource, /tileUv = clamp/);
     assert.match(liquidCompositeSource, /uniform sampler2D u_velocityField/);
     assert.match(liquidCompositeSource, /vec2 sampleFluidVelocity/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
@@ -102,8 +117,10 @@ const tests = [
     assert.match(liquidCompositeSource, /float midDepthField/);
     assert.match(liquidCompositeSource, /float deepDepthField/);
     assert.match(liquidCompositeSource, /float internalDepth/);
-    assert.match(fluidRendererSource, /float glyphObstacle\(vec2 solverUv\)/);
+    assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
     assert.match(fluidRendererSource, /glyphObstacle\(uv \+ vec2\(e\.x, 0\.0\)\)/);
+    assert.match(fluidRendererSource, /boundaryVelocity = vec2\(velocity\.x, -velocity\.y - velocity\.w\)/);
+    assert.match(fluidRendererSource, /vel = mix\(vel, boundaryVelocity, obstacle/);
     assert.match(fluidRendererSource, /bindTexture\(9, glyphState\?\.read \?\? null, simGlyphStateLocation\)/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);
     assert.match(fluidRendererSource, /bindTexture\(8, velocityField\?\.read \?\? null, velocityLocation\)/);
