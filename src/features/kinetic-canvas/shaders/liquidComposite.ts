@@ -259,22 +259,31 @@ void main() {
   vec2 glyphLocal = vec2(4.0);
   vec4 glyphTransform = vec4(0.0);
   vec4 glyphRest = vec4(0.0);
-  for (int glyphIndex = 0; glyphIndex < ${HERO_GLYPH_COUNT}; glyphIndex++) {
-    vec4 state = texelFetch(u_glyphState, ivec2(glyphIndex, 0), 0) * u_glyphDynamics;
-    vec4 rest = u_glyphRest[glyphIndex];
-    float perspectiveScale = 1.0 + state.w * 2.2;
-    vec2 halfSize = max(rest.zw * perspectiveScale, vec2(0.0001));
-    vec2 local = rotateGlyph(uv - rest.xy - state.xy, -state.z) / halfSize;
-    if (max(abs(local.x), abs(local.y)) > 1.08) continue;
-    vec4 field = sampleGlyphField(glyphIndex, local);
-    float candidate = field.r * 2.0 - 1.0;
-    if (candidate > signedDistance) {
-      signedDistance = candidate;
-      activeGlyph = glyphIndex;
-      titleField = field;
-      glyphLocal = local;
-      glyphTransform = state;
-      glyphRest = rest;
+  float rowSplit = (u_glyphRest[0].y + u_glyphRest[4].y) * 0.5;
+  bool firstRow = uv.y < rowSplit;
+  vec4 rowAnchor = firstRow ? u_glyphRest[0] : u_glyphRest[4];
+  bool insideTitleRow = abs(uv.y - rowAnchor.y) < rowAnchor.w * 1.25 + 0.024;
+  if (insideTitleRow) {
+    for (int glyphIndex = 0; glyphIndex < ${HERO_GLYPH_COUNT}; glyphIndex++) {
+      if (firstRow && glyphIndex >= 4) continue;
+      if (!firstRow && glyphIndex < 4) continue;
+      vec4 rest = u_glyphRest[glyphIndex];
+      if (abs(uv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
+      vec4 state = texelFetch(u_glyphState, ivec2(glyphIndex, 0), 0) * u_glyphDynamics;
+      float perspectiveScale = 1.0 + state.w * 2.2;
+      vec2 halfSize = max(rest.zw * perspectiveScale, vec2(0.0001));
+      vec2 local = rotateGlyph(uv - rest.xy - state.xy, -state.z) / halfSize;
+      if (max(abs(local.x), abs(local.y)) > 1.08) continue;
+      vec4 field = sampleGlyphField(glyphIndex, local);
+      float candidate = field.r * 2.0 - 1.0;
+      if (candidate > signedDistance) {
+        signedDistance = candidate;
+        activeGlyph = glyphIndex;
+        titleField = field;
+        glyphLocal = local;
+        glyphTransform = state;
+        glyphRest = rest;
+      }
     }
   }
   signedDistance *= u_nameOpacity;
@@ -340,12 +349,13 @@ void main() {
   refracted += vec3(0.010, 0.014, 0.026);
 
   vec3 titleTint = mix(vec3(0.18, 0.39, 0.72), vec3(0.13, 0.29, 0.60), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.20 + glassWall * 0.34 + mobilePoster * 0.08);
+  vec3 letterBody = mix(refracted, titleTint, 0.27 + glassWall * 0.38 + mobilePoster * 0.08);
   letterBody += white * interior * 0.018;
   float volumeCore = interior * letterMask;
   float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.7) * volumeCore;
   letterBody = mix(letterBody, refracted * vec3(0.96, 0.995, 1.035), volumeCore * 0.16);
-  letterBody -= vec3(0.030, 0.070, 0.145) * internalDepth * 0.72;
+  letterBody -= vec3(0.030, 0.070, 0.145) * internalDepth * 0.82;
+  letterBody -= vec3(0.012, 0.026, 0.052) * volumeCore * (0.32 + dome * 0.18);
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   float lightFacing = max(dot(normal, topLeftLight), 0.0);

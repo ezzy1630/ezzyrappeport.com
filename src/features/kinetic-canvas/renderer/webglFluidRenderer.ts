@@ -222,9 +222,16 @@ vec2 rotateGlyph(vec2 value, float angle) {
 float glyphObstacle(vec2 solverUv) {
   vec2 screenUv = vec2(solverUv.x, 1.0 - solverUv.y);
   float coverage = 0.0;
+  float rowSplit = (u_glyphRest[0].y + u_glyphRest[4].y) * 0.5;
+  bool firstRow = screenUv.y < rowSplit;
+  vec4 rowAnchor = firstRow ? u_glyphRest[0] : u_glyphRest[4];
+  if (abs(screenUv.y - rowAnchor.y) > rowAnchor.w * 1.25 + 0.024) return 0.0;
   for (int index = 0; index < ${HERO_GLYPH_COUNT}; index++) {
-    vec4 state = texelFetch(u_glyphState, ivec2(index, 0), 0) * u_glyphDynamics;
+    if (firstRow && index >= 4) continue;
+    if (!firstRow && index < 4) continue;
     vec4 rest = u_glyphRest[index];
+    if (abs(screenUv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
+    vec4 state = texelFetch(u_glyphState, ivec2(index, 0), 0) * u_glyphDynamics;
     float scale = 1.0 + state.w * 2.2;
     vec2 local = rotateGlyph(screenUv - rest.xy - state.xy, -state.z)
       / max(rest.zw * scale, vec2(0.0001));

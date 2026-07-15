@@ -38,7 +38,7 @@ void main() {
   vec4 material = u_glyphMaterial[index];
   vec2 centerTop = rest.xy + transform.xy;
   vec2 center = vec2(centerTop.x, 1.0 - centerTop.y);
-  vec2 halfExtent = max(rest.zw * 0.72, vec2(0.004));
+  vec2 halfExtent = max(rest.zw * 1.04, vec2(0.004));
   vec2 left = center - vec2(halfExtent.x, 0.0);
   vec2 right = center + vec2(halfExtent.x, 0.0);
   vec2 upper = center + vec2(0.0, halfExtent.y);
@@ -47,23 +47,31 @@ void main() {
   vec2 flowCenter = decodeVelocity(texture(u_velocity, center));
   vec2 flowLeft = decodeVelocity(texture(u_velocity, left));
   vec2 flowRight = decodeVelocity(texture(u_velocity, right));
+  vec2 flowUpper = decodeVelocity(texture(u_velocity, upper));
+  vec2 flowLower = decodeVelocity(texture(u_velocity, lower));
   vec3 normalCenter = texture(u_normal, center).rgb;
-  float heightCenter = (normalCenter.z - 0.5) * 0.25;
+  float heightCenterRaw = (normalCenter.z - 0.5) * 0.25;
+  float heightLeft = (texture(u_normal, left).z - 0.5) * 0.25;
+  float heightRight = (texture(u_normal, right).z - 0.5) * 0.25;
   float heightUpper = (texture(u_normal, upper).z - 0.5) * 0.25;
   float heightLower = (texture(u_normal, lower).z - 0.5) * 0.25;
+  float heightCenter = heightCenterRaw * 0.18
+    + (heightLeft + heightRight + heightUpper + heightLower) * 0.205;
+  vec2 flowCenterSample = flowCenter * 0.16
+    + (flowLeft + flowRight + flowUpper + flowLower) * 0.21;
   float pressureLeft = texture(u_pressure, left).r - 0.5;
   float pressureRight = texture(u_pressure, right).r - 0.5;
 
   float dt = clamp(u_delta, 1.0 / 120.0, 1.0 / 30.0);
   float mass = max(physical.x, 0.45);
-  vec2 flowTop = vec2(flowCenter.x, -flowCenter.y);
+  vec2 flowTop = vec2(flowCenterSample.x, -flowCenterSample.y);
   vec2 displacementForce = -transform.xy * physical.y;
   vec2 dragForce = (flowTop * 0.10 - velocity.xy) * physical.z;
   float quietLift = (sin(u_time * 0.37 + float(index) * 2.31)
     + sin(u_time * 0.19 + float(index) * 0.83) * 0.55) * 0.00011;
   float buoyantForce = (-heightCenter * material.x * 0.82)
     + (heightLower - heightUpper) * 0.28 + quietLift;
-  vec2 acceleration = (displacementForce + dragForce + vec2(flowTop.x * 0.22, buoyantForce)) / mass;
+  vec2 acceleration = (displacementForce + dragForce + vec2(flowTop.x * 0.34, buoyantForce)) / mass;
   velocity.xy += acceleration * dt;
   velocity.xy *= exp(-physical.z * 0.12 * dt);
   transform.xy += velocity.xy * dt;
@@ -86,7 +94,7 @@ void main() {
   if (abs(transform.z) >= material.z * 0.999) velocity.z *= 0.42;
 
   float depthTarget = clamp(
-    heightCenter * material.w * 1.8 + length(flowCenter) * 0.018,
+    heightCenter * material.w * 1.8 + length(flowCenterSample) * 0.018,
     -0.018,
     0.026
   );
