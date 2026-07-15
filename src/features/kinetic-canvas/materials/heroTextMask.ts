@@ -16,6 +16,26 @@ export type HeroTextLineLayout = {
   tracking: number;
 };
 
+export const HERO_GLYPH_COUNT = HERO_LINE_1.length + HERO_LINE_2.length;
+
+export type HeroGlyphMetadata = {
+  index: number;
+  glyph: string;
+  /** Rest center and half-size in top-left-origin viewport UV coordinates. */
+  rest: [number, number, number, number];
+  /** Atlas origin and size in top-left-origin texture UV coordinates. */
+  atlas: [number, number, number, number];
+  /** mass, spring stiffness, damping, and maximum translation in viewport UV. */
+  physics: [number, number, number, number];
+  /** buoyancy, rotational stiffness, maximum rotation, and depth response. */
+  material: [number, number, number, number];
+};
+
+export type HeroGlyphAtlas = {
+  canvas: HTMLCanvasElement;
+  glyphs: HeroGlyphMetadata[];
+};
+
 let cachedField: { key: string; canvas: HTMLCanvasElement } | null = null;
 
 export function clearHeroTextCanvasCache() {
@@ -112,6 +132,103 @@ function encodeTitleField(ctx: CanvasRenderingContext2D, width: number, height: 
     }
   }
   ctx.putImageData(image, 0, 0);
+}
+
+/**
+ * Rasterize every visible letter into an isolated SDF tile. Repeated letters
+ * intentionally receive separate tiles and metadata: shape reuse is cheap,
+ * but identity and physical state must never be shared.
+ */
+export function createHeroGlyphAtlas(
+  viewportWidth: number,
+  viewportHeight: number,
+  tileSize = 192,
+): HeroGlyphAtlas {
+  const elements = Array.from(
+    document.querySelectorAll<HTMLElement>(".hero-name-fallback__glyph"),
+  );
+  const columns = 4;
+  const rows = Math.ceil(Math.max(elements.length, HERO_GLYPH_COUNT) / columns);
+  const canvas = document.createElement("canvas");
+  canvas.width = columns * tileSize;
+  canvas.height = rows * tileSize;
+  const atlasContext = canvas.getContext("2d");
+  if (!atlasContext) return { canvas, glyphs: [] };
+
+  const family = resolveHeroFont();
+  const fontStack = `${family}, "Inter Tight", system-ui, sans-serif`;
+  const glyphs: HeroGlyphMetadata[] = [];
+  const padding = Math.round(tileSize * 0.17);
+
+  elements.forEach((element, index) => {
+    const glyph = element.dataset.glyph ?? element.textContent ?? "";
+    if (!glyph.trim()) return;
+    const rect = element.getBoundingClientRect();
+    const tile = document.createElement("canvas");
+    tile.width = tileSize;
+    tile.height = tileSize;
+    const context = tile.getContext("2d");
+    if (!context) return;
+
+    let fontSize = tileSize * 0.72;
+    context.font = `900 ${fontSize}px ${fontStack}`;
+    let metrics = context.measureText(glyph);
+    const available = tileSize - padding * 2;
+    const measuredHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    fontSize *= Math.min(
+      available / Math.max(metrics.width, 1),
+      available / Math.max(measuredHeight, 1),
+    );
+    context.font = `900 ${fontSize}px ${fontStack}`;
+    metrics = context.measureText(glyph);
+    const glyphHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    const x = (tileSize - metrics.width) * 0.5;
+    const baseline = (tileSize - glyphHeight) * 0.5 + metrics.actualBoundingBoxAscent;
+    context.fillStyle = "#fff";
+    context.textAlign = "left";
+    context.textBaseline = "alphabetic";
+    context.fillText(glyph, x, baseline);
+    encodeTitleField(context, tileSize, tileSize);
+
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    atlasContext.drawImage(tile, column * tileSize, row * tileSize);
+
+    const normalizedWidth = rect.width / Math.max(viewportWidth, 1);
+    const normalizedHeight = rect.height / Math.max(viewportHeight, 1);
+    const dimension = Math.max(normalizedWidth, normalizedHeight);
+    const seed = (index * 0.61803398875) % 1;
+    const mass = 0.92 + dimension * 2.4 + seed * 0.12;
+    const spring = 13.4 + (1 - seed) * 2.6;
+    const damping = 6.8 + seed * 0.9;
+    const maxTranslation = Math.min(0.018, Math.max(0.006, normalizedWidth * 0.105));
+
+    glyphs.push({
+      index,
+      glyph,
+      rest: [
+        (rect.left + rect.width * 0.5 + window.scrollX) / Math.max(viewportWidth, 1),
+        (rect.top + rect.height * 0.5 + window.scrollY) / Math.max(viewportHeight, 1),
+        normalizedWidth * 0.5,
+        normalizedHeight * 0.5,
+      ],
+      atlas: [
+        (column * tileSize) / canvas.width,
+        (row * tileSize) / canvas.height,
+        tileSize / canvas.width,
+        tileSize / canvas.height,
+      ],
+      physics: [mass, spring, damping, maxTranslation],
+      material: [
+        0.78 + (1 - seed) * 0.18,
+        9.8 + seed * 1.8,
+        0.045 + (1 - seed) * 0.018,
+        0.72 + seed * 0.24,
+      ],
+    });
+  });
+
+  return { canvas, glyphs };
 }
 
 /** Resolve the loaded Inter Tight family name for canvas rasterization. */

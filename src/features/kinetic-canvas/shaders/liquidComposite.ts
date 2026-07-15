@@ -1,3 +1,5 @@
+import { HERO_GLYPH_COUNT } from "../materials/heroTextMask";
+
 export const VERTEX_SOURCE = `#version 300 es
 layout(location = 0) in vec2 a_position;
 out vec2 v_uv;
@@ -18,6 +20,10 @@ uniform vec4 u_ripples[8];
 uniform sampler2D u_texture;
 uniform sampler2D u_text;
 uniform vec2 u_textResolution;
+uniform sampler2D u_glyphState;
+uniform vec4 u_glyphRest[${HERO_GLYPH_COUNT}];
+uniform vec4 u_glyphAtlas[${HERO_GLYPH_COUNT}];
+uniform float u_glyphDynamics;
 uniform sampler2D u_normalField;
 uniform sampler2D u_velocityField;
 uniform sampler2D u_obstacleField;
@@ -131,6 +137,18 @@ vec3 samplePearlSurface(vec2 uv) {
     + texture(u_texture, clamp(p - texel, vec2(0.0), vec2(1.0))).rgb * 0.21;
 }
 
+vec2 rotateGlyph(vec2 value, float angle) {
+  float c = cos(angle);
+  float s = sin(angle);
+  return mat2(c, -s, s, c) * value;
+}
+
+vec4 sampleGlyphField(int index, vec2 local) {
+  vec4 region = u_glyphAtlas[index];
+  vec2 atlasUv = region.xy + (local * 0.5 + 0.5) * region.zw;
+  return texture(u_text, atlasUv);
+}
+
 void main() {
   float aspect = u_resolution.x / max(u_resolution.y, 1.0);
   float time = u_time * mix(0.28, 1.0, u_sceneIntensity);
@@ -232,21 +250,34 @@ void main() {
   base -= vec3(0.040, 0.085, 0.160) * crestUnderside * 0.16;
   base -= vec3(0.018, 0.036, 0.068) * submergedTransition * (1.0 - waterline) * 0.12;
 
-  // Each glyph is a clear, water-filled volume: a thick optical wall around a
-  // transparent refractive core, with light and shadow derived from its SDF.
-  // Let the smooth cursor lens bend the glyph boundary, but keep the
-  // high-frequency simulation normal and ripple field out of the SDF lookup.
-  // Those fields still drive the material below; sampling the mask with them
-  // was what made neighboring texels cross into cellular seams.
-  // The face follows only the broad, damped part of the same solver that
-  // moves the water. Fine normals remain material-only so glyph edges stay
-  // readable and never turn into a cursor-tracking wobble.
-  vec2 titleMaskWarp = lensOffset * 0.12
-    + ripple.z * vec2(0.024, 0.011)
-    + fluidVelocity * vec2(0.010, -0.008);
-  vec2 titleUv = uv + titleMaskWarp;
-  vec4 titleField = texture(u_text, clamp(titleUv, vec2(0.0), vec2(1.0)));
-  float signedDistance = (titleField.r * 2.0 - 1.0) * u_nameOpacity;
+  // Resolve one isolated SDF tile per glyph. Transform inversion happens in
+  // the glyph's own coordinates, so repeated letters retain separate bounds,
+  // state, refraction, and depth while remaining in one batched full-screen pass.
+  int activeGlyph = -1;
+  float signedDistance = -1.0;
+  vec4 titleField = vec4(0.0);
+  vec2 glyphLocal = vec2(4.0);
+  vec4 glyphTransform = vec4(0.0);
+  vec4 glyphRest = vec4(0.0);
+  for (int glyphIndex = 0; glyphIndex < ${HERO_GLYPH_COUNT}; glyphIndex++) {
+    vec4 state = texelFetch(u_glyphState, ivec2(glyphIndex, 0), 0) * u_glyphDynamics;
+    vec4 rest = u_glyphRest[glyphIndex];
+    float perspectiveScale = 1.0 + state.w * 2.2;
+    vec2 halfSize = max(rest.zw * perspectiveScale, vec2(0.0001));
+    vec2 local = rotateGlyph(uv - rest.xy - state.xy, -state.z) / halfSize;
+    if (max(abs(local.x), abs(local.y)) > 1.08) continue;
+    vec4 field = sampleGlyphField(glyphIndex, local);
+    float candidate = field.r * 2.0 - 1.0;
+    if (candidate > signedDistance) {
+      signedDistance = candidate;
+      activeGlyph = glyphIndex;
+      titleField = field;
+      glyphLocal = local;
+      glyphTransform = state;
+      glyphRest = rest;
+    }
+  }
+  signedDistance *= u_nameOpacity;
   float thickness = titleField.g * u_nameOpacity;
   float bevel = titleField.b * u_nameOpacity;
   float titleAA = max(fwidth(signedDistance) * 1.35, mix(0.016, 0.024, mobilePoster));
@@ -258,12 +289,16 @@ void main() {
   float edgeRim = smoothstep(0.015, 0.14, thickness) * (1.0 - smoothstep(0.20, 0.48, thickness)) * letterMask;
   float outerMeniscus = exp(-abs(signedDistance) * 11.0) * u_nameOpacity;
   float innerMeniscus = exp(-abs(signedDistance - 0.18) * 14.0) * letterMask;
-  vec2 extrusionDirection = vec2(0.0068, -0.0108)
-    + fluidVelocity * vec2(0.0045, -0.003)
-    + simulationHeight * vec2(0.012, -0.008);
-  float shallowDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 0.55, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
-  float midDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 1.25, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
-  float deepDepthField = texture(u_text, clamp(titleUv + extrusionDirection * 2.1, vec2(0.0), vec2(1.0))).r * 2.0 - 1.0;
+  vec2 extrusionDirection = rotateGlyph(
+    vec2(0.045, -0.075) + fluidVelocity * vec2(0.032, -0.024),
+    -glyphTransform.z
+  ) * (0.84 + glyphTransform.w * 7.0);
+  float shallowDepthField = activeGlyph >= 0
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 0.55).r * 2.0 - 1.0 : -1.0;
+  float midDepthField = activeGlyph >= 0
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 1.25).r * 2.0 - 1.0 : -1.0;
+  float deepDepthField = activeGlyph >= 0
+    ? sampleGlyphField(activeGlyph, glyphLocal + extrusionDirection * 2.1).r * 2.0 - 1.0 : -1.0;
   float shallowDepthMask = smoothstep(-titleAA, titleAA, shallowDepthField) * u_nameOpacity;
   float midDepthMask = smoothstep(-titleAA, titleAA, midDepthField) * u_nameOpacity;
   float deepDepthMask = smoothstep(-titleAA, titleAA, deepDepthField) * u_nameOpacity;
@@ -271,12 +306,15 @@ void main() {
   float midExtrusion = max(midDepthMask - max(letterMask, shallowDepthMask), 0.0);
   float deepExtrusion = max(deepDepthMask - max(midDepthMask, max(letterMask, shallowDepthMask)), 0.0);
   float extrusion = max(shallowExtrusion, max(midExtrusion, deepExtrusion));
-  vec2 textPixel = 1.0 / max(u_textResolution, vec2(1.0));
-  float sdRight = texture(u_text, titleUv + vec2(textPixel.x, 0.0)).r;
-  float sdLeft = texture(u_text, titleUv - vec2(textPixel.x, 0.0)).r;
-  float sdUp = texture(u_text, titleUv + vec2(0.0, textPixel.y)).r;
-  float sdDown = texture(u_text, titleUv - vec2(0.0, textPixel.y)).r;
+  vec2 atlasPixel = activeGlyph >= 0
+    ? 2.0 / max(u_textResolution * u_glyphAtlas[activeGlyph].zw, vec2(1.0))
+    : vec2(0.01);
+  float sdRight = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + vec2(atlasPixel.x, 0.0)).r : 0.0;
+  float sdLeft = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal - vec2(atlasPixel.x, 0.0)).r : 0.0;
+  float sdUp = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal + vec2(0.0, atlasPixel.y)).r : 0.0;
+  float sdDown = activeGlyph >= 0 ? sampleGlyphField(activeGlyph, glyphLocal - vec2(0.0, atlasPixel.y)).r : 0.0;
   vec2 coverageGradient = vec2(sdRight - sdLeft, sdUp - sdDown);
+  coverageGradient = rotateGlyph(coverageGradient, glyphTransform.z);
   float dome = pow(max(thickness, 0.0), 0.48);
   vec3 normal = normalize(vec3(
     -coverageGradient * (7.2 + dome * 3.8)
@@ -285,9 +323,8 @@ void main() {
     0.74
   ));
 
-  // The silhouette stays stable, but the material inside it keeps the full
-  // fluid displacement. This preserves the original depth and pointer/wave
-  // response without dragging SDF texels across glyph boundaries.
+  // Fine solver detail remains optical while the broad GPU state moves the
+  // actual glyph volume. This prevents shimmer and cross-glyph contamination.
   float faceDepth = mix(0.55, 1.0, dome);
   vec2 sampleWarp = ripple.z * vec2(0.62, 0.29)
     + simulationNormal.xy * (0.011 + faceDepth * 0.010)
@@ -326,6 +363,7 @@ void main() {
   // not duplicated text or a conventional drop shadow.
   float sideDepth = shallowExtrusion * 0.24 + midExtrusion * 0.62 + deepExtrusion;
   vec3 sideWall = mix(vec3(0.79, 0.85, 0.93), vec3(0.52, 0.64, 0.80), sideDepth);
+  sideWall = mix(sideWall, refracted, 0.18 + clamp(glyphTransform.w * 4.0, 0.0, 0.14));
   color = mix(color, sideWall, extrusion * 0.52);
   color += white * shallowExtrusion * 0.055;
   color += blue * (shallowExtrusion * 0.07 + midExtrusion * 0.055 + deepExtrusion * 0.04);
@@ -346,6 +384,8 @@ void main() {
   color += (white * ripple.y * 0.30 + blue * ripple.x * 0.22) * letterMask;
   color += white * simulationHeight * 0.13 * letterMask;
   color += mix(blue, white, movingHighlight) * length(fluidVelocity) * 0.22 * (innerBevel + glassWall);
+  color += white * max(glyphTransform.w, 0.0) * (innerBevel + edgeRim) * 0.9;
+  color -= vec3(0.025, 0.055, 0.11) * max(-glyphTransform.w, 0.0) * letterMask * 1.8;
   color += white * lensStrength * 0.025 + blue * lensStrength * 0.008;
 
   float vignette = smoothstep(1.25, 0.12, distance((uv - 0.5) * vec2(aspect, 1.0), vec2(0.0)));

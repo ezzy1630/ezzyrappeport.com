@@ -77,6 +77,7 @@ export default function KineticCanvas({
       const quality = resolveKineticQuality(reducedMotionRef.current, staticModeRef.current);
       container.dataset.quality = quality.tier;
       if (quality.tier === "static") {
+        if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
         container.dataset.fluid = "static";
         cleanup();
         cleanup = () => {};
@@ -86,6 +87,7 @@ export default function KineticCanvas({
       }
 
       container.dataset.fluid = "starting";
+      if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
 
       const canvas = document.createElement("canvas");
       canvas.dataset.renderer = "webgl2-fluid";
@@ -105,7 +107,10 @@ export default function KineticCanvas({
           heroNameRef,
           quality,
           () => {
-            if (!disposed) container.dataset.fluid = "ready";
+            if (!disposed) {
+              container.dataset.fluid = "ready";
+              if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
+            }
           },
           () => {
             if (disposed) return;
@@ -121,6 +126,7 @@ export default function KineticCanvas({
           error instanceof Error ? error.name : "RendererStartError";
         canvas.remove();
         container.dataset.fluid = "failed";
+        if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
       }
     };
 
@@ -158,6 +164,7 @@ export default function KineticCanvas({
       if (idleCallback) window.cancelIdleCallback(idleCallback);
       cleanup();
       unsubscribePhysics?.();
+      if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
       rendererCanvas?.remove();
       delete container.dataset.fluid;
     };
