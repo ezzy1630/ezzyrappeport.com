@@ -219,36 +219,49 @@ vec2 rotateGlyph(vec2 value, float angle) {
   return mat2(c, -s, s, c) * value;
 }
 
-float glyphObstacle(vec2 solverUv) {
+vec3 glyphBoundary(vec2 solverUv) {
   vec2 screenUv = vec2(solverUv.x, 1.0 - solverUv.y);
   float coverage = 0.0;
-  float rowSplit = (u_glyphRest[0].y + u_glyphRest[4].y) * 0.5;
-  bool firstRow = screenUv.y < rowSplit;
-  vec4 rowAnchor = firstRow ? u_glyphRest[0] : u_glyphRest[4];
-  if (abs(screenUv.y - rowAnchor.y) > rowAnchor.w * 1.25 + 0.024) return 0.0;
+  vec2 boundaryVelocity = vec2(0.0);
+  bool nearFirstRow = abs(screenUv.y - u_glyphRest[0].y) < u_glyphRest[0].w * 1.45 + 0.038;
+  bool nearSecondRow = abs(screenUv.y - u_glyphRest[4].y) < u_glyphRest[4].w * 1.45 + 0.038;
   for (int index = 0; index < ${HERO_GLYPH_COUNT}; index++) {
-    if (firstRow && index >= 4) continue;
-    if (!firstRow && index < 4) continue;
+    if (index < 4 && !nearFirstRow) continue;
+    if (index >= 4 && !nearSecondRow) continue;
     vec4 rest = u_glyphRest[index];
+    if (abs(screenUv.y - rest.y) > rest.w * 1.35 + 0.032) continue;
     if (abs(screenUv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
-    vec4 state = texelFetch(u_glyphState, ivec2(index, 0), 0) * u_glyphDynamics;
-    float scale = 1.0 + state.w * 2.2;
-    vec2 local = rotateGlyph(screenUv - rest.xy - state.xy, -state.z)
-      / max(rest.zw * scale, vec2(0.0001));
-    if (max(abs(local.x), abs(local.y)) > 1.05) continue;
+    vec4 transform = texelFetch(u_glyphState, ivec2(index, 0), 0) * u_glyphDynamics;
+    vec4 velocity = texelFetch(u_glyphState, ivec2(index, 1), 0) * u_glyphDynamics;
+    vec3 orientation = texelFetch(u_glyphState, ivec2(index, 2), 0).xyz * u_glyphDynamics;
+    float scale = 1.0 + transform.z * 2.4;
+    vec2 tiltScale = max(vec2(cos(orientation.y), cos(orientation.x)), vec2(0.90));
+    vec2 center = rest.xy + transform.xy + vec2(0.0, transform.w)
+      + vec2(orientation.y, -orientation.x) * transform.z * 0.22;
+    vec2 local = rotateGlyph(screenUv - center, -orientation.z)
+      / max(rest.zw * scale * tiltScale, vec2(0.0001));
+    if (max(abs(local.x), abs(local.y)) >= 0.995) continue;
     vec4 region = u_glyphAtlas[index];
-    vec2 atlasUv = region.xy + (local * 0.5 + 0.5) * region.zw;
-    coverage = max(coverage, texture(u_text, atlasUv).a);
+    vec2 tileUv = clamp(local * 0.5 + 0.5, vec2(0.002), vec2(0.998));
+    vec2 atlasUv = region.xy + tileUv * region.zw;
+    float glyphCoverage = texture(u_text, atlasUv).a;
+    if (glyphCoverage > coverage) {
+      coverage = glyphCoverage;
+      boundaryVelocity = vec2(velocity.x, -velocity.y - velocity.w);
+    }
   }
-  return coverage;
+  return vec3(coverage, boundaryVelocity);
 }
+
+float glyphObstacle(vec2 solverUv) { return glyphBoundary(solverUv).x; }
 
 void main() {
   vec2 uv = v_uv;
   vec2 e = texel();
   vec2 pointer = u_pointer.xy;
   vec2 pointerVelocity = u_pointerVelocity;
-  float text = u_pass == 0 ? glyphObstacle(uv) : texture(u_obstacle, uv).b;
+  vec3 boundary = u_pass == 0 ? glyphBoundary(uv) : vec3(texture(u_obstacle, uv).r, 0.0, 0.0);
+  float text = boundary.x;
   vec2 textGrad = u_pass == 0
     ? vec2(
         glyphObstacle(uv + vec2(e.x, 0.0)) - glyphObstacle(uv - vec2(e.x, 0.0)),
@@ -259,7 +272,7 @@ void main() {
   float edge = clamp(length(textGrad) * 14.0, 0.0, 1.0);
 
   if (u_pass == 0) {
-    outColor = vec4(obstacle, edge, text, 0.0);
+    outColor = vec4(obstacle, edge, clamp(boundary.yz * 0.5 + 0.5, 0.0, 1.0));
     return;
   }
 
@@ -267,6 +280,7 @@ void main() {
     vec2 priorVelocity = decodeVelocity(texture(u_velocity, uv));
     vec2 advectedUv = clamp(uv - priorVelocity * 0.018, vec2(0.0), vec2(1.0));
     vec2 vel = decodeVelocity(texture(u_velocity, advectedUv)) * 0.991;
+    vec2 boundaryVelocity = (texture(u_obstacle, uv).ba - 0.5) * 2.0;
     float blue = 0.0;
     float pulse = ripplePulse(uv, pointer, blue);
     vec2 dir = uv - pointer;
@@ -285,7 +299,11 @@ void main() {
     vel += vec2(0.0, -scrollImpulse * 0.018);
     vec2 obstacleNormal = normalize(textGrad + vec2(0.00001));
     vel += obstacleNormal * edge * (0.014 + abs(scrollImpulse) * 0.004);
-    vel *= 1.0 - obstacle * 0.92;
+    // A moving glyph is a no-slip boundary rather than a frozen mask. Its
+    // spring motion therefore leaves a small coherent wake in the same field
+    // that drives the glyph on the following frame.
+    vel = mix(vel, boundaryVelocity, obstacle * 0.74);
+    vel += boundaryVelocity * edge * 0.30;
     outColor = encodeVelocity(vel);
     return;
   }
@@ -519,6 +537,12 @@ export function startFluidRenderer(
   const glyphVelocityReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_velocity");
   const glyphNormalReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_normal");
   const glyphPressureReadLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pressure");
+  const glyphViewportLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_viewport");
+  const glyphPointerLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pointer");
+  const glyphPointerVelocityLocation = glyphPhysicsProgram && gl.getUniformLocation(glyphPhysicsProgram, "u_pointerVelocity");
+  const glyphRippleLocations = glyphPhysicsProgram
+    ? Array.from({ length: RIPPLE_COUNT }, (_, i) => gl.getUniformLocation(glyphPhysicsProgram, `u_ripples[${i}]`))
+    : [];
 
   const vao = gl.createVertexArray();
   gl.bindVertexArray(vao);
@@ -606,7 +630,7 @@ export function startFluidRenderer(
   glyphState = createDoubleBuffer(
     gl,
     HERO_GLYPH_COUNT,
-    2,
+    4,
     renderInternalFormat,
     renderFormat,
     renderType,
@@ -656,7 +680,7 @@ export function startFluidRenderer(
     }
   }
 
-  function updateGlyphPhysics(t: number) {
+  function updateGlyphPhysics(physics: LiquidPhysics, t: number) {
     if (
       !glyphPhysicsProgram || !glyphState || !velocityField || !normal || !pressureField
       || glyphMetadata.length !== HERO_GLYPH_COUNT
@@ -666,9 +690,36 @@ export function startFluidRenderer(
     gl.useProgram(glyphPhysicsProgram);
     gl.bindVertexArray(vao);
     gl.bindFramebuffer(gl.FRAMEBUFFER, glyphState.writeFbo);
-    gl.viewport(0, 0, HERO_GLYPH_COUNT, 2);
+    gl.viewport(0, 0, HERO_GLYPH_COUNT, 4);
     gl.uniform1f(glyphDeltaLocation, delta);
     gl.uniform1f(glyphTimeLocation, t);
+    gl.uniform2f(glyphViewportLocation, width, height);
+    const pointer = physics.pointer;
+    gl.uniform4f(
+      glyphPointerLocation,
+      pointer.x / Math.max(width, 1),
+      pointer.y / Math.max(height, 1),
+      pointer.energy,
+      1,
+    );
+    gl.uniform2f(
+      glyphPointerVelocityLocation,
+      Math.max(-1.2, Math.min(1.2, pointer.vx / Math.max(width, 1))),
+      Math.max(-1.2, Math.min(1.2, pointer.vy / Math.max(height, 1))),
+    );
+    const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
+    for (let i = 0; i < RIPPLE_COUNT; i++) {
+      const ripple = physics.ripples[rippleOffset + i];
+      if (ripple && i < quality.activeRipples) {
+        gl.uniform4f(
+          glyphRippleLocations[i],
+          ripple.x / Math.max(width, 1),
+          ripple.y / Math.max(height, 1),
+          t - ripple.age,
+          ripple.intensity * quality.renderScale,
+        );
+      } else gl.uniform4f(glyphRippleLocations[i], -9999, -9999, -9999, 0);
+    }
     bindTexture(0, glyphState.read, glyphStateReadLocation);
     bindTexture(1, velocityField.read, glyphVelocityReadLocation);
     bindTexture(2, normal.texture, glyphNormalReadLocation);
@@ -980,7 +1031,7 @@ export function startFluidRenderer(
     const physics = getPhysics();
     const simulationFps = Math.min(60, quality.targetFps);
     if (lastSimTime === 0 || t - lastSimTime >= 1 / simulationFps) {
-      updateGlyphPhysics(t);
+      updateGlyphPhysics(physics, t);
       updateSimulation(physics, t);
     }
     const pointer = physics.pointer;

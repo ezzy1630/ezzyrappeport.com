@@ -80,9 +80,16 @@ function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
 }
 
 /** Pack signed distance, dome height, inner bevel, and hard coverage into RGBA. */
-function encodeTitleField(ctx: CanvasRenderingContext2D, width: number, height: number) {
+function encodeTitleField(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  rangeOverride?: number,
+) {
   const image = ctx.getImageData(0, 0, width, height);
-  const range = Math.max(18, Math.min(42, Math.round(width * 0.02)));
+  const range = rangeOverride == null
+    ? Math.max(18, Math.min(42, Math.round(width * 0.02)))
+    : Math.max(1, Math.round(rangeOverride));
   let minX = width;
   let minY = height;
   let maxX = -1;
@@ -117,6 +124,11 @@ function encodeTitleField(ctx: CanvasRenderingContext2D, width: number, height: 
   }
   const distanceToInside = distanceFromSeeds(cropWidth, cropHeight, insideSeeds);
   const distanceToOutside = distanceFromSeeds(cropWidth, cropHeight, outsideSeeds);
+  let maximumInteriorDistance = 1;
+  for (let i = 0; i < insideSeeds.length; i++) {
+    if (insideSeeds[i]) maximumInteriorDistance = Math.max(maximumInteriorDistance, distanceToOutside[i]);
+  }
+  const bevelWidth = Math.max(2.5, Math.min(12, maximumInteriorDistance * 0.42));
   for (let y = 0; y < cropHeight; y++) {
     for (let x = 0; x < cropWidth; x++) {
       const cropIndex = y * cropWidth + x;
@@ -125,9 +137,14 @@ function encodeTitleField(ctx: CanvasRenderingContext2D, width: number, height: 
       const signed = inside ? distanceToOutside[cropIndex] : -distanceToInside[cropIndex];
       const distanceIn = inside ? distanceToOutside[cropIndex] : 0;
       image.data[imageIndex] = Math.max(0, Math.min(255, Math.round(127.5 + (signed / range) * 127.5)));
-      image.data[imageIndex + 1] = Math.max(0, Math.min(255, Math.round((distanceIn / range) * 255)));
+      // Normalize the medial depth per glyph. The old range-based channel
+      // saturated through most strokes and produced a flat front plateau.
+      image.data[imageIndex + 1] = Math.max(
+        0,
+        Math.min(255, Math.round((distanceIn / maximumInteriorDistance) * 255)),
+      );
       image.data[imageIndex + 2] = inside
-        ? Math.max(0, Math.min(255, Math.round((1 - distanceIn / (range * 0.32)) * 255)))
+        ? Math.max(0, Math.min(255, Math.round((1 - distanceIn / bevelWidth) * 255)))
         : 0;
     }
   }
@@ -158,7 +175,9 @@ export function createHeroGlyphAtlas(
   const family = resolveHeroFont();
   const fontStack = `${family}, "Inter Tight", system-ui, sans-serif`;
   const glyphs: HeroGlyphMetadata[] = [];
-  const padding = Math.round(tileSize * 0.17);
+  // Keep enough exterior texels for SDF filtering without visibly shrinking
+  // the letter inside its typographic advance box.
+  const padding = Math.round(tileSize * 0.04);
 
   elements.forEach((element, index) => {
     const glyph = element.dataset.glyph ?? element.textContent ?? "";
@@ -185,10 +204,15 @@ export function createHeroGlyphAtlas(
     const x = (tileSize - metrics.width) * 0.5;
     const baseline = (tileSize - glyphHeight) * 0.5 + metrics.actualBoundingBoxAscent;
     context.fillStyle = "#fff";
+    context.strokeStyle = "#fff";
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.lineWidth = Math.max(2, fontSize * 0.06);
     context.textAlign = "left";
     context.textBaseline = "alphabetic";
+    context.strokeText(glyph, x, baseline);
     context.fillText(glyph, x, baseline);
-    encodeTitleField(context, tileSize, tileSize);
+    encodeTitleField(context, tileSize, tileSize, tileSize * 0.16);
 
     const column = index % columns;
     const row = Math.floor(index / columns);
@@ -222,7 +246,7 @@ export function createHeroGlyphAtlas(
       material: [
         0.78 + (1 - seed) * 0.18,
         9.8 + seed * 1.8,
-        0.045 + (1 - seed) * 0.018,
+        0.068 + (1 - seed) * 0.018,
         0.72 + seed * 0.24,
       ],
     });
