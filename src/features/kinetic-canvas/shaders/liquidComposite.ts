@@ -1,4 +1,5 @@
 import { HERO_GLYPH_COUNT } from "../materials/heroTextMask";
+import { GLYPH_STATE_CODEC_SOURCE } from "./glyphStateCodec";
 
 export const VERTEX_SOURCE = `#version 300 es
 layout(location = 0) in vec2 a_position;
@@ -31,6 +32,8 @@ uniform sampler2D u_dyeField;
 uniform float u_nameOpacity;
 uniform float u_sceneIntensity;
 uniform vec4 u_scroll;
+
+${GLYPH_STATE_CODEC_SOURCE}
 
 in vec2 v_uv;
 out vec4 outColor;
@@ -283,8 +286,8 @@ void main() {
       vec4 rest = u_glyphRest[glyphIndex];
       if (abs(uv.y - rest.y) > rest.w * 1.35 + 0.032) continue;
       if (abs(uv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
-      vec4 state = texelFetch(u_glyphState, ivec2(glyphIndex, 0), 0) * u_glyphDynamics;
-      vec3 orientation = texelFetch(u_glyphState, ivec2(glyphIndex, 2), 0).xyz * u_glyphDynamics;
+      vec4 state = readGlyphState(u_glyphState, glyphIndex, 0) * u_glyphDynamics;
+      vec3 orientation = readGlyphState(u_glyphState, glyphIndex, 2).xyz * u_glyphDynamics;
       float perspectiveScale = 1.0 + state.z * 2.4;
       vec2 tiltScale = max(vec2(cos(orientation.y), cos(orientation.x)), vec2(0.90));
       vec2 center = rest.xy + state.xy + vec2(0.0, state.w)
