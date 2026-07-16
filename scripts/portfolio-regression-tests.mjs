@@ -86,7 +86,9 @@ const tests = [
     assert.match(heroTextMaskSource, /Math\.round\(rangeOverride\)/);
     assert.match(heroTextMaskSource, /squaredDistanceTransform1D/);
     assert.match(heroTextMaskSource, /Math\.sqrt\(target\[y\]\)/);
-  assert.match(heroTextMaskSource, /distanceIn \/ maximumInteriorDistance/);
+    assert.match(heroTextMaskSource, /function localStrokeRadii/);
+    assert.match(heroTextMaskSource, /distanceIn \/ Math\.max\(strokeRadii\[cropIndex\], 1\)/);
+    assert.doesNotMatch(heroTextMaskSource, /distanceIn \/ maximumInteriorDistance/);
     assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
     assert.match(fluidRendererSource, /glyphStateHeight = supportsFloatTargets \? 4 : 8/);
@@ -194,9 +196,10 @@ const tests = [
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.50/);
     assert.match(liquidCompositeSource, /float titleCaustic/);
-    assert.match(liquidCompositeSource, /float shallowDepthField/);
-    assert.match(liquidCompositeSource, /float midDepthField/);
-    assert.match(liquidCompositeSource, /float deepDepthField/);
+    assert.match(liquidCompositeSource, /for \(int volumeStep = 0; volumeStep < 9; volumeStep\+\+\)/);
+    assert.match(liquidCompositeSource, /float volumeDistance = min\(raySignedDistance, rayDome - abs\(depth\)\)/);
+    assert.match(liquidCompositeSource, /float sideVolume = max\(letterMask - frontFaceMask, 0\.0\)/);
+    assert.doesNotMatch(liquidCompositeSource, /shallowDepthField|midDepthField|deepDepthField/);
     assert.match(liquidCompositeSource, /float internalDepth/);
     assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
     assert.match(fluidRendererSource, /glyphObstacle\(uv \+ vec2\(e\.x, 0\.0\)\)/);
@@ -231,9 +234,11 @@ const tests = [
     assert.match(fluidRendererSource, /event\.preventDefault\(\)/);
     assert.match(fluidRendererSource, /onRecover\?\.\(\)/);
   }],
-  ["Hero title rasterization stays in document space across offscreen resizes", () => {
-    assert.match(heroTextMaskSource, /rect\.left \+ rect\.width \* 0\.5 \+ window\.scrollX/);
-    assert.match(heroTextMaskSource, /rect\.top \+ rect\.height \* 0\.5 \+ window\.scrollY/);
+  ["Hero title, pointer, ripple, and framebuffer transforms share viewport space", () => {
+    assert.match(heroTextMaskSource, /\(rect\.left \+ rect\.width \* 0\.5\) \/ Math\.max\(viewportWidth, 1\)/);
+    assert.match(heroTextMaskSource, /\(rect\.top \+ rect\.height \* 0\.5\) \/ Math\.max\(viewportHeight, 1\)/);
+    assert.match(fluidRendererSource, /pointer\.x \/ Math\.max\(width, 1\)/);
+    assert.match(fluidRendererSource, /ripple\.x \* dpr/);
     assert.match(fluidRendererSource, /window\.visualViewport\?\.addEventListener\("resize", onResize/);
     assert.match(fluidRendererSource, /window\.devicePixelRatio - observedDevicePixelRatio/);
   }],
