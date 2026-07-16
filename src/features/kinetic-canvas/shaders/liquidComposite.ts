@@ -168,7 +168,7 @@ vec4 sampleGlyphField(int index, vec2 local) {
 
 float glyphDome(float depth) {
   float normalizedDepth = clamp(depth, 0.0, 1.0);
-  return sin(normalizedDepth * 1.57079632679);
+  return sin(clamp(normalizedDepth / 0.85, 0.0, 1.0) * 1.57079632679);
 }
 
 void main() {
@@ -385,7 +385,7 @@ void main() {
   // The thickness channel spans the entire stroke. Scale its two-texel
   // derivative into a true dome normal; the former low multiplier left most
   // of the face front-facing and therefore visually flat.
-  vec3 normal = orientGlyphNormal(normalize(vec3(-volumeGradient * 24.0, 0.42 + dome * 0.48)), glyphOrientation);
+  vec3 normal = orientGlyphNormal(normalize(vec3(-volumeGradient * 9.5, 0.50 + dome * 0.60)), glyphOrientation);
   normal = normalize(vec3(normal.xy + simulationNormal.xy * 0.09 + fluidVelocity * 0.16, normal.z));
 
   // Fine solver detail remains optical while the broad GPU state moves the
@@ -396,8 +396,8 @@ void main() {
     + fluidVelocity * (0.024 + faceDepth * 0.018)
     + lensOffset * 0.50;
   float opticalPath = letterMask * (0.28 + dome * 0.92 + glassWall * 0.20 + abs(surfaceDepth) * 0.10);
-  vec2 refraction = uv + sampleWarp + normal.xy * (0.016 + opticalPath * 0.032);
-  vec2 backRefraction = uv + sampleWarp * 0.44 - normal.xy * (0.010 + opticalPath * 0.019);
+  vec2 refraction = uv + sampleWarp + normal.xy * (0.021 + opticalPath * 0.041);
+  vec2 backRefraction = uv + sampleWarp * 0.44 - normal.xy * (0.013 + opticalPath * 0.024);
   vec2 chroma = normal.xy * (0.0008 + opticalPath * 0.0015);
   vec3 refractedFront = vec3(
     texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
@@ -409,7 +409,7 @@ void main() {
   refracted += vec3(0.006, 0.009, 0.016);
 
   vec3 titleTint = mix(vec3(0.76, 0.83, 0.91), vec3(0.72, 0.81, 0.91), mobilePoster);
-  vec3 letterBody = mix(refracted, titleTint, 0.075 + glassWall * 0.15 + opticalPath * 0.025);
+  vec3 letterBody = mix(refracted, titleTint, 0.035 + glassWall * 0.095 + opticalPath * 0.015);
   letterBody += white * interior * (0.006 + dome * 0.006);
   float volumeCore = interior * letterMask;
   float internalDepth = pow(clamp(1.0 - dome, 0.0, 1.0), 1.25) * volumeCore;
@@ -417,7 +417,7 @@ void main() {
   letterBody = mix(letterBody, refracted * vec3(0.985, 1.0, 1.018), volumeCore * 0.34);
   letterBody -= vec3(0.022, 0.043, 0.075) * internalDepth;
   letterBody -= vec3(0.008, 0.019, 0.038) * opticalPath * (0.28 + dome * 0.20);
-  letterBody -= vec3(0.018, 0.038, 0.068) * glassWall;
+  letterBody -= vec3(0.040, 0.070, 0.105) * glassWall;
   letterBody -= vec3(0.026, 0.050, 0.082) * curvedWall * 0.72;
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
@@ -425,6 +425,7 @@ void main() {
   float directionalHighlight = pow(lightFacing, 4.2);
   float oppositeShade = pow(max(dot(normal, -topLeftLight), 0.0), 3.0);
   float fresnel = pow(1.0 - clamp(normal.z, 0.0, 1.0), 2.1);
+  vec3 environmentReflection = vec3(0.52, 0.60, 0.68);
   float upperLeftCurve = glassWall * smoothstep(
     0.08,
     0.72,
@@ -437,10 +438,14 @@ void main() {
   );
   letterBody += white * lightFacing * 0.075;
   letterBody += white * directionalHighlight * (0.28 + glassWall * 0.32);
-  letterBody += white * fresnel * (0.22 + glassWall * 0.30);
+  letterBody = mix(
+    letterBody,
+    environmentReflection,
+    fresnel * (0.24 + glassWall * 0.28)
+  );
   letterBody += white * upperLeftCurve * 0.31;
-  letterBody -= vec3(0.038, 0.072, 0.118) * lowerRightCurve;
-  letterBody -= vec3(0.024, 0.050, 0.090) * oppositeShade * (0.18 + glassWall * 0.44);
+  letterBody -= vec3(0.020, 0.038, 0.064) * lowerRightCurve;
+  letterBody -= vec3(0.014, 0.028, 0.052) * oppositeShade * (0.16 + glassWall * 0.34);
   letterBody += blue * caustic * 0.028 * interior;
 
   vec3 color = base;
@@ -450,29 +455,28 @@ void main() {
   color = mix(color, sideWall, sideVolume * 0.92);
   color += white * sideVolume * 0.12;
   color += blue * sideVolume * 0.026;
-  color -= vec3(0.024, 0.055, 0.105) * outerHalo * 0.62;
+  color -= vec3(0.060, 0.086, 0.122) * outerHalo * 0.88;
   color = mix(color, letterBody, letterMask * mix(0.95, 0.98, mobilePoster));
-  // Preserve a readable glass body even when the refracted pearl background is
-  // nearly white. Highlights are layered afterward, so this is optical density
-  // rather than a flat fill painted over the volume.
-  vec3 volumeAbsorption = vec3(0.070, 0.043, 0.018)
-    * (0.62 + opticalPath * 0.38 + glassWall * 0.32);
+  // Keep the core genuinely clear. Readability comes from the longer optical
+  // path through curved walls/menisci, not a uniform gray fill across the face.
+  vec3 volumeAbsorption = vec3(0.110, 0.100, 0.085)
+    * (0.82 + opticalPath * 0.10 + glassWall * 1.35 + edgeRim * 0.55 + curvedWall * 0.42);
   color *= vec3(1.0) - volumeAbsorption * letterMask;
   color += vec3(0.008, 0.016, 0.030) * interior * letterMask;
   color -= vec3(0.008, 0.020, 0.044) * interior * letterMask;
   color -= vec3(0.035, 0.055, 0.085) * letterMask * mobilePoster * 0.20;
   color += white * innerBevel * 0.20;
   color += white * edgeRim * 0.30;
-  float curvedSheen = exp(
-    -pow(glyphLocal.x + 0.30 + glyphOrientation.y * 1.8, 2.0) * 5.5
-    -pow(glyphLocal.y + 0.36 - glyphOrientation.x * 1.8, 2.0) * 12.0
-  ) * smoothstep(0.08, 0.46, thickness) * letterMask;
-  color += white * curvedSheen * 0.36;
+  float curvedSheen = pow(max(dot(normal, normalize(vec3(-0.42, -0.58, 0.70))), 0.0), 8.0)
+    * smoothstep(0.08, 0.46, thickness) * letterMask;
+  color += white * curvedSheen * 0.24;
   color += white * sideVolume * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.14;
-  color += white * outerMeniscus * 0.30;
-  color -= vec3(0.022, 0.052, 0.105) * innerMeniscus * 0.16;
-  color += blue * outerMeniscus * max(coverageGradient.x - coverageGradient.y, 0.0) * 0.16;
-  color += blue * glassWall * 0.032;
+  float rimLighting = clamp(dot(normalize(coverageGradient + vec2(0.0001)), normalize(vec2(-0.64, -0.77))) * 0.5 + 0.5, 0.0, 1.0);
+  color -= vec3(0.094, 0.116, 0.148) * outerMeniscus * (0.72 - rimLighting * 0.24);
+  color += white * outerMeniscus * (0.08 + rimLighting * 0.22);
+  color -= vec3(0.055, 0.084, 0.126) * innerMeniscus * 0.56;
+  color += blue * outerMeniscus * rimLighting * 0.085;
+  color += blue * glassWall * 0.020;
   float titleCaustic = pow(caustic, 2.0) * innerBevel * 0.52;
   color += white * titleCaustic * 0.18 + blue * titleCaustic * 0.075;
   float movingHighlight = clamp(dot(fluidVelocity, normalize(vec2(-0.72, -0.69))) * 2.8 + 0.5, 0.0, 1.0);
