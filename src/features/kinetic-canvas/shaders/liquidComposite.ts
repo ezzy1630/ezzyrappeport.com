@@ -25,6 +25,7 @@ uniform sampler2D u_glyphState;
 uniform vec4 u_glyphRest[${HERO_GLYPH_COUNT}];
 uniform vec4 u_glyphAtlas[${HERO_GLYPH_COUNT}];
 uniform float u_glyphDynamics;
+uniform float u_glyphScrollOffset;
 uniform sampler2D u_normalField;
 uniform sampler2D u_velocityField;
 uniform sampler2D u_obstacleField;
@@ -283,12 +284,13 @@ void main() {
   vec4 glyphRest = vec4(0.0);
   bool insideTitleField = uv.y > 0.08 && uv.y < 0.62;
   if (insideTitleField) {
-    bool nearFirstRow = abs(uv.y - u_glyphRest[0].y) < u_glyphRest[0].w * 1.45 + 0.038;
-    bool nearSecondRow = abs(uv.y - u_glyphRest[4].y) < u_glyphRest[4].w * 1.45 + 0.038;
+    bool nearFirstRow = abs(uv.y - (u_glyphRest[0].y - u_glyphScrollOffset)) < u_glyphRest[0].w * 1.45 + 0.038;
+    bool nearSecondRow = abs(uv.y - (u_glyphRest[4].y - u_glyphScrollOffset)) < u_glyphRest[4].w * 1.45 + 0.038;
     for (int glyphIndex = 0; glyphIndex < ${HERO_GLYPH_COUNT}; glyphIndex++) {
       if (glyphIndex < 4 && !nearFirstRow) continue;
       if (glyphIndex >= 4 && !nearSecondRow) continue;
       vec4 rest = u_glyphRest[glyphIndex];
+      rest.y -= u_glyphScrollOffset;
       if (abs(uv.y - rest.y) > rest.w * 1.35 + 0.032) continue;
       if (abs(uv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
       vec4 state = readGlyphState(u_glyphState, glyphIndex, 0) * u_glyphDynamics;

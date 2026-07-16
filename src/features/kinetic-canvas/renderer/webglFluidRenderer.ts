@@ -180,6 +180,7 @@ uniform sampler2D u_glyphState;
 uniform vec4 u_glyphRest[${HERO_GLYPH_COUNT}];
 uniform vec4 u_glyphAtlas[${HERO_GLYPH_COUNT}];
 uniform float u_glyphDynamics;
+uniform float u_glyphScrollOffset;
 
 ${GLYPH_STATE_CODEC_SOURCE}
 
@@ -238,12 +239,13 @@ vec3 glyphBoundary(vec2 solverUv) {
   vec2 screenUv = vec2(solverUv.x, 1.0 - solverUv.y);
   float coverage = 0.0;
   vec2 boundaryVelocity = vec2(0.0);
-  bool nearFirstRow = abs(screenUv.y - u_glyphRest[0].y) < u_glyphRest[0].w * 1.45 + 0.038;
-  bool nearSecondRow = abs(screenUv.y - u_glyphRest[4].y) < u_glyphRest[4].w * 1.45 + 0.038;
+  bool nearFirstRow = abs(screenUv.y - (u_glyphRest[0].y - u_glyphScrollOffset)) < u_glyphRest[0].w * 1.45 + 0.038;
+  bool nearSecondRow = abs(screenUv.y - (u_glyphRest[4].y - u_glyphScrollOffset)) < u_glyphRest[4].w * 1.45 + 0.038;
   for (int index = 0; index < ${HERO_GLYPH_COUNT}; index++) {
     if (index < 4 && !nearFirstRow) continue;
     if (index >= 4 && !nearSecondRow) continue;
     vec4 rest = u_glyphRest[index];
+    rest.y -= u_glyphScrollOffset;
     if (abs(screenUv.y - rest.y) > rest.w * 1.35 + 0.032) continue;
     if (abs(screenUv.x - rest.x) > rest.z * 1.22 + 0.022) continue;
     vec4 transform = readGlyphState(u_glyphState, index, 0) * u_glyphDynamics;
@@ -528,6 +530,7 @@ export function startFluidRenderer(
   const glyphRestLocation = gl.getUniformLocation(program, "u_glyphRest[0]");
   const glyphAtlasLocation = gl.getUniformLocation(program, "u_glyphAtlas[0]");
   const glyphDynamicsLocation = gl.getUniformLocation(program, "u_glyphDynamics");
+  const glyphScrollLocation = gl.getUniformLocation(program, "u_glyphScrollOffset");
   const packedGlyphStateLocation = gl.getUniformLocation(program, "u_packedGlyphState");
   const simNormalLocation = gl.getUniformLocation(program, "u_normalField");
   const velocityLocation = gl.getUniformLocation(program, "u_velocityField");
@@ -556,6 +559,7 @@ export function startFluidRenderer(
   const simGlyphRestLocation = gl.getUniformLocation(simProgram, "u_glyphRest[0]");
   const simGlyphAtlasLocation = gl.getUniformLocation(simProgram, "u_glyphAtlas[0]");
   const simGlyphDynamicsLocation = gl.getUniformLocation(simProgram, "u_glyphDynamics");
+  const simGlyphScrollLocation = gl.getUniformLocation(simProgram, "u_glyphScrollOffset");
   const simPackedGlyphStateLocation = gl.getUniformLocation(simProgram, "u_packedGlyphState");
 
   const glyphDeltaLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_delta");
@@ -572,6 +576,7 @@ export function startFluidRenderer(
   const glyphPointerVelocityLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pointerVelocity");
   const glyphDebugImpulseLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_debugImpulse");
   const glyphDebugImpulseMetaLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_debugImpulseMeta");
+  const glyphPhysicsScrollLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_glyphScrollOffset");
   const glyphPackedStateLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_packedGlyphState");
   const glyphRippleLocations = Array.from(
     { length: RIPPLE_COUNT },
@@ -628,6 +633,7 @@ export function startFluidRenderer(
   let height = 0;
   let textWidth = 1;
   let textHeight = 1;
+  let glyphLayoutScrollY = window.scrollY;
   let glyphMetadata: HeroGlyphMetadata[] = [];
   let dpr = 1;
   let frame = 0;
@@ -661,6 +667,7 @@ export function startFluidRenderer(
   let glyphDebugImpacts: Array<GlyphDebugImpact | null> = [];
   let lastTrackedPointerTime = -1;
   let lastTrackedRippleTime = -1;
+  let lastGlyphDebugReadAt = -Infinity;
   let debugImpulse: {
     point: [number, number];
     direction: [number, number];
@@ -749,10 +756,11 @@ export function startFluidRenderer(
     };
     const event = { point, direction, strength: normalizedStrength } as const;
     const viewport = [width, height] as const;
+    const scrollOffset = (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1);
     glyphDebugImpacts = glyphMetadata.map((glyph) => {
       const resolved = resolveGlyphImpulse({
         index: glyph.index,
-        center: glyph.rest.slice(0, 2) as [number, number],
+        center: [glyph.rest[0], glyph.rest[1] - scrollOffset],
         halfSize: glyph.rest.slice(2, 4) as [number, number],
         mass: glyph.physics[0],
       }, event, viewport);
@@ -773,8 +781,12 @@ export function startFluidRenderer(
       const first = glyphMetadata[request.firstGlyphIndex];
       const second = glyphMetadata[request.secondGlyphIndex];
       if (!first || !second) return;
+      const scrollOffset = (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1);
       recordDebugImpulse(
-        [(first.rest[0] + second.rest[0]) * 0.5, (first.rest[1] + second.rest[1]) * 0.5],
+        [
+          (first.rest[0] + second.rest[0]) * 0.5,
+          (first.rest[1] + second.rest[1]) * 0.5 - scrollOffset,
+        ],
         [0, -1],
         request.strength,
         -1,
@@ -784,10 +796,11 @@ export function startFluidRenderer(
     }
     const glyph = glyphMetadata[request.glyphIndex];
     if (!glyph) return;
+    const scrollOffset = (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1);
     const anchorOffset = request.anchor === "left-edge" ? -0.82
       : request.anchor === "right-edge" ? 0.82 : 0;
     recordDebugImpulse(
-      [glyph.rest[0] + glyph.rest[2] * anchorOffset, glyph.rest[1]],
+      [glyph.rest[0] + glyph.rest[2] * anchorOffset, glyph.rest[1] - scrollOffset],
       [0, -1],
       request.strength,
       glyph.index,
@@ -810,16 +823,17 @@ export function startFluidRenderer(
     if (hasNewRipple) lastTrackedRippleTime = latestRipple!.time;
     else lastTrackedPointerTime = physics.pointer.time;
     const point = [x / Math.max(width, 1), y / Math.max(height, 1)] as const;
+    const scrollOffset = (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1);
     glyphDebugImpacts = glyphMetadata.map((glyph) => {
       const radialX = glyph.rest[0] - point[0];
-      const radialY = glyph.rest[1] - point[1];
+      const radialY = glyph.rest[1] - scrollOffset - point[1];
       const directionLength = Math.max(Math.hypot(radialX, radialY), 0.0001);
       const direction = hasNewRipple
         ? [radialX / directionLength, radialY / directionLength] as const
         : [physics.pointer.vx / Math.max(width, 1), physics.pointer.vy / Math.max(height, 1)] as const;
       const resolved = resolveGlyphImpulse({
         index: glyph.index,
-        center: glyph.rest.slice(0, 2) as [number, number],
+        center: [glyph.rest[0], glyph.rest[1] - scrollOffset],
         halfSize: glyph.rest.slice(2, 4) as [number, number],
         mass: glyph.physics[0],
       }, { point, direction, strength }, [width, height]);
@@ -835,6 +849,9 @@ export function startFluidRenderer(
 
   function readGlyphDebugState() {
     if (!glyphDebugEnabled || !glyphState || glyphMetadata.length !== HERO_GLYPH_COUNT) return;
+    const now = performance.now();
+    if (now - lastGlyphDebugReadAt < 90) return;
+    lastGlyphDebugReadAt = now;
     gl.bindFramebuffer(gl.FRAMEBUFFER, glyphState.readFbo);
     let readState: (index: number, row: number) => [number, number, number, number];
     if (supportsFloatTargets) {
@@ -864,13 +881,15 @@ export function startFluidRenderer(
       const orientation = readState(index, 2);
       const angularVelocity = readState(index, 3);
       const centerX = (glyph.rest[0] + transform[0]) * width;
-      const centerY = (glyph.rest[1] + transform[1] + transform[3]) * height;
+      const scrollOffset = (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1);
+      const restY = glyph.rest[1] - scrollOffset;
+      const centerY = (restY + transform[1] + transform[3]) * height;
       const halfWidth = glyph.rest[2] * width;
       const halfHeight = glyph.rest[3] * height;
       return {
         index: glyph.index,
         identity: glyph.glyph,
-        restCenter: [glyph.rest[0] * width, glyph.rest[1] * height],
+        restCenter: [glyph.rest[0] * width, restY * height],
         currentCenter: [centerX, centerY],
         bounds: {
           left: centerX - halfWidth,
@@ -902,6 +921,10 @@ export function startFluidRenderer(
     gl.uniform1f(glyphDeltaLocation, delta);
     gl.uniform1f(glyphTimeLocation, t);
     gl.uniform2f(glyphViewportLocation, width, height);
+    gl.uniform1f(
+      glyphPhysicsScrollLocation,
+      (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1),
+    );
     const pointer = physics.pointer;
     captureInteractionImpacts(physics);
     gl.uniform4f(
@@ -1134,6 +1157,10 @@ export function startFluidRenderer(
     );
     gl.uniform1f(simTimeLocation, t);
     gl.uniform1f(simDeltaLocation, delta);
+    gl.uniform1f(
+      simGlyphScrollLocation,
+      (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1),
+    );
     gl.uniform1i(simPackedHeightLocation, supportsFloatTargets ? 0 : 1);
     gl.uniform4f(
       simScrollLocation,
@@ -1210,6 +1237,7 @@ export function startFluidRenderer(
     // Four compact atlas columns keep every SDF isolated. The atlas is rebuilt
     // only on font/viewport changes; transforms live in the tiny GPU state.
     const tileSize = quality.tier === "high" ? 224 : quality.tier === "balanced" ? 192 : 160;
+    glyphLayoutScrollY = window.scrollY;
     const atlas = createHeroGlyphAtlas(width, height, tileSize);
     glyphMetadata = atlas.glyphs;
     if (glyphMaterialTestEnabled && glyphMetadata.length === HERO_GLYPH_COUNT) {
@@ -1305,6 +1333,10 @@ export function startFluidRenderer(
     gl.uniform1f(energyLocation, pointer.energy);
     gl.uniform1f(nameOpacityLocation, nameOpacity);
     gl.uniform1f(sceneIntensityLocation, heroNameRef.current ? 1 : 0);
+    gl.uniform1f(
+      glyphScrollLocation,
+      (window.scrollY - glyphLayoutScrollY) / Math.max(height, 1),
+    );
     gl.uniform2f(pointerLocation, pointer.x * dpr, pointer.y * dpr);
     gl.uniform4f(scrollLocation, physics.scroll.progress, physics.scroll.velocity, physics.scroll.depth, physics.scroll.section);
     const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
