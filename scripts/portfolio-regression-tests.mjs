@@ -15,6 +15,10 @@ import {
   packGlyphSigned16,
   unpackGlyphSigned16,
 } from "../src/features/kinetic-canvas/shaders/glyphStateCodec.ts";
+import {
+  resolveGlyphImpulse,
+  stepGlyphPlanarState,
+} from "../src/features/kinetic-canvas/physics/glyphImpulseModel.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
 const fluidRendererSource = readFileSync(
@@ -90,7 +94,10 @@ const tests = [
     assert.match(glyphPhysicsSource, /row 0: planar position, depth, buoyancy/);
     assert.match(glyphPhysicsSource, /row 2: X tilt, Y tilt, screen rotation/);
     assert.match(fluidRendererSource, /gl\.texParameteri\(gl\.TEXTURE_2D, gl\.TEXTURE_MIN_FILTER, gl\.NEAREST\)/);
-    assert.doesNotMatch(fluidRendererSource, /readPixels\(/);
+    assert.match(fluidRendererSource, /const glyphDebugEnabled = isGlyphDebugEnabled\(\)/);
+    assert.match(fluidRendererSource, /if \(!glyphDebugEnabled \|\| !glyphState/);
+    assert.doesNotMatch(heroTextMaskSource, /rect\.left \+ rect\.width \* 0\.5 \+ window\.scrollX/);
+    assert.doesNotMatch(heroTextMaskSource, /rect\.top \+ rect\.height \* 0\.5 \+ window\.scrollY/);
   }],
   ["Packed glyph state preserves subpixel physics without float color targets", () => {
     assert.match(fluidRendererSource, /get\("glyphState"\) === "packed"/);
@@ -137,6 +144,39 @@ const tests = [
     assert.match(glyphPhysicsSource, /float ringRadius = 22\.0 \+ age \* 185\.0/);
     assert.match(glyphPhysicsSource, /vec2 localHit = \(ripple\.xy - centerTop\)/);
     assert.match(glyphPhysicsSource, /cross2\(localHit, impulseDirection\)/);
+  }],
+  ["Deterministic local impulses translate, torque, rank, and settle glyphs", () => {
+    const viewport = [1440, 900];
+    const directBody = { index: 0, center: [0.2, 0.3], halfSize: [0.05, 0.11], mass: 1 };
+    const distantBody = { ...directBody, index: 1, center: [0.82, 0.74] };
+    const centerEvent = { point: [0.2, 0.3], direction: [1, 0], strength: 1 };
+    const direct = resolveGlyphImpulse(directBody, centerEvent, viewport);
+    const distant = resolveGlyphImpulse(distantBody, centerEvent, viewport);
+    assert.ok(Math.hypot(...direct.force) > Math.hypot(...distant.force) * 50);
+    assert.equal(direct.torque, 0);
+    assert.ok(direct.arrivalDelayMs < distant.arrivalDelayMs);
+
+    const left = resolveGlyphImpulse(directBody, {
+      point: [0.16, 0.3], direction: [0, -1], strength: 1,
+    }, viewport);
+    const right = resolveGlyphImpulse(directBody, {
+      point: [0.24, 0.3], direction: [0, -1], strength: 1,
+    }, viewport);
+    assert.ok(Math.abs(left.torque) > 0.05);
+    assert.ok(Math.abs(right.torque) > 0.05);
+    assert.equal(Math.sign(left.torque), -Math.sign(right.torque));
+
+    const atRest = {
+      displacement: [0, 0], velocity: [0, 0], angle: 0, angularVelocity: 0,
+    };
+    let state = stepGlyphPlanarState(atRest, left, 1 / 60);
+    assert.ok(Math.hypot(...state.displacement) > 0);
+    assert.ok(Math.abs(state.angle) > 0);
+    const peak = Math.hypot(...state.displacement) + Math.abs(state.angle);
+    for (let frame = 0; frame < 240; frame += 1) {
+      state = stepGlyphPlanarState(state, { force: [0, 0], torque: 0 }, 1 / 60);
+    }
+    assert.ok(Math.hypot(...state.displacement) + Math.abs(state.angle) < peak * 0.05);
   }],
   ["The transformed glyph field drives both obstacles and volumetric rendering", () => {
     assert.match(liquidCompositeSource, /uniform vec2 u_textResolution/);

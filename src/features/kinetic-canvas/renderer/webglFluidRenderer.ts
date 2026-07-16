@@ -22,7 +22,19 @@ import {
 } from "./quality-policy";
 import { FRAGMENT_SOURCE, VERTEX_SOURCE } from "../shaders/liquidComposite";
 import { GLYPH_PHYSICS_FRAGMENT_SOURCE } from "../shaders/glyphPhysics";
-import { GLYPH_STATE_CODEC_SOURCE } from "../shaders/glyphStateCodec";
+import {
+  GLYPH_STATE_CODEC_SOURCE,
+  unpackGlyphSigned16,
+} from "../shaders/glyphStateCodec";
+import {
+  installGlyphDebug,
+  isGlyphDebugEnabled,
+  type GlyphDebugController,
+  type GlyphDebugImpact,
+  type GlyphDebugImpulseRequest,
+  type GlyphDebugSnapshot,
+} from "../debug/glyphDebug";
+import { resolveGlyphImpulse } from "../physics/glyphImpulseModel";
 
 type DoubleBuffer = {
   read: WebGLTexture;
@@ -481,7 +493,11 @@ export function startFluidRenderer(
   });
   if (!glContext) throw new Error("WebGL2 unavailable");
   const gl: WebGL2RenderingContext = glContext;
-  const forcePackedGlyphState = new URLSearchParams(window.location.search).get("glyphState") === "packed";
+  const searchParams = new URLSearchParams(window.location.search);
+  const forcePackedGlyphState = searchParams.get("glyphState") === "packed";
+  const glyphDebugEnabled = isGlyphDebugEnabled();
+  const glyphMaterialTestEnabled = process.env.NODE_ENV !== "production"
+    && searchParams.get("glyphMaterialTest") === "1";
   const supportsFloatTargets = !forcePackedGlyphState && Boolean(
     gl.getExtension("EXT_color_buffer_float")
     && gl.getExtension("OES_texture_float_linear"),
@@ -554,6 +570,8 @@ export function startFluidRenderer(
   const glyphViewportLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_viewport");
   const glyphPointerLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pointer");
   const glyphPointerVelocityLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_pointerVelocity");
+  const glyphDebugImpulseLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_debugImpulse");
+  const glyphDebugImpulseMetaLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_debugImpulseMeta");
   const glyphPackedStateLocation = gl.getUniformLocation(glyphPhysicsProgram, "u_packedGlyphState");
   const glyphRippleLocations = Array.from(
     { length: RIPPLE_COUNT },
@@ -638,6 +656,19 @@ export function startFluidRenderer(
   let obstacle: SingleBuffer | null = null;
   let normal: SingleBuffer | null = null;
   let glyphState: DoubleBuffer | null = null;
+  let glyphDebugController: GlyphDebugController | null = null;
+  let glyphDebugSnapshots: GlyphDebugSnapshot[] = [];
+  let glyphDebugImpacts: Array<GlyphDebugImpact | null> = [];
+  let lastTrackedPointerTime = -1;
+  let lastTrackedRippleTime = -1;
+  let debugImpulse: {
+    point: [number, number];
+    direction: [number, number];
+    strength: number;
+    startedAt: number;
+    selectedIndex: number;
+    selectedMode: boolean;
+  } | null = null;
 
   const renderInternalFormat = supportsFloatTargets ? gl.RGBA16F : gl.RGBA8;
   const renderFormat = gl.RGBA;
@@ -700,6 +731,163 @@ export function startFluidRenderer(
     gl.uniform1i(glyphPackedStateLocation, supportsFloatTargets ? 0 : 1);
   }
 
+  function recordDebugImpulse(
+    point: [number, number],
+    direction: [number, number],
+    strength: number,
+    selectedIndex: number,
+    selectedMode: boolean,
+  ) {
+    const normalizedStrength = Math.max(0.05, Math.min(2, strength));
+    debugImpulse = {
+      point,
+      direction,
+      strength: normalizedStrength,
+      startedAt: lastGlyphTime,
+      selectedIndex,
+      selectedMode,
+    };
+    const event = { point, direction, strength: normalizedStrength } as const;
+    const viewport = [width, height] as const;
+    glyphDebugImpacts = glyphMetadata.map((glyph) => {
+      const resolved = resolveGlyphImpulse({
+        index: glyph.index,
+        center: glyph.rest.slice(0, 2) as [number, number],
+        halfSize: glyph.rest.slice(2, 4) as [number, number],
+        mass: glyph.physics[0],
+      }, event, viewport);
+      const selectionWeight = selectedMode && glyph.index !== selectedIndex ? 0.06 : 1;
+      return {
+        source: "debug",
+        position: [point[0] * width, point[1] * height],
+        impulse: [resolved.force[0] * selectionWeight, resolved.force[1] * selectionWeight],
+        strength: resolved.weight * normalizedStrength * selectionWeight,
+        timestamp: performance.now(),
+      };
+    });
+  }
+
+  function applyGlyphDebugImpulse(request: GlyphDebugImpulseRequest) {
+    if (!glyphDebugEnabled || glyphMetadata.length !== HERO_GLYPH_COUNT) return;
+    if (request.kind === "between") {
+      const first = glyphMetadata[request.firstGlyphIndex];
+      const second = glyphMetadata[request.secondGlyphIndex];
+      if (!first || !second) return;
+      recordDebugImpulse(
+        [(first.rest[0] + second.rest[0]) * 0.5, (first.rest[1] + second.rest[1]) * 0.5],
+        [0, -1],
+        request.strength,
+        -1,
+        false,
+      );
+      return;
+    }
+    const glyph = glyphMetadata[request.glyphIndex];
+    if (!glyph) return;
+    const anchorOffset = request.anchor === "left-edge" ? -0.82
+      : request.anchor === "right-edge" ? 0.82 : 0;
+    recordDebugImpulse(
+      [glyph.rest[0] + glyph.rest[2] * anchorOffset, glyph.rest[1]],
+      [0, -1],
+      request.strength,
+      glyph.index,
+      true,
+    );
+  }
+
+  function captureInteractionImpacts(physics: LiquidPhysics) {
+    if (!glyphDebugEnabled || glyphMetadata.length !== HERO_GLYPH_COUNT) return;
+    const latestRipple = physics.ripples.at(-1);
+    const hasNewRipple = Boolean(latestRipple && latestRipple.time > lastTrackedRippleTime);
+    const hasNewPointer = physics.pointer.active && physics.pointer.time > lastTrackedPointerTime;
+    if (!hasNewRipple && !hasNewPointer) return;
+    const source = hasNewRipple ? "ripple" as const : "pointer" as const;
+    const x = hasNewRipple ? latestRipple!.x : physics.pointer.x;
+    const y = hasNewRipple ? latestRipple!.y : physics.pointer.y;
+    const strength = hasNewRipple
+      ? latestRipple!.intensity
+      : Math.max(0.05, physics.pointer.energy * Math.min(1, physics.pointer.speed + 0.2));
+    if (hasNewRipple) lastTrackedRippleTime = latestRipple!.time;
+    else lastTrackedPointerTime = physics.pointer.time;
+    const point = [x / Math.max(width, 1), y / Math.max(height, 1)] as const;
+    glyphDebugImpacts = glyphMetadata.map((glyph) => {
+      const radialX = glyph.rest[0] - point[0];
+      const radialY = glyph.rest[1] - point[1];
+      const directionLength = Math.max(Math.hypot(radialX, radialY), 0.0001);
+      const direction = hasNewRipple
+        ? [radialX / directionLength, radialY / directionLength] as const
+        : [physics.pointer.vx / Math.max(width, 1), physics.pointer.vy / Math.max(height, 1)] as const;
+      const resolved = resolveGlyphImpulse({
+        index: glyph.index,
+        center: glyph.rest.slice(0, 2) as [number, number],
+        halfSize: glyph.rest.slice(2, 4) as [number, number],
+        mass: glyph.physics[0],
+      }, { point, direction, strength }, [width, height]);
+      return {
+        source,
+        position: [x, y],
+        impulse: resolved.force,
+        strength: resolved.weight * strength,
+        timestamp: hasNewRipple ? latestRipple!.time : physics.pointer.time,
+      };
+    });
+  }
+
+  function readGlyphDebugState() {
+    if (!glyphDebugEnabled || !glyphState || glyphMetadata.length !== HERO_GLYPH_COUNT) return;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, glyphState.readFbo);
+    let readState: (index: number, row: number) => [number, number, number, number];
+    if (supportsFloatTargets) {
+      const values = new Float32Array(HERO_GLYPH_COUNT * 4 * 4);
+      gl.readPixels(0, 0, HERO_GLYPH_COUNT, 4, gl.RGBA, gl.FLOAT, values);
+      readState = (index, row) => {
+        const offset = (row * HERO_GLYPH_COUNT + index) * 4;
+        return [values[offset], values[offset + 1], values[offset + 2], values[offset + 3]];
+      };
+    } else {
+      const values = new Uint8Array(HERO_GLYPH_COUNT * 8 * 4);
+      gl.readPixels(0, 0, HERO_GLYPH_COUNT, 8, gl.RGBA, gl.UNSIGNED_BYTE, values);
+      readState = (index, row) => {
+        const lower = (row * 2 * HERO_GLYPH_COUNT + index) * 4;
+        const upper = ((row * 2 + 1) * HERO_GLYPH_COUNT + index) * 4;
+        return [
+          unpackGlyphSigned16([values[lower], values[lower + 1]], row, 0),
+          unpackGlyphSigned16([values[lower + 2], values[lower + 3]], row, 1),
+          unpackGlyphSigned16([values[upper], values[upper + 1]], row, 2),
+          unpackGlyphSigned16([values[upper + 2], values[upper + 3]], row, 3),
+        ];
+      };
+    }
+    glyphDebugSnapshots = glyphMetadata.map((glyph, index) => {
+      const transform = readState(index, 0);
+      const velocity = readState(index, 1);
+      const orientation = readState(index, 2);
+      const angularVelocity = readState(index, 3);
+      const centerX = (glyph.rest[0] + transform[0]) * width;
+      const centerY = (glyph.rest[1] + transform[1] + transform[3]) * height;
+      const halfWidth = glyph.rest[2] * width;
+      const halfHeight = glyph.rest[3] * height;
+      return {
+        index: glyph.index,
+        identity: glyph.glyph,
+        restCenter: [glyph.rest[0] * width, glyph.rest[1] * height],
+        currentCenter: [centerX, centerY],
+        bounds: {
+          left: centerX - halfWidth,
+          top: centerY - halfHeight,
+          right: centerX + halfWidth,
+          bottom: centerY + halfHeight,
+        },
+        displacement: [transform[0] * width, (transform[1] + transform[3]) * height],
+        velocity: [velocity[0] * width, (velocity[1] + velocity[3]) * height],
+        orientation: [orientation[0], orientation[1], orientation[2]],
+        angularVelocity: [angularVelocity[0], angularVelocity[1], angularVelocity[2]],
+        latestImpact: glyphDebugImpacts[index] ?? null,
+      } satisfies GlyphDebugSnapshot;
+    });
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+
   function updateGlyphPhysics(physics: LiquidPhysics, t: number) {
     if (
       !glyphState || !velocityField || !normal || !pressureField
@@ -715,6 +903,7 @@ export function startFluidRenderer(
     gl.uniform1f(glyphTimeLocation, t);
     gl.uniform2f(glyphViewportLocation, width, height);
     const pointer = physics.pointer;
+    captureInteractionImpacts(physics);
     gl.uniform4f(
       glyphPointerLocation,
       pointer.x / Math.max(width, 1),
@@ -726,6 +915,21 @@ export function startFluidRenderer(
       glyphPointerVelocityLocation,
       Math.max(-1.2, Math.min(1.2, pointer.vx / Math.max(width, 1))),
       Math.max(-1.2, Math.min(1.2, pointer.vy / Math.max(height, 1))),
+    );
+    const debugAge = debugImpulse ? t - debugImpulse.startedAt : 999;
+    gl.uniform4f(
+      glyphDebugImpulseLocation,
+      debugImpulse?.point[0] ?? -999,
+      debugImpulse?.point[1] ?? -999,
+      debugImpulse?.direction[0] ?? 0,
+      debugImpulse?.direction[1] ?? 0,
+    );
+    gl.uniform4f(
+      glyphDebugImpulseMetaLocation,
+      debugAge,
+      debugImpulse?.strength ?? 0,
+      debugImpulse?.selectedMode ? 1 : 0,
+      debugImpulse?.selectedIndex ?? -1,
     );
     const rippleOffset = Math.max(0, physics.ripples.length - quality.activeRipples);
     for (let i = 0; i < RIPPLE_COUNT; i++) {
@@ -747,6 +951,7 @@ export function startFluidRenderer(
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     glyphState.swap();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    readGlyphDebugState();
   }
 
   function disposeSimBuffers() {
@@ -1007,6 +1212,22 @@ export function startFluidRenderer(
     const tileSize = quality.tier === "high" ? 224 : quality.tier === "balanced" ? 192 : 160;
     const atlas = createHeroGlyphAtlas(width, height, tileSize);
     glyphMetadata = atlas.glyphs;
+    if (glyphMaterialTestEnabled && glyphMetadata.length === HERO_GLYPH_COUNT) {
+      const representativeIndices = [0, 1, 4, 10]; // E, Z, R, O
+      glyphMetadata = glyphMetadata.map((glyph) => {
+        const slot = representativeIndices.indexOf(glyph.index);
+        if (slot < 0) return { ...glyph, rest: [-2, -2, glyph.rest[2], glyph.rest[3]] };
+        const halfHeight = 0.13;
+        const aspect = glyph.rest[2] / Math.max(glyph.rest[3], 0.001);
+        return {
+          ...glyph,
+          rest: [0.17 + slot * 0.22, 0.34, halfHeight * aspect, halfHeight],
+        };
+      });
+      canvas.dataset.glyphMaterialTest = "EZRO";
+    } else {
+      delete canvas.dataset.glyphMaterialTest;
+    }
     textWidth = atlas.canvas.width;
     textHeight = atlas.canvas.height;
     gl.bindTexture(gl.TEXTURE_2D, textTexture);
@@ -1102,6 +1323,7 @@ export function startFluidRenderer(
       bindTexture(8, velocityField?.read ?? null, velocityLocation);
     }
     gl.drawArrays(gl.TRIANGLES, 0, 3);
+    glyphDebugController?.tick();
   }
   function render(now = performance.now()) {
     if (!running) return;
@@ -1207,6 +1429,10 @@ export function startFluidRenderer(
   canvas.style.filter = "none";
   canvas.style.transition = "opacity 420ms ease";
   configure();
+  glyphDebugController = installGlyphDebug({
+    readSnapshots: () => glyphDebugSnapshots,
+    applyImpulse: applyGlyphDebugImpulse,
+  });
   window.addEventListener("resize", onResize, { passive: true });
   window.visualViewport?.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibility);
@@ -1264,6 +1490,8 @@ export function startFluidRenderer(
     image.removeEventListener("load", onFluidImageLoad);
     image.removeEventListener("error", onFluidImageError);
     image.src = "";
+    glyphDebugController?.remove();
+    glyphDebugController = null;
     gl.deleteTexture(texture);
     gl.deleteTexture(textTexture);
     deleteDoubleBuffer(glyphState);

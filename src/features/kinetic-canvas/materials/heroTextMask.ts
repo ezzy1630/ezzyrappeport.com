@@ -258,8 +258,8 @@ export function createHeroGlyphAtlas(
       index,
       glyph,
       rest: [
-        (rect.left + rect.width * 0.5 + window.scrollX) / Math.max(viewportWidth, 1),
-        (rect.top + rect.height * 0.5 + window.scrollY) / Math.max(viewportHeight, 1),
+        (rect.left + rect.width * 0.5) / Math.max(viewportWidth, 1),
+        (rect.top + rect.height * 0.5) / Math.max(viewportHeight, 1),
         normalizedWidth * 0.5,
         normalizedHeight * 0.5,
       ],

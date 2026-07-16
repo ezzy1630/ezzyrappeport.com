@@ -22,6 +22,8 @@ uniform vec2 u_viewport;
 uniform vec4 u_pointer;
 uniform vec2 u_pointerVelocity;
 uniform vec4 u_ripples[8];
+uniform vec4 u_debugImpulse;
+uniform vec4 u_debugImpulseMeta;
 uniform vec4 u_glyphRest[GLYPH_COUNT];
 uniform vec4 u_glyphPhysics[GLYPH_COUNT];
 uniform vec4 u_glyphMaterial[GLYPH_COUNT];
@@ -95,6 +97,28 @@ void main() {
     fromPointer.x * directForce.y,
     cross2(fromPointer / max(rest.zw, vec2(0.001)), directForce)
   );
+
+  // Development-only deterministic probe. Production uploads an expired
+  // event, so this branch is inert and normal pointer coupling remains honest.
+  float debugAge = u_debugImpulseMeta.x;
+  if (debugAge >= 0.0 && debugAge < 0.24 && u_debugImpulseMeta.y > 0.001) {
+    vec2 debugOffset = centerTop - u_debugImpulse.xy;
+    float debugDistancePixels = length(debugOffset * u_viewport);
+    float debugGlyphPixels = max(length(rest.zw * u_viewport), 24.0);
+    float spatialWeight = exp(-pow(debugDistancePixels / (debugGlyphPixels * 0.72 + 18.0), 2.0));
+    bool selectedMode = u_debugImpulseMeta.z > 0.5;
+    bool selectedGlyph = index == int(floor(u_debugImpulseMeta.w + 0.5));
+    float selectionWeight = selectedMode ? (selectedGlyph ? 1.0 : spatialWeight * 0.06) : spatialWeight;
+    float debugAttack = exp(-debugAge * 13.5) * u_debugImpulseMeta.y * selectionWeight;
+    vec2 debugDirection = normalize(u_debugImpulse.zw + vec2(0.000001));
+    vec2 debugForce = debugDirection * debugAttack * 7.4;
+    vec2 debugLocalHit = (u_debugImpulse.xy - centerTop) / max(rest.zw, vec2(0.001));
+    directForce += debugForce;
+    directTorque.x += -debugLocalHit.y * debugAttack * 3.4;
+    directTorque.y += debugLocalHit.x * debugAttack * 3.4;
+    directTorque.z += cross2(debugLocalHit, debugDirection) * debugAttack * 4.2;
+    depthImpulse -= debugAttack * 0.055;
+  }
 
   for (int rippleIndex = 0; rippleIndex < 8; rippleIndex++) {
     vec4 ripple = u_ripples[rippleIndex];
