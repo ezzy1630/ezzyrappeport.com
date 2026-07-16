@@ -103,6 +103,62 @@ function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
   return result;
 }
 
+/**
+ * Follow the exact distance-field gradient to the nearest medial ridge and
+ * reuse that ridge height as the local stroke radius. Unlike one glyph-wide
+ * maximum, this gives a narrow bar, broad bowl, diagonal, and counter their own
+ * rounded cross-section without flattening the thinner strokes.
+ */
+function localStrokeRadii(
+  width: number,
+  height: number,
+  inside: Uint8Array,
+  distance: Float32Array,
+) {
+  const radii = new Float32Array(width * height);
+  const next = new Int32Array(width * height);
+  next.fill(-1);
+  const trace = new Int32Array(Math.max(width, height) * 2);
+
+  for (let start = 0; start < inside.length; start += 1) {
+    if (!inside[start] || radii[start] > 0) continue;
+    let current = start;
+    let traceLength = 0;
+    while (radii[current] === 0 && traceLength < trace.length) {
+      trace[traceLength] = current;
+      traceLength += 1;
+      const x = current % width;
+      const y = Math.floor(current / width);
+      let best = current;
+      let bestDistance = distance[current];
+      for (let offsetY = -1; offsetY <= 1; offsetY += 1) {
+        for (let offsetX = -1; offsetX <= 1; offsetX += 1) {
+          if (offsetX === 0 && offsetY === 0) continue;
+          const nx = x + offsetX;
+          const ny = y + offsetY;
+          if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+          const neighbor = ny * width + nx;
+          if (inside[neighbor] && distance[neighbor] > bestDistance + 0.01) {
+            best = neighbor;
+            bestDistance = distance[neighbor];
+          }
+        }
+      }
+      next[current] = best;
+      if (best === current) {
+        radii[current] = Math.max(distance[current], 1);
+        break;
+      }
+      current = best;
+    }
+    const resolvedRadius = radii[current] || Math.max(distance[current], 1);
+    for (let traceIndex = traceLength - 1; traceIndex >= 0; traceIndex -= 1) {
+      radii[trace[traceIndex]] = resolvedRadius;
+    }
+  }
+  return radii;
+}
+
 /** Pack signed distance, dome height, inner bevel, and hard coverage into RGBA. */
 function encodeTitleField(
   ctx: CanvasRenderingContext2D,
@@ -148,12 +204,12 @@ function encodeTitleField(
   }
   const distanceToInside = distanceFromSeeds(cropWidth, cropHeight, insideSeeds);
   const distanceToOutside = distanceFromSeeds(cropWidth, cropHeight, outsideSeeds);
-  let maximumInteriorDistance = 1;
-  for (let index = 0; index < distanceToOutside.length; index += 1) {
-    if (insideSeeds[index] > 0) {
-      maximumInteriorDistance = Math.max(maximumInteriorDistance, distanceToOutside[index]);
-    }
-  }
+  const strokeRadii = localStrokeRadii(
+    cropWidth,
+    cropHeight,
+    insideSeeds,
+    distanceToOutside,
+  );
   const bevelWidth = Math.max(3, Math.min(14, range * 0.40));
   for (let y = 0; y < cropHeight; y++) {
     for (let x = 0; x < cropWidth; x++) {
@@ -163,12 +219,11 @@ function encodeTitleField(
       const signed = inside ? distanceToOutside[cropIndex] : -distanceToInside[cropIndex];
       const distanceIn = inside ? distanceToOutside[cropIndex] : 0;
       image.data[imageIndex] = Math.max(0, Math.min(255, Math.round(127.5 + (signed / range) * 127.5)));
-      // Store physical distance into the body, not a value normalized by the
-      // deepest corner of the glyph. That makes straight strokes and counters
-      // inflate consistently while retaining a smoothly curved front dome.
+      // Locally normalized medial depth: 0 at either wall and 1 at the nearest
+      // stroke ridge, including around counters and diagonal joins.
       image.data[imageIndex + 1] = Math.max(
         0,
-        Math.min(255, Math.round((distanceIn / maximumInteriorDistance) * 255)),
+        Math.min(255, Math.round((distanceIn / Math.max(strokeRadii[cropIndex], 1)) * 255)),
       );
       image.data[imageIndex + 2] = inside
         ? Math.max(0, Math.min(255, Math.round((1 - distanceIn / bevelWidth) * 255)))
