@@ -236,7 +236,7 @@ vec2 rotateGlyph(vec2 value, float angle) {
 }
 
 float glyphDome(float depth) {
-  return sin(clamp(depth, 0.0, 1.0) * 1.57079632679);
+  return sin(clamp(clamp(depth, 0.0, 1.0) / 0.85, 0.0, 1.0) * 1.57079632679);
 }
 
 vec3 glyphBoundary(vec2 solverUv) {
@@ -771,7 +771,10 @@ export function startFluidRenderer(
       point,
       direction,
       strength: normalizedStrength,
-      startedAt: lastGlyphTime,
+      // Use the renderer clock directly. `lastGlyphTime` can be stale after a
+      // tab pause or immediately after reload, which used to expire a debug
+      // impulse before the next GPU update observed it.
+      startedAt: (performance.now() - startedAt) / 1000,
       selectedIndex,
       selectedMode,
     };

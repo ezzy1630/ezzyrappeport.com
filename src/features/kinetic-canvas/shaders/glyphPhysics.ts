@@ -70,6 +70,11 @@ void main() {
   vec2 flowRight = decodeVelocity(texture(u_velocity, right));
   vec2 flowUpper = decodeVelocity(texture(u_velocity, upper));
   vec2 flowLower = decodeVelocity(texture(u_velocity, lower));
+  vec2 farExtent = halfExtent * 2.6 + vec2(0.012);
+  vec2 flowFarLeft = decodeVelocity(texture(u_velocity, center - vec2(farExtent.x, 0.0)));
+  vec2 flowFarRight = decodeVelocity(texture(u_velocity, center + vec2(farExtent.x, 0.0)));
+  vec2 flowFarUpper = decodeVelocity(texture(u_velocity, center + vec2(0.0, farExtent.y)));
+  vec2 flowFarLower = decodeVelocity(texture(u_velocity, center - vec2(0.0, farExtent.y)));
   vec3 normalCenter = texture(u_normal, center).rgb;
   vec2 surfaceNormal = normalCenter.xy * 2.0 - 1.0;
   float heightCenterRaw = (normalCenter.z - 0.5) * 0.25;
@@ -81,6 +86,11 @@ void main() {
     + (heightLeft + heightRight + heightUpper + heightLower) * 0.205;
   vec2 flowAverage = flowCenter * 0.16
     + (flowLeft + flowRight + flowUpper + flowLower) * 0.21;
+  // Remove the broad carrier current used to keep the hero water alive. Glyphs
+  // respond to a local wake/pressure change, not the ambient sheet drifting as
+  // one body across the viewport.
+  vec2 carrierFlow = (flowFarLeft + flowFarRight + flowFarUpper + flowFarLower) * 0.25;
+  vec2 localFlow = clamp(flowAverage - carrierFlow, vec2(-0.045), vec2(0.045));
   float pressureLeft = texture(u_pressure, left).r - 0.5;
   float pressureRight = texture(u_pressure, right).r - 0.5;
   float pressureUpper = texture(u_pressure, upper).r - 0.5;
@@ -92,13 +102,17 @@ void main() {
   vec2 fromPointer = centerTop - u_pointer.xy;
   float pointerDistance = length(fromPointer);
   float pointerWake = exp(-pointerDistance / localRadius) * u_pointer.z;
-  vec2 directForce = u_pointerVelocity * pointerWake * 0.32;
+  float pointerDisturbance = clamp(pointerWake * 1.4, 0.0, 1.0);
+  float rippleDisturbance = 0.0;
+  float pressDisturbance = 0.0;
+  vec2 directForce = u_pointerVelocity * pointerWake * 0.022;
   float depthImpulse = pointerWake * min(length(u_pointerVelocity) * 0.8, 0.012);
   vec3 directTorque = vec3(
     -fromPointer.y * directForce.x,
     fromPointer.x * directForce.y,
     cross2(fromPointer / max(rest.zw, vec2(0.001)), directForce)
   );
+  float debugDisturbance = 0.0;
 
   // Development-only deterministic probe. Production uploads an expired
   // event, so this branch is inert and normal pointer coupling remains honest.
@@ -112,13 +126,14 @@ void main() {
     bool selectedGlyph = index == int(floor(u_debugImpulseMeta.w + 0.5));
     float selectionWeight = selectedMode ? (selectedGlyph ? 1.0 : spatialWeight * 0.06) : spatialWeight;
     float debugAttack = exp(-debugAge * 13.5) * u_debugImpulseMeta.y * selectionWeight;
+    debugDisturbance = debugAttack;
     vec2 debugDirection = normalize(u_debugImpulse.zw + vec2(0.000001));
     vec2 debugForce = debugDirection * debugAttack * 7.4;
     vec2 debugLocalHit = (u_debugImpulse.xy - centerTop) / max(rest.zw, vec2(0.001));
     directForce += debugForce;
-    directTorque.x += -debugLocalHit.y * debugAttack * 3.4;
-    directTorque.y += debugLocalHit.x * debugAttack * 3.4;
-    directTorque.z += cross2(debugLocalHit, debugDirection) * debugAttack * 4.2;
+    directTorque.x += -debugLocalHit.y * debugAttack * 18.0;
+    directTorque.y += debugLocalHit.x * debugAttack * 18.0;
+    directTorque.z += cross2(debugLocalHit, debugDirection) * debugAttack * 24.0;
     depthImpulse -= debugAttack * 0.055;
   }
 
@@ -129,30 +144,51 @@ void main() {
     vec2 hitOffset = centerTop - ripple.xy;
     float distancePixels = length(hitOffset * u_viewport);
     float glyphPixels = max(length(rest.zw * u_viewport), 28.0);
+    vec2 localPress = (ripple.xy - centerTop) / max(rest.zw, vec2(0.001));
+    float boundsDistancePixels = length(max(abs(localPress) - 1.0, vec2(0.0)) * rest.zw * u_viewport);
+    float nearestBoundsDistance = 99999.0;
+    for (int candidateIndex = 0; candidateIndex < GLYPH_COUNT; candidateIndex++) {
+      vec4 candidate = u_glyphRest[candidateIndex];
+      candidate.y -= u_glyphScrollOffset;
+      vec2 candidateLocal = (ripple.xy - candidate.xy) / max(candidate.zw, vec2(0.001));
+      float candidateDistance = length(
+        max(abs(candidateLocal) - 1.0, vec2(0.0)) * candidate.zw * u_viewport
+      );
+      nearestBoundsDistance = min(nearestBoundsDistance, candidateDistance);
+    }
+    float immediatePriority = 1.0 - smoothstep(
+      nearestBoundsDistance + 1.0,
+      nearestBoundsDistance + 7.0,
+      boundsDistancePixels
+    );
     float immediate = exp(-pow(distancePixels / (glyphPixels * 0.38 + 16.0), 2.0))
-      * exp(-age * 11.0) * ripple.w;
+      * exp(-age * 11.0) * ripple.w * mix(0.18, 1.0, immediatePriority);
     float ringRadius = 22.0 + age * 185.0;
-    float surfaceDistance = max(distancePixels - glyphPixels * 0.85 - 22.0, 0.0);
+    float surfaceDistance = boundsDistancePixels + (1.0 - immediatePriority) * 44.0;
     float arrivalTime = surfaceDistance / 185.0;
     float arrived = smoothstep(arrivalTime, arrivalTime + 0.12, age);
     float ring = exp(-abs(distancePixels - ringRadius) / 54.0)
       * (1.0 - age / 3.2) * ripple.w * arrived;
+    float rippleActivity = clamp(immediate * 2.2 + ring * 1.35, 0.0, 1.0);
+    rippleDisturbance = max(rippleDisturbance, rippleActivity);
+    pressDisturbance = max(pressDisturbance, rippleActivity * smoothstep(0.52, 0.80, ripple.w));
     vec2 radial = length(hitOffset) > 0.0001 ? normalize(hitOffset) : vec2(0.0, -1.0);
     vec2 impulseDirection = normalize(radial + vec2(0.0, -0.34));
     vec2 impulse = impulseDirection * (immediate * 7.1 + ring * 0.58);
     directForce += impulse;
     vec2 localHit = (ripple.xy - centerTop) / max(rest.zw, vec2(0.001));
-    directTorque.x += -localHit.y * (immediate * 5.4 + ring * 0.38);
-    directTorque.y += localHit.x * (immediate * 5.4 + ring * 0.38);
-    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 4.6 + ring * 0.36)
-      + localHit.x * (immediate * -3.1);
+    directTorque.x += -localHit.y * (immediate * 16.0 + ring * 0.72);
+    directTorque.y += localHit.x * (immediate * 16.0 + ring * 0.72);
+    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 14.0 + ring * 0.68)
+      + localHit.x * (immediate * -12.0);
     depthImpulse -= immediate * 0.078;
     depthImpulse += ring * 0.010;
   }
 
   float dt = clamp(u_delta, 1.0 / 120.0, 1.0 / 30.0);
   float mass = max(physical.x, 0.45);
-  vec2 flowTop = vec2(flowAverage.x, -flowAverage.y);
+  float localDisturbance = max(pointerDisturbance * 0.16, rippleDisturbance);
+  vec2 flowTop = vec2(localFlow.x, -localFlow.y) * (0.012 + localDisturbance * 0.988);
   vec2 displacementForce = -transform.xy * physical.y;
   vec2 dragForce = (flowTop * 0.36 - velocity.xy) * physical.z;
   vec2 acceleration = (
@@ -162,9 +198,12 @@ void main() {
   velocity.xy *= exp(-physical.z * 0.10 * dt);
   transform.xy += velocity.xy * dt;
   float maxTranslation = physical.w;
-  float travel = length(transform.xy);
-  if (travel > maxTranslation) {
-    transform.xy *= maxTranslation / travel;
+  float strongImpulse = smoothstep(0.035, 0.18, max(pressDisturbance, debugDisturbance));
+  float maxTranslationPixels = maxTranslation * max(u_viewport.x, u_viewport.y);
+  float allowedTravelPixels = mix(min(maxTranslationPixels, 4.2), maxTranslationPixels, strongImpulse);
+  float travelPixels = length(transform.xy * u_viewport);
+  if (travelPixels > allowedTravelPixels) {
+    transform.xy *= allowedTravelPixels / travelPixels;
     velocity.xy *= 0.42;
   }
 
@@ -180,7 +219,7 @@ void main() {
   transform.w += velocity.w * dt;
 
   float depthTarget = clamp(
-    heightCenter * material.w * 1.6 + length(flowAverage) * 0.018 + depthImpulse,
+    heightCenter * material.w * 1.6 + length(localFlow) * 0.018 + depthImpulse,
     -0.032,
     0.030
   );
@@ -192,7 +231,7 @@ void main() {
     (flowUpper.x - flowLower.x) * 0.34 + surfaceNormal.y * 0.12 + (pressureUpper - pressureLower) * 0.34,
     (flowRight.y - flowLeft.y) * -0.34 + surfaceNormal.x * 0.12 + (pressureRight - pressureLeft) * 0.34,
     (flowRight.y - flowLeft.y) * 0.42 + (pressureRight - pressureLeft) * 0.48
-  );
+  ) * (0.08 + localDisturbance * 0.92);
   vec3 angularSpring = vec3(material.y * 0.88, material.y * 0.88, material.y) * orientation.xyz;
   vec3 angularAcceleration = (
     fluidTorque + directTorque - angularSpring - angularVelocity.xyz * vec3(5.4, 5.4, 5.9)
