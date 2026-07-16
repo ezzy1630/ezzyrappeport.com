@@ -144,6 +144,8 @@ const tests = [
     assert.match(glyphPhysicsSource, /maxTranslation = physical\.w/);
     assert.match(glyphPhysicsSource, /float immediate = exp/);
     assert.match(glyphPhysicsSource, /float ringRadius = 22\.0 \+ age \* 185\.0/);
+    assert.match(glyphPhysicsSource, /float arrivalTime = surfaceDistance \/ 185\.0/);
+    assert.match(glyphPhysicsSource, /smoothstep\(arrivalTime, arrivalTime \+ 0\.12, age\)/);
     assert.match(glyphPhysicsSource, /vec2 localHit = \(ripple\.xy - centerTop\)/);
     assert.match(glyphPhysicsSource, /cross2\(localHit, impulseDirection\)/);
   }],
@@ -239,6 +241,9 @@ const tests = [
     assert.match(heroTextMaskSource, /\(rect\.top \+ rect\.height \* 0\.5\) \/ Math\.max\(viewportHeight, 1\)/);
     assert.match(fluidRendererSource, /pointer\.x \/ Math\.max\(width, 1\)/);
     assert.match(fluidRendererSource, /ripple\.x \* dpr/);
+    assert.match(glyphPhysicsSource, /rest\.y -= u_glyphScrollOffset/);
+    assert.match(liquidCompositeSource, /rest\.y -= u_glyphScrollOffset/);
+    assert.match(fluidRendererSource, /rest\.y -= u_glyphScrollOffset/);
     assert.match(fluidRendererSource, /window\.visualViewport\?\.addEventListener\("resize", onResize/);
     assert.match(fluidRendererSource, /window\.devicePixelRatio - observedDevicePixelRatio/);
   }],
