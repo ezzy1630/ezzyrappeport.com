@@ -204,8 +204,12 @@ const tests = [
     assert.doesNotMatch(liquidCompositeSource, /shallowDepthField|midDepthField|deepDepthField/);
     assert.match(liquidCompositeSource, /float internalDepth/);
     assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
-    assert.match(fluidRendererSource, /glyphObstacle\(uv \+ vec2\(e\.x, 0\.0\)\)/);
-    assert.match(fluidRendererSource, /boundaryVelocity = vec2\(velocity\.x, -velocity\.y - velocity\.w\)/);
+    assert.match(fluidRendererSource, /texture\(u_obstacle, uv \+ vec2\(e\.x, 0\.0\)\)\.r/);
+    assert.doesNotMatch(fluidRendererSource, /glyphObstacle\(uv \+ vec2/);
+    assert.match(fluidRendererSource, /vec2 tangential = angularVelocity\.z \* vec2\(-screenOffset\.y, screenOffset\.x\)/);
+    assert.match(fluidRendererSource, /for \(int volumeStep = 0; volumeStep < 9; volumeStep\+\+\)/);
+    assert.match(fluidRendererSource, /glyphDome\(field\.g\) - abs\(depth\)/);
+    assert.match(fluidRendererSource, /local \+= vec2\(orientation\.y \* local\.y, -orientation\.x \* local\.x\) \* 0\.16/);
     assert.match(fluidRendererSource, /vel = mix\(vel, boundaryVelocity, obstacle/);
     assert.match(fluidRendererSource, /bindTexture\(9, glyphState\?\.read \?\? null, simGlyphStateLocation\)/);
     assert.match(fluidRendererSource, /gl\.uniform2f\(textResolutionLocation, textWidth, textHeight\)/);

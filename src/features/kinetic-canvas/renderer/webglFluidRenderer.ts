@@ -235,6 +235,10 @@ vec2 rotateGlyph(vec2 value, float angle) {
   return mat2(c, -s, s, c) * value;
 }
 
+float glyphDome(float depth) {
+  return sin(clamp(depth, 0.0, 1.0) * 1.57079632679);
+}
+
 vec3 glyphBoundary(vec2 solverUv) {
   vec2 screenUv = vec2(solverUv.x, 1.0 - solverUv.y);
   float coverage = 0.0;
@@ -251,26 +255,41 @@ vec3 glyphBoundary(vec2 solverUv) {
     vec4 transform = readGlyphState(u_glyphState, index, 0) * u_glyphDynamics;
     vec4 velocity = readGlyphState(u_glyphState, index, 1) * u_glyphDynamics;
     vec3 orientation = readGlyphState(u_glyphState, index, 2).xyz * u_glyphDynamics;
+    vec3 angularVelocity = readGlyphState(u_glyphState, index, 3).xyz * u_glyphDynamics;
     float scale = 1.0 + transform.z * 2.4;
     vec2 tiltScale = max(vec2(cos(orientation.y), cos(orientation.x)), vec2(0.90));
     vec2 center = rest.xy + transform.xy + vec2(0.0, transform.w)
       + vec2(orientation.y, -orientation.x) * transform.z * 0.22;
     vec2 local = rotateGlyph(screenUv - center, -orientation.z)
       / max(rest.zw * scale * tiltScale, vec2(0.0001));
-    if (max(abs(local.x), abs(local.y)) >= 0.995) continue;
+    local += vec2(orientation.y * local.y, -orientation.x * local.x) * 0.16;
+    if (max(abs(local.x), abs(local.y)) > 1.08) continue;
     vec4 region = u_glyphAtlas[index];
-    vec2 tileUv = clamp(local * 0.5 + 0.5, vec2(0.002), vec2(0.998));
-    vec2 atlasUv = region.xy + tileUv * region.zw;
-    float glyphCoverage = texture(u_text, atlasUv).a;
+    float glyphCoverage = 0.0;
+    vec2 volumeParallax = vec2(orientation.y, -orientation.x) * 0.34;
+    for (int volumeStep = 0; volumeStep < 9; volumeStep++) {
+      float depth = 1.0 - float(volumeStep) * 0.25;
+      vec2 rayLocal = local + volumeParallax * depth;
+      vec2 tileUv = clamp(rayLocal * 0.5 + 0.5, vec2(0.002), vec2(0.998));
+      vec2 atlasUv = region.xy + tileUv * region.zw;
+      vec4 field = max(abs(rayLocal.x), abs(rayLocal.y)) < 0.995
+        ? texture(u_text, atlasUv) : vec4(0.0);
+      float signedDistance = field.r * 2.0 - 1.0 + 0.025;
+      float volumeDistance = min(signedDistance, glyphDome(field.g) - abs(depth));
+      glyphCoverage = max(glyphCoverage, smoothstep(-0.012, 0.012, volumeDistance));
+    }
     if (glyphCoverage > coverage) {
       coverage = glyphCoverage;
-      boundaryVelocity = vec2(velocity.x, -velocity.y - velocity.w);
+      vec2 screenOffset = screenUv - center;
+      vec2 tangential = angularVelocity.z * vec2(-screenOffset.y, screenOffset.x);
+      boundaryVelocity = vec2(
+        velocity.x + tangential.x,
+        -velocity.y - velocity.w - tangential.y
+      );
     }
   }
   return vec3(coverage, boundaryVelocity);
 }
-
-float glyphObstacle(vec2 solverUv) { return glyphBoundary(solverUv).x; }
 
 void main() {
   vec2 uv = v_uv;
@@ -279,14 +298,16 @@ void main() {
   vec2 pointerVelocity = u_pointerVelocity;
   vec3 boundary = u_pass == 0 ? glyphBoundary(uv) : vec3(texture(u_obstacle, uv).r, 0.0, 0.0);
   float text = boundary.x;
-  vec2 textGrad = u_pass == 0
+  vec2 textGrad = u_pass == 1
     ? vec2(
-        glyphObstacle(uv + vec2(e.x, 0.0)) - glyphObstacle(uv - vec2(e.x, 0.0)),
-        glyphObstacle(uv + vec2(0.0, e.y)) - glyphObstacle(uv - vec2(0.0, e.y))
+        texture(u_obstacle, uv + vec2(e.x, 0.0)).r - texture(u_obstacle, uv - vec2(e.x, 0.0)).r,
+        texture(u_obstacle, uv + vec2(0.0, e.y)).r - texture(u_obstacle, uv - vec2(0.0, e.y)).r
       )
     : vec2(0.0);
   float obstacle = clamp(text * 0.95, 0.0, 1.0);
-  float edge = clamp(length(textGrad) * 14.0, 0.0, 1.0);
+  float edge = u_pass == 0
+    ? smoothstep(0.01, 0.30, text) * (1.0 - smoothstep(0.72, 0.995, text))
+    : texture(u_obstacle, uv).g;
 
   if (u_pass == 0) {
     outColor = vec4(obstacle, edge, clamp(boundary.yz * 0.5 + 0.5, 0.0, 1.0));
@@ -886,6 +907,19 @@ export function startFluidRenderer(
       const centerY = (restY + transform[1] + transform[3]) * height;
       const halfWidth = glyph.rest[2] * width;
       const halfHeight = glyph.rest[3] * height;
+      const velocityPixels = [velocity[0] * width, (velocity[1] + velocity[3]) * height] as const;
+      const displacementPixels = [transform[0] * width, (transform[1] + transform[3]) * height] as const;
+      const priorImpact = glyphDebugImpacts[index] ?? null;
+      const measuredImpact = priorImpact && now - priorImpact.timestamp < 800
+        ? {
+            ...priorImpact,
+            impulse: velocityPixels,
+            strength: Math.hypot(...velocityPixels) * 0.02
+              + Math.hypot(angularVelocity[0], angularVelocity[1], angularVelocity[2]) * 0.8
+              + Math.hypot(...displacementPixels) * 0.06,
+          }
+        : priorImpact;
+      glyphDebugImpacts[index] = measuredImpact;
       return {
         index: glyph.index,
         identity: glyph.glyph,
@@ -897,11 +931,11 @@ export function startFluidRenderer(
           right: centerX + halfWidth,
           bottom: centerY + halfHeight,
         },
-        displacement: [transform[0] * width, (transform[1] + transform[3]) * height],
-        velocity: [velocity[0] * width, (velocity[1] + velocity[3]) * height],
+        displacement: displacementPixels,
+        velocity: velocityPixels,
         orientation: [orientation[0], orientation[1], orientation[2]],
         angularVelocity: [angularVelocity[0], angularVelocity[1], angularVelocity[2]],
-        latestImpact: glyphDebugImpacts[index] ?? null,
+        latestImpact: measuredImpact,
       } satisfies GlyphDebugSnapshot;
     });
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
