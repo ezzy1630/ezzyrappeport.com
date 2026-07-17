@@ -1273,7 +1273,7 @@ export function startFluidRenderer(
     if (!heroNameRef.current) return;
     // Four compact atlas columns keep every SDF isolated. The atlas is rebuilt
     // only on font/viewport changes; transforms live in the tiny GPU state.
-    const tileSize = quality.tier === "high" ? 224 : quality.tier === "balanced" ? 192 : 160;
+    const tileSize = quality.tier === "high" ? 288 : quality.tier === "balanced" ? 240 : 192;
     glyphLayoutScrollY = window.scrollY;
     const atlas = createHeroGlyphAtlas(width, height, tileSize);
     glyphMetadata = atlas.glyphs;

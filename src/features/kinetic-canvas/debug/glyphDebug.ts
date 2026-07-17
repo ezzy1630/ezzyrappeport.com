@@ -160,7 +160,8 @@ export function installGlyphDebug(hooks: GlyphDebugHooks): GlyphDebugController 
   const refresh = () => {
     const snapshots = hooks.readSnapshots();
     const strongestIndex = strongestImpactIndex(snapshots);
-    const selected = snapshots.find((snapshot) => snapshot.index === selectedGlyph) ?? snapshots[0];
+    const focusedIndex = strongestIndex >= 0 ? strongestIndex : selectedGlyph;
+    const selected = snapshots.find((snapshot) => snapshot.index === focusedIndex) ?? snapshots[0];
     const summary = selected ? formatGlyphDebugSnapshot(selected, strongestIndex) : "Waiting for renderer glyph state…";
     overlay.textContent = [
       "GLYPH DEBUG · CSS px / radians",

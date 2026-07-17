@@ -36,6 +36,13 @@ export type HeroGlyphAtlas = {
   glyphs: HeroGlyphMetadata[];
 };
 
+type GlyphMassProperties = {
+  area: number;
+  centroidX: number;
+  centroidY: number;
+  polarMoment: number;
+};
+
 let cachedField: { key: string; canvas: HTMLCanvasElement } | null = null;
 
 export function clearHeroTextCanvasCache() {
@@ -101,6 +108,43 @@ function distanceFromSeeds(width: number, height: number, seeds: Uint8Array) {
     for (let y = 0; y < height; y++) result[y * width + x] = Math.sqrt(target[y]);
   }
   return result;
+}
+
+function measureGlyphMassProperties(
+  context: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+): GlyphMassProperties {
+  const alpha = context.getImageData(0, 0, width, height).data;
+  let area = 0;
+  let weightedX = 0;
+  let weightedY = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const weight = alpha[(y * width + x) * 4 + 3] / 255;
+      area += weight;
+      weightedX += x * weight;
+      weightedY += y * weight;
+    }
+  }
+  const safeArea = Math.max(area, 1);
+  const centroidX = weightedX / safeArea;
+  const centroidY = weightedY / safeArea;
+  let polarMoment = 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const weight = alpha[(y * width + x) * 4 + 3] / 255;
+      const dx = (x - centroidX) / width;
+      const dy = (y - centroidY) / height;
+      polarMoment += (dx * dx + dy * dy) * weight;
+    }
+  }
+  return {
+    area: safeArea / (width * height),
+    centroidX: centroidX / width,
+    centroidY: centroidY / height,
+    polarMoment: polarMoment / safeArea,
+  };
 }
 
 /** Pack signed distance, dome height, inner bevel, and hard coverage into RGBA. */
@@ -196,9 +240,11 @@ export function createHeroGlyphAtlas(
   const family = resolveHeroFont();
   const fontStack = `${family}, "Inter Tight", system-ui, sans-serif`;
   const glyphs: HeroGlyphMetadata[] = [];
-  // Keep enough exterior texels for SDF filtering without visibly shrinking
-  // the letter inside its typographic advance box.
-  const padding = Math.round(tileSize * 0.04);
+  // The field needs a real exterior band. Previously the glyph was fitted into
+  // four percent padding and then expanded by a sixteen-percent stroke, so
+  // round glyphs physically hit the tile edge and counters collapsed.
+  const fieldRange = Math.round(tileSize * 0.10);
+  const padding = fieldRange + Math.round(tileSize * 0.015);
 
   elements.forEach((element, index) => {
     const glyph = element.dataset.glyph ?? element.textContent ?? "";
@@ -225,15 +271,11 @@ export function createHeroGlyphAtlas(
     const x = (tileSize - metrics.width) * 0.5;
     const baseline = (tileSize - glyphHeight) * 0.5 + metrics.actualBoundingBoxAscent;
     context.fillStyle = "#fff";
-    context.strokeStyle = "#fff";
-    context.lineJoin = "round";
-    context.lineCap = "round";
-    context.lineWidth = Math.max(2, fontSize * 0.16);
     context.textAlign = "left";
     context.textBaseline = "alphabetic";
-    context.strokeText(glyph, x, baseline);
     context.fillText(glyph, x, baseline);
-    encodeTitleField(context, tileSize, tileSize, tileSize * 0.16);
+    const massProperties = measureGlyphMassProperties(context, tileSize, tileSize);
+    encodeTitleField(context, tileSize, tileSize, fieldRange);
 
     const column = index % columns;
     const row = Math.floor(index / columns);
@@ -242,10 +284,11 @@ export function createHeroGlyphAtlas(
     const normalizedWidth = rect.width / Math.max(viewportWidth, 1);
     const normalizedHeight = rect.height / Math.max(viewportHeight, 1);
     const dimension = Math.max(normalizedWidth, normalizedHeight);
-    const seed = (index * 0.61803398875) % 1;
-    const mass = 0.92 + dimension * 2.4 + seed * 0.12;
-    const spring = 15.8 + (1 - seed) * 2.6;
-    const damping = 7.1 + seed * 0.7;
+    const normalizedArea = Math.min(1, massProperties.area / 0.36);
+    const normalizedMoment = Math.min(1, massProperties.polarMoment / 0.11);
+    const mass = 0.78 + dimension * 2.0 + normalizedArea * 0.44;
+    const spring = 14.2 + normalizedArea * 2.4;
+    const damping = 6.15 + normalizedMoment * 1.0;
     // CSS-pixel targets are resolved in the shader, but the body still needs
     // enough normalized headroom for a 20-30 px local press on common desktop
     // viewports. The former 0.006-0.018 range made the visible clamp, not the
@@ -269,10 +312,10 @@ export function createHeroGlyphAtlas(
       ],
       physics: [mass, spring, damping, maxTranslation],
       material: [
-        0.78 + (1 - seed) * 0.18,
-        9.8 + seed * 1.8,
-        0.11 + (1 - seed) * 0.025,
-        0.86 + seed * 0.24,
+        0.84 + normalizedArea * 0.12,
+        8.4 + normalizedMoment * 2.0,
+        0.13 - normalizedMoment * 0.015,
+        0.92 + normalizedArea * 0.18,
       ],
     });
   });

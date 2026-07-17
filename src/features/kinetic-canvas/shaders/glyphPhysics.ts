@@ -64,6 +64,11 @@ void main() {
   vec2 right = center + vec2(halfExtent.x, 0.0);
   vec2 upper = center + vec2(0.0, halfExtent.y);
   vec2 lower = center - vec2(0.0, halfExtent.y);
+  vec2 cornerExtent = halfExtent * 0.72;
+  vec2 upperLeft = center + vec2(-cornerExtent.x, cornerExtent.y);
+  vec2 upperRight = center + cornerExtent;
+  vec2 lowerLeft = center - cornerExtent;
+  vec2 lowerRight = center + vec2(cornerExtent.x, -cornerExtent.y);
 
   vec2 flowCenter = decodeVelocity(texture(u_velocity, center));
   vec2 flowLeft = decodeVelocity(texture(u_velocity, left));
@@ -95,9 +100,14 @@ void main() {
   float pressureRight = texture(u_pressure, right).r - 0.5;
   float pressureUpper = texture(u_pressure, upper).r - 0.5;
   float pressureLower = texture(u_pressure, lower).r - 0.5;
+  float pressureUpperLeft = texture(u_pressure, upperLeft).r - 0.5;
+  float pressureUpperRight = texture(u_pressure, upperRight).r - 0.5;
+  float pressureLowerLeft = texture(u_pressure, lowerLeft).r - 0.5;
+  float pressureLowerRight = texture(u_pressure, lowerRight).r - 0.5;
 
-  // The pointer wake is continuous. Press ripples add an immediate local hit
-  // followed by a ring that reaches neighboring letters later.
+  // Pointer sweeps retain a restrained direct wake. Press events only gate the
+  // locally integrated solver pressure; they no longer kick a second,
+  // unrelated rigid-body animation on top of the water.
   float localRadius = max(rest.z, rest.w) * 1.25 + 0.018;
   vec2 fromPointer = centerTop - u_pointer.xy;
   float pointerDistance = length(fromPointer);
@@ -180,43 +190,47 @@ void main() {
     rippleDisturbance = max(rippleDisturbance, rippleActivity);
     pressDisturbance = max(pressDisturbance, rippleActivity * smoothstep(0.52, 0.80, ripple.w));
     vec2 radial = length(hitOffset) > 0.0001 ? normalize(hitOffset) : vec2(0.0, -1.0);
-    vec2 impulseDirection = normalize(radial + vec2(0.0, -0.34));
-    vec2 impulse = impulseDirection * (immediate * 8.8 + ring * 0.58);
-    directForce += impulse;
-    vec2 localHit = (ripple.xy - centerTop) / max(rest.zw, vec2(0.001));
-    directTorque.x += -localHit.y * (immediate * 40.0 + ring * 0.72);
-    directTorque.y += localHit.x * (immediate * 40.0 + ring * 0.72);
-    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 34.0 + ring * 0.68)
-      + localHit.x * (immediate * -28.0);
-    depthImpulse -= immediate * 0.078;
-    depthImpulse += ring * 0.010;
+    depthImpulse -= immediate * 0.018;
+    depthImpulse += ring * 0.006;
   }
 
   float dt = clamp(u_delta, 1.0 / 120.0, 1.0 / 30.0);
   float mass = max(physical.x, 0.45);
   float localDisturbance = max(pointerDisturbance * 0.72, rippleDisturbance);
   vec2 flowTop = vec2(localFlow.x, -localFlow.y) * (0.10 + localDisturbance * 0.90);
+  vec2 pressureForce = vec2(
+    pressureLeft - pressureRight,
+    pressureUpper - pressureLower
+  ) * (160.0 + localDisturbance * 820.0);
+  pressureForce += vec2(-surfaceNormal.x, surfaceNormal.y)
+    * (0.12 + localDisturbance * 0.65);
   vec2 displacementForce = -transform.xy * physical.y;
   vec2 dragForce = (flowTop * 0.36 - velocity.xy) * physical.z;
+  float maxTranslation = physical.w;
+  float travelPixels = length(transform.xy * u_viewport);
+  float maxTranslationPixels = max(maxTranslation * max(u_viewport.x, u_viewport.y), 1.0);
+  float limitRatio = travelPixels / maxTranslationPixels;
+  vec2 softLimitForce = vec2(0.0);
+  if (limitRatio > 0.68) {
+    softLimitForce = -normalize(transform.xy + vec2(0.000001))
+      * physical.y * pow((limitRatio - 0.68) / 0.32, 2.0) * 1.8;
+  }
   vec2 acceleration = (
-    displacementForce + dragForce + vec2(flowTop.x * 1.15, -heightCenter * material.x * 1.05) + directForce
+    displacementForce + softLimitForce + dragForce
+      + vec2(flowTop.x * 1.15, -heightCenter * material.x * 1.05)
+      + pressureForce + directForce
   ) / mass;
   velocity.xy += acceleration * dt;
   velocity.xy *= exp(-physical.z * 0.10 * dt);
+  float planarSpeedPixels = length(velocity.xy * u_viewport);
+  if (planarSpeedPixels > 110.0) velocity.xy *= 110.0 / planarSpeedPixels;
   transform.xy += velocity.xy * dt;
-  float maxTranslation = physical.w;
-  float strongImpulse = smoothstep(0.035, 0.18, max(pressDisturbance, debugDisturbance));
-  float sweepTravel = smoothstep(0.08, 0.62, pointerDisturbance) * 0.66;
-  float maxTranslationPixels = maxTranslation * max(u_viewport.x, u_viewport.y);
-  float allowedTravelPixels = mix(
-    min(maxTranslationPixels, 5.5),
-    maxTranslationPixels,
-    max(strongImpulse, sweepTravel)
-  );
-  float travelPixels = length(transform.xy * u_viewport);
-  if (travelPixels > allowedTravelPixels) {
-    transform.xy *= allowedTravelPixels / travelPixels;
-    velocity.xy *= 0.42;
+  // An unreachable safety guard prevents numerical escape without becoming the
+  // visible settling behavior. Normal motion is governed by the soft potential.
+  travelPixels = length(transform.xy * u_viewport);
+  if (travelPixels > maxTranslationPixels * 1.18) {
+    transform.xy *= (maxTranslationPixels * 1.18) / travelPixels;
+    velocity.xy *= 0.82;
   }
 
   float quietLift = (sin(u_time * 0.31 + float(index) * 2.31)
@@ -239,16 +253,21 @@ void main() {
   velocity.z += depthAcceleration * dt;
   transform.z += velocity.z * dt;
 
+  float diagonalPressureTorque = (pressureUpperRight + pressureLowerLeft)
+    - (pressureUpperLeft + pressureLowerRight);
   vec3 fluidTorque = vec3(
-    (flowUpper.x - flowLower.x) * 0.34 + surfaceNormal.y * 0.12 + (pressureUpper - pressureLower) * 0.34,
-    (flowRight.y - flowLeft.y) * -0.34 + surfaceNormal.x * 0.12 + (pressureRight - pressureLeft) * 0.34,
-    (flowRight.y - flowLeft.y) * 0.42 + (pressureRight - pressureLeft) * 0.48
+    (flowUpper.x - flowLower.x) * 0.34 + surfaceNormal.y * 0.12
+      + (pressureUpper - pressureLower) * 1800.0,
+    (flowRight.y - flowLeft.y) * -0.34 + surfaceNormal.x * 0.12
+      + (pressureRight - pressureLeft) * 1800.0,
+    (flowRight.y - flowLeft.y) * 0.42 + diagonalPressureTorque * 2800.0
   ) * (0.18 + localDisturbance * 0.82);
   vec3 angularSpring = vec3(material.y * 0.88, material.y * 0.88, material.y) * orientation.xyz;
   vec3 angularAcceleration = (
     fluidTorque + directTorque - angularSpring - angularVelocity.xyz * vec3(5.4, 5.4, 5.9)
   ) / (mass * (0.68 + max(rest.z, rest.w) * 4.0));
   angularVelocity.xyz += angularAcceleration * dt;
+  angularVelocity.xyz = clamp(angularVelocity.xyz, vec3(-0.62), vec3(0.62));
   orientation.xyz += angularVelocity.xyz * dt;
   vec3 rotationLimit = vec3(material.z * 1.45, material.z * 1.45, material.z);
   orientation.xyz = clamp(orientation.xyz, -rotationLimit, rotationLimit);
