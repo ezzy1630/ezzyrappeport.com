@@ -3,7 +3,7 @@
   isolation: isolate;
   width: var(--rv-page);
   margin: 0 auto;
-  padding: clamp(5rem, 8vw, 7.5rem) 0 clamp(4rem, 6.5vw, 6.5rem);
+  padding: clamp(4rem, 6vw, 5.75rem) 0 clamp(3.75rem, 5.5vw, 5.25rem);
 }
 
 .section::before {
@@ -30,7 +30,7 @@
 .signature > span:last-child { display: flex; flex-direction: column; }
 .signature strong { color: var(--rv-ink); font-size: 0.86rem; }
 .signature small { margin-top: 0.2rem; color: var(--rv-muted); font-size: 0.68rem; }
-.principles { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(2rem, 5vw, 5rem); margin: clamp(4.25rem, 6.5vw, 6rem) 0 0; padding: clamp(1.4rem, 2.2vw, 2rem) 0 0; list-style: none; }
+.principles { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(2rem, 5vw, 5rem); margin: clamp(3rem, 4.5vw, 4.5rem) 0 0; padding: clamp(1.4rem, 2.2vw, 2rem) 0 0; list-style: none; }
 .principles::before { content: ""; position: absolute; inset: 0 0 auto; height: 1px; background: linear-gradient(90deg, var(--rv-line), color-mix(in oklch, var(--rv-blue) 35%, transparent) 52%, var(--rv-line)); }
 .principles li { min-width: 0; padding: 0; }
 .principles > li > span { color: var(--rv-blue); font-family: var(--font-geist-mono), monospace; font-size: 0.66rem; }

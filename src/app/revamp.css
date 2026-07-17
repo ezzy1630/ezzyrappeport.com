@@ -85,6 +85,11 @@ body {
   mix-blend-mode: normal;
 }
 
+.fluid-canvas[data-fluid="ready"] {
+  background: var(--rv-pearl);
+  box-shadow: none;
+}
+
 /* WebGL owns the one visible moving volume once ready. The measured DOM
    glyphs remain resident for layout and rasterization, then crossfade back in
    automatically for startup, static mode, failure, and context recovery. */
@@ -98,6 +103,10 @@ body {
   opacity: 0;
 }
 
+.fluid-canvas:has(canvas[data-glyph-material-test]) ~ .content-layer .hero-name-fallback {
+  opacity: 0 !important;
+}
+
 .content-layer {
   position: relative;
   z-index: var(--rv-layer-content);
@@ -109,10 +118,10 @@ body {
   position: relative;
   background: linear-gradient(
     180deg,
-    rgba(247, 249, 252, 0) 0,
-    rgba(247, 249, 252, 0.58) 9rem,
-    rgba(247, 249, 252, 0.94) 22rem,
-    var(--rv-pearl) 34rem
+    rgba(242, 248, 255, 0.04) 0,
+    rgba(242, 248, 255, 0.34) 10rem,
+    rgba(238, 246, 255, 0.56) 28rem,
+    rgba(231, 242, 253, 0.64) 100%
   );
   box-shadow: none;
 }
@@ -928,7 +937,7 @@ body {
   position: absolute;
   inset: 0 calc(50% - 50vw);
   z-index: -1;
-  background: linear-gradient(180deg, rgba(247,250,255,0.58), var(--rv-pearl) 15%, var(--rv-pearl) 100%);
+  background: linear-gradient(180deg, rgba(241, 248, 255, 0.30), rgba(230, 241, 253, 0.62) 18%, rgba(224, 238, 252, 0.68) 100%);
 }
 
 .case-back {
@@ -948,8 +957,8 @@ body {
   grid-template-columns: minmax(20rem, 0.68fr) minmax(0, 1.32fr);
   gap: clamp(2.5rem, 7vw, 7rem);
   align-items: center;
-  min-height: min(46rem, calc(100svh - 10rem));
-  padding-bottom: clamp(6rem, 10vw, 10rem);
+  min-height: min(40rem, calc(100svh - 10rem));
+  padding-bottom: clamp(4.5rem, 7vw, 7rem);
 }
 
 .case-hero__eyebrow { margin: 0; color: var(--rv-blue); font-size: 0.76rem; font-weight: 600; }
@@ -983,7 +992,7 @@ body {
 .case-page--nexarad .case-hero__media > img { object-fit: contain; background: #07141e; }
 
 .case-narrative,
-.case-gallery { padding: clamp(7rem, 11vw, 11rem) 0; border-top: 1px solid var(--rv-line); }
+.case-gallery { padding: clamp(5rem, 8vw, 8rem) 0; border-top: 1px solid var(--rv-line); }
 .case-narrative__header,
 .case-gallery__header { display: grid; grid-template-columns: 0.55fr 1.45fr; gap: 2rem; align-items: end; margin-bottom: clamp(4rem, 7vw, 7rem); }
 .case-narrative__header > p,
@@ -1330,7 +1339,7 @@ body {
 .contact-section {
   isolation: isolate;
   padding: 0;
-  background: #050b16;
+  background: rgba(5, 13, 27, 0.96);
   color: white;
 }
 .contact-section::before {
@@ -1338,11 +1347,12 @@ body {
   position: absolute;
   inset: 0 0 auto;
   z-index: -1;
-  height: clamp(18rem, 31vw, 30rem);
+  height: clamp(11rem, 18vw, 17rem);
   background:
-    radial-gradient(72% 62% at 14% -10%, rgba(255, 255, 255, 0.92), transparent 68%),
-    radial-gradient(54% 58% at 79% -17%, rgba(203, 229, 252, 0.58), transparent 71%),
-    linear-gradient(180deg, var(--rv-pearl) 0%, #edf5fd 9%, #cfdeee 24%, #7e9ab8 42%, #2d4664 61%, #0d1a2d 80%, #050b16 100%);
+    radial-gradient(110% 34% at 18% 0%, rgba(255, 255, 255, 0.74), transparent 70%),
+    radial-gradient(84% 30% at 82% -4%, rgba(171, 215, 250, 0.48), transparent 72%),
+    radial-gradient(74% 18% at 48% 32%, rgba(230, 245, 255, 0.22), transparent 72%),
+    linear-gradient(180deg, rgba(221, 238, 252, 0.62) 0%, #abc1d7 28%, #55728d 50%, #1b344e 74%, rgba(5, 13, 27, 0.96) 100%);
   pointer-events: none;
 }
 .contact-section::after {
@@ -1366,10 +1376,10 @@ body {
   grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: clamp(1.25rem, 2vw, 2rem);
   align-items: end;
-  min-height: clamp(42rem, 57vw, 53rem);
+  min-height: clamp(32rem, 42vw, 39rem);
   margin: 0 calc(50% - 50vw);
   overflow: hidden;
-  padding: clamp(17rem, 27vw, 25rem) max(calc((100vw - var(--rv-page)) / 2), 1.1rem) clamp(5rem, 8vw, 8rem);
+  padding: clamp(9rem, 15vw, 13rem) max(calc((100vw - var(--rv-page)) / 2), 1.1rem) clamp(4rem, 6vw, 6rem);
   border: 0;
   border-radius: 0;
   background:
@@ -1381,7 +1391,7 @@ body {
 .contact-basin::before {
   content: "";
   position: absolute;
-  inset: clamp(12rem, 20vw, 19rem) 0 auto;
+  inset: clamp(6rem, 10vw, 9rem) 0 auto;
   height: clamp(6rem, 10vw, 9rem);
   background:
     radial-gradient(64% 100% at 18% -18%, rgba(229, 244, 255, 0.16), transparent 70%),
@@ -1402,7 +1412,7 @@ body {
 .contact-basin__copy { position: relative; z-index: 1; grid-column: 1 / span 8; }
 .contact-section__eyebrow { margin-bottom: clamp(1.2rem, 2vw, 1.75rem); color: rgba(238, 246, 255, 0.67); font-family: var(--font-geist-mono), monospace; font-size: clamp(0.68rem, 0.64rem + 0.1vw, 0.75rem); }
 .contact-section__eyebrow i { box-shadow: 0 0 0.8rem rgba(79, 148, 255, 0.7); }
-.contact-section h2 { max-width: none; font-size: clamp(3.5rem, 6.35vw, 6.9rem); line-height: 0.89; letter-spacing: -0.052em; text-wrap: initial; }
+.contact-section h2 { max-width: none; font-size: clamp(3.5rem, 6.35vw, 6.9rem); line-height: 0.89; letter-spacing: -0.04em; text-wrap: initial; }
 .contact-section h2 > span { display: block; }
 .contact-section h2 > span:last-child { margin-top: 0.03em; color: rgba(247, 250, 255, 0.92); }
 .contact-section__email {
@@ -1456,7 +1466,7 @@ body {
 @media (max-width: 760px) {
   .contact-section__inner { padding-top: 0; }
   .contact-section::before { height: 22rem; }
-  .contact-basin { grid-template-columns: 1fr; gap: clamp(3.5rem, 14vw, 5.5rem); min-height: 45rem; align-content: end; padding: 15rem 1.1rem 4.5rem; }
+  .contact-basin { grid-template-columns: 1fr; gap: clamp(3.25rem, 12vw, 4.75rem); min-height: 39rem; align-content: end; padding: 12rem 1.1rem 4rem; }
   .contact-basin__copy,
   .contact-section__email { grid-column: 1; }
   .contact-section h2 { font-size: clamp(3.1rem, 13.5vw, 4rem); line-height: 0.92; text-wrap: balance; }

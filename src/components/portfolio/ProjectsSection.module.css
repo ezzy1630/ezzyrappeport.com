@@ -2,7 +2,7 @@
   position: relative;
   width: var(--rv-page);
   margin: 0 auto;
-  padding: clamp(6rem, 9vw, 9rem) 0 clamp(6rem, 10vw, 9rem);
+  padding: clamp(4.5rem, 6.5vw, 6.5rem) 0 clamp(4.5rem, 7vw, 6.5rem);
 }
 
 .section::before {
@@ -34,7 +34,7 @@
   grid-template-columns: minmax(0, 1.15fr) minmax(16rem, 0.85fr);
   align-items: end;
   gap: clamp(2rem, 7vw, 6rem);
-  padding-bottom: clamp(4rem, 7vw, 6.5rem);
+  padding-bottom: clamp(3rem, 4.5vw, 4.5rem);
 }
 
 .kicker,
@@ -86,8 +86,8 @@
     "media actions";
   gap: 0 clamp(3rem, 7vw, 7rem);
   align-items: center;
-  min-height: 28rem;
-  padding: clamp(4.75rem, 7vw, 6.8rem) 0;
+  min-height: 23rem;
+  padding: clamp(3.35rem, 5vw, 4.8rem) 0;
 }
 
 /* The index has one content grammar, but not one repeated card silhouette. */
@@ -118,7 +118,7 @@
   display: grid;
   place-items: center;
   width: 100%;
-  min-height: clamp(21rem, 31vw, 29rem);
+  min-height: clamp(18rem, 25vw, 24rem);
   aspect-ratio: auto;
   margin: 0;
   overflow: visible;

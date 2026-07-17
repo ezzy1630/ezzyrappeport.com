@@ -89,7 +89,10 @@ const tests = [
     assert.doesNotMatch(heroTextMaskSource, /function localStrokeRadii/);
     assert.match(heroTextMaskSource, /distanceIn \/ range/);
     assert.doesNotMatch(heroTextMaskSource, /distanceIn \/ maximumInteriorDistance/);
-    assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
+    assert.doesNotMatch(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
+    assert.match(heroTextMaskSource, /context\.fillText\(glyph, x, baseline\)/);
+    assert.match(heroTextMaskSource, /measureGlyphMassProperties/);
+    assert.match(heroTextMaskSource, /const fieldRange = Math\.round\(tileSize \* 0\.10\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
     assert.match(fluidRendererSource, /glyphStateHeight = supportsFloatTargets \? 4 : 8/);
     assert.match(fluidRendererSource, /createDoubleBuffer\(\s*gl,\s*HERO_GLYPH_COUNT,\s*glyphStateHeight,/);
@@ -141,8 +144,7 @@ const tests = [
     assert.match(glyphPhysicsSource, /carrierFlow/);
     assert.match(glyphPhysicsSource, /flowAverage - carrierFlow/);
     assert.match(glyphPhysicsSource, /pointerDisturbance \* 0\.72, rippleDisturbance/);
-    assert.match(glyphPhysicsSource, /directForce = u_pointerVelocity \* pointerWake \* 1\.05/);
-    assert.match(glyphPhysicsSource, /float sweepTravel/);
+    assert.match(glyphPhysicsSource, /directForce = u_pointerVelocity \* pointerWake \* 2\.7/);
     assert.match(glyphPhysicsSource, /displacementForce = -transform\.xy \* physical\.y/);
     assert.match(glyphPhysicsSource, /angularVelocity\.xyz \+= angularAcceleration \* dt/);
     assert.match(glyphPhysicsSource, /vec3 rotationLimit/);
@@ -151,12 +153,16 @@ const tests = [
     assert.match(glyphPhysicsSource, /nearestBoundsDistance/);
     assert.match(glyphPhysicsSource, /immediatePriority/);
     assert.match(glyphPhysicsSource, /pressDisturbance/);
-    assert.match(glyphPhysicsSource, /allowedTravelPixels/);
+    assert.match(glyphPhysicsSource, /vec2 pressureForce/);
+    assert.match(glyphPhysicsSource, /pressureUpperLeft/);
+    assert.match(glyphPhysicsSource, /diagonalPressureTorque/);
+    assert.match(glyphPhysicsSource, /vec2 softLimitForce/);
+    assert.match(glyphPhysicsSource, /planarSpeedPixels/);
     assert.match(glyphPhysicsSource, /float ringRadius = 22\.0 \+ age \* 185\.0/);
     assert.match(glyphPhysicsSource, /float arrivalTime = surfaceDistance \/ 185\.0/);
     assert.match(glyphPhysicsSource, /smoothstep\(arrivalTime, arrivalTime \+ 0\.12, age\)/);
-    assert.match(glyphPhysicsSource, /vec2 localHit = \(ripple\.xy - centerTop\)/);
-    assert.match(glyphPhysicsSource, /cross2\(localHit, impulseDirection\)/);
+    assert.doesNotMatch(glyphPhysicsSource, /directForce \+= impulse/);
+    assert.doesNotMatch(glyphPhysicsSource, /directTorque\.x \+= -localHit/);
   }],
   ["Deterministic local impulses translate, torque, rank, and settle glyphs", () => {
     const viewport = [1440, 900];
@@ -222,7 +228,8 @@ const tests = [
     assert.match(liquidCompositeSource, /float sideVolume = max\(frontFaceMask - surfaceMask, 0\.0\)/);
     assert.doesNotMatch(liquidCompositeSource, /shallowDepthField|midDepthField|deepDepthField/);
     assert.doesNotMatch(liquidCompositeSource, /outerHalo|edgeRim|outerMeniscus|innerMeniscus/);
-    assert.match(liquidCompositeSource, /vec3 transmission = refracted \* exp/);
+    assert.match(liquidCompositeSource, /vec3 transmission = mix\(base, refracted, 0\.80\) \* exp/);
+    assert.match(liquidCompositeSource, /float faceGlint/);
     assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
     assert.match(fluidRendererSource, /texture\(u_obstacle, uv \+ vec2\(e\.x, 0\.0\)\)\.r/);
     assert.doesNotMatch(fluidRendererSource, /glyphObstacle\(uv \+ vec2/);
@@ -246,7 +253,8 @@ const tests = [
     assert.match(liquidCompositeSource, /float crestUnderside/);
     assert.match(liquidCompositeSource, /float submergedTransition/);
     assert.match(fluidRendererSource, /gl\.getUniformLocation\(program, `u_ripples\[\$\{i\}\]`\)/);
-    assert.match(liquidCompositeSource, /vec3 samplePearlSurface/);
+    assert.match(liquidCompositeSource, /vec3 proceduralWater/);
+    assert.match(liquidCompositeSource, /vec3 base = livingWater/);
     assert.match(liquidCompositeSource, /vec3 sampleTransportedLight/);
     assert.match(fluidRendererSource, /nextDyeField = createDoubleBuffer\(gl, simWidth, simHeight, renderInternalFormat/);
     assert.match(fluidRendererSource, /drawSim\(1, velocityField\.writeFbo\)/);

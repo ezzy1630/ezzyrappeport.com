@@ -197,14 +197,20 @@ function onPointerDown(e: PointerEvent) {
   pendingPointer = null;
   state.pointer.x = e.clientX;
   state.pointer.y = e.clientY;
-  state.pointer.vx = 0;
-  state.pointer.vy = 0;
+  // Preserve the incoming sweep as the initial water momentum. Zeroing it on
+  // pointer-down made a click feel detached from the motion that caused it.
+  state.pointer.vx *= 0.62;
+  state.pointer.vy *= 0.62;
   state.pointer.active = true;
-  state.pointer.energy = Math.max(state.pointer.energy, 0.58);
+  const incomingSpeed = Math.hypot(state.pointer.vx, state.pointer.vy);
+  state.pointer.energy = Math.max(
+    state.pointer.energy,
+    Math.min(0.66, 0.42 + incomingSpeed * 0.16),
+  );
   state.pointer.time = now;
   emitPointer();
   emitPhysics();
-  pushRipple(e.clientX, e.clientY, 0.76, now);
+  pushRipple(e.clientX, e.clientY, Math.min(0.82, 0.68 + incomingSpeed * 0.05), now);
 }
 
 function onPointerEnd() {
