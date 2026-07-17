@@ -86,8 +86,8 @@ const tests = [
     assert.match(heroTextMaskSource, /Math\.round\(rangeOverride\)/);
     assert.match(heroTextMaskSource, /squaredDistanceTransform1D/);
     assert.match(heroTextMaskSource, /Math\.sqrt\(target\[y\]\)/);
-    assert.match(heroTextMaskSource, /function localStrokeRadii/);
-    assert.match(heroTextMaskSource, /distanceIn \/ Math\.max\(strokeRadii\[cropIndex\], 1\)/);
+    assert.doesNotMatch(heroTextMaskSource, /function localStrokeRadii/);
+    assert.match(heroTextMaskSource, /distanceIn \/ range/);
     assert.doesNotMatch(heroTextMaskSource, /distanceIn \/ maximumInteriorDistance/);
     assert.match(heroTextMaskSource, /context\.strokeText\(glyph, x, baseline\)/);
     assert.match(heroNameSource, /key={`\$\{glyph\}-\$\{index\}`}/);
@@ -138,11 +138,20 @@ const tests = [
     assert.match(glyphPhysicsSource, /texture\(u_velocity, center\)/);
     assert.match(glyphPhysicsSource, /texture\(u_normal, upper\)/);
     assert.match(glyphPhysicsSource, /texture\(u_pressure, left\)/);
+    assert.match(glyphPhysicsSource, /carrierFlow/);
+    assert.match(glyphPhysicsSource, /flowAverage - carrierFlow/);
+    assert.match(glyphPhysicsSource, /pointerDisturbance \* 0\.72, rippleDisturbance/);
+    assert.match(glyphPhysicsSource, /directForce = u_pointerVelocity \* pointerWake \* 1\.05/);
+    assert.match(glyphPhysicsSource, /float sweepTravel/);
     assert.match(glyphPhysicsSource, /displacementForce = -transform\.xy \* physical\.y/);
     assert.match(glyphPhysicsSource, /angularVelocity\.xyz \+= angularAcceleration \* dt/);
     assert.match(glyphPhysicsSource, /vec3 rotationLimit/);
     assert.match(glyphPhysicsSource, /maxTranslation = physical\.w/);
     assert.match(glyphPhysicsSource, /float immediate = exp/);
+    assert.match(glyphPhysicsSource, /nearestBoundsDistance/);
+    assert.match(glyphPhysicsSource, /immediatePriority/);
+    assert.match(glyphPhysicsSource, /pressDisturbance/);
+    assert.match(glyphPhysicsSource, /allowedTravelPixels/);
     assert.match(glyphPhysicsSource, /float ringRadius = 22\.0 \+ age \* 185\.0/);
     assert.match(glyphPhysicsSource, /float arrivalTime = surfaceDistance \/ 185\.0/);
     assert.match(glyphPhysicsSource, /smoothstep\(arrivalTime, arrivalTime \+ 0\.12, age\)/);
@@ -169,6 +178,16 @@ const tests = [
     assert.ok(Math.abs(left.torque) > 0.05);
     assert.ok(Math.abs(right.torque) > 0.05);
     assert.equal(Math.sign(left.torque), -Math.sign(right.torque));
+
+    const leftNeighbor = { index: 2, center: [0.42, 0.58], halfSize: [0.045, 0.09], mass: 1 };
+    const rightNeighbor = { index: 3, center: [0.51, 0.58], halfSize: [0.045, 0.09], mass: 1.08 };
+    const betweenEvent = { point: [0.465, 0.58], direction: [0, -1], strength: 1 };
+    const betweenLeft = resolveGlyphImpulse(leftNeighbor, betweenEvent, viewport);
+    const betweenRight = resolveGlyphImpulse(rightNeighbor, betweenEvent, viewport);
+    assert.ok(betweenLeft.weight > 0.75);
+    assert.ok(betweenRight.weight > 0.65);
+    assert.ok(Math.sign(betweenLeft.torque) === -Math.sign(betweenRight.torque));
+    assert.ok(Math.hypot(...betweenLeft.force) > Math.hypot(...distant.force) * 20);
 
     const atRest = {
       displacement: [0, 0], velocity: [0, 0], angle: 0, angularVelocity: 0,
@@ -197,12 +216,13 @@ const tests = [
     assert.match(liquidCompositeSource, /vec2 sampleFluidVelocity/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.50/);
-    assert.match(liquidCompositeSource, /float titleCaustic/);
-    assert.match(liquidCompositeSource, /for \(int volumeStep = 0; volumeStep < 9; volumeStep\+\+\)/);
-    assert.match(liquidCompositeSource, /float volumeDistance = min\(raySignedDistance, rayDome - abs\(depth\)\)/);
-    assert.match(liquidCompositeSource, /float sideVolume = max\(letterMask - frontFaceMask, 0\.0\)/);
+    assert.match(liquidCompositeSource, /float inflatedHeight/);
+    assert.match(liquidCompositeSource, /for \(int surfaceStep = 0; surfaceStep < 3; surfaceStep\+\+\)/);
+    assert.match(liquidCompositeSource, /surfaceLocal = glyphLocal \+ volumeParallax \* surfaceHeight \* 0\.78/);
+    assert.match(liquidCompositeSource, /float sideVolume = max\(frontFaceMask - surfaceMask, 0\.0\)/);
     assert.doesNotMatch(liquidCompositeSource, /shallowDepthField|midDepthField|deepDepthField/);
-    assert.match(liquidCompositeSource, /float internalDepth/);
+    assert.doesNotMatch(liquidCompositeSource, /outerHalo|edgeRim|outerMeniscus|innerMeniscus/);
+    assert.match(liquidCompositeSource, /vec3 transmission = refracted \* exp/);
     assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
     assert.match(fluidRendererSource, /texture\(u_obstacle, uv \+ vec2\(e\.x, 0\.0\)\)\.r/);
     assert.doesNotMatch(fluidRendererSource, /glyphObstacle\(uv \+ vec2/);
@@ -289,10 +309,10 @@ const tests = [
     assert.equal(downgradeQualityTier("low"), "low");
   }],
   ["Movement wakes stay responsive, throttled, and clamped", () => {
-    assert.equal(resolveMovementSplat({ distance: 10, now: 1000, lastAt: 0 }), null);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.34);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1080, lastAt: 1000 }), null);
-    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.1576190476190476) < 1e-12);
+    assert.equal(resolveMovementSplat({ distance: 3, now: 1000, lastAt: 0 }), null);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.28);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1030, lastAt: 1000 }), null);
+    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.10846153846153847) < 1e-12);
   }],
   ["Every ordered project has one media presentation", () => {
     const presentationBlock = contentSource.match(/export const projectMediaPresentation = \{([\s\S]*?)\n\} satisfies Record/)?.[1] ?? "";

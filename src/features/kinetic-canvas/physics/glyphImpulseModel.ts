@@ -49,13 +49,20 @@ export function resolveGlyphImpulse(
     24,
     Math.hypot(body.halfSize[0] * viewport[0], body.halfSize[1] * viewport[1]),
   );
-  const weight = Math.exp(-Math.pow(distancePixels / (bodyRadius * 0.72 + 18), 2));
+  const localX = (event.point[0] - body.center[0]) / Math.max(body.halfSize[0], 0.001);
+  const localY = (event.point[1] - body.center[1]) / Math.max(body.halfSize[1], 0.001);
+  const boundsDistancePixels = Math.hypot(
+    Math.max(Math.abs(localX) - 1, 0) * body.halfSize[0] * viewport[0],
+    Math.max(Math.abs(localY) - 1, 0) * body.halfSize[1] * viewport[1],
+  );
+  // A press on either side of the gap between adjacent glyphs is a surface
+  // hit for both bodies. Center distance made that same physical event appear
+  // artificially weak for wide letters and diverged from the GPU solver.
+  const weight = Math.exp(-Math.pow(boundsDistancePixels / (bodyRadius * 0.72 + 18), 2));
   const directionLength = Math.max(Math.hypot(...event.direction), 1e-6);
   const directionX = event.direction[0] / directionLength;
   const directionY = event.direction[1] / directionLength;
   const forceScale = event.strength * weight / Math.max(body.mass, 0.45);
-  const localX = (event.point[0] - body.center[0]) / Math.max(body.halfSize[0], 0.001);
-  const localY = (event.point[1] - body.center[1]) / Math.max(body.halfSize[1], 0.001);
   const torque = clamp(
     (localX * directionY - localY * directionX) * forceScale,
     -event.strength * 1.5,
@@ -67,7 +74,7 @@ export function resolveGlyphImpulse(
     torque,
     weight,
     distancePixels,
-    arrivalDelayMs: Math.max(0, (distancePixels - bodyRadius * 0.35) / 185 * 1000),
+    arrivalDelayMs: boundsDistancePixels / 185 * 1000,
   };
 }
 
