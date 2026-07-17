@@ -326,8 +326,8 @@ void main() {
     float wake = exp(-len * 4.2) * u_pointer.z;
     // Normal pointer travel is a visible, low-energy splat. Click ripples
     // still arrive through the dedicated ripple field at a higher intensity.
-    vel += normalize(dir) * (wake * 0.052 + pulse * 0.032);
-    vel += pointerVelocity * wake * 0.18;
+    vel += normalize(dir) * (wake * 0.038 + pulse * 0.030);
+    vel += pointerVelocity * wake * 0.34;
     vec2 ambientCurrent = vec2(
       sin(uv.y * 8.0 + u_time * 0.31) + cos((uv.x + uv.y) * 5.0 - u_time * 0.23),
       cos(uv.x * 7.0 - u_time * 0.27) - sin((uv.x - uv.y) * 4.0 + u_time * 0.19)

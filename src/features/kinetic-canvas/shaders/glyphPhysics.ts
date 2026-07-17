@@ -90,7 +90,7 @@ void main() {
   // respond to a local wake/pressure change, not the ambient sheet drifting as
   // one body across the viewport.
   vec2 carrierFlow = (flowFarLeft + flowFarRight + flowFarUpper + flowFarLower) * 0.25;
-  vec2 localFlow = clamp(flowAverage - carrierFlow, vec2(-0.045), vec2(0.045));
+  vec2 localFlow = clamp(flowAverage - carrierFlow, vec2(-0.095), vec2(0.095));
   float pressureLeft = texture(u_pressure, left).r - 0.5;
   float pressureRight = texture(u_pressure, right).r - 0.5;
   float pressureUpper = texture(u_pressure, upper).r - 0.5;
@@ -98,20 +98,27 @@ void main() {
 
   // The pointer wake is continuous. Press ripples add an immediate local hit
   // followed by a ring that reaches neighboring letters later.
-  float localRadius = max(rest.z, rest.w) * 2.2 + 0.035;
+  float localRadius = max(rest.z, rest.w) * 1.25 + 0.018;
   vec2 fromPointer = centerTop - u_pointer.xy;
   float pointerDistance = length(fromPointer);
-  float pointerWake = exp(-pointerDistance / localRadius) * u_pointer.z;
+  float pointerWake = exp(-pow(pointerDistance / localRadius, 1.35)) * u_pointer.z;
   float pointerDisturbance = clamp(pointerWake * 1.4, 0.0, 1.0);
   float rippleDisturbance = 0.0;
   float pressDisturbance = 0.0;
-  vec2 directForce = u_pointerVelocity * pointerWake * 0.022;
+  float pointerSpeed = length(u_pointerVelocity);
+  float sweepAttack = pointerWake * smoothstep(0.025, 0.34, pointerSpeed);
+  vec2 directForce = u_pointerVelocity * pointerWake * 2.7;
   float depthImpulse = pointerWake * min(length(u_pointerVelocity) * 0.8, 0.012);
+  vec2 pointerLocalHit = (u_pointer.xy - centerTop) / max(rest.zw, vec2(0.001));
+  vec2 sweepDirection = normalize(u_pointerVelocity + vec2(0.000001));
   vec3 directTorque = vec3(
     -fromPointer.y * directForce.x,
     fromPointer.x * directForce.y,
     cross2(fromPointer / max(rest.zw, vec2(0.001)), directForce)
   );
+  directTorque.x += -pointerLocalHit.y * sweepAttack * 12.0;
+  directTorque.y += pointerLocalHit.x * sweepAttack * 12.0;
+  directTorque.z += cross2(pointerLocalHit, sweepDirection) * sweepAttack * 14.0;
   float debugDisturbance = 0.0;
 
   // Development-only deterministic probe. Production uploads an expired
@@ -174,21 +181,21 @@ void main() {
     pressDisturbance = max(pressDisturbance, rippleActivity * smoothstep(0.52, 0.80, ripple.w));
     vec2 radial = length(hitOffset) > 0.0001 ? normalize(hitOffset) : vec2(0.0, -1.0);
     vec2 impulseDirection = normalize(radial + vec2(0.0, -0.34));
-    vec2 impulse = impulseDirection * (immediate * 7.1 + ring * 0.58);
+    vec2 impulse = impulseDirection * (immediate * 8.8 + ring * 0.58);
     directForce += impulse;
     vec2 localHit = (ripple.xy - centerTop) / max(rest.zw, vec2(0.001));
-    directTorque.x += -localHit.y * (immediate * 16.0 + ring * 0.72);
-    directTorque.y += localHit.x * (immediate * 16.0 + ring * 0.72);
-    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 14.0 + ring * 0.68)
-      + localHit.x * (immediate * -12.0);
+    directTorque.x += -localHit.y * (immediate * 40.0 + ring * 0.72);
+    directTorque.y += localHit.x * (immediate * 40.0 + ring * 0.72);
+    directTorque.z += cross2(localHit, impulseDirection) * (immediate * 34.0 + ring * 0.68)
+      + localHit.x * (immediate * -28.0);
     depthImpulse -= immediate * 0.078;
     depthImpulse += ring * 0.010;
   }
 
   float dt = clamp(u_delta, 1.0 / 120.0, 1.0 / 30.0);
   float mass = max(physical.x, 0.45);
-  float localDisturbance = max(pointerDisturbance * 0.16, rippleDisturbance);
-  vec2 flowTop = vec2(localFlow.x, -localFlow.y) * (0.012 + localDisturbance * 0.988);
+  float localDisturbance = max(pointerDisturbance * 0.72, rippleDisturbance);
+  vec2 flowTop = vec2(localFlow.x, -localFlow.y) * (0.10 + localDisturbance * 0.90);
   vec2 displacementForce = -transform.xy * physical.y;
   vec2 dragForce = (flowTop * 0.36 - velocity.xy) * physical.z;
   vec2 acceleration = (
@@ -199,8 +206,13 @@ void main() {
   transform.xy += velocity.xy * dt;
   float maxTranslation = physical.w;
   float strongImpulse = smoothstep(0.035, 0.18, max(pressDisturbance, debugDisturbance));
+  float sweepTravel = smoothstep(0.08, 0.62, pointerDisturbance) * 0.66;
   float maxTranslationPixels = maxTranslation * max(u_viewport.x, u_viewport.y);
-  float allowedTravelPixels = mix(min(maxTranslationPixels, 4.2), maxTranslationPixels, strongImpulse);
+  float allowedTravelPixels = mix(
+    min(maxTranslationPixels, 5.5),
+    maxTranslationPixels,
+    max(strongImpulse, sweepTravel)
+  );
   float travelPixels = length(transform.xy * u_viewport);
   if (travelPixels > allowedTravelPixels) {
     transform.xy *= allowedTravelPixels / travelPixels;
@@ -231,7 +243,7 @@ void main() {
     (flowUpper.x - flowLower.x) * 0.34 + surfaceNormal.y * 0.12 + (pressureUpper - pressureLower) * 0.34,
     (flowRight.y - flowLeft.y) * -0.34 + surfaceNormal.x * 0.12 + (pressureRight - pressureLeft) * 0.34,
     (flowRight.y - flowLeft.y) * 0.42 + (pressureRight - pressureLeft) * 0.48
-  ) * (0.08 + localDisturbance * 0.92);
+  ) * (0.18 + localDisturbance * 0.82);
   vec3 angularSpring = vec3(material.y * 0.88, material.y * 0.88, material.y) * orientation.xyz;
   vec3 angularAcceleration = (
     fluidTorque + directTorque - angularSpring - angularVelocity.xyz * vec3(5.4, 5.4, 5.9)
