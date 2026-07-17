@@ -168,7 +168,7 @@ function applyPendingPointer() {
   state.pointer.vy += (dy / dt - state.pointer.vy) * velocityResponse;
   state.pointer.speed = speed;
   state.pointer.active = true;
-  const trailEnergy = Math.min(0.58, Math.max(0.16, 0.14 + speed * 0.1));
+  const trailEnergy = Math.min(0.68, Math.max(0.18, 0.16 + speed * 0.14));
   state.pointer.energy = Math.max(state.pointer.energy, trailEnergy);
   state.pointer.time = now;
 
@@ -200,11 +200,11 @@ function onPointerDown(e: PointerEvent) {
   state.pointer.vx = 0;
   state.pointer.vy = 0;
   state.pointer.active = true;
-  state.pointer.energy = Math.max(state.pointer.energy, 0.7);
+  state.pointer.energy = Math.max(state.pointer.energy, 0.58);
   state.pointer.time = now;
   emitPointer();
   emitPhysics();
-  pushRipple(e.clientX, e.clientY, 0.9, now);
+  pushRipple(e.clientX, e.clientY, 0.76, now);
 }
 
 function onPointerEnd() {
@@ -232,13 +232,13 @@ function tick(now: number) {
     state.pointer.active = false;
   }
   const targetEnergy = state.pointer.active
-    ? Math.min(0.58, Math.max(0.16, 0.14 + state.pointer.speed * 0.1))
+    ? Math.min(0.68, Math.max(0.18, 0.16 + state.pointer.speed * 0.14))
     : 0;
   const energyResponse = 1 - Math.exp(-(state.pointer.active ? 7.5 : 5.5) * tickDelta);
   state.pointer.energy += (targetEnergy - state.pointer.energy) * energyResponse;
   state.pointer.speed *= Math.exp(-(state.pointer.active ? 5.5 : 8.5) * tickDelta);
-  state.pointer.vx *= Math.exp(-8.5 * tickDelta);
-  state.pointer.vy *= Math.exp(-8.5 * tickDelta);
+  state.pointer.vx *= Math.exp(-6.5 * tickDelta);
+  state.pointer.vy *= Math.exp(-6.5 * tickDelta);
   state.scroll.velocity *= Math.exp(-7.5 * tickDelta);
   state.scroll.depth +=
     (state.scroll.progress - state.scroll.depth) * (1 - Math.exp(-3.2 * tickDelta));

@@ -228,7 +228,7 @@ export function createHeroGlyphAtlas(
     context.strokeStyle = "#fff";
     context.lineJoin = "round";
     context.lineCap = "round";
-    context.lineWidth = Math.max(2, fontSize * 0.06);
+    context.lineWidth = Math.max(2, fontSize * 0.16);
     context.textAlign = "left";
     context.textBaseline = "alphabetic";
     context.strokeText(glyph, x, baseline);
@@ -244,9 +244,13 @@ export function createHeroGlyphAtlas(
     const dimension = Math.max(normalizedWidth, normalizedHeight);
     const seed = (index * 0.61803398875) % 1;
     const mass = 0.92 + dimension * 2.4 + seed * 0.12;
-    const spring = 13.4 + (1 - seed) * 2.6;
-    const damping = 6.8 + seed * 0.9;
-    const maxTranslation = Math.min(0.018, Math.max(0.006, normalizedWidth * 0.105));
+    const spring = 15.8 + (1 - seed) * 2.6;
+    const damping = 7.1 + seed * 0.7;
+    // CSS-pixel targets are resolved in the shader, but the body still needs
+    // enough normalized headroom for a 20-30 px local press on common desktop
+    // viewports. The former 0.006-0.018 range made the visible clamp, not the
+    // fluid force, the defining behavior.
+    const maxTranslation = Math.min(0.032, Math.max(0.014, normalizedWidth * 0.22));
 
     glyphs.push({
       index,
@@ -267,8 +271,8 @@ export function createHeroGlyphAtlas(
       material: [
         0.78 + (1 - seed) * 0.18,
         9.8 + seed * 1.8,
-        0.068 + (1 - seed) * 0.018,
-        0.72 + seed * 0.24,
+        0.11 + (1 - seed) * 0.025,
+        0.86 + seed * 0.24,
       ],
     });
   });

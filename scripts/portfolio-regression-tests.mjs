@@ -140,7 +140,9 @@ const tests = [
     assert.match(glyphPhysicsSource, /texture\(u_pressure, left\)/);
     assert.match(glyphPhysicsSource, /carrierFlow/);
     assert.match(glyphPhysicsSource, /flowAverage - carrierFlow/);
-    assert.match(glyphPhysicsSource, /pointerDisturbance \* 0\.16, rippleDisturbance/);
+    assert.match(glyphPhysicsSource, /pointerDisturbance \* 0\.72, rippleDisturbance/);
+    assert.match(glyphPhysicsSource, /directForce = u_pointerVelocity \* pointerWake \* 1\.05/);
+    assert.match(glyphPhysicsSource, /float sweepTravel/);
     assert.match(glyphPhysicsSource, /displacementForce = -transform\.xy \* physical\.y/);
     assert.match(glyphPhysicsSource, /angularVelocity\.xyz \+= angularAcceleration \* dt/);
     assert.match(glyphPhysicsSource, /vec3 rotationLimit/);
@@ -214,12 +216,13 @@ const tests = [
     assert.match(liquidCompositeSource, /vec2 sampleFluidVelocity/);
     assert.match(liquidCompositeSource, /ripple\.z \* vec2\(0\.62, 0\.29\)/);
     assert.match(liquidCompositeSource, /lensOffset \* 0\.50/);
-    assert.match(liquidCompositeSource, /float titleCaustic/);
-    assert.match(liquidCompositeSource, /for \(int volumeStep = 0; volumeStep < 9; volumeStep\+\+\)/);
-    assert.match(liquidCompositeSource, /float volumeDistance = min\(raySignedDistance, rayDome - abs\(depth\)\)/);
-    assert.match(liquidCompositeSource, /float sideVolume = max\(letterMask - frontFaceMask, 0\.0\)/);
+    assert.match(liquidCompositeSource, /float inflatedHeight/);
+    assert.match(liquidCompositeSource, /for \(int surfaceStep = 0; surfaceStep < 3; surfaceStep\+\+\)/);
+    assert.match(liquidCompositeSource, /surfaceLocal = glyphLocal \+ volumeParallax \* surfaceHeight \* 0\.78/);
+    assert.match(liquidCompositeSource, /float sideVolume = max\(frontFaceMask - surfaceMask, 0\.0\)/);
     assert.doesNotMatch(liquidCompositeSource, /shallowDepthField|midDepthField|deepDepthField/);
-    assert.match(liquidCompositeSource, /float internalDepth/);
+    assert.doesNotMatch(liquidCompositeSource, /outerHalo|edgeRim|outerMeniscus|innerMeniscus/);
+    assert.match(liquidCompositeSource, /vec3 transmission = refracted \* exp/);
     assert.match(fluidRendererSource, /vec3 glyphBoundary\(vec2 solverUv\)/);
     assert.match(fluidRendererSource, /texture\(u_obstacle, uv \+ vec2\(e\.x, 0\.0\)\)\.r/);
     assert.doesNotMatch(fluidRendererSource, /glyphObstacle\(uv \+ vec2/);
@@ -306,10 +309,10 @@ const tests = [
     assert.equal(downgradeQualityTier("low"), "low");
   }],
   ["Movement wakes stay responsive, throttled, and clamped", () => {
-    assert.equal(resolveMovementSplat({ distance: 10, now: 1000, lastAt: 0 }), null);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.34);
-    assert.equal(resolveMovementSplat({ distance: 180, now: 1080, lastAt: 1000 }), null);
-    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.1576190476190476) < 1e-12);
+    assert.equal(resolveMovementSplat({ distance: 3, now: 1000, lastAt: 0 }), null);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1000, lastAt: 0 }), 0.28);
+    assert.equal(resolveMovementSplat({ distance: 180, now: 1030, lastAt: 1000 }), null);
+    assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.10846153846153847) < 1e-12);
   }],
   ["Every ordered project has one media presentation", () => {
     const presentationBlock = contentSource.match(/export const projectMediaPresentation = \{([\s\S]*?)\n\} satisfies Record/)?.[1] ?? "";
