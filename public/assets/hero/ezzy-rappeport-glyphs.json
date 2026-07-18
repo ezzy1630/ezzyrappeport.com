@@ -1,0 +1,880 @@
+{
+  "asset": "EZZY RAPPEPORT independently addressable inflated glyphs",
+  "version": 1,
+  "font": {
+    "family": "Inter Tight",
+    "weight": 900,
+    "file": "assets/blender/hero-title/fonts/InterTight-Black-900.ttf",
+    "variable_source": "https://github.com/google/fonts/blob/main/ofl/intertight/InterTight%5Bwght%5D.ttf",
+    "license": "SIL Open Font License 1.1",
+    "license_file": "assets/blender/hero-title/fonts/OFL.txt"
+  },
+  "modeling": {
+    "extrude_em": 0.05,
+    "curve_offset_em": -0.025,
+    "bevel_em": 0.045,
+    "overall_depth_em": 0.23399999999999999,
+    "bevel_segments": 8,
+    "face_subdivision_levels": 0,
+    "face_bulge_em": 0.022,
+    "face_bulge_run_em": 0.11,
+    "voxel_reconciliation_em": 0.0035,
+    "target_triangles_by_character": {
+      "E": 2500,
+      "Z": 2200,
+      "Y": 3000,
+      "T": 2200,
+      "A": 5000,
+      "P": 4000,
+      "R": 4000,
+      "O": 4500
+    }
+  },
+  "glyphs": [
+    {
+      "glyph_index": 0,
+      "character": "E",
+      "line_index": 0,
+      "object_node_name": "line1_E_00",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -1.06239,
+          0.0,
+          -0.58
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -1.06239,
+          0.58,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.187173,
+          -0.270195,
+          -0.102953
+        ],
+        "max": [
+          0.212535,
+          0.268944,
+          0.102953
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 1388,
+      "shared_geometry_identifier": "inter-tight-900-E-inflated-v1"
+    },
+    {
+      "glyph_index": 1,
+      "character": "Z",
+      "line_index": 0,
+      "object_node_name": "line1_Z_01",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -0.434712,
+          0.0,
+          -0.58
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -0.434712,
+          0.58,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.223993,
+          -0.26955,
+          -0.10303
+        ],
+        "max": [
+          0.223993,
+          0.269551,
+          0.10303
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 1148,
+      "shared_geometry_identifier": "inter-tight-900-Z-inflated-v1"
+    },
+    {
+      "glyph_index": 2,
+      "character": "Z",
+      "line_index": 0,
+      "object_node_name": "line1_Z_02",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          0.208549,
+          0.0,
+          -0.58
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          0.208549,
+          0.58,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.223993,
+          -0.26955,
+          -0.10303
+        ],
+        "max": [
+          0.223993,
+          0.269551,
+          0.10303
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 1148,
+      "shared_geometry_identifier": "inter-tight-900-Z-inflated-v1"
+    },
+    {
+      "glyph_index": 3,
+      "character": "Y",
+      "line_index": 0,
+      "object_node_name": "line1_Y_03",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          0.932343,
+          0.0,
+          -0.58
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          0.932343,
+          0.58,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.36,
+          1.36,
+          1.36
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.283208,
+          -0.318174,
+          -0.113868
+        ],
+        "max": [
+          0.282796,
+          0.220948,
+          0.113868
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 3000,
+      "shared_geometry_identifier": "inter-tight-900-Y-inflated-v1"
+    },
+    {
+      "glyph_index": 4,
+      "character": "R",
+      "line_index": 1,
+      "object_node_name": "line2_R_04",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -2.008152,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -2.008152,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.207078,
+          -0.271325,
+          -0.112528
+        ],
+        "max": [
+          0.263716,
+          0.267723,
+          0.112528
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4000,
+      "shared_geometry_identifier": "inter-tight-900-R-inflated-v1"
+    },
+    {
+      "glyph_index": 5,
+      "character": "A",
+      "line_index": 1,
+      "object_node_name": "line2_A_05",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -1.434681,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -1.434681,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.284755,
+          -0.236337,
+          -0.11459
+        ],
+        "max": [
+          0.284576,
+          0.302655,
+          0.11459
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 5000,
+      "shared_geometry_identifier": "inter-tight-900-A-inflated-v1"
+    },
+    {
+      "glyph_index": 6,
+      "character": "P",
+      "line_index": 1,
+      "object_node_name": "line2_P_06",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -0.940094,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -0.940094,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.185011,
+          -0.303683,
+          -0.112756
+        ],
+        "max": [
+          0.25552,
+          0.235357,
+          0.112756
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4000,
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v1"
+    },
+    {
+      "glyph_index": 7,
+      "character": "P",
+      "line_index": 1,
+      "object_node_name": "line2_P_07",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -0.474563,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -0.474563,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.185011,
+          -0.303683,
+          -0.112756
+        ],
+        "max": [
+          0.25552,
+          0.235357,
+          0.112756
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4000,
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v1"
+    },
+    {
+      "glyph_index": 8,
+      "character": "E",
+      "line_index": 1,
+      "object_node_name": "line2_E_08",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          -0.00687,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          -0.00687,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.187173,
+          -0.270195,
+          -0.102953
+        ],
+        "max": [
+          0.212535,
+          0.268944,
+          0.102953
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 1388,
+      "shared_geometry_identifier": "inter-tight-900-E-inflated-v1"
+    },
+    {
+      "glyph_index": 9,
+      "character": "P",
+      "line_index": 1,
+      "object_node_name": "line2_P_09",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          0.415676,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          0.415676,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.185011,
+          -0.303683,
+          -0.112756
+        ],
+        "max": [
+          0.25552,
+          0.235357,
+          0.112756
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4000,
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v1"
+    },
+    {
+      "glyph_index": 10,
+      "character": "O",
+      "line_index": 1,
+      "object_node_name": "line2_O_10",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          0.958555,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          0.958555,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.262359,
+          -0.276232,
+          -0.11138
+        ],
+        "max": [
+          0.262426,
+          0.276112,
+          0.11138
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4500,
+      "shared_geometry_identifier": "inter-tight-900-O-inflated-v1"
+    },
+    {
+      "glyph_index": 11,
+      "character": "R",
+      "line_index": 1,
+      "object_node_name": "line2_R_11",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          1.453059,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          1.453059,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.207078,
+          -0.271325,
+          -0.112528
+        ],
+        "max": [
+          0.263716,
+          0.267723,
+          0.112528
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 4000,
+      "shared_geometry_identifier": "inter-tight-900-R-inflated-v1"
+    },
+    {
+      "glyph_index": 12,
+      "character": "T",
+      "line_index": 1,
+      "object_node_name": "line2_T_12",
+      "coordinate_system": "glTF 2.0 right-handed Y-up; Blender source is Z-up",
+      "rest_transform": {
+        "translation": [
+          1.978503,
+          0.0,
+          0.55
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "rest_transform_blender": {
+        "translation": [
+          1.978503,
+          -0.55,
+          0.0
+        ],
+        "rotation_xyzw": [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "scale": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "local_bounding_box": {
+        "min": [
+          -0.236728,
+          -0.332715,
+          -0.103042
+        ],
+        "max": [
+          0.236727,
+          0.206385,
+          0.103042
+        ]
+      },
+      "pivot": {
+        "type": "projected-area-centroid_mid-depth",
+        "local": [
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "triangle_count": 908,
+      "shared_geometry_identifier": "inter-tight-900-T-inflated-v1"
+    }
+  ]
+}
