@@ -9,28 +9,61 @@ export const FULLSCREEN_VERTEX = /* glsl */ `
 export const HEIGHTFIELD_FRAGMENT = /* glsl */ `
   precision highp float;
   varying vec2 vUv;
+  uniform sampler2D uPrevious;
+  uniform vec2 uTexel;
+  uniform float uDt;
   uniform float uTime;
-  uniform vec4 uSplats[8];
+  uniform float uAspect;
+  uniform float uAmbient;
+  uniform vec4 uSplats[8]; // end.xy, radius, pressure
+  uniform vec4 uSegments[8]; // start.xy, end.xy
+  uniform vec4 uDirections[8]; // direction.xy, wake, reserved
   uniform int uSplatCount;
 
-  float wave(vec2 p, float t) {
-    float a = sin(p.x * 5.2 + p.y * 2.1 + t * 0.28) * 0.52;
-    float b = sin(p.x * -2.7 + p.y * 4.6 - t * 0.21) * 0.31;
-    float c = sin(p.x * 9.1 - p.y * 5.7 + t * 0.34) * 0.17;
-    return (a + b + c) * 0.5;
+  float segmentDistance(vec2 point, vec2 start, vec2 end) {
+    vec2 scale = vec2(uAspect, 1.0);
+    vec2 pa = (point - start) * scale;
+    vec2 ba = (end - start) * scale;
+    float h = clamp(dot(pa, ba) / max(dot(ba, ba), 0.000001), 0.0, 1.0);
+    return length(pa - ba * h);
   }
 
   void main() {
-    vec2 p = (vUv - 0.5) * vec2(2.2, 1.35);
-    float h = wave(p, uTime);
+    vec2 state = texture2D(uPrevious, vUv).rg;
+    float height = state.r;
+    float velocity = state.g;
+    float left = texture2D(uPrevious, vUv - vec2(uTexel.x, 0.0)).r;
+    float right = texture2D(uPrevious, vUv + vec2(uTexel.x, 0.0)).r;
+    float down = texture2D(uPrevious, vUv - vec2(0.0, uTexel.y)).r;
+    float up = texture2D(uPrevious, vUv + vec2(0.0, uTexel.y)).r;
+    float laplacian = left + right + down + up - height * 4.0;
+    velocity += laplacian * 31.0 * uDt;
+    velocity -= height * 2.2 * uDt;
+    velocity *= exp(-1.72 * uDt);
+    float edge = smoothstep(0.0, 0.035, min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y)));
+    velocity *= mix(0.82, 1.0, edge);
+
+    vec2 ambientPoint = vec2(
+      0.5 + sin(uTime * 0.19) * 0.31,
+      0.78 + cos(uTime * 0.13) * 0.08
+    );
+    velocity += sin(uTime * 0.43 + vUv.x * 4.1) * exp(-length((vUv - ambientPoint) * vec2(uAspect, 1.0)) * 5.0)
+      * uAmbient * uDt;
     for (int i = 0; i < 8; i++) {
       if (i >= uSplatCount) break;
       vec4 splat = uSplats[i];
-      float distanceToSplat = length(vUv - splat.xy);
-      h += exp(-distanceToSplat * distanceToSplat / max(splat.z * splat.z, 0.0001))
-        * splat.w;
+      vec4 segment = uSegments[i];
+      vec4 direction = uDirections[i];
+      float distanceToWake = segmentDistance(vUv, segment.xy, segment.zw);
+      float wake = exp(-pow(distanceToWake / max(splat.z, 0.002), 2.0));
+      vec2 fromEnd = (vUv - splat.xy) * vec2(uAspect, 1.0);
+      vec2 directionUv = normalize(direction.xy * vec2(uAspect, 1.0) + vec2(0.00001));
+      float directional = dot(fromEnd, directionUv);
+      float pressure = exp(-dot(fromEnd, fromEnd) / max(splat.z * splat.z, 0.00001));
+      velocity += (pressure * splat.w + wake * direction.z * (0.55 - directional * 2.2)) * uDt * 18.0;
     }
-    gl_FragColor = vec4(h * 0.5 + 0.5, 0.0, 0.0, 1.0);
+    height = clamp(height + velocity * uDt, -0.22, 0.22);
+    gl_FragColor = vec4(height, velocity, 0.0, 1.0);
   }
 `;
 
@@ -61,24 +94,23 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
   }
 
   void main() {
-    vec3 upper = vec3(0.80, 0.875, 0.91);
-    vec3 lower = vec3(0.52, 0.66, 0.735);
-    vec3 color = mix(upper, lower, smoothstep(0.05, 0.98, vUv.y));
-    float studioDepth = exp(-pow((vUv.y - 0.45) / 0.34, 2.0));
-    color *= 1.0 - studioDepth * 0.065;
-    float edgeDepth = smoothstep(0.16, 0.62, abs(vUv.x - 0.52));
-    color *= 1.0 - edgeDepth * 0.10;
-    float bandA = exp(-pow((vUv.x + vUv.y * 0.36 - 0.48) / 0.18, 2.0));
-    float bandB = exp(-pow((vUv.x - vUv.y * 0.24 - 0.72) / 0.13, 2.0));
-    color += vec3(0.18, 0.20, 0.205) * (bandA * 0.48 + bandB * 0.34);
-    float architectural = smoothstep(0.47, 0.5, vUv.x)
-      * (1.0 - smoothstep(0.71, 0.75, vUv.x));
-    architectural *= smoothstep(0.08, 0.2, vUv.y) * (1.0 - smoothstep(0.8, 0.94, vUv.y));
-    color = mix(color, color * vec3(0.72, 0.84, 0.91), architectural * 0.36);
+    vec3 surfacePearl = vec3(0.72, 0.77, 0.765);
+    vec3 depthSlate = vec3(0.29, 0.395, 0.425);
+    vec3 color = mix(surfacePearl, depthSlate, smoothstep(0.08, 0.96, vUv.y));
+    float surfaceRegion = exp(-pow((vUv.y - 0.10) / 0.18, 2.0));
+    color += vec3(0.10, 0.105, 0.095) * surfaceRegion;
+    float lowerDepth = smoothstep(0.54, 0.96, vUv.y);
+    color *= 1.0 - lowerDepth * 0.15;
+    float bandA = exp(-pow((vUv.x + vUv.y * 0.30 - 0.40) / 0.105, 2.0));
+    float bandB = exp(-pow((vUv.x - vUv.y * 0.18 - 0.70) / 0.16, 2.0));
+    color += vec3(0.16, 0.155, 0.135) * bandA * 0.44;
+    color += vec3(0.08, 0.11, 0.115) * bandB * 0.32;
+    float farSeparation = smoothstep(0.35, 0.92, vUv.y) * smoothstep(0.18, 0.72, abs(vUv.x - 0.5));
+    color = mix(color, vec3(0.31, 0.43, 0.47), farSeparation * 0.12);
     float caustic = causticField(vWorld.xz * 0.85, uTime);
-    color += vec3(0.72, 0.83, 0.88) * caustic * uCausticStrength;
+    color += vec3(0.72, 0.76, 0.70) * caustic * uCausticStrength * (0.3 + surfaceRegion * 0.7);
     float distanceDepth = smoothstep(-1.0, 1.0, vWorld.y);
-    color = mix(color, vec3(0.62, 0.75, 0.82), distanceDepth * uDepthAttenuation);
+    color = mix(color, vec3(0.42, 0.54, 0.57), distanceDepth * uDepthAttenuation);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -121,11 +153,25 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   uniform vec3 uAttenuationColor;
   uniform float uAbsorptionDistance;
   uniform float uTime;
+  uniform float uCameraNear;
+  uniform float uCameraFar;
+  uniform vec3 uCameraPosition;
+  uniform vec3 uKeyPosition;
+  uniform vec3 uKeyColor;
+  uniform float uKeyIntensity;
+  uniform vec3 uFillPosition;
+  uniform vec3 uFillColor;
+  uniform float uFillIntensity;
+
+  float linearViewDepth(float depth) {
+    float viewZ = (uCameraNear * uCameraFar) / ((uCameraFar - uCameraNear) * depth - uCameraFar);
+    return -viewZ;
+  }
 
   void main() {
-    float frontDepth = texture2D(uFrontDepth, vScreenUv).r;
-    float backDepth = texture2D(uBackDepth, vScreenUv).r;
-    float geometricThickness = clamp((backDepth - frontDepth) * 155.0, 0.015, 0.68);
+    float frontDepth = linearViewDepth(texture2D(uFrontDepth, vScreenUv).r);
+    float backDepth = linearViewDepth(texture2D(uBackDepth, vScreenUv).r);
+    float geometricThickness = clamp(backDepth - frontDepth, 0.012, 0.52);
     float shoulder = 1.0 - abs(vViewNormal.z);
     float opticalThickness = max(geometricThickness, 0.11 + shoulder * 0.22)
       * (1.0 + shoulder * 1.35);
@@ -148,16 +194,23 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       + uAttenuationColor * (1.0 - transmittance) * 0.42;
     body = mix(body, uAttenuationColor, 0.22 + opticalThickness * 0.12);
 
-    vec3 viewDirection = vec3(0.0, 0.0, 1.0);
+    vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
     float fresnelBase = pow((uIor - 1.0) / (uIor + 1.0), 2.0);
     float fresnel = fresnelBase + (1.0 - fresnelBase)
-      * pow(1.0 - clamp(dot(vViewNormal, viewDirection), 0.0, 1.0), 5.0);
-    vec3 keyDirection = normalize(vec3(-0.42, 0.68, 0.60));
-    float broadHighlight = pow(max(dot(normalize(vViewNormal + keyDirection), viewDirection), 0.0),
-      mix(18.0, 42.0, 1.0 - uRoughness));
+      * pow(1.0 - clamp(dot(vWorldNormal, viewDirection), 0.0, 1.0), 5.0);
+    vec3 keyDirection = normalize(uKeyPosition - vWorldPosition);
+    vec3 fillDirection = normalize(uFillPosition - vWorldPosition);
+    vec3 keyHalf = normalize(keyDirection + viewDirection);
+    vec3 fillHalf = normalize(fillDirection + viewDirection);
+    float broadHighlight = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(12.0, 30.0, 1.0 - uRoughness));
+    float softFill = pow(max(dot(vWorldNormal, fillHalf), 0.0), 8.0);
+    float lowerBounce = max(dot(vWorldNormal, normalize(vec3(0.1, -0.45, 0.35))), 0.0);
     float shoulderGlow = smoothstep(0.18, 0.86, shoulder) * (1.0 - smoothstep(0.88, 1.0, shoulder));
-    vec3 reflected = vec3(0.78, 0.88, 0.93) * (fresnel * 0.42 + broadHighlight * 0.22);
-    reflected += vec3(0.48, 0.66, 0.76) * shoulderGlow * 0.08;
+    vec3 reflected = vec3(0.70, 0.78, 0.79) * fresnel * 0.34;
+    reflected += uKeyColor * broadHighlight * uKeyIntensity * 0.055;
+    reflected += uFillColor * softFill * uFillIntensity * 0.025;
+    reflected += vec3(0.27, 0.34, 0.32) * lowerBounce * 0.055;
+    reflected += vec3(0.42, 0.52, 0.53) * shoulderGlow * 0.035;
     gl_FragColor = vec4(body + reflected, 1.0);
   }
 `;
@@ -170,11 +223,14 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
   uniform sampler2D uFrontDepth;
   uniform sampler2D uBackDepth;
   uniform sampler2D uHeightfield;
-  uniform vec2 uResolution;
+  uniform vec2 uHeightTexel;
   uniform float uExposure;
   uniform float uSurfaceDistortion;
   uniform float uCausticStrength;
   uniform float uDepthAttenuation;
+  uniform float uCameraNear;
+  uniform float uCameraFar;
+  uniform int uDebugView;
 
   vec3 aces(vec3 value) {
     const float a = 2.51;
@@ -191,10 +247,14 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     return mix(low, high, step(vec3(0.0031308), value));
   }
 
-  float heightAt(vec2 uv) { return texture2D(uHeightfield, clamp(uv, 0.0, 1.0)).r * 2.0 - 1.0; }
+  float heightAt(vec2 uv) { return texture2D(uHeightfield, clamp(uv, 0.0, 1.0)).r; }
+  float linearViewDepth(float depth) {
+    float viewZ = (uCameraNear * uCameraFar) / ((uCameraFar - uCameraNear) * depth - uCameraFar);
+    return -viewZ;
+  }
 
   void main() {
-    vec2 texel = 1.0 / max(uResolution, vec2(1.0));
+    vec2 texel = uHeightTexel;
     float h = heightAt(vUv);
     vec2 slope = vec2(
       heightAt(vUv + vec2(texel.x * 5.0, 0.0)) - heightAt(vUv - vec2(texel.x * 5.0, 0.0)),
@@ -203,8 +263,28 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float sceneDepth = texture2D(uSceneDepth, vUv).r;
     float frontDepth = texture2D(uFrontDepth, vUv).r;
     float backDepth = texture2D(uBackDepth, vUv).r;
-    float glyphThickness = max(backDepth - frontDepth, 0.0);
-    float depthTravel = smoothstep(0.25, 0.99, sceneDepth);
+    float glyphThickness = max(linearViewDepth(backDepth) - linearViewDepth(frontDepth), 0.0);
+    float sceneLinearDepth = linearViewDepth(sceneDepth);
+    float depthTravel = clamp((sceneLinearDepth - uCameraNear) / max(uCameraFar * 0.42, 0.001), 0.0, 1.0);
+    if (uDebugView == 1) {
+      float debugHeight = heightAt(vUv);
+      gl_FragColor = vec4(vec3(debugHeight * 8.0 + 0.5), 1.0);
+      return;
+    }
+    if (uDebugView == 2) {
+      float value = clamp(linearViewDepth(frontDepth) / uCameraFar, 0.0, 1.0);
+      gl_FragColor = vec4(vec3(value), 1.0);
+      return;
+    }
+    if (uDebugView == 3) {
+      float value = clamp(linearViewDepth(backDepth) / uCameraFar, 0.0, 1.0);
+      gl_FragColor = vec4(vec3(value), 1.0);
+      return;
+    }
+    if (uDebugView == 4) {
+      gl_FragColor = vec4(vec3(clamp(glyphThickness * 2.4, 0.0, 1.0)), 1.0);
+      return;
+    }
     vec2 refraction = slope * uSurfaceDistortion * (0.65 + depthTravel * 0.7);
     vec3 scene = texture2D(uScene, clamp(vUv + refraction, 0.002, 0.998)).rgb;
 
@@ -220,7 +300,7 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
 
     vec3 normal = normalize(vec3(-slope * 7.0, 1.0));
     float fresnel = pow(1.0 - max(normal.z, 0.0), 5.0);
-    float upperSurface = smoothstep(0.74, 1.0, 1.0 - vUv.y);
+    float upperSurface = smoothstep(0.68, 1.0, vUv.y);
     scene += vec3(0.72, 0.82, 0.87) * fresnel * (0.025 + upperSurface * 0.045);
     scene += vec3(0.022, 0.032, 0.038) * h * 0.065;
 

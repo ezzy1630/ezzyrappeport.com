@@ -12,6 +12,7 @@ import {
   LinearSRGBColorSpace,
   Mesh,
   MeshPhysicalMaterial,
+  MeshStandardMaterial,
   NoToneMapping,
   OrthographicCamera,
   PerspectiveCamera,
@@ -31,7 +32,18 @@ import {
   type Texture,
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import type { LiquidPhysics } from "@/lib/portfolio/liquid-interaction";
+import type { LiquidInteractionEvent, LiquidPhysics } from "@/lib/portfolio/liquid-interaction";
+import { installGlyphDebug, type GlyphDebugSnapshot } from "../../debug/glyphDebug";
+import { accumulateFixedSteps } from "../../physics/fixedStep";
+import {
+  createGlyphBodies,
+  projectGlyph,
+  projectGlyphRestCenter,
+  stepGlyphBodies,
+  type GlyphBody,
+  type GlyphInteraction,
+} from "../../physics/glyphRigidBodies";
+import { clientToWaterUv } from "../../physics/waterCoordinates";
 import type { KineticQuality } from "../quality";
 import { HERO_GLB_URL, HERO_MANIFEST_URL, UNDERWATER_DEBUG } from "./config";
 import { validateHeroManifest, type HeroGlyphManifestEntry } from "./heroManifest";
@@ -54,6 +66,22 @@ export type HeightfieldSplat = {
   impulse: number;
   direction?: [number, number];
 };
+
+type WaterInjection = HeightfieldSplat & {
+  start: [number, number];
+  end: [number, number];
+  wake: number;
+};
+
+declare global {
+  interface Window {
+    __underwaterDebug?: {
+      wake: (start: [number, number], end: [number, number], durationMs?: number) => void;
+      press: (point: [number, number], incoming?: [number, number]) => void;
+      metrics: () => string | undefined;
+    };
+  }
+}
 
 export type HeroGlyphRuntime = {
   manifest: HeroGlyphManifestEntry;
@@ -139,6 +167,15 @@ function makeThicknessGlyphMaterial(
       uAttenuationColor: { value: new Color(UNDERWATER_DEBUG.absorptionColor) },
       uAbsorptionDistance: { value: UNDERWATER_DEBUG.absorptionDistance },
       uTime: { value: 0 },
+      uCameraNear: { value: 0.1 },
+      uCameraFar: { value: 30 },
+      uCameraPosition: { value: new Vector3() },
+      uKeyPosition: { value: new Vector3(-2.2, 2.8, -3.2) },
+      uKeyColor: { value: new Color(0xf5fbff) },
+      uKeyIntensity: { value: UNDERWATER_DEBUG.keyIntensity },
+      uFillPosition: { value: new Vector3(2.5, 1.8, 2.4) },
+      uFillColor: { value: new Color(0xc9dce7) },
+      uFillIntensity: { value: UNDERWATER_DEBUG.fillIntensity },
     },
     side: FrontSide,
     depthWrite: true,
@@ -255,14 +292,15 @@ export function startUnderwaterHeroRenderer({
   }
   renderer.outputColorSpace = LinearSRGBColorSpace;
   renderer.toneMapping = NoToneMapping;
+  renderer.info.autoReset = false;
   renderer.shadowMap.enabled = quality.tier !== "low";
-  renderer.setClearColor(0xdbe7ed, 1);
+  renderer.setClearColor(0xb8c7c8, 1);
   canvas.dataset.renderer = "three-webgl2-underwater";
   canvas.dataset.renderGraph = "environment>glyph-depth>glyph-transmission>surface>aces";
   canvas.dataset.toneMapper = "ACES filmic";
 
   const scene = new Scene();
-  scene.background = new Color(0xd9e6ec);
+  scene.background = new Color(0xb8c7c8);
   const camera = new PerspectiveCamera(42, 1, 0.1, 30);
   camera.layers.enable(GLYPH_LAYER);
   const debugCamera = process.env.NODE_ENV !== "production"
@@ -298,6 +336,28 @@ export function startUnderwaterHeroRenderer({
   backdrop.receiveShadow = true;
   scene.add(backdrop);
 
+  // Sparse studio cards give the refractive volume real spatial structure.
+  // They share the same authored lights and remain broad enough to avoid a
+  // decorative "gradient blob" read.
+  const studioMaterials = [
+    new MeshStandardMaterial({ color: 0xaebbb5, roughness: 0.94, metalness: 0 }),
+    new MeshStandardMaterial({ color: 0x60777a, roughness: 0.97, metalness: 0 }),
+  ];
+  const studioBands = [
+    new Mesh(new PlaneGeometry(1.15, 8), studioMaterials[0]),
+    new Mesh(new PlaneGeometry(0.72, 8), studioMaterials[1]),
+  ];
+  studioBands[0].rotation.x = Math.PI / 2;
+  studioBands[0].rotation.z = -0.16;
+  studioBands[0].position.set(-1.72, -1.28, -0.25);
+  studioBands[1].rotation.x = Math.PI / 2;
+  studioBands[1].rotation.z = 0.12;
+  studioBands[1].position.set(1.58, -1.25, 0.34);
+  studioBands.forEach((band) => {
+    band.receiveShadow = true;
+    scene.add(band);
+  });
+
   const key = new RectAreaLight(0xf5fbff, UNDERWATER_DEBUG.keyIntensity, 4.8, 2.6);
   key.position.set(-2.2, 2.8, -3.2);
   key.lookAt(new Vector3(0, 0, 0));
@@ -327,13 +387,28 @@ export function startUnderwaterHeroRenderer({
         frontDepthTarget.texture,
         backDepthTarget.texture,
       );
+  if (glyphMaterial instanceof ShaderMaterial) {
+    glyphMaterial.uniforms.uKeyPosition.value.copy(key.position);
+    glyphMaterial.uniforms.uKeyColor.value.copy(key.color);
+    glyphMaterial.uniforms.uKeyIntensity.value = key.intensity;
+    glyphMaterial.uniforms.uFillPosition.value.copy(fill.position);
+    glyphMaterial.uniforms.uFillColor.value.copy(fill.color);
+    glyphMaterial.uniforms.uFillIntensity.value = fill.intensity;
+  }
   canvas.dataset.glyphMaterial = usePhysicalMaterial ? "physical-baseline" : "thickness-refraction";
-  const heightTarget = new WebGLRenderTarget(128, 128, {
+  const tierSimulationWidth = quality.tier === "high" ? 256 : quality.tier === "balanced" ? 192 : 128;
+  let simulationWidth = Math.min(tierSimulationWidth, window.innerWidth < 640 ? 128 : window.innerWidth < 1200 ? 192 : 256);
+  let simulationHeight = Math.max(72, Math.round(simulationWidth * 9 / 16));
+  const makeHeightTarget = () => new WebGLRenderTarget(simulationWidth, simulationHeight, {
+    type: HalfFloatType,
     minFilter: LinearFilter,
     magFilter: LinearFilter,
     depthBuffer: false,
   });
-  heightTarget.texture.colorSpace = LinearSRGBColorSpace;
+  let heightRead = makeHeightTarget();
+  let heightWrite = makeHeightTarget();
+  heightRead.texture.colorSpace = LinearSRGBColorSpace;
+  heightWrite.texture.colorSpace = LinearSRGBColorSpace;
 
   const fullscreenGeometry = new PlaneGeometry(2, 2);
   const fullscreenCamera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -341,8 +416,15 @@ export function startUnderwaterHeroRenderer({
     vertexShader: FULLSCREEN_VERTEX,
     fragmentShader: HEIGHTFIELD_FRAGMENT,
     uniforms: {
+      uPrevious: { value: heightRead.texture },
+      uTexel: { value: new Vector2(1 / simulationWidth, 1 / simulationHeight) },
+      uDt: { value: 1 / 120 },
       uTime: { value: 0 },
+      uAspect: { value: 16 / 9 },
+      uAmbient: { value: reducedMotionRef.current ? 0 : 0.012 },
       uSplats: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
+      uSegments: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
+      uDirections: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
       uSplatCount: { value: 0 },
     },
     depthTest: false,
@@ -359,18 +441,28 @@ export function startUnderwaterHeroRenderer({
       uSceneDepth: { value: sceneTarget.depthTexture },
       uFrontDepth: { value: frontDepthTarget.texture },
       uBackDepth: { value: backDepthTarget.texture },
-      uHeightfield: { value: heightTarget.texture },
-      uResolution: { value: new Vector2(1, 1) },
+      uHeightfield: { value: heightRead.texture },
+      uHeightTexel: { value: new Vector2(1 / simulationWidth, 1 / simulationHeight) },
       uExposure: { value: exposure },
       uSurfaceDistortion: { value: UNDERWATER_DEBUG.surfaceDistortion },
       uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
       uDepthAttenuation: { value: UNDERWATER_DEBUG.depthAttenuation },
+      uCameraNear: { value: camera.near },
+      uCameraFar: { value: camera.far },
+      uDebugView: { value: 0 },
     },
     depthTest: false,
     depthWrite: false,
   });
   const finalScene = new Scene();
   finalScene.add(new Mesh(fullscreenGeometry, finalMaterial));
+
+  renderer.setRenderTarget(heightRead);
+  renderer.setClearColor(0x000000, 1);
+  renderer.clear(true, false, false);
+  renderer.setRenderTarget(heightWrite);
+  renderer.clear(true, false, false);
+  renderer.setRenderTarget(null);
 
   const depthMaterial = new ShaderMaterial({
     vertexShader: /* glsl */ `void main(){ gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
@@ -387,8 +479,15 @@ export function startUnderwaterHeroRenderer({
   let lastFrameAt = performance.now();
   const startedAt = lastFrameAt;
   let glyphs: HeroGlyphRuntime[] = [];
-  let lastPhysicsTime = -1;
-  let pendingSplats: HeightfieldSplat[] = [];
+  let bodies: GlyphBody[] = [];
+  let lastInteractionId = 0;
+  const pendingWater: WaterInjection[] = [];
+  const activeGlyphInteractions: GlyphInteraction[] = [];
+  let fixedAccumulator = 0;
+  let feedbackFrame = 0;
+  let glyphDebug: ReturnType<typeof installGlyphDebug> = null;
+  let freezeWater = false;
+  let freezeGlyphs = false;
   let runtimeScale = quality.renderScale;
   let frameCount = 0;
   const frameSamples: number[] = [];
@@ -396,8 +495,13 @@ export function startUnderwaterHeroRenderer({
   const heroElement = document.querySelector<HTMLElement>(".hero-shell");
 
   const applySplat = (splat: HeightfieldSplat) => {
-    pendingSplats.push(splat);
-    if (pendingSplats.length > MAX_SPLATS) pendingSplats.shift();
+    pendingWater.push({
+      ...splat,
+      start: splat.position,
+      end: splat.position,
+      wake: 0,
+    });
+    if (pendingWater.length > MAX_SPLATS) pendingWater.shift();
   };
   (canvas as HTMLCanvasElement & { heroHeightfield?: { splat: (value: HeightfieldSplat) => void } })
     .heroHeightfield = { splat: applySplat };
@@ -415,9 +519,36 @@ export function startUnderwaterHeroRenderer({
     environmentTarget.setSize(renderWidth, renderHeight);
     frontDepthTarget.setSize(renderWidth, renderHeight);
     backDepthTarget.setSize(renderWidth, renderHeight);
-    finalMaterial.uniforms.uResolution.value.set(renderWidth, renderHeight);
     configureCamera(camera, width, height, debugCamera);
+    bodies.forEach((body) => {
+      body.projectedHalfSize.set(0, 0);
+      body.restScreenCenter.set(Number.NaN, Number.NaN);
+    });
+    if (glyphMaterial instanceof ShaderMaterial) {
+      glyphMaterial.uniforms.uCameraNear.value = camera.near;
+      glyphMaterial.uniforms.uCameraFar.value = camera.far;
+      glyphMaterial.uniforms.uCameraPosition.value.copy(camera.position);
+    }
+    const nextSimulationWidth = Math.min(tierSimulationWidth, width < 640 ? 128 : width < 1200 ? 192 : 256);
+    const nextSimulationHeight = Math.max(72, Math.round(nextSimulationWidth * height / Math.max(width, 1)));
+    if (nextSimulationWidth !== simulationWidth || nextSimulationHeight !== simulationHeight) {
+      simulationWidth = nextSimulationWidth;
+      simulationHeight = nextSimulationHeight;
+      heightRead.setSize(simulationWidth, simulationHeight);
+      heightWrite.setSize(simulationWidth, simulationHeight);
+      renderer.setRenderTarget(heightRead);
+      renderer.setClearColor(0x000000, 1);
+      renderer.clear(true, false, false);
+      renderer.setRenderTarget(heightWrite);
+      renderer.clear(true, false, false);
+      renderer.setRenderTarget(null);
+      heightMaterial.uniforms.uTexel.value.set(1 / simulationWidth, 1 / simulationHeight);
+      finalMaterial.uniforms.uHeightTexel.value.set(1 / simulationWidth, 1 / simulationHeight);
+    }
+    heightMaterial.uniforms.uAspect.value = width / Math.max(height, 1);
     canvas.dataset.renderSize = `${renderWidth}x${renderHeight}`;
+    canvas.dataset.simulationSize = `${simulationWidth}x${simulationHeight}`;
+    canvas.dataset.simulationStep = "0.008333";
     canvas.dataset.glyphCount = String(glyphs.length);
   };
 
@@ -434,28 +565,129 @@ export function startUnderwaterHeroRenderer({
     camera.layers.mask = previousMask;
   };
 
-  const updateHeightfield = (time: number) => {
-    const physics = getPhysics();
-    if (physics.time !== lastPhysicsTime) {
-      lastPhysicsTime = physics.time;
-      for (const ripple of physics.ripples.slice(-2)) {
-        if (ripple.age > 0.12) continue;
-        applySplat({
-          position: [ripple.x / Math.max(window.innerWidth, 1), 1 - ripple.y / Math.max(window.innerHeight, 1)],
-          radius: 0.055,
-          impulse: ripple.intensity * 0.035,
-        });
-      }
-    }
-    const vectors = heightMaterial.uniforms.uSplats.value as Vector4[];
-    pendingSplats.forEach((splat, index) => {
-      vectors[index].set(splat.position[0], splat.position[1], splat.radius, splat.impulse);
+  const ingestInteraction = (event: LiquidInteractionEvent) => {
+    const rect = canvas.getBoundingClientRect();
+    const startUv = clientToWaterUv({ x: event.startX, y: event.startY }, rect);
+    const endUv = clientToWaterUv({ x: event.endX, y: event.endY }, rect);
+    const speed = Math.hypot(event.vx, event.vy);
+    const directionLength = Math.max(speed, 1);
+    pendingWater.push({
+      position: [endUv.x, endUv.y],
+      start: [startUv.x, startUv.y],
+      end: [endUv.x, endUv.y],
+      radius: event.radius / Math.max(rect.height, 1),
+      impulse: event.kind === "press" ? -event.strength * 1.1 : event.strength * 0.12,
+      direction: [event.vx / directionLength, -event.vy / directionLength],
+      wake: event.kind === "wake" ? event.strength * 0.55 : event.strength * 0.08,
     });
-    heightMaterial.uniforms.uSplatCount.value = pendingSplats.length;
-    heightMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.7 : time;
-    renderer.setRenderTarget(heightTarget);
+    activeGlyphInteractions.push({
+      kind: event.kind,
+      start: [event.startX - rect.left, event.startY - rect.top],
+      end: [event.endX - rect.left, event.endY - rect.top],
+      direction: speed > 8 ? [event.vx / directionLength, event.vy / directionLength] : [0, -1],
+      strength: event.kind === "press" ? event.strength * 8.5 : event.strength * 15.5,
+      radius: event.kind === "press" ? Math.max(72, event.radius) : event.radius,
+      time: event.time,
+    });
+    if (pendingWater.length > MAX_SPLATS) pendingWater.splice(0, pendingWater.length - MAX_SPLATS);
+  };
+
+  const ingestPhysics = () => {
+    const physics = getPhysics();
+    for (const event of physics.interactions) {
+      if (event.id <= lastInteractionId) continue;
+      lastInteractionId = event.id;
+      ingestInteraction(event);
+    }
+  };
+
+  if (process.env.NODE_ENV !== "production") {
+    window.__underwaterDebug = {
+      wake: (start, end, durationMs = 180) => {
+        const rect = canvas.getBoundingClientRect();
+        const seconds = Math.max(durationMs / 1000, 1 / 240);
+        ingestInteraction({
+          id: -1,
+          kind: "wake",
+          startX: rect.left + start[0],
+          startY: rect.top + start[1],
+          endX: rect.left + end[0],
+          endY: rect.top + end[1],
+          vx: (end[0] - start[0]) / seconds,
+          vy: (end[1] - start[1]) / seconds,
+          strength: Math.min(1, 0.1 + Math.hypot(end[0] - start[0], end[1] - start[1]) / seconds / 1450),
+          radius: 28,
+          time: performance.now() / 1000,
+          pointerType: "debug",
+        });
+      },
+      press: (point, incoming = [0, -1]) => {
+        const rect = canvas.getBoundingClientRect();
+        ingestInteraction({
+          id: -1,
+          kind: "press",
+          startX: rect.left + point[0],
+          startY: rect.top + point[1],
+          endX: rect.left + point[0],
+          endY: rect.top + point[1],
+          vx: incoming[0],
+          vy: incoming[1],
+          strength: 0.82,
+          radius: 38,
+          time: performance.now() / 1000,
+          pointerType: "debug",
+        });
+      },
+      metrics: () => canvas.dataset.glyphMotion,
+    };
+  }
+
+  const updateHeightfield = (time: number) => {
+    const vectors = heightMaterial.uniforms.uSplats.value as Vector4[];
+    const segments = heightMaterial.uniforms.uSegments.value as Vector4[];
+    const directions = heightMaterial.uniforms.uDirections.value as Vector4[];
+    const injectionCount = Math.min(pendingWater.length, MAX_SPLATS);
+    for (let index = 0; index < injectionCount; index += 1) {
+      const splat = pendingWater[index];
+      vectors[index].set(splat.position[0], splat.position[1], splat.radius, splat.impulse);
+      segments[index].set(splat.start[0], splat.start[1], splat.end[0], splat.end[1]);
+      directions[index].set(splat.direction?.[0] ?? 0, splat.direction?.[1] ?? 0, splat.wake, 0);
+    }
+    heightMaterial.uniforms.uSplatCount.value = injectionCount;
+    heightMaterial.uniforms.uTime.value = time;
+    heightMaterial.uniforms.uAmbient.value = reducedMotionRef.current ? 0 : 0.012;
+    heightMaterial.uniforms.uPrevious.value = heightRead.texture;
+    renderer.setRenderTarget(heightWrite);
     renderer.render(heightScene, fullscreenCamera);
-    pendingSplats = [];
+    const previous = heightRead;
+    heightRead = heightWrite;
+    heightWrite = previous;
+    finalMaterial.uniforms.uHeightfield.value = heightRead.texture;
+    pendingWater.length = 0;
+  };
+
+  const injectGlyphFeedback = (viewport: readonly [number, number]) => {
+    feedbackFrame += 1;
+    if (feedbackFrame % 2 !== 0) return;
+    for (const body of bodies) {
+      const speed = Math.hypot(body.velocity.x, body.velocity.z);
+      const angularSpeed = body.angularVelocity.length();
+      if (speed < 0.004 && angularSpeed < 0.025) continue;
+      const screen = projectGlyph(body, camera, viewport);
+      const x = screen.center.x / Math.max(viewport[0], 1);
+      const y = 1 - screen.center.y / Math.max(viewport[1], 1);
+      const directionLength = Math.max(speed, 0.001);
+      pendingWater.push({
+        position: [x, y],
+        start: [x - body.velocity.x / directionLength * 0.008, y + body.velocity.z / directionLength * 0.008],
+        end: [x, y],
+        radius: Math.min(0.045, Math.max(0.012, Math.max(screen.halfSize.x / viewport[0], screen.halfSize.y / viewport[1]) * 0.46)),
+        impulse: -Math.min(0.015, speed * 0.075 + angularSpeed * 0.003),
+        direction: [body.velocity.x / directionLength, -body.velocity.z / directionLength],
+        wake: Math.min(0.012, speed * 0.045 + angularSpeed * 0.002),
+      });
+      if (pendingWater.length >= MAX_SPLATS) break;
+    }
   };
 
   const render = (now: number) => {
@@ -463,30 +695,83 @@ export function startUnderwaterHeroRenderer({
     const shouldRun = running && heroVisible && !document.hidden && !staticModeRef.current;
     if (!shouldRun) return;
     const workStartedAt = performance.now();
+    renderer.info.reset();
     const delta = Math.min(100, now - lastFrameAt);
     lastFrameAt = now;
     const time = (now - startedAt) / 1000;
+    const absoluteTime = now / 1000;
     backdropMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.8 : time;
     if (glyphMaterial instanceof ShaderMaterial) glyphMaterial.uniforms.uTime.value = time;
-    updateHeightfield(time);
+    ingestPhysics();
+    for (let index = activeGlyphInteractions.length - 1; index >= 0; index -= 1) {
+      if (absoluteTime - activeGlyphInteractions[index].time > 3.4) activeGlyphInteractions.splice(index, 1);
+    }
+    const fixed = accumulateFixedSteps(fixedAccumulator, delta / 1000, 1 / 120, 4);
+    fixedAccumulator = fixed.accumulator;
+    const rect = canvas.getBoundingClientRect();
+    const viewport = [Math.max(rect.width, 1), Math.max(rect.height, 1)] as const;
+    for (let step = 0; step < fixed.steps; step += 1) {
+      if (!freezeWater) updateHeightfield(time + step / 120);
+      if (bodies.length > 0 && !freezeGlyphs) {
+        stepGlyphBodies(
+          bodies,
+          camera,
+          viewport,
+          activeGlyphInteractions,
+          1 / 120,
+          absoluteTime,
+          reducedMotionRef.current,
+        );
+        injectGlyphFeedback(viewport);
+      }
+    }
+    glyphDebug?.tick(now);
     const previousMask = camera.layers.mask;
     camera.layers.set(0);
     renderer.setRenderTarget(environmentTarget);
-    renderer.setClearColor(0xd9e6ec, 1);
+    renderer.setClearColor(0xb8c7c8, 1);
     renderer.clear(true, true, true);
     renderer.render(scene, camera);
     camera.layers.mask = previousMask;
     renderDepth(backDepthTarget, BackSide);
     renderDepth(frontDepthTarget, FrontSide);
     renderer.setRenderTarget(sceneTarget);
-    renderer.setClearColor(0xd9e6ec, 1);
+    renderer.setClearColor(0xb8c7c8, 1);
     renderer.clear(true, true, true);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);
     renderer.render(finalScene, fullscreenCamera);
+    canvas.dataset.drawCalls = String(renderer.info.render.calls);
+    canvas.dataset.triangles = String(renderer.info.render.triangles);
+    canvas.dataset.textureMemoryEstimateMb = (
+      (sceneTarget.width * sceneTarget.height * 8 * 4
+        + simulationWidth * simulationHeight * 8 * 2) / (1024 * 1024)
+    ).toFixed(1);
     workSamples.push(performance.now() - workStartedAt);
     frameCount += 1;
     if (frameCount % 30 === 0) canvas.dataset.frameCount = String(frameCount);
+    if (frameCount % 6 === 0 && bodies.length > 0) {
+      canvas.dataset.glyphMotion = JSON.stringify(bodies.map((body) => {
+        const current = projectGlyph(body, camera, viewport);
+        const restCenter = projectGlyphRestCenter(body, camera, viewport);
+        return {
+          i: body.glyph.manifest.glyph_index,
+          c: body.glyph.manifest.character,
+          dx: Number((current.center.x - restCenter.x).toFixed(2)),
+          dy: Number((current.center.y - restCenter.y).toFixed(2)),
+          depth: Number(body.position.y.toFixed(4)),
+          rotation: Number((Math.max(
+            Math.abs(body.orientation.x),
+            Math.abs(body.orientation.y),
+            Math.abs(body.orientation.z),
+          ) * 180 / Math.PI).toFixed(2)),
+          peakPx: Number(body.peakPixels.toFixed(2)),
+          peakDeg: Number(body.peakDegrees.toFixed(2)),
+          speed: Number(body.velocity.length().toFixed(4)),
+          nearest: Number.isFinite(body.nearestInteraction) ? Number(body.nearestInteraction.toFixed(1)) : -1,
+        };
+      }));
+    }
 
     if (!ready) {
       ready = true;
@@ -559,6 +844,105 @@ export function startUnderwaterHeroRenderer({
         return;
       }
       glyphs = loadedGlyphs;
+      bodies = createGlyphBodies(glyphs);
+      glyphDebug = installGlyphDebug({
+        readSnapshots: () => {
+          const rect = canvas.getBoundingClientRect();
+          const viewport = [Math.max(rect.width, 1), Math.max(rect.height, 1)] as const;
+          return bodies.map((body): GlyphDebugSnapshot => {
+            const screen = projectGlyph(body, camera, viewport);
+            const restCenter = projectGlyphRestCenter(body, camera, viewport);
+            return {
+              index: body.glyph.manifest.glyph_index,
+              identity: `${body.glyph.manifest.character}:${body.glyph.manifest.object_node_name}`,
+              restCenter: [restCenter.x, restCenter.y],
+              currentCenter: [screen.center.x, screen.center.y],
+              bounds: {
+                left: screen.center.x - screen.halfSize.x,
+                top: screen.center.y - screen.halfSize.y,
+                right: screen.center.x + screen.halfSize.x,
+                bottom: screen.center.y + screen.halfSize.y,
+              },
+              displacement: [screen.center.x - restCenter.x, screen.center.y - restCenter.y],
+              velocity: [body.velocity.x, body.velocity.z],
+              orientation: [body.orientation.x, body.orientation.y, body.orientation.z],
+              angularVelocity: [body.angularVelocity.x, body.angularVelocity.y, body.angularVelocity.z],
+              currentForce: [body.currentForce.x, body.currentForce.y, body.currentForce.z],
+              currentTorque: [body.currentTorque.x, body.currentTorque.y, body.currentTorque.z],
+              nearestInteractionDistance: Number.isFinite(body.nearestInteraction) ? body.nearestInteraction : -1,
+              peakDisplacement: body.peakPixels,
+              peakRotationDegrees: body.peakDegrees,
+              settlingTime: body.lastActiveAt > 0
+                && body.velocity.length() < 0.004
+                && body.angularVelocity.length() < 0.02
+                ? Math.max(0, performance.now() / 1000 - body.lastActiveAt)
+                : 0,
+              latestImpact: null,
+            };
+          });
+        },
+        applyImpulse: (request) => {
+          const first = bodies[request.kind === "glyph" ? request.glyphIndex : request.firstGlyphIndex];
+          const second = request.kind === "between" ? bodies[request.secondGlyphIndex] : null;
+          if (!first) return;
+          const rect = canvas.getBoundingClientRect();
+          const viewport = [Math.max(rect.width, 1), Math.max(rect.height, 1)] as const;
+          const firstScreen = projectGlyph(first, camera, viewport);
+          const secondScreen = second ? projectGlyph(second, camera, viewport) : null;
+          let x = secondScreen ? (firstScreen.center.x + secondScreen.center.x) * 0.5 : firstScreen.center.x;
+          const y = secondScreen ? (firstScreen.center.y + secondScreen.center.y) * 0.5 : firstScreen.center.y;
+          if (request.kind === "glyph" && request.anchor !== "center") {
+            x += (request.anchor === "left-edge" ? -1 : 1) * firstScreen.halfSize.x * 0.82;
+          }
+          const nowSeconds = performance.now() / 1000;
+          activeGlyphInteractions.push({
+            kind: "press",
+            start: [x, y],
+            end: [x, y],
+            direction: [0, -1],
+            strength: request.strength,
+            radius: 42,
+            time: nowSeconds,
+          });
+          applySplat({
+            position: [x / viewport[0], 1 - y / viewport[1]],
+            radius: 42 / viewport[1],
+            impulse: -request.strength * 0.42,
+          });
+        },
+        setFreezeWater: (frozen) => { freezeWater = frozen; },
+        setFreezeGlyphs: (frozen) => { freezeGlyphs = frozen; },
+        setView: (view) => {
+          finalMaterial.uniforms.uDebugView.value = {
+            scene: 0,
+            solver: 1,
+            "front-depth": 2,
+            "back-depth": 3,
+            thickness: 4,
+          }[view];
+        },
+        reset: () => {
+          activeGlyphInteractions.length = 0;
+          pendingWater.length = 0;
+          for (const body of bodies) {
+            body.position.set(0, 0, 0);
+            body.velocity.set(0, 0, 0);
+            body.orientation.set(0, 0, 0);
+            body.angularVelocity.set(0, 0, 0);
+            body.glyph.object.position.copy(body.restPosition);
+            body.glyph.object.quaternion.copy(body.restQuaternion);
+            body.peakPixels = 0;
+            body.peakDegrees = 0;
+          }
+          renderer.setRenderTarget(heightRead);
+          renderer.setClearColor(0x000000, 1);
+          renderer.clear(true, false, false);
+          renderer.setRenderTarget(heightWrite);
+          renderer.clear(true, false, false);
+          renderer.setRenderTarget(null);
+          finalMaterial.uniforms.uDebugView.value = 0;
+        },
+      });
       resize();
       resume();
     })
@@ -583,6 +967,8 @@ export function startUnderwaterHeroRenderer({
     canvas.removeEventListener("webglcontextlost", onContextLost);
     canvas.removeEventListener("webglcontextrestored", onContextRestored);
     delete (canvas as HTMLCanvasElement & { heroHeightfield?: unknown }).heroHeightfield;
+    if (window.__underwaterDebug) delete window.__underwaterDebug;
+    glyphDebug?.remove();
     const glyphGeometries = new Set(glyphs.map(({ object }) => object.geometry));
     glyphs.forEach(({ object }) => scene.remove(object));
     glyphGeometries.forEach((geometry) => geometry.dispose());
@@ -592,7 +978,8 @@ export function startUnderwaterHeroRenderer({
     environmentTarget.dispose();
     frontDepthTarget.dispose();
     backDepthTarget.dispose();
-    heightTarget.dispose();
+    heightRead.dispose();
+    heightWrite.dispose();
     fullscreenGeometry.dispose();
     heightMaterial.dispose();
     finalMaterial.dispose();
