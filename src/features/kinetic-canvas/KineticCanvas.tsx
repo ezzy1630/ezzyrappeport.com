@@ -90,36 +90,66 @@ export default function KineticCanvas({
       if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
 
       const canvas = document.createElement("canvas");
-      canvas.dataset.renderer = "webgl2-fluid";
       canvas.dataset.quality = quality.tier;
 
       try {
-        const { startFluidRenderer } = await import("./renderer/webglFluidRenderer");
-        if (disposed) {
-          canvas.remove();
-          return;
+        const useUnderwaterHero = heroNameRef.current
+          && new URLSearchParams(window.location.search).get("heroRenderer") !== "legacy";
+        const markReady = () => {
+          if (!disposed) {
+            container.dataset.fluid = "ready";
+            if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
+          }
+        };
+        const recover = () => {
+          if (disposed) return;
+          container.dataset.fluid = "recovering";
+          window.requestAnimationFrame(() => {
+            if (!disposed) void startInteractiveRenderer();
+          });
+        };
+        const fail = (error: unknown) => {
+          if (disposed) return;
+          container.dataset.rendererError = error instanceof Error ? error.name : "RendererLoadError";
+          container.dataset.fluid = "failed";
+          if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+        };
+        let rendererCleanup: () => void;
+        if (useUnderwaterHero) {
+          const { startUnderwaterHeroRenderer } = await import(
+            "./renderer/underwater/underwaterHeroRenderer"
+          );
+          if (disposed) {
+            canvas.remove();
+            return;
+          }
+          rendererCleanup = startUnderwaterHeroRenderer({
+            canvas,
+            getPhysics,
+            reducedMotionRef,
+            staticModeRef,
+            quality,
+            onReady: markReady,
+            onFailure: fail,
+            onRecover: recover,
+          });
+        } else {
+          const { startFluidRenderer } = await import("./renderer/webglFluidRenderer");
+          if (disposed) {
+            canvas.remove();
+            return;
+          }
+          rendererCleanup = startFluidRenderer(
+            canvas,
+            getPhysics,
+            reducedMotionRef,
+            staticModeRef,
+            heroNameRef,
+            quality,
+            markReady,
+            recover,
+          );
         }
-        const rendererCleanup = startFluidRenderer(
-          canvas,
-          getPhysics,
-          reducedMotionRef,
-          staticModeRef,
-          heroNameRef,
-          quality,
-          () => {
-            if (!disposed) {
-              container.dataset.fluid = "ready";
-              if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
-            }
-          },
-          () => {
-            if (disposed) return;
-            container.dataset.fluid = "recovering";
-            window.requestAnimationFrame(() => {
-              if (!disposed) void startInteractiveRenderer();
-            });
-          },
-        );
         attachRenderer(canvas, rendererCleanup, "starting");
       } catch (error) {
         container.dataset.rendererError =
