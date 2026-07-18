@@ -1,6 +1,7 @@
 /* eslint-disable no-console -- this script is a CLI regression reporter */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
 import {
   downgradeQualityTier,
   MIN_PIXEL_BUDGET_DPR,
@@ -19,6 +20,25 @@ import {
   resolveGlyphImpulse,
   stepGlyphPlanarState,
 } from "../src/features/kinetic-canvas/physics/glyphImpulseModel.ts";
+import { accumulateFixedSteps } from "../src/features/kinetic-canvas/physics/fixedStep.ts";
+import {
+  canvasPointToUv,
+  clientToCanvasPoint,
+  clientToWaterUv,
+  pointSegmentDistance,
+  softLimitForce,
+} from "../src/features/kinetic-canvas/physics/waterCoordinates.ts";
+import {
+  clickPressureFalloff,
+  createGlyphBodies,
+  deriveMassAndInertia,
+  neighborArrivalDelay,
+  offCenterTorque,
+  pairwiseSeparationImpulse,
+  reducedMotionScale,
+  wakeFalloff,
+} from "../src/features/kinetic-canvas/physics/glyphRigidBodies.ts";
+import { validateHeroManifest } from "../src/features/kinetic-canvas/renderer/underwater/heroManifest.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
 const fluidRendererSource = readFileSync(
@@ -45,8 +65,99 @@ const heroNameSource = readFileSync(
   new URL("../src/components/portfolio/HeroName.tsx", import.meta.url),
   "utf8",
 );
+const underwaterRendererSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/renderer/underwater/underwaterHeroRenderer.ts", import.meta.url),
+  "utf8",
+);
+const underwaterShaderSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/renderer/underwater/shaders.ts", import.meta.url),
+  "utf8",
+);
+const liquidInteractionSource = readFileSync(
+  new URL("../src/lib/portfolio/liquid-interaction.ts", import.meta.url),
+  "utf8",
+);
+const heroManifest = validateHeroManifest(JSON.parse(readFileSync(
+  new URL("../public/assets/hero/ezzy-rappeport-glyphs.json", import.meta.url),
+  "utf8",
+)));
 
 const tests = [
+  ["Underwater coordinates stay canvas-local and preserve solver orientation", () => {
+    const rect = { left: 100, top: 40, width: 800, height: 400 };
+    assert.deepEqual(clientToCanvasPoint({ x: 300, y: 140 }, rect), { x: 200, y: 100 });
+    assert.deepEqual(canvasPointToUv({ x: 200, y: 100 }, rect), { x: 0.25, y: 0.25 });
+    assert.deepEqual(clientToWaterUv({ x: 300, y: 140 }, rect), { x: 0.25, y: 0.75 });
+  }],
+  ["Fixed-step accumulation is frame-rate independent and caps catch-up", () => {
+    const at60 = accumulateFixedSteps(0, 1 / 60, 1 / 120, 4);
+    const at30 = accumulateFixedSteps(0, 1 / 30, 1 / 120, 4);
+    const paused = accumulateFixedSteps(0, 2, 1 / 120, 4);
+    assert.equal(at60.steps, 2);
+    assert.equal(at30.steps, 4);
+    assert.equal(paused.steps, 4);
+    assert.equal(paused.accumulator, 0);
+  }],
+  ["Pointer segment, wake, and click falloffs are local and monotonic", () => {
+    assert.equal(pointSegmentDistance({ x: 5, y: 4 }, { x: 0, y: 0 }, { x: 10, y: 0 }), 4);
+    assert.ok(wakeFalloff(8, 40) > wakeFalloff(80, 40));
+    assert.ok(clickPressureFalloff(8, 40) > clickPressureFalloff(80, 40));
+    assert.ok(clickPressureFalloff(80, 40) < wakeFalloff(80, 40));
+  }],
+  ["Torque, mass, inertia, limits, neighbor delay, separation, and motion scaling are deterministic", () => {
+    assert.equal(Math.sign(offCenterTorque([0, 0], [-1, 0], [0, -1])), 1);
+    assert.equal(Math.sign(offCenterTorque([0, 0], [1, 0], [0, -1])), -1);
+    const runtime = {
+      manifest: heroManifest.glyphs[0],
+      object: new Mesh(new BufferGeometry(), new MeshBasicMaterial()),
+    };
+    const derived = deriveMassAndInertia(runtime, 1);
+    assert.ok(derived.mass > 0);
+    assert.ok(derived.inertia.x > 0 && derived.inertia.y > 0 && derived.inertia.z > 0);
+    assert.equal(softLimitForce(0.5, 1, 10), 0);
+    assert.ok(softLimitForce(0.9, 1, 10) < 0);
+    assert.ok(softLimitForce(-0.9, 1, 10) > 0);
+    assert.ok(neighborArrivalDelay(110) < neighborArrivalDelay(220));
+    assert.ok(pairwiseSeparationImpulse(20, 100) > pairwiseSeparationImpulse(80, 100));
+    assert.equal(pairwiseSeparationImpulse(100, 100), 0);
+    assert.equal(reducedMotionScale(false), 1);
+    assert.equal(reducedMotionScale(true), 0.08);
+  }],
+  ["All 13 manifest glyphs become independent GLB body states", () => {
+    const material = new MeshBasicMaterial();
+    const geometryByIdentity = new Map();
+    const glyphs = heroManifest.glyphs.map((manifest) => {
+      const geometry = geometryByIdentity.get(manifest.shared_geometry_identifier) ?? new BufferGeometry();
+      geometryByIdentity.set(manifest.shared_geometry_identifier, geometry);
+      const object = new Mesh(geometry, material);
+      object.position.fromArray(manifest.rest_transform.translation);
+      object.quaternion.fromArray(manifest.rest_transform.rotation_xyzw);
+      object.scale.fromArray(manifest.rest_transform.scale);
+      return { manifest, object };
+    });
+    const bodies = createGlyphBodies(glyphs);
+    assert.equal(bodies.length, 13);
+    assert.equal(new Set(bodies.map((body) => body.position)).size, 13);
+    assert.ok(glyphs[1].object.geometry === glyphs[2].object.geometry);
+  }],
+  ["Default underwater render graph wires persistent water, GLB transforms, linear depth, fallback, resize, and cleanup", () => {
+    assert.match(underwaterShaderSource, /uniform sampler2D uPrevious/);
+    assert.match(underwaterShaderSource, /velocity \+= laplacian/);
+    assert.match(underwaterRendererSource, /accumulateFixedSteps/);
+    assert.match(underwaterRendererSource, /stepGlyphBodies/);
+    assert.ok(underwaterRendererSource.indexOf("stepGlyphBodies(") < underwaterRendererSource.indexOf("renderDepth(backDepthTarget"));
+    assert.match(underwaterShaderSource, /linearViewDepth/);
+    assert.doesNotMatch(underwaterShaderSource, /backDepth - frontDepth\) \* 155/);
+    assert.match(liquidInteractionSource, /getCoalescedEvents/);
+    assert.match(liquidInteractionSource, /kind: "wake"/);
+    assert.match(liquidInteractionSource, /kind: "press"/);
+    assert.match(underwaterRendererSource, /physics\.interactions/);
+    assert.match(underwaterRendererSource, /heroGlb.*missing/s);
+    assert.match(underwaterRendererSource, /clientToWaterUv/);
+    assert.match(underwaterRendererSource, /ResizeObserver/);
+    assert.match(underwaterRendererSource, /heightRead\.dispose\(\)/);
+    assert.match(underwaterRendererSource, /glyphDebug\?\.remove\(\)/);
+  }],
   ["Retina 4K stays inside the high pixel budget", () => {
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
     assert.ok(dpr <= 1.11);

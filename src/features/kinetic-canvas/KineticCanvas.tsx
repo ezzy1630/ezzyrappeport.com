@@ -93,8 +93,9 @@ export default function KineticCanvas({
       canvas.dataset.quality = quality.tier;
 
       try {
-        const useUnderwaterHero = heroNameRef.current
-          && new URLSearchParams(window.location.search).get("heroRenderer") !== "legacy";
+        // The GLB hero has one production physics/render path. The older atlas
+        // renderer remains only for non-title fluid canvases.
+        const useUnderwaterHero = heroNameRef.current;
         const markReady = () => {
           if (!disposed) {
             container.dataset.fluid = "ready";

@@ -8,9 +8,9 @@ export const UNDERWATER_DEBUG = {
   environmentIntensity: 0.78,
   ior: 1.385,
   roughness: 0.095,
-  absorptionColor: 0x8eabb9,
+  absorptionColor: 0x9fb7b5,
   absorptionDistance: 0.56,
-  surfaceDistortion: 0.0032,
+  surfaceDistortion: 0.0065,
   causticStrength: 0.055,
   depthAttenuation: 0.14,
 } as const;
