@@ -71,10 +71,11 @@ export const BACKDROP_VERTEX = /* glsl */ `
   varying vec2 vUv;
   varying vec3 vWorld;
   void main() {
-    vUv = uv;
     vec4 world = modelMatrix * vec4(position, 1.0);
     vWorld = world.xyz;
-    gl_Position = projectionMatrix * viewMatrix * world;
+    vec4 clip = projectionMatrix * viewMatrix * world;
+    vUv = clip.xy / clip.w * 0.5 + 0.5;
+    gl_Position = clip;
   }
 `;
 
@@ -85,32 +86,72 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform float uCausticStrength;
   uniform float uDepthAttenuation;
+  uniform float uAspect;
+  uniform float uDebugUv;
 
   float causticField(vec2 p, float time) {
-    float low = sin(p.x * 7.0 + sin(p.y * 3.2 + time * 0.18) * 1.1);
-    low += sin(p.y * 6.1 - p.x * 2.2 - time * 0.14);
-    float ridge = 1.0 - smoothstep(0.08, 0.72, abs(low * 0.5));
-    return ridge * ridge;
+    float foldA = sin(p.x * 4.4 + sin(p.y * 2.2 + time * 0.13) * 1.25);
+    float foldB = sin(p.y * 4.9 - p.x * 1.65 - time * 0.10);
+    float ridge = 1.0 - smoothstep(0.05, 0.48, abs((foldA + foldB) * 0.5));
+    return ridge * ridge * ridge;
   }
 
   void main() {
-    vec3 surfacePearl = vec3(0.72, 0.77, 0.765);
-    vec3 depthSlate = vec3(0.29, 0.395, 0.425);
-    vec3 color = mix(surfacePearl, depthSlate, smoothstep(0.08, 0.96, vUv.y));
-    float surfaceRegion = exp(-pow((vUv.y - 0.10) / 0.18, 2.0));
-    color += vec3(0.10, 0.105, 0.095) * surfaceRegion;
-    float lowerDepth = smoothstep(0.54, 0.96, vUv.y);
-    color *= 1.0 - lowerDepth * 0.15;
-    float bandA = exp(-pow((vUv.x + vUv.y * 0.30 - 0.40) / 0.105, 2.0));
-    float bandB = exp(-pow((vUv.x - vUv.y * 0.18 - 0.70) / 0.16, 2.0));
-    color += vec3(0.16, 0.155, 0.135) * bandA * 0.44;
-    color += vec3(0.08, 0.11, 0.115) * bandB * 0.32;
-    float farSeparation = smoothstep(0.35, 0.92, vUv.y) * smoothstep(0.18, 0.72, abs(vUv.x - 0.5));
-    color = mix(color, vec3(0.31, 0.43, 0.47), farSeparation * 0.12);
-    float caustic = causticField(vWorld.xz * 0.85, uTime);
-    color += vec3(0.72, 0.76, 0.70) * caustic * uCausticStrength * (0.3 + surfaceRegion * 0.7);
-    float distanceDepth = smoothstep(-1.0, 1.0, vWorld.y);
-    color = mix(color, vec3(0.42, 0.54, 0.57), distanceDepth * uDepthAttenuation);
+    vec2 uv = vec2(vUv.x, 1.0 - vUv.y);
+    vec3 lowerPearl = vec3(0.19, 0.30, 0.38);
+    vec3 upperWater = vec3(0.47, 0.66, 0.76);
+    vec3 depthSlate = vec3(0.018, 0.065, 0.12);
+    vec3 color = mix(lowerPearl, upperWater, smoothstep(0.18, 0.98, uv.y) * 0.90);
+    vec3 calmVolume = color;
+
+    vec2 keyDelta = (uv - vec2(0.10, 0.82)) * vec2(1.0, 1.45);
+    float keyVolume = exp(-dot(keyDelta, keyDelta) * 4.0);
+    color += vec3(0.25, 0.29, 0.30) * keyVolume;
+
+    vec2 pocketDelta = (uv - vec2(0.72, 0.57)) * vec2(0.92, 1.25);
+    float depthPocket = exp(-dot(pocketDelta, pocketDelta) * 5.0);
+    color = mix(color, depthSlate, depthPocket * 0.88);
+
+    vec2 leftPocketDelta = (uv - vec2(0.24, 0.47)) * vec2(1.35, 1.55);
+    float leftPocket = exp(-dot(leftPocketDelta, leftPocketDelta) * 6.2);
+    color = mix(color, vec3(0.065, 0.17, 0.26), leftPocket * 0.64);
+
+    float titleDepthShelf = exp(-pow((uv.y - 0.46) / 0.16, 2.0));
+    float shelfShape = 0.34 + 0.66 * smoothstep(-0.55, 0.75, sin(uv.x * 5.0 - 0.8));
+    color = mix(color, vec3(0.055, 0.145, 0.225), titleDepthShelf * shelfShape * 0.34);
+
+    float longBand = exp(-pow((uv.x + uv.y * 0.24 - 0.52) / 0.065, 2.0));
+    float darkBand = exp(-pow((uv.x - uv.y * 0.18 - 0.70) / 0.12, 2.0));
+    color += vec3(0.24, 0.32, 0.36) * longBand * 0.64;
+    color = mix(color, vec3(0.035, 0.105, 0.18), darkBand * 0.56);
+
+    float horizon = exp(-pow((uv.y - 0.18) / 0.042, 2.0));
+    color += vec3(0.15, 0.21, 0.24) * horizon;
+    color *= 1.0 - smoothstep(0.0, 0.30, uv.y) * 0.09;
+
+    float surfaceY = 0.90
+      + sin(uv.x * 7.0 + uTime * 0.12) * 0.025
+      + sin(uv.x * 15.0 - uTime * 0.08) * 0.009;
+    float surfaceBoundary = exp(-pow((uv.y - surfaceY) / 0.020, 2.0));
+    float surfaceTrough = exp(-pow((uv.y - surfaceY - 0.026) / 0.026, 2.0));
+    float upperFoldWindow = smoothstep(0.58, 0.92, uv.y);
+    float upperFolds = pow(0.5 + 0.5 * sin(
+      uv.x * 18.0 + sin(uv.y * 11.0 + uTime * 0.10) * 2.2
+    ), 8.0) * upperFoldWindow;
+    color = mix(color, vec3(0.045, 0.14, 0.235), surfaceTrough * 0.28);
+    color += vec3(0.48, 0.66, 0.74) * surfaceBoundary * 0.30;
+    float foldEnvelope = 0.32 + 0.68 * exp(-pow((uv.x - 0.62) / 0.38, 2.0));
+    color += vec3(0.36, 0.51, 0.60) * upperFolds * foldEnvelope * 0.14;
+
+    float caustic = causticField((uv - 0.5) * vec2(3.5, 2.15), uTime);
+    float causticWindow = smoothstep(0.14, 0.42, uv.y) * (1.0 - smoothstep(0.78, 0.96, uv.y));
+    color *= 1.0 - (1.0 - caustic) * causticWindow * 0.08;
+    color += vec3(0.64, 0.75, 0.80) * caustic * uCausticStrength * causticWindow * 1.55;
+    color = mix(color, depthSlate, smoothstep(-1.0, 1.0, vWorld.y) * uDepthAttenuation * 0.12);
+    float portraitCalm = 1.0 - smoothstep(0.62, 0.92, uAspect);
+    float lowerCalm = (1.0 - smoothstep(0.30, 0.58, uv.y)) * portraitCalm;
+    color = mix(color, calmVolume, max(lowerCalm, portraitCalm * 0.78));
+    if (uDebugUv > 0.5) color = vec3(uv, 0.0);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -162,37 +203,59 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   uniform vec3 uFillPosition;
   uniform vec3 uFillColor;
   uniform float uFillIntensity;
+  uniform int uRefractionTaps;
+  uniform float uCausticStrength;
 
   float linearViewDepth(float depth) {
     float viewZ = (uCameraNear * uCameraFar) / ((uCameraFar - uCameraNear) * depth - uCameraFar);
     return -viewZ;
   }
 
+  vec3 sampleEnvironment(vec2 uv, vec2 direction, float radius) {
+    vec3 color = texture2D(uEnvironment, uv).rgb;
+    if (uRefractionTaps <= 1) return color;
+    color += texture2D(uEnvironment, clamp(uv + direction * radius, 0.002, 0.998)).rgb;
+    color += texture2D(uEnvironment, clamp(uv - direction * radius, 0.002, 0.998)).rgb;
+    if (uRefractionTaps <= 3) return color / 3.0;
+    vec2 perpendicular = vec2(-direction.y, direction.x);
+    color += texture2D(uEnvironment, clamp(uv + perpendicular * radius * 0.72, 0.002, 0.998)).rgb;
+    color += texture2D(uEnvironment, clamp(uv - perpendicular * radius * 0.72, 0.002, 0.998)).rgb;
+    return color / 5.0;
+  }
+
   void main() {
     float frontDepth = linearViewDepth(texture2D(uFrontDepth, vScreenUv).r);
     float backDepth = linearViewDepth(texture2D(uBackDepth, vScreenUv).r);
-    float geometricThickness = clamp(backDepth - frontDepth, 0.012, 0.52);
+    float geometricThickness = clamp(backDepth - frontDepth, 0.008, 0.52);
     float shoulder = 1.0 - abs(vViewNormal.z);
-    float opticalThickness = max(geometricThickness, 0.11 + shoulder * 0.22)
-      * (1.0 + shoulder * 1.35);
+    float opticalThickness = geometricThickness * (1.0 + shoulder * 1.85) + shoulder * 0.028;
     float eta = (uIor - 1.0) / uIor;
     vec2 internalWarp = vec2(
       sin(vWorldPosition.z * 8.0 + uTime * 0.18),
       sin(vWorldPosition.x * 7.0 - uTime * 0.14)
     ) * 0.00045;
+    vec2 refractionDirection = normalize(vViewNormal.xy + vec2(0.0001));
     vec2 refractedUv = clamp(
-      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.052 + internalWarp,
+      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.098 + internalWarp,
       vec2(0.002),
       vec2(0.998)
     );
-    vec3 environment = texture2D(uEnvironment, refractedUv).rgb;
+    float samplingRadius = 0.0008 + uRoughness * 0.017 + shoulder * 0.0018;
+    vec3 environment = sampleEnvironment(refractedUv, refractionDirection, samplingRadius);
+    vec3 directEnvironment = texture2D(uEnvironment, vScreenUv).rgb;
 
     vec3 safeAttenuation = max(uAttenuationColor, vec3(0.02));
     vec3 absorption = -log(safeAttenuation) / max(uAbsorptionDistance, 0.01);
     vec3 transmittance = exp(-absorption * opticalThickness);
     vec3 body = environment * transmittance
-      + uAttenuationColor * (1.0 - transmittance) * 0.42;
-    body = mix(body, uAttenuationColor, 0.22 + opticalThickness * 0.12);
+      + uAttenuationColor * (1.0 - transmittance) * 0.12;
+    body += (environment - directEnvironment) * (0.92 + shoulder * 0.38);
+    body *= mix(0.87, 0.97, shoulder);
+
+    float transmittedFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 7.4 + vWorldPosition.z * 5.1 - uTime * 0.19), 9.0);
+    float transmittedGroove = pow(0.5 + 0.5 * sin(vWorldPosition.x * 5.0 - vWorldPosition.z * 7.2 + uTime * 0.13), 11.0);
+    body += vec3(0.54, 0.69, 0.78) * transmittedFold * (0.045 + geometricThickness * 0.08);
+    body *= 1.0 - transmittedGroove * (0.025 + shoulder * 0.045);
 
     vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
     float fresnelBase = pow((uIor - 1.0) / (uIor + 1.0), 2.0);
@@ -202,16 +265,27 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     vec3 fillDirection = normalize(uFillPosition - vWorldPosition);
     vec3 keyHalf = normalize(keyDirection + viewDirection);
     vec3 fillHalf = normalize(fillDirection + viewDirection);
-    float broadHighlight = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(12.0, 30.0, 1.0 - uRoughness));
-    float softFill = pow(max(dot(vWorldNormal, fillHalf), 0.0), 8.0);
+    float broadHighlight = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(7.0, 18.0, 1.0 - uRoughness));
+    float softFill = pow(max(dot(vWorldNormal, fillHalf), 0.0), 18.0);
     float lowerBounce = max(dot(vWorldNormal, normalize(vec3(0.1, -0.45, 0.35))), 0.0);
-    float shoulderGlow = smoothstep(0.18, 0.86, shoulder) * (1.0 - smoothstep(0.88, 1.0, shoulder));
-    vec3 reflected = vec3(0.70, 0.78, 0.79) * fresnel * 0.34;
-    reflected += uKeyColor * broadHighlight * uKeyIntensity * 0.055;
-    reflected += uFillColor * softFill * uFillIntensity * 0.025;
-    reflected += vec3(0.27, 0.34, 0.32) * lowerBounce * 0.055;
-    reflected += vec3(0.42, 0.52, 0.53) * shoulderGlow * 0.035;
-    gl_FragColor = vec4(body + reflected, 1.0);
+    float directionalSide = 0.35 + 0.65 * smoothstep(-0.35, 0.65, dot(vWorldNormal, normalize(vec3(-0.65, 0.25, 0.7))));
+    float internalReflection = smoothstep(0.42, 0.94, shoulder) * directionalSide;
+    vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.018 + opticalThickness * 0.025), 0.002, 0.998);
+    vec3 reflectedEnvironment = texture2D(uEnvironment, reflectedUv).rgb;
+    vec3 denseSidewall = mix(reflectedEnvironment * 0.42, vec3(0.055, 0.115, 0.18), 0.68);
+    body = mix(body, denseSidewall, internalReflection * 0.76);
+
+    float surfaceBand = pow(0.5 + 0.5 * sin(vWorldPosition.x * 5.1 - vWorldPosition.z * 3.2 + uTime * 0.34), 5.0)
+      * smoothstep(0.20, 0.82, shoulder);
+    float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.0 + vWorldPosition.z * 5.3 - uTime * 0.22), 7.0)
+      * (0.35 + shoulder * 0.65);
+    vec3 reflected = vec3(0.60, 0.73, 0.80) * fresnel * 0.32;
+    reflected += uKeyColor * broadHighlight * uKeyIntensity * 0.13;
+    reflected += uFillColor * softFill * uFillIntensity * 0.035;
+    reflected += vec3(0.20, 0.29, 0.34) * lowerBounce * 0.035;
+    reflected += vec3(0.66, 0.79, 0.86) * surfaceBand * 0.11;
+    reflected += vec3(0.72, 0.82, 0.86) * causticFold * uCausticStrength * 0.40;
+    gl_FragColor = vec4(max(body + reflected, vec3(0.0)), 1.0);
   }
 `;
 
@@ -230,15 +304,15 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
   uniform float uDepthAttenuation;
   uniform float uCameraNear;
   uniform float uCameraFar;
+  uniform float uTime;
+  uniform int uQualityTier;
   uniform int uDebugView;
 
-  vec3 aces(vec3 value) {
-    const float a = 2.51;
-    const float b = 0.03;
-    const float c = 2.43;
-    const float d = 0.59;
-    const float e = 0.14;
-    return clamp((value * (a * value + b)) / (value * (c * value + d) + e), 0.0, 1.0);
+  vec3 underwaterToneMap(vec3 value) {
+    // Preserve the studio's blue-gray depth instead of lifting it into the
+    // pale ACES midrange. The shallow shoulder only rolls the brightest folds.
+    vec3 shouldered = value / (vec3(1.0) + value * 0.12);
+    return clamp((shouldered - 0.16) * 1.055 + 0.16, 0.0, 1.0);
   }
 
   vec3 linearToSrgb(vec3 value) {
@@ -253,13 +327,30 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     return -viewZ;
   }
 
+  vec3 sampleScene(vec2 uv, vec2 direction, float radius) {
+    vec3 color = texture2D(uScene, uv).rgb;
+    if (uQualityTier <= 0) return color;
+    color += texture2D(uScene, clamp(uv + direction * radius, 0.002, 0.998)).rgb;
+    color += texture2D(uScene, clamp(uv - direction * radius, 0.002, 0.998)).rgb;
+    if (uQualityTier == 1) return color / 3.0;
+    vec2 perpendicular = vec2(-direction.y, direction.x);
+    color += texture2D(uScene, clamp(uv + perpendicular * radius * 0.7, 0.002, 0.998)).rgb;
+    color += texture2D(uScene, clamp(uv - perpendicular * radius * 0.7, 0.002, 0.998)).rgb;
+    return color / 5.0;
+  }
+
   void main() {
     vec2 texel = uHeightTexel;
     float h = heightAt(vUv);
-    vec2 slope = vec2(
-      heightAt(vUv + vec2(texel.x * 5.0, 0.0)) - heightAt(vUv - vec2(texel.x * 5.0, 0.0)),
-      heightAt(vUv + vec2(0.0, texel.y * 5.0)) - heightAt(vUv - vec2(0.0, texel.y * 5.0))
+    vec2 nearSlope = vec2(
+      heightAt(vUv + vec2(texel.x * 2.0, 0.0)) - heightAt(vUv - vec2(texel.x * 2.0, 0.0)),
+      heightAt(vUv + vec2(0.0, texel.y * 2.0)) - heightAt(vUv - vec2(0.0, texel.y * 2.0))
     );
+    vec2 farSlope = vec2(
+      heightAt(vUv + vec2(texel.x * 9.0, 0.0)) - heightAt(vUv - vec2(texel.x * 9.0, 0.0)),
+      heightAt(vUv + vec2(0.0, texel.y * 9.0)) - heightAt(vUv - vec2(0.0, texel.y * 9.0))
+    );
+    vec2 slope = nearSlope * 0.58 + farSlope * 0.42;
     float sceneDepth = texture2D(uSceneDepth, vUv).r;
     float frontDepth = texture2D(uFrontDepth, vUv).r;
     float backDepth = texture2D(uBackDepth, vUv).r;
@@ -285,25 +376,71 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
       gl_FragColor = vec4(vec3(clamp(glyphThickness * 2.4, 0.0, 1.0)), 1.0);
       return;
     }
-    vec2 refraction = slope * uSurfaceDistortion * (0.65 + depthTravel * 0.7);
-    vec3 scene = texture2D(uScene, clamp(vUv + refraction, 0.002, 0.998)).rgb;
+    if (uDebugView == 5) {
+      gl_FragColor = vec4(linearToSrgb(texture2D(uScene, vUv).rgb), 1.0);
+      return;
+    }
+    float upperIdentity = smoothstep(0.48, 0.96, vUv.y);
+    float copyCalm = 1.0 - exp(-pow((vUv.y - 0.37) / 0.15, 2.0)) * 0.36;
+    float regionalStrength = (0.54 + upperIdentity * 0.82) * copyCalm;
+    vec2 slowSwell = vec2(
+      sin(vUv.y * 5.2 + uTime * 0.13),
+      cos(vUv.x * 5.8 - uTime * 0.11)
+    ) * 0.00055 * (0.35 + upperIdentity * 0.65);
+    vec2 surfaceVector = slope * regionalStrength + slowSwell;
+    vec2 refraction = surfaceVector * uSurfaceDistortion * (0.72 + depthTravel * 0.72);
+    vec2 refractionDirection = normalize(surfaceVector + vec2(0.00001));
+    vec3 scene = sampleScene(
+      clamp(vUv + refraction, 0.002, 0.998),
+      refractionDirection,
+      0.0007 + length(surfaceVector) * 0.35
+    );
+
+    float glyphHere = step(frontDepth, 0.9995);
+    vec2 shadowDirection = vec2(-0.0065, 0.0085) * (0.72 + depthTravel * 0.45);
+    float projectedShadow = 0.0;
+    projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection, 0.002, 0.998)).r, 0.9995);
+    projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 1.8, 0.002, 0.998)).r, 0.9995);
+    projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 2.7, 0.002, 0.998)).r, 0.9995);
+    projectedShadow = projectedShadow / 3.0 * (1.0 - glyphHere);
+    scene *= 1.0 - projectedShadow * (0.055 + depthTravel * 0.035);
 
     // The same surface normal that refracts the complete scene drives the
     // restrained caustic modulation. Glyph thickness gates its interior reach.
-    float focus = 1.0 - smoothstep(0.015, 0.19, length(slope));
-    float caustic = focus * focus * uCausticStrength * (0.25 + depthTravel * 0.45);
-    scene += vec3(0.72, 0.82, 0.86) * caustic * (1.0 + glyphThickness * 1.5);
+    float compression = smoothstep(0.003, 0.028, abs(dot(surfaceVector, normalize(vec2(0.72, 0.38)))));
+    float focus = 1.0 - smoothstep(0.008, 0.11, length(surfaceVector));
+    float caustic = (focus * focus * 0.35 + compression * 0.65) * uCausticStrength
+      * (0.22 + depthTravel * 0.38) * (0.45 + upperIdentity * 0.55);
+    scene += vec3(0.66, 0.78, 0.84) * caustic * (1.0 + glyphThickness * 0.85);
 
     vec3 waterAbsorption = vec3(0.055, 0.025, 0.012) * depthTravel * uDepthAttenuation;
     scene *= exp(-waterAbsorption);
     scene = mix(scene, vec3(0.64, 0.76, 0.82), depthTravel * uDepthAttenuation * 0.24);
 
-    vec3 normal = normalize(vec3(-slope * 7.0, 1.0));
+    vec3 normal = normalize(vec3(-surfaceVector * 13.0, 1.0));
     float fresnel = pow(1.0 - max(normal.z, 0.0), 5.0);
-    float upperSurface = smoothstep(0.68, 1.0, vUv.y);
-    scene += vec3(0.72, 0.82, 0.87) * fresnel * (0.025 + upperSurface * 0.045);
-    scene += vec3(0.022, 0.032, 0.038) * h * 0.065;
+    float surfaceSheet = smoothstep(0.68, 0.98, vUv.y);
+    float movingBand = pow(0.5 + 0.5 * sin(vUv.x * 8.2 + vUv.y * 4.4 - uTime * 0.18), 8.0) * surfaceSheet;
+    float ceilingRegion = smoothstep(0.70, 0.94, vUv.y);
+    float ceilingPhase = sin(vUv.x * 18.0 + sin(vUv.y * 7.0 + uTime * 0.11) * 1.8)
+      + sin(vUv.x * 9.0 - vUv.y * 11.0 - uTime * 0.07);
+    float ceilingFold = pow(1.0 - smoothstep(0.04, 0.58, abs(ceilingPhase * 0.5)), 2.0) * ceilingRegion;
+    float ceilingBoundary = exp(-pow((vUv.y - 0.745) / 0.032, 2.0));
+    float boundaryFold = pow(0.5 + 0.5 * sin(vUv.x * 15.0 + sin(vUv.x * 5.0 - uTime * 0.10) * 1.8), 7.0)
+      * ceilingBoundary;
+    float betweenLines = exp(-pow((vUv.y - 0.655) / 0.038, 2.0));
+    float betweenFold = pow(0.5 + 0.5 * sin(vUv.x * 11.5 - uTime * 0.14), 8.0)
+      * betweenLines * (0.35 + compression * 0.65);
+    scene += vec3(0.64, 0.77, 0.84) * fresnel * (0.035 + surfaceSheet * 0.16);
+    scene += vec3(0.52, 0.68, 0.77) * compression * (0.018 + upperIdentity * 0.045);
+    scene += vec3(0.70, 0.82, 0.87) * movingBand * 0.04;
+    scene = mix(scene, vec3(0.12, 0.27, 0.40), (1.0 - ceilingFold) * ceilingRegion * 0.25);
+    scene += vec3(0.68, 0.80, 0.86) * ceilingFold * 0.31;
+    scene += vec3(0.72, 0.84, 0.89) * boundaryFold * 0.34;
+    scene += vec3(0.58, 0.73, 0.81) * betweenFold * 0.14;
+    scene *= 1.0 - (1.0 - ceilingFold) * ceilingRegion * 0.17;
+    scene += vec3(0.035, 0.055, 0.068) * h * 0.11;
 
-    gl_FragColor = vec4(linearToSrgb(aces(scene * uExposure)), 1.0);
+    gl_FragColor = vec4(linearToSrgb(underwaterToneMap(scene * uExposure)), 1.0);
   }
 `;

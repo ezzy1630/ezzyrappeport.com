@@ -1,0 +1,27 @@
+{
+  "scope": "hero canvas below 70px navigation",
+  "baseline": {
+    "mean": 0.6478,
+    "p05": 0.5971,
+    "p50": 0.6566,
+    "p95": 0.6812,
+    "clipped_luminance_pct": 0.0064,
+    "near_black_pct": 0.0906
+  },
+  "final_rest": {
+    "mean": 0.4412,
+    "p05": 0.2515,
+    "p50": 0.4718,
+    "p95": 0.5796,
+    "clipped_luminance_pct": 0.0,
+    "near_black_pct": 0.0889
+  },
+  "bright_safe": {
+    "mean": 0.4928,
+    "p05": 0.2807,
+    "p50": 0.526,
+    "p95": 0.646,
+    "clipped_luminance_pct": 0.0001,
+    "near_black_pct": 0.0891
+  }
+}

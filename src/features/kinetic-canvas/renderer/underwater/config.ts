@@ -1,18 +1,18 @@
 import { ACESFilmicToneMapping, LinearToneMapping, ReinhardToneMapping } from "three";
 
 export const UNDERWATER_DEBUG = {
-  exposure: 0.94,
+  exposure: 0.96,
   toneMapper: ACESFilmicToneMapping,
-  keyIntensity: 3.1,
-  fillIntensity: 1.35,
-  environmentIntensity: 0.78,
-  ior: 1.385,
-  roughness: 0.095,
-  absorptionColor: 0x9fb7b5,
-  absorptionDistance: 0.56,
-  surfaceDistortion: 0.0065,
-  causticStrength: 0.055,
-  depthAttenuation: 0.14,
+  keyIntensity: 3.8,
+  fillIntensity: 1.1,
+  environmentIntensity: 0.58,
+  ior: 1.405,
+  roughness: 0.072,
+  absorptionColor: 0x91a9b7,
+  absorptionDistance: 1.08,
+  surfaceDistortion: 0.0105,
+  causticStrength: 0.18,
+  depthAttenuation: 0.18,
 } as const;
 
 export const TONE_MAPPER_NAMES = {
