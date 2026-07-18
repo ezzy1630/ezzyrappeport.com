@@ -474,7 +474,7 @@ export const bio = {
   name: portfolioIdentity.name,
   taglineParts: ["Software Engineer", "AI Systems", "Founder"],
   bodyParagraphs: [
-    "I build AI systems, developer tools, and product software—from multi-agent security to intelligent student workflows.",
+    "I build AI systems, developer tools, and product software, from multi-agent security to intelligent student workflows.",
     "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. My work lives between research and production: turning promising ideas into inspectable, dependable software.",
     "I'm based between Los Angeles and Santa Cruz, building across agent security, code intelligence, education, radiology research, and hardware design.",
   ],

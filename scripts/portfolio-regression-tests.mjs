@@ -155,6 +155,9 @@ const tests = [
     assert.match(underwaterRendererSource, /heroGlb.*missing/s);
     assert.match(underwaterRendererSource, /clientToWaterUv/);
     assert.match(underwaterRendererSource, /ResizeObserver/);
+    assert.match(underwaterRendererSource, /document\.hidden/);
+    assert.match(underwaterRendererSource, /addEventListener\("visibilitychange"/);
+    assert.match(underwaterRendererSource, /removeEventListener\("visibilitychange"/);
     assert.match(underwaterRendererSource, /heightRead\.dispose\(\)/);
     assert.match(underwaterRendererSource, /glyphDebug\?\.remove\(\)/);
   }],

@@ -12,7 +12,6 @@ import {
   LinearSRGBColorSpace,
   Mesh,
   MeshPhysicalMaterial,
-  MeshStandardMaterial,
   NoToneMapping,
   OrthographicCamera,
   PerspectiveCamera,
@@ -176,6 +175,8 @@ function makeThicknessGlyphMaterial(
       uFillPosition: { value: new Vector3(2.5, 1.8, 2.4) },
       uFillColor: { value: new Color(0xc9dce7) },
       uFillIntensity: { value: UNDERWATER_DEBUG.fillIntensity },
+      uRefractionTaps: { value: 5 },
+      uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
     },
     side: FrontSide,
     depthWrite: true,
@@ -185,6 +186,9 @@ function makeThicknessGlyphMaterial(
 
 function applyManifestTransform(object: Object3D, glyph: HeroGlyphManifestEntry) {
   object.position.fromArray(glyph.rest_transform.translation);
+  // Keep the manifest as the source of identity and local transforms, then
+  // tighten the two authored lines into one optical title block.
+  object.position.z += glyph.line_index === 0 ? 0.16 : -0.16;
   object.quaternion.fromArray(glyph.rest_transform.rotation_xyzw);
   object.scale.fromArray(glyph.rest_transform.scale);
   object.userData.glyphIndex = glyph.glyph_index;
@@ -237,9 +241,10 @@ function configureCamera(camera: PerspectiveCamera, width: number, height: numbe
   const aspect = Math.max(width / Math.max(height, 1), 0.2);
   const verticalFov = camera.fov * Math.PI / 180;
   const distanceForWidth = 2.44 / (Math.tan(verticalFov * 0.5) * aspect);
-  const distance = Math.max(6.1, distanceForWidth * 1.04);
+  const wideDistance = aspect > 1.25 ? 5.0 : aspect > 0.82 ? 5.55 : 6.1;
+  const distance = Math.max(wideDistance, distanceForWidth * (aspect < 0.7 ? 0.96 : 0.88));
   const tallViewportLift = Math.min(0.55, Math.max(0, (height - 760) / 500 * 0.55));
-  const targetZ = aspect < 0.7 ? 3.35 : 0.48 + tallViewportLift;
+  const targetZ = aspect < 0.7 ? 3.16 : 0.28 + tallViewportLift;
   camera.aspect = aspect;
   camera.up.set(0, 0, -1);
   if (debug) {
@@ -296,8 +301,8 @@ export function startUnderwaterHeroRenderer({
   renderer.shadowMap.enabled = quality.tier !== "low";
   renderer.setClearColor(0xb8c7c8, 1);
   canvas.dataset.renderer = "three-webgl2-underwater";
-  canvas.dataset.renderGraph = "environment>glyph-depth>glyph-transmission>surface>aces";
-  canvas.dataset.toneMapper = "ACES filmic";
+  canvas.dataset.renderGraph = "environment>glyph-depth>glyph-transmission>surface>underwater-filmic";
+  canvas.dataset.toneMapper = "underwater shallow shoulder";
 
   const scene = new Scene();
   scene.background = new Color(0xb8c7c8);
@@ -326,6 +331,8 @@ export function startUnderwaterHeroRenderer({
       uTime: { value: 0 },
       uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
       uDepthAttenuation: { value: UNDERWATER_DEBUG.depthAttenuation },
+      uAspect: { value: 1 },
+      uDebugUv: { value: process.env.NODE_ENV !== "production" && debugSearch.get("heroEnvironment") === "uv" ? 1 : 0 },
     },
     side: DoubleSide,
     depthWrite: true,
@@ -335,28 +342,6 @@ export function startUnderwaterHeroRenderer({
   backdrop.position.set(0, -1.35, 0.2);
   backdrop.receiveShadow = true;
   scene.add(backdrop);
-
-  // Sparse studio cards give the refractive volume real spatial structure.
-  // They share the same authored lights and remain broad enough to avoid a
-  // decorative "gradient blob" read.
-  const studioMaterials = [
-    new MeshStandardMaterial({ color: 0xaebbb5, roughness: 0.94, metalness: 0 }),
-    new MeshStandardMaterial({ color: 0x60777a, roughness: 0.97, metalness: 0 }),
-  ];
-  const studioBands = [
-    new Mesh(new PlaneGeometry(1.15, 8), studioMaterials[0]),
-    new Mesh(new PlaneGeometry(0.72, 8), studioMaterials[1]),
-  ];
-  studioBands[0].rotation.x = Math.PI / 2;
-  studioBands[0].rotation.z = -0.16;
-  studioBands[0].position.set(-1.72, -1.28, -0.25);
-  studioBands[1].rotation.x = Math.PI / 2;
-  studioBands[1].rotation.z = 0.12;
-  studioBands[1].position.set(1.58, -1.25, 0.34);
-  studioBands.forEach((band) => {
-    band.receiveShadow = true;
-    scene.add(band);
-  });
 
   const key = new RectAreaLight(0xf5fbff, UNDERWATER_DEBUG.keyIntensity, 4.8, 2.6);
   key.position.set(-2.2, 2.8, -3.2);
@@ -394,6 +379,7 @@ export function startUnderwaterHeroRenderer({
     glyphMaterial.uniforms.uFillPosition.value.copy(fill.position);
     glyphMaterial.uniforms.uFillColor.value.copy(fill.color);
     glyphMaterial.uniforms.uFillIntensity.value = fill.intensity;
+    glyphMaterial.uniforms.uRefractionTaps.value = quality.tier === "high" ? 5 : quality.tier === "balanced" ? 3 : 1;
   }
   canvas.dataset.glyphMaterial = usePhysicalMaterial ? "physical-baseline" : "thickness-refraction";
   const tierSimulationWidth = quality.tier === "high" ? 256 : quality.tier === "balanced" ? 192 : 128;
@@ -421,7 +407,7 @@ export function startUnderwaterHeroRenderer({
       uDt: { value: 1 / 120 },
       uTime: { value: 0 },
       uAspect: { value: 16 / 9 },
-      uAmbient: { value: reducedMotionRef.current ? 0 : 0.012 },
+      uAmbient: { value: reducedMotionRef.current ? 0 : 0.013 },
       uSplats: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
       uSegments: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
       uDirections: { value: Array.from({ length: MAX_SPLATS }, () => new Vector4()) },
@@ -449,7 +435,9 @@ export function startUnderwaterHeroRenderer({
       uDepthAttenuation: { value: UNDERWATER_DEBUG.depthAttenuation },
       uCameraNear: { value: camera.near },
       uCameraFar: { value: camera.far },
-      uDebugView: { value: 0 },
+      uTime: { value: 0 },
+      uQualityTier: { value: quality.tier === "high" ? 2 : quality.tier === "balanced" ? 1 : 0 },
+      uDebugView: { value: process.env.NODE_ENV !== "production" && debugSearch.get("heroEnvironment") === "raw" ? 5 : 0 },
     },
     depthTest: false,
     depthWrite: false,
@@ -513,6 +501,7 @@ export function startUnderwaterHeroRenderer({
     const dpr = Math.min(quality.dpr, quality.maxDpr, 1.5);
     renderer.setPixelRatio(dpr);
     renderer.setSize(width, height, false);
+    backdropMaterial.uniforms.uAspect.value = width / Math.max(height, 1);
     const renderWidth = Math.max(1, Math.floor(width * dpr * runtimeScale));
     const renderHeight = Math.max(1, Math.floor(height * dpr * runtimeScale));
     sceneTarget.setSize(renderWidth, renderHeight);
@@ -549,6 +538,8 @@ export function startUnderwaterHeroRenderer({
     canvas.dataset.renderSize = `${renderWidth}x${renderHeight}`;
     canvas.dataset.simulationSize = `${simulationWidth}x${simulationHeight}`;
     canvas.dataset.simulationStep = "0.008333";
+    canvas.dataset.opticalTier = quality.tier;
+    canvas.dataset.refractionTaps = String(quality.tier === "high" ? 5 : quality.tier === "balanced" ? 3 : 1);
     canvas.dataset.glyphCount = String(glyphs.length);
   };
 
@@ -655,7 +646,7 @@ export function startUnderwaterHeroRenderer({
     }
     heightMaterial.uniforms.uSplatCount.value = injectionCount;
     heightMaterial.uniforms.uTime.value = time;
-    heightMaterial.uniforms.uAmbient.value = reducedMotionRef.current ? 0 : 0.012;
+    heightMaterial.uniforms.uAmbient.value = reducedMotionRef.current ? 0 : 0.013;
     heightMaterial.uniforms.uPrevious.value = heightRead.texture;
     renderer.setRenderTarget(heightWrite);
     renderer.render(heightScene, fullscreenCamera);
@@ -702,6 +693,7 @@ export function startUnderwaterHeroRenderer({
     const absoluteTime = now / 1000;
     backdropMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.8 : time;
     if (glyphMaterial instanceof ShaderMaterial) glyphMaterial.uniforms.uTime.value = time;
+    finalMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.8 : time;
     ingestPhysics();
     for (let index = activeGlyphInteractions.length - 1; index >= 0; index -= 1) {
       if (absoluteTime - activeGlyphInteractions[index].time > 3.4) activeGlyphInteractions.splice(index, 1);

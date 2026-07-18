@@ -8,7 +8,7 @@ export default function HeroIntro() {
       <p className="hero-intro__roles" aria-label={bio.taglineParts.join(", ")}>
         {bio.taglineParts.map((part, index) => (
           <span key={part}>
-            {index > 0 && <i aria-hidden="true" />}
+            {index > 0 && <b aria-hidden="true">/</b>}
             {part}
           </span>
         ))}

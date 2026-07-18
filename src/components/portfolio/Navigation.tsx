@@ -126,7 +126,6 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         </button>
         <Link href={`/${nav.cta.href}`} className="site-nav-cta">
           <span>{nav.cta.label}</span>
-          <i aria-hidden="true" />
         </Link>
         <button
           type="button"
