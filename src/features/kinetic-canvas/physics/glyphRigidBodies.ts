@@ -88,8 +88,8 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      maxTravel: 0.132 + (index % 3) * 0.006,
-      maxTilt: (8.5 + (index % 4) * 0.65) * Math.PI / 180,
+      maxTravel: 0.052 + (index % 3) * 0.004,
+      maxTilt: (3.2 + (index % 4) * 0.4) * Math.PI / 180,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -209,7 +209,7 @@ export function stepGlyphBodies(
       const falloff = event.kind === "press"
         ? clickPressureFalloff(falloffDistance, falloffRadius)
         : wakeFalloff(falloffDistance, falloffRadius);
-      const temporal = event.kind === "press" ? Math.exp(-(age - arrival) * 8.5) : Math.exp(-age * 13);
+      const temporal = event.kind === "press" ? Math.exp(-(age - arrival) * 4.2) : Math.exp(-age * 6.5);
       const strength = event.strength * falloff * temporal * motionScale;
       if (strength < 0.0001) continue;
       const radialX = screen.center.x - event.end[0];
@@ -235,18 +235,18 @@ export function stepGlyphBodies(
       body.lastActiveAt = now;
     }
 
-    const spring = 34;
-    const drag = 8.6;
+    const spring = 16;
+    const drag = 13.5;
     body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 44);
     body.currentForce.z += -body.position.z * spring + softLimitForce(body.position.z, body.maxTravel, 44);
-    body.currentForce.y += -body.position.y * 42 - body.velocity.y * 9.6;
+    body.currentForce.y += -body.position.y * 20 - body.velocity.y * 14;
     body.velocity.x += (body.currentForce.x / body.mass - body.velocity.x * drag) * dt;
     body.velocity.z += (body.currentForce.z / body.mass - body.velocity.z * drag) * dt;
     body.velocity.y += body.currentForce.y / body.mass * dt;
     body.position.addScaledVector(body.velocity, dt);
 
-    const angularSpring = 27;
-    const angularDrag = 7.8;
+    const angularSpring = 13;
+    const angularDrag = 12.5;
     for (const axis of ["x", "y", "z"] as const) {
       const limitForce = softLimitForce(body.orientation[axis], body.maxTilt, 38);
       const acceleration = (body.currentTorque[axis] - body.orientation[axis] * angularSpring + limitForce)
