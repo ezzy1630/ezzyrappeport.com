@@ -6,6 +6,7 @@ import {
   DepthTexture,
   DirectionalLight,
   DoubleSide,
+  Euler,
   FrontSide,
   HalfFloatType,
   LinearFilter,
@@ -16,6 +17,7 @@ import {
   OrthographicCamera,
   PerspectiveCamera,
   PlaneGeometry,
+  Quaternion,
   RectAreaLight,
   Scene,
   ShaderMaterial,
@@ -241,10 +243,13 @@ function configureCamera(camera: PerspectiveCamera, width: number, height: numbe
   const aspect = Math.max(width / Math.max(height, 1), 0.2);
   const verticalFov = camera.fov * Math.PI / 180;
   const distanceForWidth = 2.44 / (Math.tan(verticalFov * 0.5) * aspect);
-  const wideDistance = aspect > 1.25 ? 5.0 : aspect > 0.82 ? 5.55 : 6.1;
+  // The reference composition lets the second line span roughly 84% of a
+  // 16:9 viewport. Keep that framing in camera space so the live GLB and the
+  // DOM fallback occupy the same visual volume instead of crossfading between
+  // two differently scaled titles.
+  const wideDistance = aspect > 1.25 ? 3.85 : aspect > 0.82 ? 4.8 : 5.6;
   const distance = Math.max(wideDistance, distanceForWidth * (aspect < 0.7 ? 0.96 : 0.88));
-  const tallViewportLift = Math.min(0.55, Math.max(0, (height - 760) / 500 * 0.55));
-  const targetZ = aspect < 0.7 ? 3.16 : 0.28 + tallViewportLift;
+  const targetZ = aspect < 0.7 ? 3.16 : 0.08;
   camera.aspect = aspect;
   camera.up.set(0, 0, -1);
   if (debug) {
@@ -254,6 +259,35 @@ function configureCamera(camera: PerspectiveCamera, width: number, height: numbe
   }
   camera.lookAt(0, 0, targetZ);
   camera.updateProjectionMatrix();
+}
+
+/* Rest state captured after configureCamera so per-frame pointer parallax
+   and the breathing bob can be layered without drifting the framing. */
+function captureCameraRest(camera: PerspectiveCamera, out: { position: Vector3; quaternion: Quaternion }) {
+  out.position.copy(camera.position);
+  out.quaternion.copy(camera.quaternion);
+}
+
+function applyCameraLife(
+  camera: PerspectiveCamera,
+  rest: { position: Vector3; quaternion: Quaternion },
+  pointerX: number,
+  pointerY: number,
+  time: number,
+  reducedMotion: boolean,
+) {
+  const maxTilt = 1.5 * Math.PI / 180; // ≤1.5° pointer parallax
+  const breathe = reducedMotion ? 0 : Math.sin(time * (Math.PI * 2 / 6)) * 0.011;
+  const drift = reducedMotion ? 0 : Math.sin(time * (Math.PI * 2 / 11)) * 0.006;
+  const yaw = pointerX * maxTilt;
+  const pitch = -pointerY * maxTilt * 0.7 + breathe * 0.4;
+  camera.position.set(
+    rest.position.x + pointerX * 0.06 + drift,
+    rest.position.y,
+    rest.position.z + breathe,
+  );
+  const euler = new Euler(pitch, yaw, 0, "YXZ");
+  camera.quaternion.copy(rest.quaternion).multiply(new Quaternion().setFromEuler(euler));
 }
 
 function percentile95(values: number[]) {
@@ -299,13 +333,13 @@ export function startUnderwaterHeroRenderer({
   renderer.toneMapping = NoToneMapping;
   renderer.info.autoReset = false;
   renderer.shadowMap.enabled = quality.tier !== "low";
-  renderer.setClearColor(0xb8c7c8, 1);
+  renderer.setClearColor(0xdceef4, 1);
   canvas.dataset.renderer = "three-webgl2-underwater";
   canvas.dataset.renderGraph = "environment>glyph-depth>glyph-transmission>surface>underwater-filmic";
   canvas.dataset.toneMapper = "underwater shallow shoulder";
 
   const scene = new Scene();
-  scene.background = new Color(0xb8c7c8);
+  scene.background = new Color(0xdceef4);
   const camera = new PerspectiveCamera(42, 1, 0.1, 30);
   camera.layers.enable(GLYPH_LAYER);
   const debugCamera = process.env.NODE_ENV !== "production"
@@ -332,6 +366,7 @@ export function startUnderwaterHeroRenderer({
       uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
       uDepthAttenuation: { value: UNDERWATER_DEBUG.depthAttenuation },
       uAspect: { value: 1 },
+      uMotion: { value: 1 },
       uDebugUv: { value: process.env.NODE_ENV !== "production" && debugSearch.get("heroEnvironment") === "uv" ? 1 : 0 },
     },
     side: DoubleSide,
@@ -471,6 +506,15 @@ export function startUnderwaterHeroRenderer({
   let lastInteractionId = 0;
   const pendingWater: WaterInjection[] = [];
   const activeGlyphInteractions: GlyphInteraction[] = [];
+  // Controlled camera state: fixed primary framing, ≤1.5° pointer parallax,
+  // and a slow breathing bob. Nothing that compromises the typography.
+  let cameraPointerX = 0;
+  let cameraPointerY = 0;
+  let cameraPointerXT = 0;
+  let cameraPointerYT = 0;
+  let cameraTime = 0;
+  const cameraRest = { position: new Vector3(), quaternion: new Quaternion() };
+  let cameraRestValid = false;
   let fixedAccumulator = 0;
   let feedbackFrame = 0;
   let glyphDebug: ReturnType<typeof installGlyphDebug> = null;
@@ -535,6 +579,8 @@ export function startUnderwaterHeroRenderer({
       finalMaterial.uniforms.uHeightTexel.value.set(1 / simulationWidth, 1 / simulationHeight);
     }
     heightMaterial.uniforms.uAspect.value = width / Math.max(height, 1);
+    captureCameraRest(camera, cameraRest);
+    cameraRestValid = true;
     canvas.dataset.renderSize = `${renderWidth}x${renderHeight}`;
     canvas.dataset.simulationSize = `${simulationWidth}x${simulationHeight}`;
     canvas.dataset.simulationStep = "0.008333";
@@ -562,21 +608,23 @@ export function startUnderwaterHeroRenderer({
     const endUv = clientToWaterUv({ x: event.endX, y: event.endY }, rect);
     const speed = Math.hypot(event.vx, event.vy);
     const directionLength = Math.max(speed, 1);
+    // Pressure moving through dense, calm water — not splashes. Interaction
+    // energy held to roughly 40% of the prior impression.
     pendingWater.push({
       position: [endUv.x, endUv.y],
       start: [startUv.x, startUv.y],
       end: [endUv.x, endUv.y],
       radius: event.radius / Math.max(rect.height, 1),
-      impulse: event.kind === "press" ? -event.strength * 1.1 : event.strength * 0.12,
+      impulse: event.kind === "press" ? -event.strength * 0.42 : event.strength * 0.05,
       direction: [event.vx / directionLength, -event.vy / directionLength],
-      wake: event.kind === "wake" ? event.strength * 0.55 : event.strength * 0.08,
+      wake: event.kind === "wake" ? event.strength * 0.22 : event.strength * 0.03,
     });
     activeGlyphInteractions.push({
       kind: event.kind,
       start: [event.startX - rect.left, event.startY - rect.top],
       end: [event.endX - rect.left, event.endY - rect.top],
       direction: speed > 8 ? [event.vx / directionLength, event.vy / directionLength] : [0, -1],
-      strength: event.kind === "press" ? event.strength * 8.5 : event.strength * 15.5,
+      strength: event.kind === "press" ? event.strength * 3.4 : event.strength * 6.2,
       radius: event.kind === "press" ? Math.max(72, event.radius) : event.radius,
       time: event.time,
     });
@@ -585,6 +633,14 @@ export function startUnderwaterHeroRenderer({
 
   const ingestPhysics = () => {
     const physics = getPhysics();
+    // Feed the controlled camera's parallax target from the live pointer.
+    if (physics.pointer.active) {
+      cameraPointerXT = (physics.pointer.x / Math.max(window.innerWidth, 1) - 0.5) * 2;
+      cameraPointerYT = (physics.pointer.y / Math.max(window.innerHeight, 1) - 0.5) * 2;
+    } else {
+      cameraPointerXT *= 0.985;
+      cameraPointerYT *= 0.985;
+    }
     for (const event of physics.interactions) {
       if (event.id <= lastInteractionId) continue;
       lastInteractionId = event.id;
@@ -691,9 +747,19 @@ export function startUnderwaterHeroRenderer({
     lastFrameAt = now;
     const time = (now - startedAt) / 1000;
     const absoluteTime = now / 1000;
-    backdropMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.8 : time;
+    cameraTime = time;
+    const staticFrame = reducedMotionRef.current;
+    backdropMaterial.uniforms.uTime.value = staticFrame ? 0.8 : time;
+    backdropMaterial.uniforms.uMotion.value = staticFrame ? 0 : 1;
     if (glyphMaterial instanceof ShaderMaterial) glyphMaterial.uniforms.uTime.value = time;
-    finalMaterial.uniforms.uTime.value = reducedMotionRef.current ? 0.8 : time;
+    finalMaterial.uniforms.uTime.value = staticFrame ? 0.8 : time;
+    // Controlled camera: ≤1.5° pointer parallax + a slow breathing bob.
+    cameraPointerX += (cameraPointerXT - cameraPointerX) * 0.045;
+    cameraPointerY += (cameraPointerYT - cameraPointerY) * 0.045;
+    if (cameraRestValid) {
+      applyCameraLife(camera, cameraRest, cameraPointerX, cameraPointerY, cameraTime, staticFrame);
+      camera.updateMatrixWorld(true);
+    }
     ingestPhysics();
     for (let index = activeGlyphInteractions.length - 1; index >= 0; index -= 1) {
       if (absoluteTime - activeGlyphInteractions[index].time > 3.4) activeGlyphInteractions.splice(index, 1);
@@ -721,14 +787,14 @@ export function startUnderwaterHeroRenderer({
     const previousMask = camera.layers.mask;
     camera.layers.set(0);
     renderer.setRenderTarget(environmentTarget);
-    renderer.setClearColor(0xb8c7c8, 1);
+    renderer.setClearColor(0xdceef4, 1);
     renderer.clear(true, true, true);
     renderer.render(scene, camera);
     camera.layers.mask = previousMask;
     renderDepth(backDepthTarget, BackSide);
     renderDepth(frontDepthTarget, FrontSide);
     renderer.setRenderTarget(sceneTarget);
-    renderer.setClearColor(0xb8c7c8, 1);
+    renderer.setClearColor(0xdceef4, 1);
     renderer.clear(true, true, true);
     renderer.render(scene, camera);
     renderer.setRenderTarget(null);

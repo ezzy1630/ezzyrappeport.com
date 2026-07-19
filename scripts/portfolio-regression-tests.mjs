@@ -160,6 +160,10 @@ const tests = [
     assert.match(underwaterRendererSource, /removeEventListener\("visibilitychange"/);
     assert.match(underwaterRendererSource, /heightRead\.dispose\(\)/);
     assert.match(underwaterRendererSource, /glyphDebug\?\.remove\(\)/);
+    assert.doesNotMatch(underwaterShaderSource, /smoothstep\(width,\s*0\.0/);
+    for (const match of underwaterShaderSource.matchAll(/smoothstep\((\d*\.?\d+),\s*(\d*\.?\d+),/g)) {
+      assert.ok(Number(match[1]) < Number(match[2]), `smoothstep edges must ascend: ${match[0]}`);
+    }
   }],
   ["Retina 4K stays inside the high pixel budget", () => {
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
