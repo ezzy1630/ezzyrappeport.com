@@ -8,6 +8,56 @@ import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
 import { PortfolioMotionProvider } from "./PortfolioMotionContext";
 
+type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
+
+const WATER_SECTION_SELECTORS: ReadonlyArray<readonly [WaterSection, string]> = [
+  ["hero", ".hero-shell"],
+  ["projects", "#projects"],
+  ["about", "#about"],
+  ["contact", "#contact"],
+  ["case", "[data-water-section='case']"],
+];
+
+function useWaterSection() {
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const viewportLine = window.innerHeight * 0.48;
+      let active: WaterSection = document.querySelector("[data-water-section='case']") ? "case" : "hero";
+      let nearest = Number.POSITIVE_INFINITY;
+      for (const [section, selector] of WATER_SECTION_SELECTORS) {
+        const element = document.querySelector<HTMLElement>(selector);
+        if (!element) continue;
+        const rect = element.getBoundingClientRect();
+        if (rect.top <= viewportLine && rect.bottom >= viewportLine) {
+          active = section;
+          nearest = 0;
+          break;
+        }
+        const distance = Math.min(Math.abs(rect.top - viewportLine), Math.abs(rect.bottom - viewportLine));
+        if (distance < nearest) {
+          active = section;
+          nearest = distance;
+        }
+      }
+      document.documentElement.dataset.waterSection = active;
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      window.cancelAnimationFrame(frame);
+      delete document.documentElement.dataset.waterSection;
+    };
+  }, []);
+}
+
 const FluidScene = dynamic(() => import("./FluidScene"), {
   ssr: false,
   loading: () => (
@@ -52,6 +102,7 @@ export default function PortfolioShell({
   const motionEnabled = motionPreference ?? !reducedMotion;
   const motionReduced = !motionEnabled;
   const renderHeroName = heroName;
+  useWaterSection();
 
   useEffect(() => {
     const stored = window.localStorage.getItem("portfolio-motion");

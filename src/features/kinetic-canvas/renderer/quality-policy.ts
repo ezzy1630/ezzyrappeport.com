@@ -36,7 +36,10 @@ export function resolveQualityTier({
   reducedMotion = false,
   staticMode = false,
 }: QualitySignals): KineticQualityTier {
-  if (reducedMotion || staticMode || saveData) return "static";
+  if (staticMode || saveData) return "static";
+  // Reduced motion freezes the optical renderer at one complete frame. It must
+  // not downgrade the rounded GLB title to the CSS emergency fallback.
+  if (reducedMotion) return "low";
   if (coarsePointer || deviceMemory <= 2) return "low";
 
   const hasDesktopHeadroom = deviceMemory >= 8 || hardwareConcurrency >= 8;

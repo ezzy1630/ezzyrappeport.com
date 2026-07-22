@@ -26,6 +26,12 @@ export type GlyphDebugSnapshot = Readonly<{
   velocity: GlyphDebugVec2;
   orientation: GlyphDebugVec3;
   angularVelocity: GlyphDebugVec3;
+  currentForce?: GlyphDebugVec3;
+  currentTorque?: GlyphDebugVec3;
+  nearestInteractionDistance?: number;
+  peakDisplacement?: number;
+  peakRotationDegrees?: number;
+  settlingTime?: number;
   latestImpact: GlyphDebugImpact | null;
 }>;
 
@@ -46,6 +52,10 @@ export type GlyphDebugImpulseRequest =
 export type GlyphDebugHooks = Readonly<{
   readSnapshots: () => readonly GlyphDebugSnapshot[];
   applyImpulse: (request: GlyphDebugImpulseRequest) => void;
+  setFreezeWater?: (frozen: boolean) => void;
+  setFreezeGlyphs?: (frozen: boolean) => void;
+  setView?: (view: "scene" | "solver" | "front-depth" | "back-depth" | "thickness") => void;
+  reset?: () => void;
 }>;
 
 export type GlyphDebugApi = Readonly<{
@@ -59,6 +69,10 @@ export type GlyphDebugApi = Readonly<{
     strength?: number,
   ) => void;
   impulseBetween: (firstGlyphIndex: number, secondGlyphIndex: number, strength?: number) => void;
+  freezeWater: (frozen?: boolean) => void;
+  freezeGlyphs: (frozen?: boolean) => void;
+  view: (view: "scene" | "solver" | "front-depth" | "back-depth" | "thickness") => void;
+  reset: () => void;
   refresh: () => void;
 }>;
 
@@ -89,6 +103,10 @@ function vec2(value: GlyphDebugVec2) {
   return `${fixed(value[0])},${fixed(value[1])}`;
 }
 
+function vec3(value: GlyphDebugVec3) {
+  return `${fixed(value[0])},${fixed(value[1])},${fixed(value[2])}`;
+}
+
 function vec3Degrees(value: GlyphDebugVec3) {
   const radiansToDegrees = 180 / Math.PI;
   return `${fixed(value[0] * radiansToDegrees)}°,${fixed(value[1] * radiansToDegrees)}°,${fixed(value[2] * radiansToDegrees)}°`;
@@ -108,8 +126,12 @@ export function formatGlyphDebugSnapshot(snapshot: GlyphDebugSnapshot, strongest
     `bounds ${fixed(bounds.left)},${fixed(bounds.top)} → ${fixed(bounds.right)},${fixed(bounds.bottom)}`,
     `d ${vec2(snapshot.displacement)}  v ${vec2(snapshot.velocity)}`,
     `rot ${vec3Degrees(snapshot.orientation)}  ω ${vec3Degrees(snapshot.angularVelocity)}/s`,
+    snapshot.currentForce ? `force ${vec3(snapshot.currentForce)}  torque ${vec3(snapshot.currentTorque ?? [0, 0, 0])}` : "",
+    snapshot.nearestInteractionDistance !== undefined
+      ? `near ${fixed(snapshot.nearestInteractionDistance)}px  peak ${fixed(snapshot.peakDisplacement ?? 0)}px / ${fixed(snapshot.peakRotationDegrees ?? 0)}°  settle ${fixed(snapshot.settlingTime ?? 0, 2)}s`
+      : "",
     `impact ${impactText}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export function isGlyphDebugEnabled(location: Pick<Location, "search"> = window.location) {
@@ -160,11 +182,12 @@ export function installGlyphDebug(hooks: GlyphDebugHooks): GlyphDebugController 
   const refresh = () => {
     const snapshots = hooks.readSnapshots();
     const strongestIndex = strongestImpactIndex(snapshots);
-    const selected = snapshots.find((snapshot) => snapshot.index === selectedGlyph) ?? snapshots[0];
+    const focusedIndex = strongestIndex >= 0 ? strongestIndex : selectedGlyph;
+    const selected = snapshots.find((snapshot) => snapshot.index === focusedIndex) ?? snapshots[0];
     const summary = selected ? formatGlyphDebugSnapshot(selected, strongestIndex) : "Waiting for renderer glyph state…";
     overlay.textContent = [
       "GLYPH DEBUG · CSS px / radians",
-      "console: __glyphDebug.select(i), .impulse(i, anchor, strength), .impulseBetween(a, b, strength)",
+      "console: select/impulse/impulseBetween · freezeWater/freezeGlyphs · view · reset",
       `glyphs ${snapshots.length} · selected ${selected?.index ?? "none"} · strongest ${strongestIndex < 0 ? "none" : strongestIndex}`,
       "", summary,
     ].join("\n");
@@ -187,6 +210,10 @@ export function installGlyphDebug(hooks: GlyphDebugHooks): GlyphDebugController 
       hooks.applyImpulse({ kind: "between", firstGlyphIndex, secondGlyphIndex, strength: finite(strength, 1) });
       refresh();
     },
+    freezeWater: (frozen = true) => hooks.setFreezeWater?.(Boolean(frozen)),
+    freezeGlyphs: (frozen = true) => hooks.setFreezeGlyphs?.(Boolean(frozen)),
+    view: (view) => hooks.setView?.(view),
+    reset: () => { hooks.reset?.(); refresh(); },
     refresh,
   });
 

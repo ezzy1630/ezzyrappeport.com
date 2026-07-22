@@ -9,19 +9,34 @@
   --font-display: var(--font-inter-tight);
   --font-mono: var(--font-geist-mono);
 
-  /* Portfolio palette */
-  --color-pearl: #f7f9fc;
-  --color-pearl-deep: #edf1f7;
-  --color-pearl-shadow: #dde4ee;
-  --color-ink: #0a0f1a;
-  --color-ink-soft: #1c2433;
-  --color-slate-cool: #5c6573;
-  --color-slate-faint: #9aa3b2;
-  --color-electric: #0066ff;
-  --color-electric-soft: #4d9fff;
-  --color-electric-glow: #7ab8ff;
-  --color-glass-edge: rgba(255, 255, 255, 0.55);
-  --color-glass-fill: rgba(255, 255, 255, 0.32);
+  /* ============================================================
+     SUNLIT SHALLOWS — one body of water, two registers.
+     Sun from the upper-left, surface glitter above, caustic
+     fire below, pearl + sand shallows, pale cerulean transmitted
+     light, steel arriving slowly with depth.
+     ============================================================ */
+  --color-pearl: #F4FAFB;
+  --color-pearl-deep: #E9F4F7;
+  --color-pearl-shadow: #D8E8EE;
+  --color-shallows: #E4F3F6;
+  --color-sand: #EFE9D8;
+  --color-sun: #FFF8EA;
+  --color-caustic: #9FDDE3;
+  --color-cerulean: #BFE4EE;
+  --color-cerulean-deep: #7FBDD4;
+  --color-steel: #46718C;
+  --color-ink: #0A1B28;
+  --color-ink-soft: #23404F;
+  --color-deep: #0C2A3E;
+  --color-basin: #16435E;
+  --color-slate-cool: #4E7182;
+  --color-slate-faint: #8FA9B4;
+  /* Retired electric blue — mapped onto water so stale references stay wet */
+  --color-electric: #2E7FA6;
+  --color-electric-soft: #5FA8C4;
+  --color-electric-glow: #9FDDE3;
+  --color-glass-edge: rgba(255, 255, 255, 0.62);
+  --color-glass-fill: rgba(255, 255, 255, 0.55);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -33,8 +48,8 @@
 
 :root {
   --radius: 0.75rem;
-  --background: oklch(0.985 0.002 240);
-  --foreground: oklch(0.18 0.02 240);
+  --background: #F4FAFB;
+  --foreground: #0A1B28;
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -48,9 +63,26 @@
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: rgba(10, 27, 40, 0.08);
+  --input: rgba(10, 27, 40, 0.08);
+  --ring: #2E7FA6;
+
+  /* Sunlit Shallows primitives */
+  --pearl: #F4FAFB;
+  --shallows: #E4F3F6;
+  --sand: #EFE9D8;
+  --sun: #FFF8EA;
+  --caustic: #9FDDE3;
+  --cerulean: #BFE4EE;
+  --steel: #46718C;
+  --ink: #0A1B28;
+  --deep: #0C2A3E;
+  --on-deep: rgba(244, 250, 251, 0.94);
+  --on-deep-mute: rgba(244, 250, 251, 0.64);
+  --on-deep-faint: rgba(244, 250, 251, 0.4);
+  --hairline: rgba(10, 27, 40, 0.08);
+  --hairline-strong: rgba(10, 27, 40, 0.16);
+  --ease-water: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 * {
@@ -82,302 +114,34 @@ body {
   overflow-x: hidden;
 }
 
-/* Portfolio-specific layers */
-.portfolio-root {
-  position: relative;
-  min-height: 100vh;
-  isolation: isolate;
-}
-
-.portfolio-root--locked {
-  height: 100svh;
-  min-height: 100svh;
-  overflow: hidden;
-}
-
-.portfolio-root--locked .content-layer {
-  height: 100svh;
-  overflow: hidden;
-}
-
-.fluid-canvas {
-  position: fixed;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 1;
-  pointer-events: none;
-  background:
-    linear-gradient(112deg, transparent 8%, rgba(255, 255, 255, 0.42) 18%, transparent 31%, rgba(255, 255, 255, 0.30) 47%, transparent 62%),
-    linear-gradient(24deg, transparent 18%, rgba(129, 178, 230, 0.060) 28%, transparent 38%, rgba(255, 255, 255, 0.36) 58%, transparent 74%),
-    radial-gradient(36% 18% at 68% 56%, rgba(58, 139, 244, 0.060), transparent 74%),
-    linear-gradient(180deg, rgba(240, 247, 254, 0.54), rgba(213, 231, 249, 0.30)),
-    image-set(
-      url("/assets/pearl-liquid-background-poster.webp") type("image/webp"),
-      url("/assets/pearl-liquid-background.png") type("image/png")
-    ) center / cover no-repeat,
-    linear-gradient(118deg, #eef5fb 0%, #dce9f5 36%, #f2f7fb 62%, #d8e5f1 100%),
-    #e6eff8;
-  overflow: hidden;
-}
-
-.fluid-canvas::before,
-.fluid-canvas::after {
-  content: "";
-  position: absolute;
-  inset: -12%;
-  pointer-events: none;
-  z-index: 2;
-}
-
-.fluid-canvas {
-  box-shadow:
-    0 0 110px rgba(255, 255, 255, 0.62) inset,
-    0 -120px 180px rgba(39, 125, 255, 0.040) inset,
-    0 90px 150px rgba(255, 255, 255, 0.34) inset;
-}
-
-.fluid-canvas::before {
-  background:
-    radial-gradient(62% 18% at 18% 24%, rgba(255, 255, 255, 0.20), transparent 68%),
-    radial-gradient(44% 20% at 74% 62%, rgba(255, 255, 255, 0.16), transparent 72%),
-    linear-gradient(118deg, transparent 8%, rgba(255, 255, 255, 0.36) 21%, transparent 34%, rgba(122, 184, 255, 0.055) 52%, transparent 67%, rgba(255, 255, 255, 0.26) 82%, transparent 96%),
-    radial-gradient(70% 34% at 42% 18%, rgba(255, 255, 255, 0.28), transparent 76%);
-  filter: blur(18px);
-  mix-blend-mode: screen;
-  opacity: calc(0.22 + var(--liquid-active, 0) * 0.05);
-  transform: translate3d(calc(var(--liquid-speed, 0) * -6px), 0, 0);
-  animation: fluid-air-sheet 13s ease-in-out infinite alternate;
-}
-
-.fluid-canvas::after {
-  background:
-    linear-gradient(166deg, transparent 2%, rgba(255, 255, 255, 0.32) 14%, transparent 27%, rgba(255, 255, 255, 0.22) 44%, transparent 58%, rgba(94, 157, 239, 0.055) 72%, transparent 88%),
-    radial-gradient(76% 24% at 18% 82%, rgba(255, 255, 255, 0.11), transparent 70%),
-    radial-gradient(48% 26% at 86% 20%, rgba(255, 255, 255, 0.09), transparent 74%);
-  filter: blur(12px);
-  mix-blend-mode: soft-light;
-  opacity: 0.28;
-  animation: fluid-haze-drift 18s linear infinite;
-}
-
-.fluid-canvas[data-fluid="starting"],
-.fluid-canvas[data-fluid="static"],
-.fluid-canvas[data-fluid="failed"] {
-  filter: saturate(0.96) contrast(1.04) brightness(0.88);
-}
-
-.fluid-canvas[data-fluid="static"]::before,
-.fluid-canvas[data-fluid="failed"]::before {
-  opacity: 0.11;
-}
-
-.fluid-canvas[data-fluid="static"]::after,
-.fluid-canvas[data-fluid="failed"]::after {
-  opacity: 0.06;
-}
-
-.fluid-canvas[data-fluid="starting"]::before,
-.fluid-canvas[data-fluid="ready"]::before {
-  opacity: calc(0.18 + var(--liquid-active, 0) * 0.040);
-}
-
-.fluid-canvas[data-fluid="starting"]::after,
-.fluid-canvas[data-fluid="ready"]::after {
-  opacity: 0.22;
-}
-
-.fluid-canvas canvas {
-  position: relative;
-  z-index: 1;
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-}
-
-.fluid-canvas[data-fluid="ready"] canvas {
-  filter: saturate(0.95) contrast(1.10) brightness(0.96);
-}
-
-@keyframes fluid-air-sheet {
-  0% {
-    transform: translate3d(-2.5%, -1.2%, 0) scale(1.02) rotate(-0.35deg);
-  }
-  100% {
-    transform: translate3d(2%, 1.1%, 0) scale(1.06) rotate(0.28deg);
-  }
-}
-
-@keyframes fluid-haze-drift {
-  0% {
-    background-position: 0 0, 0 0, 0 0, 0 0;
-  }
-  100% {
-    background-position: 172px 128px, -220px 166px, 184px -152px, -260px -190px;
-  }
-}
-
-.content-layer {
-  position: relative;
-  z-index: 10;
-  transform: translate3d(0, calc(var(--liquid-scroll-velocity, 0) * -18px), 0);
-  transition: transform 0.22s ease-out;
-}
-
-.content-layer main {
-  position: relative;
-  z-index: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, transparent 18%),
-    linear-gradient(112deg, transparent 8%, rgba(255, 255, 255, 0.30) 22%, transparent 36%, rgba(112, 174, 244, 0.045) 58%, transparent 74%),
-    linear-gradient(180deg, rgba(236, 246, 255, 0.95) 0%, rgba(226, 239, 252, 0.92) 36%, rgba(216, 231, 247, 0.95) 100%);
-  box-shadow:
-    0 -80px 130px rgba(226, 239, 252, 0.76),
-    0 -1px 0 rgba(255, 255, 255, 0.80) inset;
-}
-
-.content-layer main::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    image-set(
-      url("/assets/pearl-liquid-background-poster.webp") type("image/webp"),
-      url("/assets/pearl-liquid-background.png") type("image/png")
-    ) center top / cover repeat-y,
-    linear-gradient(180deg, rgba(231, 242, 253, 0.92), rgba(218, 233, 249, 0.92));
-  opacity: 0.24;
-  filter: saturate(0.82) contrast(1.05) brightness(0.97);
-}
-
-.hero-shell {
-  position: relative;
-  min-height: 100svh;
-  padding: 0 clamp(1.5rem, 3.1vw, 3.5rem);
-  overflow: clip;
-}
-
-.hero-name-stage {
-  position: absolute;
-  top: clamp(5.2rem, 9.6vh, 6.75rem);
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(100%, 92rem);
-  margin-inline: auto;
-  z-index: 5;
-}
-
-/* Hero name — the single visible rendering path.
-   A frosted-water CSS name: soft blue-white body, white rim, gentle depth.
-   Always visible (not gated on WebGL state) so the name is readable on every
-   device and never shows rectangle/line artifacts from a competing shader path. */
-.hero-name-fallback {
-  font-family: var(--font-inter-tight), sans-serif;
-  font-weight: 900;
-  text-transform: uppercase;
-  line-height: 1;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: clamp(0.35rem, 1.2vw, 0.85rem);
-  pointer-events: none;
-  opacity: 1;
-  transition: opacity 360ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-html[data-hero-renderer="ready"] .hero-name-fallback {
-  opacity: 0;
-}
-
-.hero-name-fallback__line {
-  display: block;
-  width: 100%;
-}
-
-.hero-name-fallback__word {
-  position: relative;
-  display: inline-block;
-  max-width: 100%;
-  font-size: clamp(5.6rem, 13.4vw, 13.8rem);
-  line-height: 0.78;
-  letter-spacing: -0.065em;
-  color: rgba(184, 206, 232, 0.82);
-  -webkit-text-fill-color: rgba(184, 206, 232, 0.82);
-  -webkit-text-stroke: clamp(0.5px, 0.06vw, 1px) rgba(255, 255, 255, 0.78);
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.98),
-    0 12px 34px rgba(17, 50, 92, 0.22),
-    0 -4px 20px rgba(255, 255, 255, 0.58);
-  filter:
-    drop-shadow(0 2px 1px rgba(255, 255, 255, 0.88))
-    drop-shadow(0 22px 30px rgba(23, 54, 92, 0.14));
-}
+/* Portfolio layout and visual ownership lives in revamp.css. */
 
 /* Display font utility (Inter Tight) — replaces repeated inline styles. */
 .font-display {
   font-family: var(--font-inter-tight), sans-serif;
 }
 
-.hero-copy-row {
-  position: absolute;
-  left: max(7.6rem, 12.5vw);
-  right: max(5rem, 7vw);
-  top: min(55.6vh, 32.75rem);
-  z-index: 20;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: clamp(1.5rem, 5vw, 6rem);
-  align-items: end;
-  width: auto;
-  margin-inline: auto;
-}
-
-.hero-projects {
-  position: absolute;
-  left: clamp(2rem, 5.3vw, 5rem);
-  right: clamp(2rem, 5.3vw, 5rem);
-  bottom: clamp(6.8rem, 11.4vh, 8.2rem);
-  z-index: 18;
-  width: auto;
-  max-width: 94rem;
-  margin-inline: auto;
-}
-
-/* Shared optical material: white rim, inner bevel, blue only at refraction points. */
+/* Glass is an interface material: white ~55%, 24px blur, one-pixel
+   upper highlight, minimal shadow, no glow. */
 .glass {
-  background:
-    radial-gradient(90% 130% at 16% 0%, rgba(255, 255, 255, 0.68), transparent 58%),
-    radial-gradient(70% 72% at 78% 102%, rgba(54, 133, 232, 0.14), transparent 64%),
-    linear-gradient(150deg, rgba(246, 251, 255, 0.44), rgba(226, 239, 252, 0.36) 48%, rgba(202, 224, 248, 0.30)),
-    rgba(230, 241, 253, 0.34);
-  backdrop-filter: blur(16px) saturate(128%) contrast(1.04);
-  -webkit-backdrop-filter: blur(16px) saturate(128%) contrast(1.04);
-  border: 1px solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.62);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.95) inset,
-    0 -1px 0 rgba(13, 74, 155, 0.10) inset,
-    0 -10px 22px rgba(0, 102, 255, 0.055) inset,
-    0 16px 34px -26px rgba(11, 39, 82, 0.34);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 12px 28px -20px rgba(10, 27, 40, 0.28);
+  transition: transform 0.3s var(--ease-water), box-shadow 0.3s var(--ease-water);
 }
 
 .glass-strong {
-  background:
-    radial-gradient(92% 132% at 18% -2%, rgba(255, 255, 255, 0.72), transparent 60%),
-    radial-gradient(78% 74% at 82% 104%, rgba(48, 129, 232, 0.17), transparent 66%),
-    linear-gradient(154deg, rgba(246, 251, 255, 0.54), rgba(225, 239, 253, 0.44) 50%, rgba(202, 224, 248, 0.34)),
-    rgba(226, 239, 252, 0.42);
-  backdrop-filter: blur(20px) saturate(132%) contrast(1.05);
-  -webkit-backdrop-filter: blur(20px) saturate(132%) contrast(1.05);
-  border: 1px solid rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px) saturate(140%);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.72);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.98) inset,
-    0 -1px 0 rgba(13, 74, 155, 0.12) inset,
-    0 -14px 28px rgba(0, 102, 255, 0.065) inset,
-    0 22px 42px -28px rgba(12, 43, 92, 0.42);
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 18px 36px -26px rgba(10, 27, 40, 0.32);
 }
 
 .section-heading {
@@ -390,58 +154,30 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
   left: 0;
   right: auto;
   bottom: -1.1rem;
-  width: min(15rem, 34vw);
-  height: 2px;
+  width: min(11rem, 26vw);
+  height: 1px;
   z-index: -1;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(0, 102, 255, 0.42), rgba(255, 255, 255, 0.92), transparent);
-  box-shadow: 0 0 14px rgba(0, 102, 255, 0.10);
-  opacity: 0.78;
+  background: linear-gradient(90deg, rgba(70, 113, 140, 0.4), rgba(159, 221, 227, 0.5), transparent);
+  opacity: 0.6;
 }
 
 .section-kicker {
   display: inline-flex;
   align-items: center;
   gap: 0.7rem;
-  font-weight: 650;
-}
-
-.section-kicker::before {
-  content: "";
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 999px;
-  background: rgba(0, 102, 255, 0.94);
-  box-shadow: 0 0 16px rgba(0, 102, 255, 0.34);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(70, 113, 140, 0.86);
 }
 
 .section-kicker::after {
   content: "";
   width: clamp(2.8rem, 8vw, 7rem);
   height: 1px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(0, 102, 255, 0.24), rgba(255, 255, 255, 0.78), transparent);
-}
-
-.location-capsule__status {
-  background: rgba(0, 102, 255, 0.96);
-  box-shadow:
-    0 0 0 3px rgba(255, 255, 255, 0.45),
-    0 0 16px rgba(0, 102, 255, 0.48);
-}
-
-.location-capsule__pin {
-  background:
-    radial-gradient(74% 80% at 30% 12%, rgba(255, 255, 255, 0.88), transparent 64%),
-    rgba(255, 255, 255, 0.26);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.78) inset,
-    0 -7px 12px rgba(0, 102, 255, 0.035) inset,
-    0 0 0 1px rgba(255, 255, 255, 0.42);
-}
-
-.location-capsule__coords {
-  border-top: 1px solid rgba(255, 255, 255, 0.38);
+  background: linear-gradient(90deg, rgba(70, 113, 140, 0.32), transparent);
 }
 
 .motion-toggle {
@@ -455,7 +191,7 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
   min-height: 2.55rem;
   padding: 0.65rem 0.9rem;
   border-radius: 999px;
-  color: rgba(10, 15, 26, 0.86);
+  color: rgba(10, 27, 40, 0.86);
   font-size: 12px;
   font-weight: 650;
   letter-spacing: 0.01em;
@@ -467,13 +203,11 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
   width: 0.48rem;
   height: 0.48rem;
   border-radius: 999px;
-  background: rgba(0, 102, 255, 0.95);
-  box-shadow: 0 0 14px rgba(0, 102, 255, 0.48);
+  background: #2E7FA6;
 }
 
 .motion-toggle[aria-pressed="false"]::after {
-  background: rgba(92, 101, 115, 0.42);
-  box-shadow: none;
+  background: rgba(70, 113, 140, 0.42);
 }
 
 .motion-toggle__icon {
@@ -485,147 +219,61 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
   isolation: isolate;
 }
 
-.depth-section::before,
-.contact-depth::before {
-  content: "";
-  position: absolute;
-  inset: 2rem clamp(0.75rem, 3vw, 2rem);
-  z-index: -1;
-  pointer-events: none;
-  border-radius: clamp(20px, 3vw, 32px);
-  background:
-    radial-gradient(42% 32% at 16% 18%, rgba(255, 255, 255, 0.38), transparent 72%),
-    radial-gradient(36% 42% at 80% 68%, rgba(0, 102, 255, 0.085), transparent 74%),
-    linear-gradient(180deg, rgba(239, 248, 255, 0.34), rgba(204, 225, 247, 0.18));
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.78) inset,
-    0 -44px 80px rgba(0, 102, 255, 0.045) inset;
-  opacity: 0.72;
-}
-
-.depth-section--projects::before {
-  inset: 1.25rem clamp(0.55rem, 2.2vw, 1.7rem);
-  background:
-    linear-gradient(108deg, transparent 4%, rgba(255, 255, 255, 0.28) 18%, transparent 36%, rgba(255, 255, 255, 0.18) 61%, transparent 82%),
-    radial-gradient(46% 18% at 22% 34%, rgba(255, 255, 255, 0.13), transparent 70%),
-    radial-gradient(52% 20% at 72% 72%, rgba(255, 255, 255, 0.10), transparent 72%),
-    linear-gradient(180deg, rgba(241, 249, 255, 0.48), rgba(209, 228, 247, 0.18));
-  border-color: rgba(255, 255, 255, 0.34);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.86) inset,
-    0 -42px 86px rgba(0, 102, 255, 0.030) inset;
-}
-
-.depth-section--projects::after {
-  content: "";
-  position: absolute;
-  inset: 8% 0 auto;
-  height: 72%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(102deg, transparent 9%, rgba(255, 255, 255, 0.32) 18%, transparent 30%, rgba(0, 102, 255, 0.050) 54%, transparent 72%),
-    radial-gradient(54% 20% at 18% 44%, rgba(255, 255, 255, 0.13), transparent 72%),
-    radial-gradient(46% 18% at 78% 56%, rgba(255, 255, 255, 0.10), transparent 74%);
-  mask-image: linear-gradient(180deg, transparent, #000 18%, #000 78%, transparent);
-  opacity: 0.70;
-}
-
-.depth-section--experience::after {
-  content: "";
-  position: absolute;
-  inset: 12% 0 auto;
-  height: 52%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent),
-    radial-gradient(circle at 42% 24%, rgba(0, 102, 255, 0.070) 0 1px, transparent 2px),
-    radial-gradient(circle at 58% 38%, rgba(0, 102, 255, 0.045) 0 1px, transparent 2px),
-    radial-gradient(circle at 48% 58%, rgba(255, 255, 255, 0.12) 0 1px, transparent 2px);
-  mask-image: linear-gradient(180deg, transparent, #000 20%, #000 68%, transparent);
-  opacity: 0.55;
-}
-
-.droplet-timeline {
-  background:
-    radial-gradient(circle, rgba(0, 102, 255, 0.64) 0 2px, transparent 3px) center top / 1px 42px repeat-y,
-    linear-gradient(180deg, rgba(0, 102, 255, 0.40), rgba(255, 255, 255, 0.70), transparent);
-  box-shadow: 0 0 24px rgba(0, 102, 255, 0.16);
-}
-
-.depth-plate {
-  backdrop-filter: blur(18px) saturate(118%);
-  -webkit-backdrop-filter: blur(18px) saturate(118%);
-}
-
-.depth-plate:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.92) inset,
-    0 -20px 34px rgba(0, 102, 255, 0.11) inset,
-    0 26px 38px -28px rgba(13, 47, 93, 0.50);
-}
-
-.depth-section--about::before {
-  background:
-    linear-gradient(132deg, rgba(255, 255, 255, 0.42), transparent 28%, rgba(255, 255, 255, 0.22) 62%, transparent 86%),
-    linear-gradient(180deg, rgba(246, 251, 255, 0.42), rgba(216, 233, 249, 0.18));
-}
-
-.about-still-water,
-.about-current {
+/* Caustic hairline at section boundaries — low opacity, edges only. */
+.caustic-band {
   position: relative;
-}
-
-.about-still-water::after {
-  content: "";
-  position: absolute;
-  inset: auto 8% -1.2rem;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.88), rgba(0, 102, 255, 0.24), transparent);
-  box-shadow: 0 0 22px rgba(0, 102, 255, 0.10);
-}
-
-.contact-depth {
   isolation: isolate;
 }
 
-.contact-depth::before {
-  background:
-    linear-gradient(118deg, transparent 5%, rgba(255, 255, 255, 0.40) 20%, transparent 38%, rgba(0, 102, 255, 0.042) 64%, transparent 82%),
-    linear-gradient(180deg, rgba(246, 251, 255, 0.46), rgba(216, 233, 249, 0.22));
-  box-shadow:
-    0 2px 0 rgba(255, 255, 255, 0.84) inset,
-    0 -52px 94px rgba(0, 102, 255, 0.035) inset,
-    0 34px 80px -70px rgba(10, 43, 92, 0.38);
+.caustic-band::before {
+  display: none;
 }
 
-.contact-mirror {
-  position: relative;
-  overflow: hidden;
+@media (prefers-reduced-motion: no-preference) {
+  .caustic-band::before {
+    animation: caustic-band-drift 16s var(--ease-water) infinite alternate;
+  }
 }
 
-.contact-mirror::after {
-  content: "";
-  position: absolute;
-  left: 8%;
-  right: 8%;
-  bottom: 0.85rem;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.92), rgba(0, 102, 255, 0.20), transparent);
-  opacity: 0.78;
+@keyframes caustic-band-drift {
+  0% { background-position: 0 0, 0 0, 0 0, 0 0; }
+  100% { background-position: 42px 0, -36px 0, 28px 0, -48px 0; }
+}
+
+/* Decorative depth ticks — desktop margins only. */
+.depth-ticks {
+  position: fixed;
+  left: clamp(0.7rem, 1.4vw, 1.6rem);
+  top: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-block: 34vh 12vh;
   pointer-events: none;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(70, 113, 140, 0.4);
+}
+
+.depth-ticks span {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  white-space: nowrap;
+}
+
+@media (max-width: 1280px) {
+  .depth-ticks { display: none; }
 }
 
 /* Liquid ripple button — hover triggers a soft radial ripple */
 .liquid-button {
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.3s var(--ease-water), box-shadow 0.3s var(--ease-water);
 }
 
 .liquid-button::before {
@@ -633,11 +281,10 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(0, 102, 255, 0.14), transparent 42%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 38%, rgba(0, 102, 255, 0.045));
+    radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), rgba(159, 221, 227, 0.28), transparent 42%);
   opacity: 0;
   transform: scale(0.2);
-  transition: opacity 0.4s ease, transform 0.5s ease;
+  transition: opacity 0.4s var(--ease-water), transform 0.5s var(--ease-water);
   pointer-events: none;
   z-index: 0;
 }
@@ -665,7 +312,7 @@ html[data-hero-renderer="ready"] .hero-name-fallback {
 
 /* Focus ring */
 :where(a, button, input, textarea, [tabindex]):not([data-no-focus-ring]):focus-visible {
-  outline: 2px solid var(--color-electric);
+  outline: 2px solid #1F6E94;
   outline-offset: 3px;
   border-radius: 6px;
 }
@@ -678,8 +325,8 @@ nextjs-portal {
 
 /* Selection */
 ::selection {
-  background: rgba(0, 102, 255, 0.2);
-  color: var(--color-ink);
+  background: rgba(159, 221, 227, 0.55);
+  color: #0A1B28;
 }
 
 /* Reduced motion */
@@ -691,101 +338,6 @@ nextjs-portal {
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .fluid-canvas::before,
-  .fluid-canvas::after {
-    animation: none !important;
-    opacity: 0.22;
-  }
-}
-
-/* Hero name responsive scaling — mobile */
-@media (max-width: 768px) {
-  .hero-shell {
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
-    gap: clamp(1.1rem, 3.2svh, 1.8rem);
-    padding: clamp(5.1rem, 11svh, 6.5rem) 1.15rem 5.4rem;
-    overflow: visible;
-  }
-
-  .hero-name-fallback {
-    padding-inline: 0 !important;
-    width: 100%;
-    gap: clamp(0.18rem, 1svh, 0.38rem);
-    opacity: 1;
-  }
-
-  .hero-name-fallback__line {
-    display: block;
-    width: 100%;
-    text-align: center;
-  }
-
-  .hero-name-fallback__word {
-    display: inline-block;
-    max-width: 100%;
-    font-size: clamp(3.4rem, 17.2vw, 4.85rem);
-    line-height: 0.82;
-    letter-spacing: -0.07em;
-    white-space: nowrap;
-    -webkit-text-stroke: 1px rgba(255, 255, 255, 0.92);
-  }
-
-  .hero-name-stage,
-  .hero-copy-row,
-  .hero-projects {
-    position: static;
-    transform: none;
-    left: auto;
-    right: auto;
-    top: auto;
-    bottom: auto;
-    width: 100%;
-  }
-
-  .hero-copy-row {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 1.05rem;
-    padding-bottom: 0;
-    max-width: 100%;
-  }
-
-  .hero-copy-row > * {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* hero-name-fallback mobile sizing is set above */
-
-  .site-nav {
-    width: 100vw;
-    max-width: 100vw;
-    padding-inline: 1rem;
-  }
-
-  .site-nav-cta {
-    display: none;
-  }
-
-  .hero-projects {
-    margin-top: 0.15rem;
-  }
-
-  .hero-copy-row p {
-    width: 100%;
-    max-width: min(100%, 20rem) !important;
-    overflow-wrap: anywhere;
-  }
-
-  .portfolio-root,
-  .content-layer {
-    max-width: 100vw;
-    overflow-x: clip;
   }
 }
 
@@ -852,8 +404,9 @@ nextjs-portal {
 }
 
 @media (min-width: 769px) and (max-height: 820px) {
-  .hero-copy-row {
-    top: min(50.5vh, 29.5rem);
+  .hero-copy-row,
+  .hero-annotations {
+    bottom: clamp(1.4rem, 4.5vh, 2.6rem);
   }
 
   .hero-projects {
@@ -886,7 +439,7 @@ nextjs-portal {
       transparent 30%,
       rgba(255, 255, 255, 0.45) 50%,
       transparent 70%);
-  animation: glass-sheen 6s ease-in-out infinite;
+  animation: glass-sheen 6s var(--ease-water) infinite;
   pointer-events: none;
 }
 
@@ -930,14 +483,14 @@ nextjs-portal {
   overflow: hidden;
   background:
     radial-gradient(92% 130% at 12% 0%, rgba(255, 255, 255, 0.42), transparent 58%),
-    radial-gradient(72% 48% at 18% 112%, rgba(0, 102, 255, 0.10), transparent 66%),
+    radial-gradient(72% 48% at 18% 112%, rgba(46, 127, 166, 0.10), transparent 66%),
     linear-gradient(155deg, rgba(246, 251, 255, 0.34), rgba(218, 234, 250, 0.22) 54%, rgba(185, 213, 244, 0.16)),
     rgba(230, 242, 255, 0.22);
   border: 1px solid rgba(255, 255, 255, 0.82);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.94) inset,
     0 -1px 0 rgba(22, 86, 165, 0.14) inset,
-    0 -16px 24px rgba(0, 102, 255, 0.055) inset,
+    0 -16px 24px rgba(46, 127, 166, 0.055) inset,
     0 18px 30px -24px rgba(8, 35, 82, 0.42);
   backdrop-filter: blur(18px) saturate(122%) contrast(1.02);
   -webkit-backdrop-filter: blur(18px) saturate(122%) contrast(1.02);
@@ -1003,7 +556,7 @@ nextjs-portal {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.98) inset,
     0 -1px 0 rgba(22, 86, 165, 0.16) inset,
-    0 -16px 24px rgba(0, 102, 255, 0.07) inset,
+    0 -16px 24px rgba(46, 127, 166, 0.07) inset,
     0 26px 40px -28px rgba(8, 35, 82, 0.5);
 }
 
@@ -1016,9 +569,9 @@ nextjs-portal {
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.98) inset,
     0 -1px 0 rgba(22, 86, 165, 0.16) inset,
-    0 -16px 24px rgba(0, 102, 255, 0.07) inset,
+    0 -16px 24px rgba(46, 127, 166, 0.07) inset,
     0 26px 40px -28px rgba(8, 35, 82, 0.5),
-    0 0 0 2px rgba(0, 102, 255, 0.6);
+    0 0 0 2px rgba(46, 127, 166, 0.6);
 }
 
 .liquid-glass-canvas {
@@ -1080,7 +633,7 @@ nextjs-portal {
   border-radius: 50%;
   background:
     radial-gradient(70% 86% at 28% 10%, rgba(255, 255, 255, 0.90), transparent 58%),
-    radial-gradient(90% 76% at 78% 110%, rgba(0, 102, 255, 0.080), transparent 62%),
+    radial-gradient(90% 76% at 78% 110%, rgba(46, 127, 166, 0.080), transparent 62%),
     rgba(248, 252, 255, 0.82);
   color: rgba(8, 12, 18, 0.92);
   box-shadow:
@@ -1142,12 +695,12 @@ nextjs-portal {
   color: var(--color-ink);
   background:
     linear-gradient(112deg, rgba(255, 255, 255, 0.82), rgba(238, 247, 255, 0.60) 38%, rgba(218, 236, 255, 0.45)),
-    radial-gradient(84% 62% at 74% 108%, rgba(0, 102, 255, 0.11), transparent 64%),
+    radial-gradient(84% 62% at 74% 108%, rgba(46, 127, 166, 0.11), transparent 64%),
     rgba(244, 250, 255, 0.72);
   border: 1px solid rgba(255, 255, 255, 0.86);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.98) inset,
-    0 -22px 54px rgba(0, 102, 255, 0.055) inset,
+    0 -22px 54px rgba(46, 127, 166, 0.055) inset,
     0 38px 96px -56px rgba(8, 35, 82, 0.52);
   backdrop-filter: blur(26px) saturate(126%) contrast(1.03);
   -webkit-backdrop-filter: blur(26px) saturate(126%) contrast(1.03);
@@ -1177,7 +730,7 @@ nextjs-portal {
   font-family: var(--font-geist-mono), monospace;
   font-size: 11px;
   letter-spacing: 0.16em;
-  color: rgba(0, 102, 255, 0.86);
+  color: rgba(46, 127, 166, 0.86);
 }
 
 .project-modal__title {
@@ -1233,7 +786,7 @@ nextjs-portal {
   border: 1px solid rgba(255, 255, 255, 0.70);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.90) inset,
-    0 -12px 22px rgba(0, 102, 255, 0.035) inset;
+    0 -12px 22px rgba(46, 127, 166, 0.035) inset;
 }
 
 .project-modal__proof h3 {
@@ -1276,14 +829,14 @@ nextjs-portal {
   border-radius: 38px;
   background:
     radial-gradient(40% 42% at 20% 36%, rgba(255, 255, 255, 0.32), transparent 72%),
-    radial-gradient(42% 48% at 86% 62%, rgba(0, 102, 255, 0.070), transparent 76%);
+    radial-gradient(42% 48% at 86% 62%, rgba(46, 127, 166, 0.070), transparent 76%);
   border: 0;
   opacity: 0.62;
 }
 
 .project-evidence-stage:nth-child(even)::before {
   background:
-    linear-gradient(106deg, transparent 10%, rgba(255, 255, 255, 0.24) 28%, transparent 48%, rgba(0, 102, 255, 0.040) 72%, transparent 88%);
+    linear-gradient(106deg, transparent 10%, rgba(255, 255, 255, 0.24) 28%, transparent 48%, rgba(46, 127, 166, 0.040) 72%, transparent 88%);
 }
 
 .project-artifact {
@@ -1310,12 +863,12 @@ nextjs-portal {
   transform: translate(-50%, -50%) rotate(-9deg);
   background:
     linear-gradient(108deg, transparent 6%, rgba(255, 255, 255, 0.60) 24%, transparent 44%, rgba(255, 255, 255, 0.30) 68%, transparent 88%),
-    radial-gradient(62% 34% at 76% 84%, rgba(0, 102, 255, 0.12), transparent 70%),
+    radial-gradient(62% 34% at 76% 84%, rgba(46, 127, 166, 0.12), transparent 70%),
     radial-gradient(65% 62% at 54% 54%, rgba(232, 244, 255, 0.46), rgba(255, 255, 255, 0.10) 72%, transparent 100%);
   border: 1px solid rgba(255, 255, 255, 0.52);
   box-shadow:
     0 2px 0 rgba(255, 255, 255, 0.88) inset,
-    0 -20px 42px rgba(0, 102, 255, 0.055) inset,
+    0 -20px 42px rgba(46, 127, 166, 0.055) inset,
     0 34px 50px -42px rgba(11, 42, 88, 0.32);
   filter: blur(0.1px) saturate(1.06);
   opacity: 0.86;
@@ -1325,7 +878,7 @@ nextjs-portal {
   inset: 16% 6%;
   border-radius: 999px;
   background:
-    linear-gradient(92deg, transparent 8%, rgba(0, 102, 255, 0.048) 28%, transparent 46%, rgba(255, 255, 255, 0.13) 62%, transparent 82%),
+    linear-gradient(92deg, transparent 8%, rgba(46, 127, 166, 0.048) 28%, transparent 46%, rgba(255, 255, 255, 0.13) 62%, transparent 82%),
     radial-gradient(70% 44% at 50% 52%, rgba(255, 255, 255, 0.32), transparent 72%);
   mask-image: radial-gradient(70% 48% at 50% 50%, #000 42%, transparent 76%);
   opacity: 0.42;
@@ -1359,12 +912,12 @@ nextjs-portal {
   padding: 1.15rem 1.2rem;
   background:
     linear-gradient(116deg, rgba(255, 255, 255, 0.58), transparent 32%, rgba(255, 255, 255, 0.22) 68%, transparent 90%),
-    radial-gradient(64% 42% at 94% 100%, rgba(0, 102, 255, 0.090), transparent 70%),
+    radial-gradient(64% 42% at 94% 100%, rgba(46, 127, 166, 0.090), transparent 70%),
     linear-gradient(145deg, rgba(255,255,255,0.48), rgba(226,240,255,0.32));
   border: 1px solid rgba(255, 255, 255, 0.76);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.9) inset,
-    0 -16px 26px rgba(0, 102, 255, 0.045) inset,
+    0 -16px 26px rgba(46, 127, 166, 0.045) inset,
     0 20px 32px -28px rgba(13, 47, 93, 0.46);
 }
 
@@ -1376,7 +929,7 @@ nextjs-portal {
   bottom: 10px;
   height: 2px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.34), transparent);
+  background: linear-gradient(90deg, transparent, rgba(46, 127, 166, 0.34), transparent);
   opacity: 0.62;
 }
 
@@ -1403,13 +956,13 @@ nextjs-portal {
 
 .timeline-bead {
   background:
-    radial-gradient(circle at 34% 20%, rgba(255, 255, 255, 0.95), rgba(232, 244, 255, 0.62) 42%, rgba(0, 102, 255, 0.30) 100%);
+    radial-gradient(circle at 34% 20%, rgba(255, 255, 255, 0.95), rgba(232, 244, 255, 0.62) 42%, rgba(46, 127, 166, 0.30) 100%);
   border: 1px solid rgba(255, 255, 255, 0.86);
   box-shadow:
-    0 0 0 4px rgba(0, 102, 255, 0.095),
-    0 0 22px rgba(0, 102, 255, 0.24),
+    0 0 0 4px rgba(46, 127, 166, 0.095),
+    0 0 22px rgba(46, 127, 166, 0.24),
     0 1px 0 rgba(255, 255, 255, 0.96) inset,
-    0 -4px 10px rgba(0, 102, 255, 0.18) inset;
+    0 -4px 10px rgba(46, 127, 166, 0.18) inset;
 }
 
 .stack-river span {
@@ -1419,7 +972,7 @@ nextjs-portal {
     linear-gradient(180deg, rgba(255, 255, 255, 0.46), rgba(221, 238, 255, 0.24));
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 -8px 16px rgba(0, 102, 255, 0.038) inset;
+    0 -8px 16px rgba(46, 127, 166, 0.038) inset;
 }
 
 .project-detail-hero {
@@ -1439,7 +992,7 @@ nextjs-portal {
   z-index: -1;
   border-radius: 44px;
   background:
-    radial-gradient(40% 68% at 77% 42%, rgba(0, 102, 255, 0.105), transparent 72%),
+    radial-gradient(40% 68% at 77% 42%, rgba(46, 127, 166, 0.105), transparent 72%),
     radial-gradient(46% 56% at 15% 18%, rgba(255, 255, 255, 0.58), transparent 70%);
   opacity: 0.9;
 }
@@ -1455,7 +1008,7 @@ nextjs-portal {
   height: 2px;
   margin-top: 1.35rem;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(0, 102, 255, 0.44), rgba(255, 255, 255, 0.88), transparent);
+  background: linear-gradient(90deg, rgba(46, 127, 166, 0.44), rgba(255, 255, 255, 0.88), transparent);
 }
 
 .project-detail-artifact {
@@ -1473,12 +1026,12 @@ nextjs-portal {
   border-radius: 32px;
   background:
     radial-gradient(64% 88% at 14% 0%, rgba(255, 255, 255, 0.72), transparent 64%),
-    radial-gradient(54% 60% at 92% 92%, rgba(0, 102, 255, 0.12), transparent 70%),
+    radial-gradient(54% 60% at 92% 92%, rgba(46, 127, 166, 0.12), transparent 70%),
     linear-gradient(145deg, rgba(255, 255, 255, 0.44), rgba(235, 246, 255, 0.25));
   border: 1px solid rgba(255, 255, 255, 0.62);
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.88) inset,
-    0 -20px 36px rgba(0, 102, 255, 0.045) inset,
+    0 -20px 36px rgba(46, 127, 166, 0.045) inset,
     0 30px 50px -38px rgba(11, 42, 88, 0.34);
 }
 
@@ -1488,7 +1041,7 @@ nextjs-portal {
   inset: auto 8% 0;
   height: 4px;
   border-radius: 999px 999px 0 0;
-  background: linear-gradient(90deg, transparent, rgba(0, 102, 255, 0.34), rgba(255, 255, 255, 0.70), transparent);
+  background: linear-gradient(90deg, transparent, rgba(46, 127, 166, 0.34), rgba(255, 255, 255, 0.70), transparent);
   opacity: 0.70;
 }
 
@@ -1519,7 +1072,7 @@ nextjs-portal {
 .project-buttons-row__card:focus-visible .liquid-glass-arrow,
 .liquid-glass-arrow:focus-visible {
   box-shadow:
-    0 0 0 3px rgba(0, 102, 255, 0.35),
+    0 0 0 3px rgba(46, 127, 166, 0.35),
     0 10px 28px -18px rgba(8, 35, 82, 0.45),
     0 1px 1px rgba(255, 255, 255, 0.8) inset,
     0 0 0 1px rgba(255, 255, 255, 0.4);

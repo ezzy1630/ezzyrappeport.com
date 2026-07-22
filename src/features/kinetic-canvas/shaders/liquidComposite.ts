@@ -141,6 +141,27 @@ vec3 samplePearlSurface(vec2 uv) {
     + texture(u_texture, clamp(p - texel, vec2(0.0), vec2(1.0))).rgb * 0.21;
 }
 
+vec3 proceduralWater(vec2 uv, float aspect, float time, float scrollDepth) {
+  vec2 world = vec2((uv.x - 0.5) * aspect, uv.y + scrollDepth * 1.72);
+  float broad = sin(world.x * 4.2 + world.y * 2.1 + time * 0.22)
+    + sin(world.x * -2.7 + world.y * 5.3 - time * 0.17);
+  float crossWave = sin(world.x * 11.0 - world.y * 6.4 + time * 0.31)
+    * cos(world.x * 4.8 + world.y * 8.2 - time * 0.19);
+  float depth = clamp(scrollDepth * 0.72 + uv.y * 0.16, 0.0, 1.0);
+  vec3 shallow = vec3(0.885, 0.930, 0.982);
+  vec3 deep = vec3(0.610, 0.765, 0.930);
+  vec3 color = mix(shallow, deep, depth * 0.52);
+  color += vec3(0.055, 0.095, 0.160) * broad * 0.22;
+  color += vec3(0.070, 0.120, 0.190) * crossWave * 0.090;
+  float fold = smoothstep(1.05, 1.82, abs(broad));
+  color = mix(color, vec3(0.965, 0.985, 1.0), fold * 0.22);
+  float trough = smoothstep(0.52, 1.0, -crossWave);
+  color -= vec3(0.025, 0.052, 0.095) * trough;
+  float sunShaft = pow(max(0.0, sin(world.x * 2.4 + world.y * 0.72 - time * 0.08)), 7.0);
+  color += vec3(0.095, 0.130, 0.190) * sunShaft * (1.0 - depth * 0.45);
+  return color;
+}
+
 vec2 rotateGlyph(vec2 value, float angle) {
   float c = cos(angle);
   float s = sin(angle);
@@ -170,7 +191,7 @@ float inflatedHeight(float wallDistance) {
   // A quarter-circle shoulder reaches a calm, nearly planar crown. This reads
   // as an inflated acrylic body instead of continuously beveling the entire
   // stroke like a carved slab.
-  float shoulder = clamp(wallDistance / 0.74, 0.0, 1.0);
+  float shoulder = clamp(wallDistance / 0.40, 0.0, 1.0);
   return sqrt(max(1.0 - pow(1.0 - shoulder, 2.0), 0.0));
 }
 
@@ -242,15 +263,23 @@ void main() {
     pearlSurface.g,
     texture(u_texture, clamp(flowUv - surfaceChroma, vec2(0.0), vec2(1.0))).b
   );
-  vec3 base = mix(pearlSurface, chromaticSurface, 0.32);
-  base = mix(base, white, 0.12);
-  base += vec3(0.004, 0.006, 0.012);
+  // The supplied pearl texture is now only fine material variation. The world
+  // itself is a scroll-coherent, time-varying body of water, rather than a
+  // photograph with distortion applied over it.
+  vec3 livingWater = proceduralWater(flowUv, aspect, time, u_scroll.x);
+  vec3 photographicDetail = mix(pearlSurface, chromaticSurface, 0.32);
+  vec3 base = livingWater;
+  base = mix(base, white, 0.035);
+  base += vec3(0.002, 0.004, 0.010);
   float depthVeil = smoothstep(0.04, 1.0, uv.y);
-  base = mix(base, vec3(0.91, 0.95, 0.995), depthVeil * 0.035);
+  base = mix(base, vec3(0.84, 0.91, 0.985), depthVeil * 0.025);
 
   float caustic = caustics(plane * 3.1 + vec2(time * 0.035, -time * 0.026), time * 0.42);
   float causticMask = smoothstep(0.3, 0.9, flowC) * 0.35;
   float liquidRidge = ridge(flowA - 0.52, 0.20) * 0.34 + ridge(flowB - 0.48, 0.18) * 0.22;
+  float causticFocus = smoothstep(0.62, 1.18, caustic);
+  base -= vec3(0.032, 0.064, 0.118) * (1.0 - causticFocus) * 0.38;
+  base += white * causticFocus * 0.085;
   base += vec3(0.90, 0.96, 1.0) * caustic * 0.09 * (0.65 + causticMask);
   base += vec3(0.92, 0.97, 1.0) * pow(caustic, 2.15) * (0.52 + liquidRidge) * 0.032;
   base += silver * liquidRidge * 0.05;
@@ -264,7 +293,7 @@ void main() {
   base = mix(base, white, surfaceFresnel * 0.10);
   base += white * surfaceSpecular * (0.085 + u_energy * 0.07);
   base += vec3(0.70, 0.87, 1.0) * focusedCaustic * abs(simulationHeight) * 0.34;
-  base += white * ripple.y * 0.055 + blue * ripple.x * 0.075;
+  base += white * ripple.y * 0.030 + blue * ripple.x * 0.065;
   base += transportedLight * vec3(0.12, 0.20, 0.32) * 0.08;
   // The hero exits through a moving optical surface: the scene compresses at
   // the crest, catches a thin caustic edge, then settles into the pearl field
@@ -319,7 +348,9 @@ void main() {
       }
     }
   }
-  signedDistance += 0.025;
+  // A restrained offset softens raster quantization without swelling counters
+  // or turning the silhouette into an outlined block.
+  signedDistance += 0.014;
   float titleAA = max(fwidth(signedDistance) * 1.25, mix(0.0042, 0.0072, mobilePoster));
   float frontFaceMask = smoothstep(-titleAA, titleAA, signedDistance) * u_nameOpacity;
 
@@ -339,7 +370,7 @@ void main() {
   }
   titleField = surfaceField;
   glyphLocal = surfaceLocal;
-  float surfaceSignedDistance = titleField.r * 2.0 - 1.0 + 0.025;
+  float surfaceSignedDistance = titleField.r * 2.0 - 1.0 + 0.014;
   float surfaceMask = smoothstep(-titleAA, titleAA, surfaceSignedDistance) * u_nameOpacity;
   float letterMask = max(frontFaceMask, surfaceMask);
   float sideVolume = max(frontFaceMask - surfaceMask, 0.0);
@@ -373,19 +404,22 @@ void main() {
     + simulationNormal.xy * (0.011 + faceDepth * 0.010)
     + fluidVelocity * (0.024 + faceDepth * 0.018)
     + lensOffset * 0.50;
-  float opticalPath = letterMask * (0.52 + dome * 1.08 + shoulder * 0.30);
-  vec2 refraction = uv + sampleWarp + normal.xy * (0.022 + opticalPath * 0.040);
-  vec2 backRefraction = uv + sampleWarp * 0.46 - normal.xy * (0.012 + opticalPath * 0.023);
+  float opticalPath = letterMask * (0.34 + dome * 1.72 + shoulder * 0.22);
+  vec2 volumeLens = glyphLocal * dome * 0.018;
+  vec2 refraction = uv + sampleWarp - volumeLens + normal.xy * (0.022 + opticalPath * 0.040);
+  vec2 backRefraction = uv + sampleWarp * 0.46 + volumeLens * 0.42
+    - normal.xy * (0.012 + opticalPath * 0.023);
   vec2 chroma = normal.xy * (0.00055 + opticalPath * 0.0011);
+  vec3 refractedFrontBase = proceduralWater(refraction, aspect, time, u_scroll.x);
   vec3 refractedFront = vec3(
-    texture(u_texture, clamp(refraction + chroma, vec2(0.0), vec2(1.0))).r * 0.97,
-    texture(u_texture, clamp(refraction, vec2(0.0), vec2(1.0))).g * 0.99,
-    texture(u_texture, clamp(refraction - chroma, vec2(0.0), vec2(1.0))).b * 1.02
+    proceduralWater(refraction + chroma, aspect, time, u_scroll.x).r * 0.97,
+    refractedFrontBase.g * 0.99,
+    proceduralWater(refraction - chroma, aspect, time, u_scroll.x).b * 1.02
   );
-  vec3 refractedBack = texture(u_texture, clamp(backRefraction, vec2(0.0), vec2(1.0))).rgb;
+  vec3 refractedBack = proceduralWater(backRefraction, aspect, time, u_scroll.x);
   vec3 refracted = mix(refractedBack, refractedFront, 0.48 + dome * 0.24);
-  vec3 absorption = mix(vec3(0.066, 0.052, 0.034), vec3(0.076, 0.060, 0.040), mobilePoster);
-  vec3 transmission = mix(base, refracted, 0.78) * exp(-absorption * opticalPath);
+  vec3 absorption = mix(vec3(0.066, 0.048, 0.030), vec3(0.082, 0.060, 0.036), mobilePoster);
+  vec3 transmission = mix(base, refracted, 0.80) * exp(-absorption * opticalPath);
 
   vec3 topLeftLight = normalize(vec3(-0.48, -0.66, 0.58));
   vec3 halfLight = normalize(topLeftLight + vec3(0.0, 0.0, 1.0));
@@ -397,30 +431,47 @@ void main() {
     dot(normalize(coverageGradient + vec2(0.0001)), normalize(vec2(-0.58, -0.82))),
     0.0
   );
-  vec3 environmentReflection = mix(vec3(0.62, 0.70, 0.80), white, 0.62 + lightFacing * 0.22);
-  vec3 letterBody = mix(transmission, environmentReflection, fresnel * 0.36);
-  letterBody += white * tightSpecular * 0.52;
-  letterBody += white * broadSpecular * 0.075;
-  letterBody += white * directionalShoulder * 0.22;
+  vec3 environmentReflection = mix(vec3(0.48, 0.62, 0.78), white, 0.60 + lightFacing * 0.22);
+  vec3 letterBody = mix(transmission, environmentReflection, fresnel * 0.34);
+  // A low-density body tint gives the clear core optical presence on a pale
+  // environment without resorting to an outline. Thick paths absorb slightly
+  // more, as real acrylic/water glass does.
+  vec3 bodyTint = vec3(0.70, 0.81, 0.94);
+  letterBody = mix(letterBody, bodyTint, min(0.15, 0.060 + opticalPath * 0.040));
+  letterBody -= vec3(0.034, 0.054, 0.082) * opticalPath * 0.20;
+  letterBody -= vec3(0.030, 0.046, 0.070) * interior * (0.16 + dome * 0.12);
+  letterBody += white * tightSpecular * 0.56;
+  letterBody += white * broadSpecular * 0.080;
+  letterBody += white * directionalShoulder * 0.15;
   float lowerRightFacing = max(dot(normal.xy, normalize(vec2(0.54, 0.84))), 0.0);
-  letterBody -= vec3(0.095, 0.112, 0.145) * shoulder * lowerRightFacing * 0.90;
-  letterBody -= vec3(0.040, 0.052, 0.076) * shoulder * (1.0 - lightFacing) * 0.60;
+  letterBody -= vec3(0.090, 0.120, 0.165) * shoulder * lowerRightFacing * 0.22;
+  letterBody -= vec3(0.038, 0.058, 0.088) * shoulder * (1.0 - lightFacing) * 0.18;
   letterBody += blue * pow(caustic, 2.0) * interior * 0.025;
   float crownSheen = exp(-pow(glyphLocal.y + 0.34, 2.0) * 10.0)
     * smoothstep(0.82, 0.995, dome)
     * smoothstep(-0.92, 0.72, glyphLocal.x) * letterMask;
   letterBody += white * crownSheen * 0.14;
+  float faceGlint = exp(
+    -pow(glyphLocal.x + 0.34, 2.0) * 8.0
+    -pow(glyphLocal.y + 0.48, 2.0) * 16.0
+  ) * interior;
+  float internalWave = pow(max(
+    sin(glyphLocal.x * 5.8 - glyphLocal.y * 3.4 + time * 0.34) * 0.5 + 0.5,
+    0.0
+  ), 7.0) * interior;
+  letterBody += white * faceGlint * 0.24;
+  letterBody += vec3(0.72, 0.86, 1.0) * internalWave * 0.070;
 
   vec3 color = base;
-  vec3 sideWall = refracted * vec3(0.84, 0.90, 0.97);
-  color = mix(color, sideWall, sideVolume * 0.84);
+  vec3 sideWall = refracted * vec3(0.78, 0.87, 0.97);
+  color = mix(color, sideWall, sideVolume * 0.68);
   color = mix(color, letterBody, surfaceMask * mix(0.96, 0.985, mobilePoster));
   color -= vec3(0.035, 0.055, 0.085) * letterMask * mobilePoster * 0.20;
   float movingHighlight = clamp(dot(fluidVelocity, normalize(vec2(-0.72, -0.69))) * 2.8 + 0.5, 0.0, 1.0);
-  color += (white * ripple.y * 0.11 + blue * ripple.x * 0.12) * letterMask;
-  color += white * simulationHeight * 0.065 * letterMask;
+  color += (white * ripple.y * 0.055 + blue * ripple.x * 0.10) * letterMask;
+  color += white * simulationHeight * 0.040 * letterMask;
   color += mix(blue, white, movingHighlight) * length(fluidVelocity) * 0.12 * shoulder;
-  color += white * max(glyphTransform.w, 0.0) * shoulder * 0.32;
+  color += white * max(glyphTransform.w, 0.0) * shoulder * 0.18;
   color -= vec3(0.025, 0.055, 0.11) * max(-glyphTransform.w, 0.0) * letterMask * 1.8;
   color += white * lensStrength * 0.008 + blue * lensStrength * 0.006;
 
