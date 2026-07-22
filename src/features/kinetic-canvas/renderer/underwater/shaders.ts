@@ -339,7 +339,7 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       + uAttenuationColor * (1.0 - transmittance) * 0.34;
     body += (environment - directEnvironment) * (0.55 + shoulder * 0.30);
     /* keep faces bright and glassy, deepen only at grazing edges */
-    body *= mix(0.96, 0.82, shoulder * shoulder);
+    body *= mix(0.88, 0.68, shoulder * shoulder);
     /* embedded micro-bubbles catch a faint internal sparkle */
     body += vec3(0.86, 0.95, 0.99) * bubbleMask * transmittance * 0.16;
 
@@ -363,14 +363,14 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float grazing = smoothstep(0.35, 0.95, shoulder);
     vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.016 + opticalThickness * 0.03), 0.002, 0.998);
     vec3 reflectedEnvironment = texture2D(uEnvironment, reflectedUv).rgb;
-    vec3 edgeWater = mix(reflectedEnvironment * 0.9, ceruleanEdge(), 0.35);
-    body = mix(body, edgeWater, grazing * 0.55);
+    vec3 edgeWater = mix(reflectedEnvironment * 0.72, ceruleanEdge() * 0.78, 0.58);
+    body = mix(body, edgeWater, grazing * 0.72);
 
     /* caustic fire concentrating through the letterforms */
     float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.2 + vWorldPosition.z * 5.4 - uTime * 0.16), 7.0)
       * (0.3 + shoulder * 0.7);
 
-    vec3 reflected = vec3(0.92, 0.97, 1.0) * fresnel * 0.55;
+    vec3 reflected = vec3(0.62, 0.82, 0.94) * fresnel * 0.72;
     reflected += uKeyColor * keySpec * uKeyIntensity * 0.045;
     reflected += uFillColor * fillSpec * uFillIntensity * 0.022;
     reflected += vec3(0.55, 0.70, 0.78) * lowerBounce * 0.05;
