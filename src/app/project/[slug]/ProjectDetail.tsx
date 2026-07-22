@@ -33,7 +33,7 @@ export default function ProjectDetail({ project }: Props) {
   return (
     <PortfolioShell heroName={false}>
       <div className="content-layer">
-        <article className={styles.page} data-project={project.slug}>
+        <article className={styles.page} data-project={project.slug} data-water-section="case">
           <ProjectTransitionLink href="/#projects" className={styles.back}>
             <span className={styles.backIcon} aria-hidden="true">←</span>
             <span>Back to selected work</span>

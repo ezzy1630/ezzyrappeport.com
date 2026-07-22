@@ -676,3 +676,46 @@
     transform: none;
   }
 }
+
+/* Persistent mid-depth case-study material. Content stays code-native while
+   the shared fixed renderer supplies the optical basin behind the page. */
+.page {
+  --ink: rgba(247, 250, 255, 0.97);
+  --ink-soft: rgba(235, 242, 252, 0.84);
+  --muted: rgba(218, 230, 245, 0.67);
+  --faint: rgba(202, 218, 239, 0.48);
+  --line: rgba(222, 237, 255, 0.17);
+  --blue: #4d8dff;
+  --pearl: rgba(7, 24, 49, 0.48);
+}
+
+.page::before {
+  background: linear-gradient(180deg, rgba(2, 18, 42, 0.2), rgba(2, 14, 34, 0.48) 38%, rgba(1, 10, 26, 0.72));
+}
+
+.proofStrip,
+.link,
+.paginationLink {
+  border-color: rgba(222, 237, 255, 0.18);
+  background: rgba(7, 29, 58, 0.34);
+}
+
+.heroMedia {
+  border-color: rgba(227, 241, 255, 0.28);
+  background: rgba(9, 35, 67, 0.3);
+  box-shadow: 0 2.5rem 6rem -3rem rgba(0, 5, 17, 0.8), inset 0 1px 0 rgba(255,255,255,0.26);
+}
+
+.chapter,
+.overview,
+.galleryItem {
+  background-color: rgba(5, 23, 49, 0.26);
+}
+
+.stack li,
+.caution {
+  border-color: rgba(77, 141, 255, 0.32);
+  background: rgba(25, 82, 156, 0.16);
+}
+
+.paginationLink:hover { background: rgba(30, 73, 126, 0.38); }

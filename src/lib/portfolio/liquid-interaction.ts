@@ -36,8 +36,24 @@ export type LiquidScrollState = {
 export type LiquidPhysics = {
   pointer: LiquidPointerState;
   ripples: LiquidRippleState[];
+  interactions: LiquidInteractionEvent[];
   scroll: LiquidScrollState;
   time: number;
+};
+
+export type LiquidInteractionEvent = {
+  id: number;
+  kind: "wake" | "press";
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  vx: number;
+  vy: number;
+  strength: number;
+  radius: number;
+  time: number;
+  pointerType: string;
 };
 
 export type LiquidFieldSample = {
@@ -53,6 +69,7 @@ type PhysicsSubscriber = (state: LiquidPhysics) => void;
 
 const RIPPLE_LIFETIME = 3.2;
 const MAX_RIPPLES = 16;
+const MAX_INTERACTIONS = 48;
 const POINTER_WAKE_RADIUS = 260;
 const RIPPLE_SPEED = 155;
 
@@ -71,6 +88,7 @@ const state: LiquidPhysics = {
     time: 0,
   },
   ripples: [],
+  interactions: [],
   scroll: {
     progress: 0,
     velocity: 0,
@@ -94,6 +112,8 @@ let lastTickAt = 0;
 let lastMovementSplatAt = 0;
 let rootVarsKey = "";
 let pendingPointer: { x: number; y: number; time: number } | null = null;
+let pendingPointerSamples: Array<{ x: number; y: number; time: number; pointerType: string }> = [];
+let interactionId = 0;
 let runtimeVisible = true;
 let visibilityObserver: IntersectionObserver | null = null;
 
@@ -145,20 +165,51 @@ function pushRipple(x: number, y: number, intensity: number, now: number) {
   emitPhysics();
 }
 
+function heroRect() {
+  return document.querySelector<HTMLElement>(".hero-shell")?.getBoundingClientRect() ?? null;
+}
+
+function insideHero(x: number, y: number) {
+  const rect = heroRect();
+  return Boolean(rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
+}
+
+function pushInteraction(event: Omit<LiquidInteractionEvent, "id">) {
+  state.interactions.push({ ...event, id: ++interactionId });
+  if (state.interactions.length > MAX_INTERACTIONS) state.interactions.shift();
+}
+
 function onPointerMove(e: PointerEvent) {
   const now = performance.now();
   lastInputTime = now;
-  pendingPointer = { x: e.clientX, y: e.clientY, time: now };
+  const samples = typeof e.getCoalescedEvents === "function" ? e.getCoalescedEvents() : [e];
+  pendingPointerSamples.push(...samples.map((sample) => ({
+    x: sample.clientX,
+    y: sample.clientY,
+    time: sample.timeStamp || now,
+    pointerType: sample.pointerType || e.pointerType || "mouse",
+  })));
+  if (pendingPointerSamples.length > 24) {
+    pendingPointerSamples.splice(0, pendingPointerSamples.length - 24);
+  }
+  const latest = pendingPointerSamples[pendingPointerSamples.length - 1];
+  pendingPointer = latest ? { x: latest.x, y: latest.y, time: now } : null;
 }
 
 function applyPendingPointer() {
   if (!pendingPointer) return;
+  const samples = pendingPointerSamples.length > 0
+    ? pendingPointerSamples
+    : [{ ...pendingPointer, pointerType: "mouse" }];
+  pendingPointerSamples = [];
   const { x, y, time: now } = pendingPointer;
   pendingPointer = null;
+  const hadPointerSample = state.pointer.time > 0;
+  const initialSample = samples[0] ?? { x, y, time: now, pointerType: "mouse" };
   const prevTime = state.pointer.time || now;
   const dt = Math.max((now - prevTime) / 1000, 0.001);
-  const dx = x - state.pointer.x;
-  const dy = y - state.pointer.y;
+  const dx = hadPointerSample ? x - state.pointer.x : 0;
+  const dy = hadPointerSample ? y - state.pointer.y : 0;
   const speed = Math.hypot(dx, dy) / Math.max(window.innerWidth, window.innerHeight) / dt;
 
   state.pointer.x = x;
@@ -174,6 +225,36 @@ function applyPendingPointer() {
 
   emitPointer();
   emitPhysics();
+
+  let previous = hadPointerSample
+    ? { x: x - dx, y: y - dy, time: prevTime, pointerType: initialSample.pointerType }
+    : initialSample;
+  for (const sample of samples) {
+    if (!insideHero(sample.x, sample.y) && !insideHero(previous.x, previous.y)) {
+      previous = sample;
+      continue;
+    }
+    const sampleDt = Math.max((sample.time - previous.time) / 1000, 1 / 240);
+    const sampleDx = sample.x - previous.x;
+    const sampleDy = sample.y - previous.y;
+    const sampleSpeed = Math.hypot(sampleDx, sampleDy) / sampleDt;
+    if (Math.hypot(sampleDx, sampleDy) > 0.5) {
+      pushInteraction({
+        kind: "wake",
+        startX: previous.x,
+        startY: previous.y,
+        endX: sample.x,
+        endY: sample.y,
+        vx: sampleDx / sampleDt,
+        vy: sampleDy / sampleDt,
+        strength: Math.min(1, 0.10 + sampleSpeed / 1450),
+        radius: Math.min(54, 18 + sampleSpeed * 0.018),
+        time: now / 1000,
+        pointerType: sample.pointerType,
+      });
+    }
+    previous = sample;
+  }
 
   // Add an occasional low-energy wake to ordinary pointer travel. The
   // distance and elapsed-time gates keep it legible as water motion instead
@@ -197,14 +278,36 @@ function onPointerDown(e: PointerEvent) {
   pendingPointer = null;
   state.pointer.x = e.clientX;
   state.pointer.y = e.clientY;
-  state.pointer.vx = 0;
-  state.pointer.vy = 0;
+  // Preserve the incoming sweep as the initial water momentum. Zeroing it on
+  // pointer-down made a click feel detached from the motion that caused it.
+  state.pointer.vx *= 0.62;
+  state.pointer.vy *= 0.62;
   state.pointer.active = true;
-  state.pointer.energy = Math.max(state.pointer.energy, 0.58);
+  const incomingSpeed = Math.hypot(state.pointer.vx, state.pointer.vy);
+  state.pointer.energy = Math.max(
+    state.pointer.energy,
+    Math.min(0.66, 0.42 + incomingSpeed * 0.16),
+  );
   state.pointer.time = now;
   emitPointer();
   emitPhysics();
-  pushRipple(e.clientX, e.clientY, 0.76, now);
+  if (insideHero(e.clientX, e.clientY)) {
+    const inheritedLength = Math.max(incomingSpeed, 1);
+    pushInteraction({
+      kind: "press",
+      startX: e.clientX,
+      startY: e.clientY,
+      endX: e.clientX,
+      endY: e.clientY,
+      vx: state.pointer.vx,
+      vy: state.pointer.vy,
+      strength: Math.min(1, 0.72 + inheritedLength / 2600),
+      radius: e.pointerType === "touch" ? 48 : 38,
+      time: now / 1000,
+      pointerType: e.pointerType || "mouse",
+    });
+    pushRipple(e.clientX, e.clientY, Math.min(0.88, 0.72 + incomingSpeed / 5000), now);
+  }
 }
 
 function onPointerEnd() {
@@ -250,6 +353,9 @@ function tick(now: number) {
     } else {
       state.ripples.splice(index, 1);
     }
+  }
+  for (let index = state.interactions.length - 1; index >= 0; index--) {
+    if (t - state.interactions[index].time > 3.4) state.interactions.splice(index, 1);
   }
 
   if (!state.pointer.active && now - lastInputTime > 4000 && t > nextIdleRipple) {
@@ -325,6 +431,7 @@ function stop() {
   visibilityObserver = null;
   cancelAnimationFrame(raf);
   pendingPointer = null;
+  pendingPointerSamples = [];
 }
 
 function hasSubscribers() {

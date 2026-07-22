@@ -90,36 +90,48 @@ export default function KineticCanvas({
       if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
 
       const canvas = document.createElement("canvas");
-      canvas.dataset.renderer = "webgl2-fluid";
       canvas.dataset.quality = quality.tier;
 
       try {
-        const { startFluidRenderer } = await import("./renderer/webglFluidRenderer");
+        // One optical renderer spans the home page and project routes. Case
+        // studies omit the hero glyphs but keep the same water and input field.
+        const markReady = () => {
+          if (!disposed) {
+            container.dataset.fluid = "ready";
+            if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
+          }
+        };
+        const recover = () => {
+          if (disposed) return;
+          container.dataset.fluid = "recovering";
+          window.requestAnimationFrame(() => {
+            if (!disposed) void startInteractiveRenderer();
+          });
+        };
+        const fail = (error: unknown) => {
+          if (disposed) return;
+          container.dataset.rendererError = error instanceof Error ? error.name : "RendererLoadError";
+          container.dataset.fluid = "failed";
+          if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+        };
+        const { startUnderwaterHeroRenderer } = await import(
+          "./renderer/underwater/underwaterHeroRenderer"
+        );
         if (disposed) {
           canvas.remove();
           return;
         }
-        const rendererCleanup = startFluidRenderer(
+        const rendererCleanup = startUnderwaterHeroRenderer({
           canvas,
           getPhysics,
           reducedMotionRef,
           staticModeRef,
-          heroNameRef,
           quality,
-          () => {
-            if (!disposed) {
-              container.dataset.fluid = "ready";
-              if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
-            }
-          },
-          () => {
-            if (disposed) return;
-            container.dataset.fluid = "recovering";
-            window.requestAnimationFrame(() => {
-              if (!disposed) void startInteractiveRenderer();
-            });
-          },
-        );
+          renderHeroGlyphs: heroNameRef.current,
+          onReady: markReady,
+          onFailure: fail,
+          onRecover: recover,
+        });
         attachRenderer(canvas, rendererCleanup, "starting");
       } catch (error) {
         container.dataset.rendererError =
