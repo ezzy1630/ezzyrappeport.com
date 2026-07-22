@@ -1,6 +1,6 @@
 /* eslint-disable no-console -- this script is a CLI regression reporter */
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
 import {
   downgradeQualityTier,
@@ -77,6 +77,12 @@ const liquidInteractionSource = readFileSync(
   new URL("../src/lib/portfolio/liquid-interaction.ts", import.meta.url),
   "utf8",
 );
+const kineticCanvasSource = readFileSync(
+  new URL("../src/features/kinetic-canvas/KineticCanvas.tsx", import.meta.url),
+  "utf8",
+);
+const revampCssSource = readFileSync(new URL("../src/app/revamp.css", import.meta.url), "utf8");
+const globalsCssSource = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
 const heroManifest = validateHeroManifest(JSON.parse(readFileSync(
   new URL("../public/assets/hero/ezzy-rappeport-glyphs.json", import.meta.url),
   "utf8",
@@ -164,6 +170,43 @@ const tests = [
     for (const match of underwaterShaderSource.matchAll(/smoothstep\((\d*\.?\d+),\s*(\d*\.?\d+),/g)) {
       assert.ok(Number(match[1]) < Number(match[2]), `smoothstep edges must ascend: ${match[0]}`);
     }
+  }],
+  ["Procedural volume owns production water while posters fail closed", () => {
+    for (const asset of [
+      "shallow-desktop-v1.webp",
+      "shallow-portrait-v1.webp",
+      "mid-depth-v1.webp",
+      "deep-basin-v1.webp",
+    ]) {
+      const url = new URL(`../public/assets/water/${asset}`, import.meta.url);
+      assert.ok(existsSync(url), `${asset} must exist`);
+      assert.ok(statSync(url).size > 10_000, `${asset} must contain a fallback poster`);
+    }
+    assert.match(underwaterRendererSource, /procedural-refractive-volume-v3/);
+    assert.match(underwaterRendererSource, /authored-high-pass-v2/);
+    assert.match(underwaterShaderSource, /Perspective floor projection/);
+    assert.match(underwaterShaderSource, /Volumetric shafts/);
+    assert.match(underwaterShaderSource, /Beer-Lambert-style blue absorption/);
+    assert.match(underwaterShaderSource, /authored fields contribute high-frequency optical structure only/);
+    assert.match(underwaterShaderSource, /opticalCenter - opticalLow/);
+    assert.match(underwaterShaderSource, /sampleOpticalDetail/);
+    assert.doesNotMatch(underwaterShaderSource, /color\s*=\s*mix\(color,\s*optical/);
+    assert.doesNotMatch(underwaterShaderSource, /color\s*=\s*texture2D\(uOptical/);
+    assert.match(underwaterRendererSource, /source\.geometry\.clone\(\)/);
+    assert.match(underwaterRendererSource, /authored inflated Inter Tight mesh/);
+    assert.match(underwaterRendererSource, /const liveGlyphsVisible = heroVisible/);
+    assert.doesNotMatch(underwaterRendererSource, /canvas\.clientWidth > 768/);
+    assert.match(kineticCanvasSource, /renderHeroGlyphs: heroNameRef\.current/);
+    assert.doesNotMatch(kineticCanvasSource, /webglFluidRenderer/);
+  }],
+  ["Revamp stylesheet is the single owner for canvas and hero geometry", () => {
+    assert.match(revampCssSource, /\.fluid-canvas\s*\{/);
+    assert.match(revampCssSource, /\.hero-shell\s*\{/);
+    assert.doesNotMatch(globalsCssSource, /\.fluid-canvas\s*\{/);
+    assert.doesNotMatch(globalsCssSource, /\.hero-shell\s*\{/);
+    assert.match(revampCssSource, /data-water-section="about"/);
+    assert.match(revampCssSource, /data-water-section="contact"/);
+    assert.match(revampCssSource, /data-water-section="case"/);
   }],
   ["Retina 4K stays inside the high pixel budget", () => {
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
@@ -428,6 +471,14 @@ const tests = [
       hardwareConcurrency: 8,
       viewportWidth: 1440,
     }), "static");
+    assert.equal(resolveQualityTier({
+      coarsePointer: false,
+      saveData: false,
+      deviceMemory: 8,
+      hardwareConcurrency: 8,
+      viewportWidth: 1440,
+      reducedMotion: true,
+    }), "low");
   }],
   ["Adaptive downgrade is monotonic", () => {
     assert.equal(downgradeQualityTier("high"), "balanced");
