@@ -93,9 +93,8 @@ export default function KineticCanvas({
       canvas.dataset.quality = quality.tier;
 
       try {
-        // The GLB hero has one production physics/render path. The older atlas
-        // renderer remains only for non-title fluid canvases.
-        const useUnderwaterHero = heroNameRef.current;
+        // One optical renderer spans the home page and project routes. Case
+        // studies omit the hero glyphs but keep the same water and input field.
         const markReady = () => {
           if (!disposed) {
             container.dataset.fluid = "ready";
@@ -115,42 +114,24 @@ export default function KineticCanvas({
           container.dataset.fluid = "failed";
           if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
         };
-        let rendererCleanup: () => void;
-        if (useUnderwaterHero) {
-          const { startUnderwaterHeroRenderer } = await import(
-            "./renderer/underwater/underwaterHeroRenderer"
-          );
-          if (disposed) {
-            canvas.remove();
-            return;
-          }
-          rendererCleanup = startUnderwaterHeroRenderer({
-            canvas,
-            getPhysics,
-            reducedMotionRef,
-            staticModeRef,
-            quality,
-            onReady: markReady,
-            onFailure: fail,
-            onRecover: recover,
-          });
-        } else {
-          const { startFluidRenderer } = await import("./renderer/webglFluidRenderer");
-          if (disposed) {
-            canvas.remove();
-            return;
-          }
-          rendererCleanup = startFluidRenderer(
-            canvas,
-            getPhysics,
-            reducedMotionRef,
-            staticModeRef,
-            heroNameRef,
-            quality,
-            markReady,
-            recover,
-          );
+        const { startUnderwaterHeroRenderer } = await import(
+          "./renderer/underwater/underwaterHeroRenderer"
+        );
+        if (disposed) {
+          canvas.remove();
+          return;
         }
+        const rendererCleanup = startUnderwaterHeroRenderer({
+          canvas,
+          getPhysics,
+          reducedMotionRef,
+          staticModeRef,
+          quality,
+          renderHeroGlyphs: heroNameRef.current,
+          onReady: markReady,
+          onFailure: fail,
+          onRecover: recover,
+        });
         attachRenderer(canvas, rendererCleanup, "starting");
       } catch (error) {
         container.dataset.rendererError =

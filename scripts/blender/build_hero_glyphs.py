@@ -43,18 +43,21 @@ GLYPHS = [
     (12, "T", 1, "line2_T_12"),
 ]
 
-# Dimensions are in font em units. A slightly inset source curve lets the
-# broad 0.045 em shoulder roll without choking the weight-900 counters; the
-# shallow, wide cap dome supplies convexity without forming a raised rim.
-EXTRUDE = 0.050
-CURVE_OFFSET = -0.025
-BEVEL = 0.045
-BEVEL_SEGMENTS = 8
-CURVE_RESOLUTION = 6
-BULGE = 0.022
-DIRECT_BULGE = 0.008
-BULGE_RUN = 0.110
-VOXEL_SIZE = 0.0035
+# Dimensions are in font em units. The reference is closer to cast glass than
+# ordinary extruded type: its planar silhouette is softened and its face rolls
+# continuously into a deep shoulder. A fine voxel pass rounds the font's hard
+# XY corners before the cap dome is applied.
+EXTRUDE = 0.048
+CURVE_OFFSET = -0.046
+BEVEL = 0.060
+BEVEL_SEGMENTS = 12
+CURVE_RESOLUTION = 8
+BULGE = 0.034
+DIRECT_BULGE = BULGE
+BULGE_RUN = 0.180
+VOXEL_SIZE = 0.0030
+CONTOUR_BEVEL = 0.024
+CONTOUR_BEVEL_SEGMENTS = 6
 TARGET_TRIANGLES = {
     "E": 2500,
     "Z": 2200,
@@ -160,7 +163,178 @@ def projected_centroid(mesh: bpy.types.Mesh) -> tuple[float, float]:
     return center.x, center.y
 
 
+def make_custom_rounded_a_mesh() -> bpy.types.Mesh:
+    """Build A as three overlapping rounded solids, then union by voxel.
+
+    Inter Tight's acute counter/crossbar cap triangulation is unstable under a
+    projected dome. This keeps its proportions while producing a single clean
+    cast-glass volume with no cap junction or shading seam.
+    """
+    bars: list[bpy.types.Object] = []
+    specifications = (
+        ("A_left_leg", (-0.105, 0.035, 0.0), (0.620, 0.160, 0.224), math.radians(69.5)),
+        ("A_right_leg", (0.105, 0.035, 0.0), (0.620, 0.160, 0.224), math.radians(110.5)),
+        ("A_crossbar", (0.0, -0.050, 0.0), (0.330, 0.105, 0.205), 0.0),
+    )
+    for name, location, dimensions, angle in specifications:
+        bpy.ops.mesh.primitive_cube_add(location=location)
+        bar = bpy.context.object
+        bar.name = name
+        bar.dimensions = dimensions
+        bar.rotation_euler.z = angle
+        set_active(bar)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        rounding = bar.modifiers.new("Cast_Glass_Rounding", "BEVEL")
+        rounding.width = 0.052
+        rounding.segments = 10
+        rounding.limit_method = "NONE"
+        bpy.ops.object.modifier_apply(modifier=rounding.name)
+        bars.append(bar)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for bar in bars:
+        bar.select_set(True)
+    bpy.context.view_layer.objects.active = bars[0]
+    bpy.ops.object.join()
+    duplicate = bpy.context.object
+    duplicate.name = "working_A_custom_rounded"
+    duplicate.data.remesh_voxel_size = VOXEL_SIZE
+    duplicate.data.remesh_voxel_adaptivity = 0.0
+    bpy.ops.object.voxel_remesh()
+
+    relaxation = duplicate.modifiers.new("A_Union_Relaxation", "LAPLACIANSMOOTH")
+    relaxation.iterations = 8
+    relaxation.lambda_factor = 0.12
+    relaxation.lambda_border = 0.04
+    relaxation.use_volume_preserve = True
+    bpy.ops.object.modifier_apply(modifier=relaxation.name)
+    duplicate.data.calc_loop_triangles()
+    current_triangles = len(duplicate.data.loop_triangles)
+    if current_triangles > TARGET_TRIANGLES["A"]:
+        reduction = duplicate.modifiers.new("A_Production_Decimation", "DECIMATE")
+        reduction.decimate_type = "COLLAPSE"
+        reduction.ratio = TARGET_TRIANGLES["A"] / current_triangles
+        reduction.use_collapse_triangulate = True
+        bpy.ops.object.modifier_apply(modifier=reduction.name)
+
+    polish = duplicate.modifiers.new("A_Final_Polish", "LAPLACIANSMOOTH")
+    polish.iterations = 3
+    polish.lambda_factor = 0.035
+    polish.lambda_border = 0.015
+    polish.use_volume_preserve = True
+    bpy.ops.object.modifier_apply(modifier=polish.name)
+    for poly in duplicate.data.polygons:
+        poly.use_smooth = True
+
+    cx, cy = projected_centroid(duplicate.data)
+    z_coords = [vert.co.z for vert in duplicate.data.vertices]
+    cz = (min(z_coords) + max(z_coords)) * 0.5
+    for vert in duplicate.data.vertices:
+        vert.co.x -= cx
+        vert.co.y -= cy
+        vert.co.z -= cz
+    duplicate.data.update()
+    duplicate.data.name = "glyph_A_custom_rounded_mesh"
+    mesh = duplicate.data
+    bpy.data.objects.remove(duplicate, do_unlink=True)
+    return mesh
+
+
+def make_custom_rounded_bar_mesh(char: str) -> bpy.types.Mesh:
+    """Construct hard-cornered display glyphs from overlapping rounded bars."""
+    specifications = {
+        "E": (
+            ("spine", (-0.135, 0.0, 0.0), (0.540, 0.135, 0.224), math.radians(90.0)),
+            ("top", (0.0, 0.205, 0.0), (0.400, 0.130, 0.224), 0.0),
+            ("middle", (-0.020, 0.0, 0.0), (0.360, 0.125, 0.224), 0.0),
+            ("bottom", (0.0, -0.205, 0.0), (0.400, 0.130, 0.224), 0.0),
+        ),
+        "Z": (
+            ("top", (0.0, 0.205, 0.0), (0.448, 0.135, 0.224), 0.0),
+            ("diagonal", (0.0, 0.0, 0.0), (0.505, 0.145, 0.224), math.radians(50.0)),
+            ("bottom", (0.0, -0.205, 0.0), (0.448, 0.135, 0.224), 0.0),
+        ),
+        "Y": (
+            ("left_arm", (-0.082, 0.142, 0.0), (0.330, 0.145, 0.224), math.radians(124.0)),
+            ("right_arm", (0.082, 0.142, 0.0), (0.330, 0.145, 0.224), math.radians(56.0)),
+            ("stem", (0.0, -0.145, 0.0), (0.330, 0.145, 0.224), math.radians(90.0)),
+        ),
+        "T": (
+            ("top", (0.0, 0.205, 0.0), (0.400, 0.145, 0.224), 0.0),
+            ("stem", (0.0, -0.070, 0.0), (0.480, 0.145, 0.224), math.radians(90.0)),
+        ),
+    }[char]
+    bars: list[bpy.types.Object] = []
+    for part, location, dimensions, angle in specifications:
+        bpy.ops.mesh.primitive_cube_add(location=location)
+        bar = bpy.context.object
+        bar.name = f"{char}_{part}"
+        bar.dimensions = dimensions
+        bar.rotation_euler.z = angle
+        set_active(bar)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        rounding = bar.modifiers.new("Cast_Glass_Rounding", "BEVEL")
+        rounding.width = 0.058
+        rounding.segments = 10
+        rounding.limit_method = "NONE"
+        bpy.ops.object.modifier_apply(modifier=rounding.name)
+        bars.append(bar)
+
+    bpy.ops.object.select_all(action="DESELECT")
+    for bar in bars:
+        bar.select_set(True)
+    bpy.context.view_layer.objects.active = bars[0]
+    bpy.ops.object.join()
+    duplicate = bpy.context.object
+    duplicate.name = f"working_{char}_custom_rounded"
+    duplicate.data.remesh_voxel_size = VOXEL_SIZE
+    duplicate.data.remesh_voxel_adaptivity = 0.0
+    bpy.ops.object.voxel_remesh()
+
+    relaxation = duplicate.modifiers.new("Rounded_Bar_Union_Relaxation", "LAPLACIANSMOOTH")
+    relaxation.iterations = 8
+    relaxation.lambda_factor = 0.12
+    relaxation.lambda_border = 0.04
+    relaxation.use_volume_preserve = True
+    bpy.ops.object.modifier_apply(modifier=relaxation.name)
+    duplicate.data.calc_loop_triangles()
+    current_triangles = len(duplicate.data.loop_triangles)
+    if current_triangles > TARGET_TRIANGLES[char]:
+        reduction = duplicate.modifiers.new("Production_Decimation", "DECIMATE")
+        reduction.decimate_type = "COLLAPSE"
+        reduction.ratio = TARGET_TRIANGLES[char] / current_triangles
+        reduction.use_collapse_triangulate = True
+        bpy.ops.object.modifier_apply(modifier=reduction.name)
+
+    polish = duplicate.modifiers.new("Final_Polish", "LAPLACIANSMOOTH")
+    polish.iterations = 3
+    polish.lambda_factor = 0.035
+    polish.lambda_border = 0.015
+    polish.use_volume_preserve = True
+    bpy.ops.object.modifier_apply(modifier=polish.name)
+    for poly in duplicate.data.polygons:
+        poly.use_smooth = True
+
+    cx, cy = projected_centroid(duplicate.data)
+    z_coords = [vert.co.z for vert in duplicate.data.vertices]
+    cz = (min(z_coords) + max(z_coords)) * 0.5
+    for vert in duplicate.data.vertices:
+        vert.co.x -= cx
+        vert.co.y -= cy
+        vert.co.z -= cz
+    duplicate.data.update()
+    duplicate.data.name = f"glyph_{char}_custom_rounded_mesh"
+    mesh = duplicate.data
+    bpy.data.objects.remove(duplicate, do_unlink=True)
+    return mesh
+
+
 def make_inflated_mesh(source: bpy.types.Object, char: str) -> bpy.types.Mesh:
+    if char == "A":
+        return make_custom_rounded_a_mesh()
+    if char in {"E", "Z", "Y", "T"}:
+        return make_custom_rounded_bar_mesh(char)
+
     duplicate = source.copy()
     duplicate.data = source.data.copy()
     bpy.context.scene.collection.objects.link(duplicate)
@@ -170,14 +344,32 @@ def make_inflated_mesh(source: bpy.types.Object, char: str) -> bpy.types.Mesh:
     bpy.ops.object.convert(target="MESH")
     duplicate.name = f"working_{char}"
 
+    # Curve extrusion rounds the front-to-side shoulder but does not soften
+    # sharp corners in the font's XY outline. Bevel only the remaining hard
+    # contour edges before voxel reconciliation, giving E/Z/T and the A apex
+    # the rounded cast-glass silhouette seen in the reference.
+    # A's acute counter/crossbar junction cannot accept a second contour bevel
+    # without intersecting rails. Its curve shoulder plus volume relaxation
+    # already rounds the outer apex, so keep that junction clean.
+    if char != "A":
+        contour = duplicate.modifiers.new("Rounded_Planar_Contour", "BEVEL")
+        contour.width = CONTOUR_BEVEL
+        contour.segments = CONTOUR_BEVEL_SEGMENTS
+        contour.limit_method = "ANGLE"
+        contour.angle_limit = math.radians(32.0)
+        bpy.ops.object.modifier_apply(modifier=contour.name)
+        duplicate.data.update()
+
     bm = bmesh.new()
     bm.from_mesh(duplicate.data)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bmesh.ops.triangulate(bm, faces=list(bm.faces), quad_method="BEAUTY", ngon_method="BEAUTY")
     bm.normal_update()
-    # The forked junction in Y can overlap after text-to-mesh cap
-    # triangulation, so reconcile it with the countered/branched glyphs.
-    direct_cap_glyphs = {"E", "Z", "T"}
+    # Every glyph enters the same volume pipeline. Limiting voxel
+    # reconciliation to countered glyphs preserved the font's square planar
+    # corners and made the result read as beveled text instead of inflated
+    # glass.
+    direct_cap_glyphs: set[str] = set()
     if char in direct_cap_glyphs:
         cap_faces = [face for face in bm.faces if abs(face.normal.z) > 0.985]
         cap_edges = {edge for face in cap_faces for edge in face.edges}
@@ -217,9 +409,9 @@ def make_inflated_mesh(source: bpy.types.Object, char: str) -> bpy.types.Mesh:
         bm.free()
         duplicate.data.update()
 
-        # Countered glyphs can leave overlapping cap junctions after Blender's
-        # text conversion. Reconcile only those shapes into a fine watertight
-        # volume; simple glyphs retain their cleaner native curve topology.
+        # Reconcile the converted curve into a fine watertight volume. This
+        # also gives the planar silhouette enough topology to relax its hard
+        # font corners into a cast, inflated edge.
         set_active(duplicate)
         duplicate.data.remesh_voxel_size = VOXEL_SIZE
         duplicate.data.remesh_voxel_adaptivity = 0.0
@@ -243,22 +435,23 @@ def make_inflated_mesh(source: bpy.types.Object, char: str) -> bpy.types.Mesh:
             for vert in back_cap
             if any(edge.other_vert(vert) not in back_cap for edge in vert.link_edges)
         ]
+        cap_bulge = BULGE * (0.35 if char == "A" else 1.0)
         for vert in front_cap:
             distance = min((vert.co.xy - point).length for point in front_boundary)
             t = max(0.0, min(1.0, distance / BULGE_RUN))
-            vert.co.z += BULGE * math.sin(t * math.pi * 0.5)
+            vert.co.z += cap_bulge * math.sin(t * math.pi * 0.5)
         for vert in back_cap:
             distance = min((vert.co.xy - point).length for point in back_boundary)
             t = max(0.0, min(1.0, distance / BULGE_RUN))
-            vert.co.z -= BULGE * math.sin(t * math.pi * 0.5)
+            vert.co.z -= cap_bulge * math.sin(t * math.pi * 0.5)
         bm.to_mesh(duplicate.data)
         bm.free()
         duplicate.data.update()
 
-        smooth = duplicate.modifiers.new("Premium_Surface_Relaxation", "LAPLACIANSMOOTH")
-        smooth.iterations = 5
-        smooth.lambda_factor = 0.16
-        smooth.lambda_border = 0.04
+        smooth = duplicate.modifiers.new("Inflated_Silhouette_Relaxation", "LAPLACIANSMOOTH")
+        smooth.iterations = 14
+        smooth.lambda_factor = 0.20
+        smooth.lambda_border = 0.08
         smooth.use_volume_preserve = True
         bpy.ops.object.modifier_apply(modifier=smooth.name)
         duplicate.data.update()
@@ -278,9 +471,9 @@ def make_inflated_mesh(source: bpy.types.Object, char: str) -> bpy.types.Mesh:
     # a clean separation at the apex.
     if char != "A":
         polish = duplicate.modifiers.new("Post_Decimation_Polish", "LAPLACIANSMOOTH")
-        polish.iterations = 2
-        polish.lambda_factor = 0.035
-        polish.lambda_border = 0.01
+        polish.iterations = 4
+        polish.lambda_factor = 0.055
+        polish.lambda_border = 0.025
         polish.use_volume_preserve = True
         bpy.ops.object.modifier_apply(modifier=polish.name)
         duplicate.data.update()
@@ -656,13 +849,16 @@ def write_report(
         "## Modeling choices",
         "",
         f"Exact Inter Tight 900 outlines with a {CURVE_OFFSET:.3f} em source inset; {EXTRUDE:.3f} em core extrusion, {BEVEL:.3f} em shoulder, "
-        f"{BEVEL_SEGMENTS} bevel segments, a {VOXEL_SIZE:.4f} em watertight reconciliation, a {BULGE:.3f} em "
-        f"countered-glyph dome, and a {DIRECT_BULGE:.3f} em simple-glyph dome over a {BULGE_RUN:.3f} em run. "
+        f"{BEVEL_SEGMENTS} shoulder segments, a {CONTOUR_BEVEL:.3f} em planar contour bevel with {CONTOUR_BEVEL_SEGMENTS} segments (except A), "
+        f"a {VOXEL_SIZE:.4f} em watertight reconciliation, a {BULGE:.3f} em "
+        f"face dome over a {BULGE_RUN:.3f} em run. "
         "The result keeps the face center calm while rolling both "
         "front and back into continuous sidewalls. Internal counter walls use the same curve profile as outer contours.",
         "",
-        "A, P, R, O, and Y use fine voxel reconciliation at cap junctions. A receives a 0.002 em local outward "
-        "separation after decimation to keep its triangular counter and crossbar strictly non-self-intersecting.",
+        "E, Z, Y, and T use custom rounded-bar constructions at the original Inter Tight bounds, producing true XY "
+        "corner radii rather than relying on depth bevels. A is a custom three-bar rounded solid in Inter Tight "
+        "proportions. R, P, and O use fine voxel reconciliation of the font silhouette. Every custom glyph is "
+        "voxel-unioned before relaxation and remains clean and watertight.",
         "",
         "Origins are projected-area centroids at mid-depth, calculated from front-facing mesh triangles after "
         "counter subtraction. Repeated E, Z, P, and R nodes reference shared mesh data but retain independent objects.",
@@ -756,7 +952,12 @@ def main() -> None:
         obj["glyph_index"] = index
         obj["character"] = char
         obj["line_index"] = line
-        obj["shared_geometry_id"] = f"inter-tight-900-{char}-inflated-v1"
+        geometry_id = (
+            f"custom-rounded-{char}-inflated-v2"
+            if char in {"A", "E", "Z", "Y", "T"}
+            else f"inter-tight-900-{char}-inflated-v2"
+        )
+        obj["shared_geometry_id"] = geometry_id
         objects.append(obj)
 
         bounds = mesh_bounds(unique_meshes[char])
@@ -783,7 +984,7 @@ def main() -> None:
                     "local": [0.0, 0.0, 0.0],
                 },
                 "triangle_count": triangle_count(unique_meshes[char]),
-                "shared_geometry_identifier": f"inter-tight-900-{char}-inflated-v1",
+                "shared_geometry_identifier": geometry_id,
             }
         )
 
@@ -817,6 +1018,9 @@ def main() -> None:
             "bevel_em": BEVEL,
             "overall_depth_em": 2 * (EXTRUDE + BEVEL) + 2 * BULGE,
             "bevel_segments": BEVEL_SEGMENTS,
+            "contour_bevel_em": CONTOUR_BEVEL,
+            "contour_bevel_segments": CONTOUR_BEVEL_SEGMENTS,
+            "custom_rounded_glyphs": "A, E, Z, Y, and T use rounded bars voxel-unioned in Inter Tight proportions",
             "face_subdivision_levels": 0,
             "face_bulge_em": BULGE,
             "face_bulge_run_em": BULGE_RUN,

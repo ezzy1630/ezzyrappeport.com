@@ -1,3 +1,5 @@
+import Image from "next/image";
+import { MapPin } from "lucide-react";
 import { bio } from "@/lib/portfolio/content";
 import styles from "./AboutSection.module.css";
 
@@ -18,17 +20,32 @@ export default function AboutSection() {
       </header>
 
       <div className={styles.layout}>
-        <blockquote>
-          “I build at the intersection of engineering and intelligence—then stay
-          for the hard part: making the system trustworthy, useful, and real.”
-        </blockquote>
-        <div className={styles.copy}>
-          {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-          <p className={styles.signature}>
-            <span aria-hidden="true">ER</span>
-            <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
-          </p>
+        <div className={styles.story}>
+          <blockquote>
+            “I build at the intersection of engineering and intelligence—then stay
+            for the hard part: making the system trustworthy, useful, and real.”
+          </blockquote>
+          <div className={styles.copy}>
+            {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <p className={styles.signature}>
+              <span aria-hidden="true">ER</span>
+              <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
+            </p>
+          </div>
         </div>
+        <figure className={styles.portrait}>
+          <div className={styles.portraitRing}>
+            <Image
+              src="/assets/ezzy-headshot.jpg"
+              alt={`Portrait of ${bio.name}`}
+              width={720}
+              height={720}
+              sizes="(max-width: 760px) 72vw, 34vw"
+              className={styles.portraitImage}
+            />
+          </div>
+          <figcaption><MapPin aria-hidden="true" />{bio.location.title}</figcaption>
+        </figure>
       </div>
 
       <ol className={styles.principles} aria-label="Operating principles">

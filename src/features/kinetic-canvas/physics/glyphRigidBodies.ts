@@ -47,7 +47,14 @@ export type ProjectedGlyph = {
 };
 
 export function deriveMassAndInertia(glyph: HeroGlyphRuntime, variation = 1) {
-  const bounds = glyph.manifest.local_bounding_box;
+  glyph.object.geometry.computeBoundingBox();
+  const geometryBounds = glyph.object.geometry.boundingBox;
+  const bounds = geometryBounds
+    ? {
+        min: [geometryBounds.min.x, geometryBounds.min.y, geometryBounds.min.z],
+        max: [geometryBounds.max.x, geometryBounds.max.y, geometryBounds.max.z],
+      }
+    : glyph.manifest.local_bounding_box;
   const scale = glyph.manifest.rest_transform.scale;
   const width = (bounds.max[0] - bounds.min[0]) * scale[0];
   const depth = (bounds.max[1] - bounds.min[1]) * scale[1];
@@ -88,8 +95,8 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      maxTravel: 0.052 + (index % 3) * 0.004,
-      maxTilt: (3.2 + (index % 4) * 0.4) * Math.PI / 180,
+      maxTravel: 0.068 + (index % 3) * 0.005,
+      maxTilt: (4.0 + (index % 4) * 0.45) * Math.PI / 180,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -106,7 +113,14 @@ export function projectGlyph(body: GlyphBody, camera: PerspectiveCamera, viewpor
   const pivot = body.projectionScratch.fromArray(body.glyph.manifest.pivot.local).applyMatrix4(object.matrixWorld).project(camera);
   body.projectedCenter.set((pivot.x * 0.5 + 0.5) * viewport[0], (1 - (pivot.y * 0.5 + 0.5)) * viewport[1]);
   if (body.projectedHalfSize.x <= 0 || body.projectedHalfSize.y <= 0) {
-    const bounds = body.glyph.manifest.local_bounding_box;
+    body.glyph.object.geometry.computeBoundingBox();
+    const geometryBounds = body.glyph.object.geometry.boundingBox;
+    const bounds = geometryBounds
+      ? {
+          min: [geometryBounds.min.x, geometryBounds.min.y, geometryBounds.min.z],
+          max: [geometryBounds.max.x, geometryBounds.max.y, geometryBounds.max.z],
+        }
+      : body.glyph.manifest.local_bounding_box;
     let minimumX = Number.POSITIVE_INFINITY;
     let maximumX = Number.NEGATIVE_INFINITY;
     let minimumY = Number.POSITIVE_INFINITY;
