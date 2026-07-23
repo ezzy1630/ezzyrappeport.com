@@ -3,7 +3,7 @@ import type { HeroGlyphRuntime } from "../renderer/underwater/underwaterHeroRend
 import { pointSegmentDistance, radialFalloff, softLimitForce } from "./waterCoordinates.ts";
 
 export type GlyphInteraction = Readonly<{
-  kind: "wake" | "press" | "feedback";
+  kind: "wake" | "press" | "release" | "feedback";
   start: readonly [number, number];
   end: readonly [number, number];
   direction: readonly [number, number];
@@ -38,7 +38,50 @@ export type GlyphBody = {
   peakPixels: number;
   peakDegrees: number;
   lastActiveAt: number;
+  ambientPhase: number;
+  ambientFrequency: number;
+  ambientAmplitude: number;
+  ambientTiltAmplitude: number;
+  maxDepth: number;
+  maxLinearSpeed: number;
 };
+
+export type GlyphStepControl = {
+  ambientScale: number;
+  hoverGlyphIndex: number;
+  hoverStrength: number;
+  hoverPoint: readonly [number, number];
+  holdGlyphIndex: number;
+  holdPoint: readonly [number, number];
+  holdAge: number;
+  entranceStart: number;
+  entranceDepth: number;
+  entranceStagger: number;
+};
+
+export const DEFAULT_GLYPH_STEP_CONTROL: GlyphStepControl = {
+  ambientScale: 1,
+  hoverGlyphIndex: -1,
+  hoverStrength: 0,
+  hoverPoint: [0, 0],
+  holdGlyphIndex: -1,
+  holdPoint: [0, 0],
+  holdAge: 0,
+  entranceStart: Number.POSITIVE_INFINITY,
+  entranceDepth: -0.045,
+  entranceStagger: 0.04,
+};
+
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+export function glyphPhaseForIdentity(index: number, identity: string) {
+  let hash = 2166136261;
+  for (let characterIndex = 0; characterIndex < identity.length; characterIndex += 1) {
+    hash ^= identity.charCodeAt(characterIndex);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (index * GOLDEN_ANGLE + (hash >>> 0) / 0xffffffff * Math.PI * 2) % (Math.PI * 2);
+}
 
 export type ProjectedGlyph = {
   center: Vector2;
@@ -103,6 +146,12 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       peakPixels: 0,
       peakDegrees: 0,
       lastActiveAt: 0,
+      ambientPhase: glyphPhaseForIdentity(index, glyph.manifest.object_node_name),
+      ambientFrequency: index % 2 === 0 ? 0.46 : 0.71,
+      ambientAmplitude: 0.013 + (index % 3) * 0.0018,
+      ambientTiltAmplitude: (0.6 + (index % 4) * 0.18) * Math.PI / 180,
+      maxDepth: 0.078,
+      maxLinearSpeed: 0.58,
     };
   });
 }
@@ -146,13 +195,13 @@ export function projectGlyph(body: GlyphBody, camera: PerspectiveCamera, viewpor
 }
 
 export function projectGlyphRestCenter(body: GlyphBody, camera: PerspectiveCamera, viewport: readonly [number, number]) {
-  if (!Number.isFinite(body.restScreenCenter.x) || !Number.isFinite(body.restScreenCenter.y)) {
-    const projected = body.projectionScratch.copy(body.restPosition).project(camera);
-    body.restScreenCenter.set(
-      (projected.x * 0.5 + 0.5) * viewport[0],
-      (1 - (projected.y * 0.5 + 0.5)) * viewport[1],
-    );
-  }
+  // The camera moves with the shared world depth. Reproject the mooring every
+  // call so cached screen coordinates cannot turn scroll into fake glyph drift.
+  const projected = body.projectionScratch.copy(body.restPosition).project(camera);
+  body.restScreenCenter.set(
+    (projected.x * 0.5 + 0.5) * viewport[0],
+    (1 - (projected.y * 0.5 + 0.5)) * viewport[1],
+  );
   return body.restScreenCenter;
 }
 
@@ -170,6 +219,10 @@ export function wakeFalloff(distance: number, radius: number) {
   return radialFalloff(distance, radius, 1.7);
 }
 
+export function hoverFalloff(distance: number, radius: number) {
+  return radialFalloff(distance, radius, 2.2);
+}
+
 export function clickPressureFalloff(distance: number, radius: number) {
   return radialFalloff(distance, radius, 2);
 }
@@ -184,7 +237,64 @@ export function reducedMotionScale(reducedMotion: boolean) {
 
 export function pairwiseSeparationImpulse(distance: number, minimumDistance: number) {
   if (distance >= minimumDistance || minimumDistance <= 0) return 0;
-  return (1 - Math.abs(distance) / minimumDistance) * 0.018;
+  return (1 - Math.abs(distance) / minimumDistance) * 0.022;
+}
+
+export function projectedGlyphRadius(body: GlyphBody) {
+  return Math.hypot(body.projectedState.halfSize.x, body.projectedState.halfSize.y) * 1.4;
+}
+
+export function nearestGlyphIndex(
+  bodies: readonly GlyphBody[],
+  point: readonly [number, number],
+) {
+  let nearest = -1;
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  for (const body of bodies) {
+    const dx = point[0] - body.projectedState.center.x;
+    const dy = point[1] - body.projectedState.center.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance > projectedGlyphRadius(body) || distance >= nearestDistance) continue;
+    nearest = body.glyph.manifest.glyph_index;
+    nearestDistance = distance;
+  }
+  return nearest;
+}
+
+export function glyphHoverStrength(body: GlyphBody, point: readonly [number, number]) {
+  const radius = projectedGlyphRadius(body);
+  const distance = Math.hypot(
+    point[0] - body.projectedState.center.x,
+    point[1] - body.projectedState.center.y,
+  );
+  return distance > radius ? 0 : hoverFalloff(distance, radius);
+}
+
+function isFiniteBody(body: GlyphBody) {
+  return [
+    body.position.x, body.position.y, body.position.z,
+    body.velocity.x, body.velocity.y, body.velocity.z,
+    body.orientation.x, body.orientation.y, body.orientation.z,
+    body.angularVelocity.x, body.angularVelocity.y, body.angularVelocity.z,
+  ].every(Number.isFinite);
+}
+
+export function hasFiniteGlyphBodyState(body: GlyphBody) {
+  return isFiniteBody(body);
+}
+
+function recoverInvalidBody(body: GlyphBody) {
+  if (process.env.NODE_ENV !== "production") {
+    throw new Error(`Glyph physics invalid numeric state: ${body.glyph.manifest.object_node_name}`);
+  }
+  body.position.set(0, 0, 0);
+  body.velocity.set(0, 0, 0);
+  body.orientation.set(0, 0, 0);
+  body.angularVelocity.set(0, 0, 0);
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.max(minimum, Math.min(maximum, value));
 }
 
 export function stepGlyphBodies(
@@ -195,8 +305,10 @@ export function stepGlyphBodies(
   dt: number,
   now: number,
   reducedMotion: boolean,
+  control: GlyphStepControl = DEFAULT_GLYPH_STEP_CONTROL,
 ) {
   const motionScale = reducedMotionScale(reducedMotion);
+  const ambientScale = reducedMotion ? 0 : clamp(control.ambientScale, 0, 1);
   for (const body of bodies) projectGlyph(body, camera, viewport);
   for (let index = 0; index < bodies.length; index += 1) {
     const body = bodies[index];
@@ -204,6 +316,36 @@ export function stepGlyphBodies(
     body.currentForce.set(0, 0, 0);
     body.currentTorque.set(0, 0, 0);
     body.nearestInteraction = Number.POSITIVE_INFINITY;
+
+    const glyphIndex = body.glyph.manifest.glyph_index;
+    const ambientBob = Math.sin(now * body.ambientFrequency * Math.PI * 2 + body.ambientPhase)
+      * body.ambientAmplitude * ambientScale;
+    const ambientRoll = Math.sin(now * body.ambientFrequency * 1.31 * Math.PI * 2 + body.ambientPhase * 0.71)
+      * body.ambientTiltAmplitude * ambientScale;
+    const entranceAge = now - (control.entranceStart + glyphIndex * control.entranceStagger);
+    const entranceHolding = control.entranceStart < Number.POSITIVE_INFINITY && entranceAge < 0;
+    let targetZ = ambientBob;
+    if (glyphIndex === control.hoverGlyphIndex && control.hoverStrength > 0) {
+      const hoverStrength = clamp(control.hoverStrength, 0, 1);
+      targetZ -= 0.028 * hoverStrength;
+      const localX = clamp(
+        (control.hoverPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
+        -1.15,
+        1.15,
+      );
+      const localY = clamp(
+        (control.hoverPoint[1] - screen.center.y) / Math.max(screen.halfSize.y, 8),
+        -1.15,
+        1.15,
+      );
+      // The target is an equilibrium offset, so hover cannot accumulate.
+      body.currentForce.x += localX * hoverStrength * 0.08;
+      body.currentTorque.x += -localY * hoverStrength * 0.44;
+      body.currentTorque.z += localX * hoverStrength * 0.44;
+    }
+    body.currentTorque.x += ambientRoll * 30;
+    body.currentTorque.z += Math.sin(now * body.ambientFrequency * 0.87 * Math.PI * 2 + body.ambientPhase * 1.37)
+      * body.ambientTiltAmplitude * 0.72 * ambientScale * 25;
 
     for (const event of interactions) {
       const age = Math.max(0, now - event.time);
@@ -223,13 +365,17 @@ export function stepGlyphBodies(
       const falloff = event.kind === "press"
         ? clickPressureFalloff(falloffDistance, falloffRadius)
         : wakeFalloff(falloffDistance, falloffRadius);
-      const temporal = event.kind === "press" ? Math.exp(-(age - arrival) * 4.2) : Math.exp(-age * 6.5);
+      const temporal = event.kind === "press"
+        ? Math.exp(-(age - arrival) * 4.2)
+        : event.kind === "release"
+          ? Math.exp(-age * 5.2)
+          : Math.exp(-age * 6.5);
       const strength = event.strength * falloff * temporal * motionScale;
       if (strength < 0.0001) continue;
       const radialX = screen.center.x - event.end[0];
       const radialY = screen.center.y - event.end[1];
       const radialLength = Math.max(Math.hypot(radialX, radialY), 1);
-      const inheritedWeight = event.kind === "press" ? 0.34 : 1;
+      const inheritedWeight = event.kind === "press" ? 0.34 : event.kind === "release" ? 0.52 : 1;
       const directionX = event.direction[0] * inheritedWeight + radialX / radialLength * (1 - inheritedWeight);
       const directionY = event.direction[1] * inheritedWeight + radialY / radialLength * (1 - inheritedWeight);
       const directionLength = Math.max(Math.hypot(directionX, directionY), 0.001);
@@ -237,12 +383,14 @@ export function stepGlyphBodies(
       const fy = directionY / directionLength * strength;
       body.currentForce.x += fx * 2.8;
       body.currentForce.z += fy * 2.8;
-      body.currentForce.y += (event.kind === "press" ? -1 : 0.18) * strength * 0.75;
+      body.currentForce.y += (
+        event.kind === "press" ? -1 : event.kind === "release" ? 1.15 : 0.18
+      ) * strength * 0.75;
       const localHitX = Math.max(-1.15, Math.min(1.15, (event.end[0] - screen.center.x) / Math.max(screen.halfSize.x, 8)));
       const localHitY = Math.max(-1.15, Math.min(1.15, (event.end[1] - screen.center.y) / Math.max(screen.halfSize.y, 8)));
       const torque = (localHitX * screen.halfSize.x * fy - localHitY * screen.halfSize.y * fx)
         / Math.max(bodyRadius, 20);
-      const torqueScale = event.kind === "wake" ? 2.8 : 1;
+      const torqueScale = event.kind === "wake" ? 2.8 : event.kind === "release" ? 1.45 : 1;
       body.currentTorque.x += -fy * localHitY * 0.92 * torqueScale;
       body.currentTorque.z += fx * localHitX * 0.92 * torqueScale;
       body.currentTorque.y += torque * 1.82 * torqueScale;
@@ -252,12 +400,38 @@ export function stepGlyphBodies(
     const spring = 16;
     const drag = 13.5;
     body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 44);
-    body.currentForce.z += -body.position.z * spring + softLimitForce(body.position.z, body.maxTravel, 44);
-    body.currentForce.y += -body.position.y * 20 - body.velocity.y * 14;
+    body.currentForce.z += -(body.position.z - targetZ) * spring
+      + softLimitForce(body.position.z, body.maxTravel, 44);
+    const holding = glyphIndex === control.holdGlyphIndex;
+    if (holding) {
+      const holdDepth = -Math.min(0.062, 0.05 + Math.max(0, control.holdAge) * 0.004);
+      body.currentForce.y += -(body.position.y - holdDepth) * 32 - body.velocity.y * 18;
+      const localX = clamp(
+        (control.holdPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
+        -1.15,
+        1.15,
+      );
+      const localY = clamp(
+        (control.holdPoint[1] - screen.center.y) / Math.max(screen.halfSize.y, 8),
+        -1.15,
+        1.15,
+      );
+      const strain = Math.min(1, Math.max(0, control.holdAge * 2));
+      body.currentTorque.x += -localY * 0.34 + Math.sin(now * Math.PI * 2 * 6 + body.ambientPhase) * 0.06 * strain;
+      body.currentTorque.z += localX * 0.34;
+    } else if (entranceHolding) {
+      body.currentForce.y += -(body.position.y - control.entranceDepth) * 30 - body.velocity.y * 18;
+    } else {
+      body.currentForce.y += -body.position.y * 20 - body.velocity.y * 14;
+    }
     body.velocity.x += (body.currentForce.x / body.mass - body.velocity.x * drag) * dt;
     body.velocity.z += (body.currentForce.z / body.mass - body.velocity.z * drag) * dt;
     body.velocity.y += body.currentForce.y / body.mass * dt;
+    body.velocity.clampLength(0, body.maxLinearSpeed);
     body.position.addScaledVector(body.velocity, dt);
+    body.position.x = clamp(body.position.x, -body.maxTravel, body.maxTravel);
+    body.position.z = clamp(body.position.z, -body.maxTravel, body.maxTravel);
+    body.position.y = clamp(body.position.y, -body.maxDepth, body.maxDepth * 0.55);
 
     const angularSpring = 13;
     const angularDrag = 13.5;
@@ -270,6 +444,7 @@ export function stepGlyphBodies(
       // never wind the letter into a jitter.
       body.angularVelocity[axis] = Math.max(-1.35, Math.min(1.35, body.angularVelocity[axis]));
       body.orientation[axis] += body.angularVelocity[axis] * dt;
+      body.orientation[axis] = clamp(body.orientation[axis], -body.maxTilt, body.maxTilt);
     }
 
     // Idle deadzone: far from any disturbance, microscopic residual motion
@@ -295,6 +470,7 @@ export function stepGlyphBodies(
         }
       }
     }
+    if (!isFiniteBody(body)) recoverInvalidBody(body);
   }
 
   // Soft screen-plane separation. It only activates near overlap and keeps line identity intact.
@@ -316,6 +492,11 @@ export function stepGlyphBodies(
       bodies[first].velocity.x -= sign * push / bodies[first].mass;
       bodies[second].velocity.x += sign * push / bodies[second].mass;
     }
+  }
+
+  for (const body of bodies) {
+    body.velocity.clampLength(0, body.maxLinearSpeed);
+    if (!isFiniteBody(body)) recoverInvalidBody(body);
   }
 
   for (const body of bodies) {

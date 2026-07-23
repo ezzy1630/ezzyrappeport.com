@@ -99,6 +99,7 @@ export default function KineticCanvas({
           if (!disposed) {
             container.dataset.fluid = "ready";
             if (heroNameRef.current) document.documentElement.dataset.heroRenderer = "ready";
+            window.dispatchEvent(new Event("liquid-renderer-ready"));
           }
         };
         const recover = () => {

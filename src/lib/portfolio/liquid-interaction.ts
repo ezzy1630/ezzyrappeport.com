@@ -1,17 +1,19 @@
 "use client";
 
-import { resolveMovementSplat } from "./interaction-policy";
+import { resolveMovementSplat } from "./interaction-policy.ts";
 import {
   computeWorldState,
   invalidateWorldMeasurement,
   stillWorld,
   type WorldState,
-} from "./world-state";
+} from "./world-state.ts";
 
 export type LiquidPointerState = {
   x: number;
   y: number;
+  present: boolean;
   active: boolean;
+  pointerType: "mouse" | "pen" | "touch" | "unknown";
   speed: number;
   /** Velocity in pixels per second. */
   vx: number;
@@ -72,6 +74,29 @@ export type LiquidFieldSample = {
   pointerForce: number;
 };
 
+export function decayScrollVelocity(velocity: number, deltaSeconds: number) {
+  return velocity * Math.exp(-7.5 * Math.max(0, deltaSeconds));
+}
+
+export function scrollWakeStrength(velocity: number) {
+  const normalized = Math.max(0, Math.min(1, (Math.abs(velocity) - 0.12) / 0.7));
+  return normalized * normalized * (3 - normalized * 2);
+}
+
+export function liquidEmissionAllowed({
+  visible,
+  pageVisible,
+  reducedMotion,
+  rendererReady,
+}: Readonly<{
+  visible: boolean;
+  pageVisible: boolean;
+  reducedMotion: boolean;
+  rendererReady: boolean;
+}>) {
+  return visible && pageVisible && !reducedMotion && rendererReady;
+}
+
 type PointerSubscriber = (state: LiquidPointerState) => void;
 type RippleSubscriber = (state: LiquidRippleState) => void;
 type PhysicsSubscriber = (state: LiquidPhysics) => void;
@@ -89,7 +114,9 @@ const state: LiquidPhysics = {
   pointer: {
     x: defaultX,
     y: defaultY,
+    present: false,
     active: false,
+    pointerType: "unknown",
     speed: 0,
     vx: 0,
     vy: 0,
@@ -121,7 +148,12 @@ let lastInputTime = 0;
 let lastTickAt = 0;
 let lastMovementSplatAt = 0;
 let rootVarsKey = "";
-let pendingPointer: { x: number; y: number; time: number } | null = null;
+let pendingPointer: {
+  x: number;
+  y: number;
+  time: number;
+  pointerType: string;
+} | null = null;
 let pendingPointerSamples: Array<{ x: number; y: number; time: number; pointerType: string }> = [];
 let interactionId = 0;
 
@@ -150,6 +182,7 @@ function setRootVars() {
   root.style.setProperty("--liquid-speed", state.pointer.speed.toFixed(3));
   root.style.setProperty("--liquid-energy", state.pointer.energy.toFixed(3));
   root.style.setProperty("--liquid-active", state.pointer.active ? "1" : "0");
+  root.style.setProperty("--liquid-present", state.pointer.present ? "1" : "0");
   root.style.setProperty("--liquid-scroll", state.scroll.progress.toFixed(4));
   root.style.setProperty("--liquid-scroll-velocity", state.scroll.velocity.toFixed(3));
   root.style.setProperty("--liquid-depth", state.scroll.depth.toFixed(3));
@@ -204,14 +237,16 @@ function onPointerMove(e: PointerEvent) {
     pendingPointerSamples.splice(0, pendingPointerSamples.length - 24);
   }
   const latest = pendingPointerSamples[pendingPointerSamples.length - 1];
-  pendingPointer = latest ? { x: latest.x, y: latest.y, time: now } : null;
+  pendingPointer = latest
+    ? { x: latest.x, y: latest.y, time: now, pointerType: latest.pointerType }
+    : null;
 }
 
 function applyPendingPointer() {
   if (!pendingPointer) return;
   const samples = pendingPointerSamples.length > 0
     ? pendingPointerSamples
-    : [{ ...pendingPointer, pointerType: "mouse" }];
+    : [pendingPointer];
   pendingPointerSamples = [];
   const { x, y, time: now } = pendingPointer;
   pendingPointer = null;
@@ -225,6 +260,12 @@ function applyPendingPointer() {
 
   state.pointer.x = x;
   state.pointer.y = y;
+  state.pointer.present = true;
+  state.pointer.pointerType = initialSample.pointerType === "touch"
+    ? "touch"
+    : initialSample.pointerType === "pen"
+      ? "pen"
+      : "mouse";
   const velocityResponse = 1 - Math.exp(-10 * dt);
   state.pointer.vx += (dx / dt - state.pointer.vx) * velocityResponse;
   state.pointer.vy += (dy / dt - state.pointer.vy) * velocityResponse;
@@ -289,6 +330,12 @@ function onPointerDown(e: PointerEvent) {
   pendingPointer = null;
   state.pointer.x = e.clientX;
   state.pointer.y = e.clientY;
+  state.pointer.present = true;
+  state.pointer.pointerType = e.pointerType === "touch"
+    ? "touch"
+    : e.pointerType === "pen"
+      ? "pen"
+      : "mouse";
   // Preserve the incoming sweep as the initial water momentum. Zeroing it on
   // pointer-down made a click feel detached from the motion that caused it.
   state.pointer.vx *= 0.62;
@@ -320,13 +367,29 @@ function onPointerDown(e: PointerEvent) {
   pushRipple(e.clientX, e.clientY, Math.min(0.88, 0.72 + incomingSpeed / 5000), now);
 }
 
-function onPointerEnd() {
+function onPointerEnd(e: PointerEvent) {
   pendingPointer = null;
   state.pointer.active = false;
+  if (e.type === "pointercancel") state.pointer.present = false;
   state.pointer.vx *= 0.35;
   state.pointer.vy *= 0.35;
   emitPointer();
   emitPhysics();
+}
+
+function onPointerLeave() {
+  pendingPointer = null;
+  pendingPointerSamples = [];
+  state.pointer.present = false;
+  state.pointer.active = false;
+  state.pointer.vx = 0;
+  state.pointer.vy = 0;
+  emitPointer();
+  emitPhysics();
+}
+
+function onWindowBlur() {
+  onPointerLeave();
 }
 
 function tick(now: number) {
@@ -353,7 +416,7 @@ function tick(now: number) {
   state.pointer.speed *= Math.exp(-(state.pointer.active ? 5.5 : 8.5) * tickDelta);
   state.pointer.vx *= Math.exp(-6.5 * tickDelta);
   state.pointer.vy *= Math.exp(-6.5 * tickDelta);
-  state.scroll.velocity *= Math.exp(-7.5 * tickDelta);
+  state.scroll.velocity = decayScrollVelocity(state.scroll.velocity, tickDelta);
   state.scroll.depth +=
     (state.scroll.progress - state.scroll.depth) * (1 - Math.exp(-3.2 * tickDelta));
   for (let index = state.ripples.length - 1; index >= 0; index--) {
@@ -383,6 +446,7 @@ function tick(now: number) {
 
 function onVisibilityChange() {
   cancelAnimationFrame(raf);
+  if (document.hidden) onPointerLeave();
   if (!document.hidden && started) {
     lastTickAt = 0;
     raf = requestAnimationFrame(tick);
@@ -405,7 +469,8 @@ function start() {
   window.addEventListener("pointerdown", onPointerDown, { passive: true });
   window.addEventListener("pointerup", onPointerEnd, { passive: true });
   window.addEventListener("pointercancel", onPointerEnd, { passive: true });
-  window.addEventListener("pointerleave", onPointerEnd);
+  window.addEventListener("pointerleave", onPointerLeave);
+  window.addEventListener("blur", onWindowBlur);
   window.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibilityChange);
 
@@ -421,7 +486,8 @@ function stop() {
   window.removeEventListener("pointerdown", onPointerDown);
   window.removeEventListener("pointerup", onPointerEnd);
   window.removeEventListener("pointercancel", onPointerEnd);
-  window.removeEventListener("pointerleave", onPointerEnd);
+  window.removeEventListener("pointerleave", onPointerLeave);
+  window.removeEventListener("blur", onWindowBlur);
   window.removeEventListener("resize", onResize);
   document.removeEventListener("visibilitychange", onVisibilityChange);
   cancelAnimationFrame(raf);
