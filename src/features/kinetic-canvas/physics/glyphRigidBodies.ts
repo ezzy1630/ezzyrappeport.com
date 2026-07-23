@@ -138,8 +138,8 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      maxTravel: 0.086 + (index % 3) * 0.006,
-      maxTilt: (5.2 + (index % 4) * 0.5) * Math.PI / 180,
+      maxTravel: 0.15 + (index % 3) * 0.01,
+      maxTilt: (9.0 + (index % 4) * 0.85) * Math.PI / 180,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -150,8 +150,8 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       ambientFrequency: index % 2 === 0 ? 0.46 : 0.71,
       ambientAmplitude: 0.009 + (index % 3) * 0.0014,
       ambientTiltAmplitude: (0.44 + (index % 4) * 0.14) * Math.PI / 180,
-      maxDepth: 0.096,
-      maxLinearSpeed: 0.66,
+      maxDepth: 0.14,
+      maxLinearSpeed: 1.05,
     };
   });
 }
@@ -327,7 +327,8 @@ export function stepGlyphBodies(
     let targetZ = ambientBob;
     if (glyphIndex === control.hoverGlyphIndex && control.hoverStrength > 0) {
       const hoverStrength = clamp(control.hoverStrength, 0, 1);
-      targetZ -= 0.028 * hoverStrength;
+      // Hover rises and brightens — never a hover-only meaning on touch.
+      targetZ += 0.042 * hoverStrength;
       const localX = clamp(
         (control.hoverPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
         -1.15,
@@ -338,10 +339,9 @@ export function stepGlyphBodies(
         -1.15,
         1.15,
       );
-      // The target is an equilibrium offset, so hover cannot accumulate.
-      body.currentForce.x += localX * hoverStrength * 0.08;
-      body.currentTorque.x += -localY * hoverStrength * 0.44;
-      body.currentTorque.z += localX * hoverStrength * 0.44;
+      body.currentForce.x += localX * hoverStrength * 0.11;
+      body.currentTorque.x += -localY * hoverStrength * 0.52;
+      body.currentTorque.z += localX * hoverStrength * 0.52;
     }
     body.currentTorque.x += ambientRoll * 30;
     body.currentTorque.z += Math.sin(now * body.ambientFrequency * 0.87 * Math.PI * 2 + body.ambientPhase * 1.37)
@@ -356,8 +356,10 @@ export function stepGlyphBodies(
       );
       const bodyRadius = Math.hypot(screen.halfSize.x, screen.halfSize.y);
       const arrival = event.kind === "press"
-        ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.72))
-        : 0;
+        ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.72), 280)
+        : event.kind === "release"
+          ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.55), 240)
+          : 0;
       if (age + 0.001 < arrival) continue;
       body.nearestInteraction = Math.min(body.nearestInteraction, distance);
       const falloffDistance = Math.max(0, distance - bodyRadius * 0.55);
@@ -370,7 +372,8 @@ export function stepGlyphBodies(
         : event.kind === "release"
           ? Math.exp(-age * 5.2)
           : Math.exp(-age * 6.5);
-      const strength = event.strength * falloff * temporal * motionScale;
+      const strength = event.strength * falloff * temporal * motionScale
+        * (event.kind === "press" || event.kind === "release" ? 1.35 : 1);
       if (strength < 0.0001) continue;
       const radialX = screen.center.x - event.end[0];
       const radialY = screen.center.y - event.end[1];
@@ -397,15 +400,17 @@ export function stepGlyphBodies(
       body.lastActiveAt = now;
     }
 
-    const spring = 16;
-    const drag = 13.5;
+    // Spring soft enough for one visible overshoot; drag low enough to show it.
+    const spring = 14;
+    const drag = 9.2;
     body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 44);
     body.currentForce.z += -(body.position.z - targetZ) * spring
       + softLimitForce(body.position.z, body.maxTravel, 44);
     const holding = glyphIndex === control.holdGlyphIndex;
     if (holding) {
-      const holdDepth = -Math.min(0.062, 0.05 + Math.max(0, control.holdAge) * 0.004);
-      body.currentForce.y += -(body.position.y - holdDepth) * 32 - body.velocity.y * 18;
+      const holdDepth = -Math.min(0.09, 0.055 + Math.max(0, control.holdAge) * 0.006);
+      // Bounded drag with spring lag — letter trails the fingertip.
+      body.currentForce.y += -(body.position.y - holdDepth) * 22 - body.velocity.y * 10;
       const localX = clamp(
         (control.holdPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
         -1.15,
@@ -416,13 +421,15 @@ export function stepGlyphBodies(
         -1.15,
         1.15,
       );
-      const strain = Math.min(1, Math.max(0, control.holdAge * 2));
-      body.currentTorque.x += -localY * 0.34 + Math.sin(now * Math.PI * 2 * 6 + body.ambientPhase) * 0.06 * strain;
-      body.currentTorque.z += localX * 0.34;
+      const strain = Math.min(1, Math.max(0, control.holdAge * 1.6));
+      body.currentForce.x += localX * (0.14 + strain * 0.12);
+      body.currentForce.z += -localY * (0.08 + strain * 0.06);
+      body.currentTorque.x += -localY * 0.42 + Math.sin(now * Math.PI * 2 * 6 + body.ambientPhase) * 0.08 * strain;
+      body.currentTorque.z += localX * 0.42;
     } else if (entranceHolding) {
       body.currentForce.y += -(body.position.y - control.entranceDepth) * 30 - body.velocity.y * 18;
     } else {
-      body.currentForce.y += -body.position.y * 20 - body.velocity.y * 14;
+      body.currentForce.y += -body.position.y * 16 - body.velocity.y * 9.5;
     }
     body.velocity.x += (body.currentForce.x / body.mass - body.velocity.x * drag) * dt;
     body.velocity.z += (body.currentForce.z / body.mass - body.velocity.z * drag) * dt;
@@ -433,8 +440,8 @@ export function stepGlyphBodies(
     body.position.z = clamp(body.position.z, -body.maxTravel, body.maxTravel);
     body.position.y = clamp(body.position.y, -body.maxDepth, body.maxDepth * 0.55);
 
-    const angularSpring = 13;
-    const angularDrag = 13.5;
+    const angularSpring = 11;
+    const angularDrag = 9.5;
     for (const axis of ["x", "y", "z"] as const) {
       const limitForce = softLimitForce(body.orientation[axis], body.maxTilt, 38);
       const acceleration = (body.currentTorque[axis] - body.orientation[axis] * angularSpring + limitForce)

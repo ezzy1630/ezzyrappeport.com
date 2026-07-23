@@ -732,20 +732,38 @@ export function startUnderwaterHeroRenderer({
     const x = screen.center.x;
     const y = screen.center.y;
     const uv: [number, number] = [x / viewport[0], 1 - y / viewport[1]];
+    const pointer = getPhysics().pointer;
+    const speed = Math.hypot(pointer.vx, pointer.vy);
+    const inherit = speed > 12
+      ? [pointer.vx / speed, pointer.vy / speed] as const
+      : [0, -1] as const;
+    // Release inherits pointer velocity into the letter fling.
+    body.velocity.x += inherit[0] * Math.min(0.55, speed / 900);
+    body.velocity.z += inherit[1] * Math.min(0.55, speed / 900);
+    body.velocity.y += 0.12 + Math.min(0.22, speed / 1400);
     activeGlyphInteractions.push({
       kind: "release",
       start: [x, y],
       end: [x, y],
-      direction: [0, -1],
-      strength: 0.84,
-      radius: Math.max(58, Math.min(104, Math.hypot(screen.halfSize.x, screen.halfSize.y) * 1.25)),
+      direction: [inherit[0], inherit[1]],
+      strength: 0.96 + Math.min(0.35, speed / 1200),
+      radius: Math.max(58, Math.min(112, Math.hypot(screen.halfSize.x, screen.halfSize.y) * 1.35)),
       time: now,
     });
     applySplat({
       position: uv,
-      radius: Math.min(0.16, Math.max(0.055, Math.hypot(screen.halfSize.x, screen.halfSize.y) / viewport[1] * 1.8)),
-      impulse: -0.055,
-      direction: [0, -1],
+      radius: Math.min(0.18, Math.max(0.06, Math.hypot(screen.halfSize.x, screen.halfSize.y) / viewport[1] * 2.0)),
+      impulse: -0.078,
+      direction: [inherit[0], -inherit[1]],
+    });
+    pendingWater.push({
+      position: uv,
+      start: uv,
+      end: [uv[0] + inherit[0] * 0.04, uv[1] - inherit[1] * 0.04],
+      radius: 0.09,
+      impulse: -0.04,
+      direction: [inherit[0], -inherit[1]],
+      wake: 0.085,
     });
     const droplets = scheduleGlyphReleaseDroplets(now);
     for (let index = 0; index < droplets.length; index += 1) {
@@ -780,8 +798,7 @@ export function startUnderwaterHeroRenderer({
     && !staticModeRef.current
     && renderHeroGlyphs
     && !document.hidden
-    && event.pointerType !== "touch"
-    && (event.button === 0 || event.type === "pointermove")
+    && (event.button === 0 || event.type === "pointermove" || event.pointerType === "touch")
     && !isForegroundTarget(event.target);
 
   const updateGlyphHover = (physics: LiquidPhysics, rect: DOMRect) => {
@@ -986,15 +1003,43 @@ export function startUnderwaterHeroRenderer({
     // Pressure moving through dense, calm water — not splashes. A press is a
     // satisfying droplet dip; a wake is a broad, soft displacement that the
     // solver propagates outward with weight and momentum.
+    // Slow motion → broad dimple; fast → narrower brighter crest.
+    const speedFactor = Math.min(1, speed / 420);
+    const pressRadius = event.kind === "press"
+      ? event.radius / Math.max(rect.height, 1)
+      : (event.radius / Math.max(rect.height, 1)) * (1.15 - speedFactor * 0.45);
     pendingWater.push({
       position: [endUv.x, endUv.y],
       start: [startUv.x, startUv.y],
       end: [endUv.x, endUv.y],
-      radius: event.radius / Math.max(rect.height, 1),
-      impulse: event.kind === "press" ? -event.strength * 0.95 : event.strength * 0.24,
+      radius: pressRadius,
+      impulse: event.kind === "press" ? -event.strength * 1.15 : event.strength * (0.18 + speedFactor * 0.22),
       direction: [event.vx / directionLength, -event.vy / directionLength],
-      wake: event.kind === "wake" ? event.strength * 0.6 : event.strength * 0.08,
+      wake: event.kind === "wake"
+        ? event.strength * (0.45 + speedFactor * 0.45)
+        : event.strength * 0.1,
     });
+    // Primary press ring + secondary droplet companions for a readable hit.
+    if (event.kind === "press") {
+      pendingWater.push({
+        position: [endUv.x + 0.018, endUv.y - 0.012],
+        start: [endUv.x, endUv.y],
+        end: [endUv.x + 0.018, endUv.y - 0.012],
+        radius: pressRadius * 0.28,
+        impulse: -event.strength * 0.32,
+        direction: [0.4, -0.9],
+        wake: 0.02,
+      });
+      pendingWater.push({
+        position: [endUv.x - 0.014, endUv.y + 0.01],
+        start: [endUv.x, endUv.y],
+        end: [endUv.x - 0.014, endUv.y + 0.01],
+        radius: pressRadius * 0.22,
+        impulse: -event.strength * 0.22,
+        direction: [-0.5, 0.2],
+        wake: 0.015,
+      });
+    }
     activeGlyphInteractions.push({
       kind: event.kind,
       start: [event.startX - rect.left, event.startY - rect.top],

@@ -754,14 +754,30 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float idleRipple = sin(idleRadius * 58.0 - uTime * 1.55)
       * exp(-idleRadius * 7.5) * 0.0042;
     slowSwell += normalize(idleDelta + vec2(0.0001)) * idleRipple;
-    // The fingertip lens: one wide, soft depression that trails the pointer.
-    // Deliberately gentle — the simulated heightfield owns the visible waves;
-    // this only keeps the water alive directly beneath the fingertip, with
-    // no rim and no added light.
+    // The fingertip lens + meniscus rim (native cursor retained).
     vec2 pointerDelta = (vUv - uPointer) * vec2(1.72, 1.0);
     float pointerLens = exp(-dot(pointerDelta, pointerDelta) * 7.5) * uPointerEnergy;
     vec2 pointerNormal = normalize(pointerDelta + vec2(0.00001)) * pointerLens * 0.0055;
-    vec2 surfaceVector = slope * regionalStrength + slowSwell + pointerNormal;
+    float pointerRadius = length(pointerDelta);
+    float meniscusRing = exp(-pow((pointerRadius - 0.045) * 28.0, 2.0)) * uPointerEnergy;
+    float meniscusRim = exp(-pow((pointerRadius - 0.078) * 36.0, 2.0)) * uPointerEnergy * 0.65;
+    vec2 meniscusNormal = normalize(pointerDelta + vec2(0.00001)) * (meniscusRing * 0.0042 + meniscusRim * 0.0028);
+
+    /* Analytic capillary rings + energy-gated normal detail (keep coarse heightfield). */
+    float energyGate = clamp(uPointerEnergy * 1.15 + length(slope) * 18.0, 0.0, 1.0);
+    float qualityGate = mix(0.35, 1.0, step(1.5, float(uQualityTier)));
+    float capillary = 0.0;
+    if (energyGate > 0.04 && qualityGate > 0.4) {
+      float ringA = sin(pointerRadius * 96.0 - uTime * 7.2) * exp(-pointerRadius * 9.5);
+      float ringB = sin(length((vUv - uPointer) * vec2(2.1, 1.0)) * 140.0 - uTime * 11.0)
+        * exp(-pointerRadius * 14.0) * 0.55;
+      capillary = (ringA + ringB) * energyGate * qualityGate * 0.0038;
+    }
+    float detailNoise = sin(vUv.x * 220.0 + uTime * 1.4) * cos(vUv.y * 180.0 - uTime * 1.1);
+    vec2 capillaryNormal = normalize(pointerDelta + vec2(0.00001)) * capillary
+      + vec2(detailNoise, -detailNoise) * energyGate * qualityGate * 0.0014;
+
+    vec2 surfaceVector = slope * regionalStrength + slowSwell + pointerNormal + meniscusNormal + capillaryNormal;
     vec2 refraction = surfaceVector * uSurfaceDistortion * (0.72 + depthTravel * 0.72);
     vec2 refractionDirection = normalize(surfaceVector + vec2(0.00001));
     vec3 scene = sampleScene(
@@ -796,6 +812,12 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float simulatedWake = smoothstep(0.0016, 0.018, length(slope))
       * smoothstep(0.0008, 0.012, abs(h));
     scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.04 * washoutGate;
+    /* Sparse glints on fast crests; meniscus rim catch-light. */
+    float crestSpeed = length(uPointerVelocity);
+    float fastCrest = smoothstep(0.12, 0.55, crestSpeed) * energyGate * qualityGate;
+    scene += vec3(0.92, 0.98, 1.0) * pow(max(0.0, simulatedWake), 2.4) * fastCrest * 0.08;
+    scene += vec3(0.88, 0.96, 1.0) * meniscusRim * 0.055;
+    scene += vec3(0.78, 0.92, 1.0) * abs(capillary) * 22.0 * 0.02;
 
     /* Section-aware absorption: pearl shallows stay luminous; the basin keeps
        its dark blue distance instead of being mixed back toward pale gray. */
