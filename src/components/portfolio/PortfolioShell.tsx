@@ -7,6 +7,7 @@ import SmoothScrollProvider from "./SmoothScrollProvider";
 import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
 import { PortfolioMotionProvider } from "./PortfolioMotionContext";
+import { useLiquidHoverDialogue } from "@/hooks/portfolio/use-liquid-dialogue";
 
 type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
 
@@ -103,6 +104,7 @@ export default function PortfolioShell({
   const motionReduced = !motionEnabled;
   const renderHeroName = heroName;
   useWaterSection();
+  useLiquidHoverDialogue();
 
   useEffect(() => {
     const stored = window.localStorage.getItem("portfolio-motion");
@@ -125,7 +127,11 @@ export default function PortfolioShell({
   return (
     <PortfolioMotionProvider value={motionState}>
       <SmoothScrollProvider reducedMotion={motionReduced}>
-        <div id="top" className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}>
+        <div
+          id="top"
+          className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}
+          data-motion={motionEnabled ? "on" : "off"}
+        >
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
