@@ -402,7 +402,7 @@ const tests = [
     assert.match(revampCssSource, /white-space: nowrap;\s*\n\s*overflow-wrap: normal;/);
   }],
   ["MathPilot media clipping and nav/action collision guards stay in place", () => {
-    assert.match(projectsSectionCssSource, /data-project="mathpilot"/);
+    assert.match(projectsSectionCssSource, /data-artifact="mathpilot"/);
     assert.match(projectsSectionCssSource, /contain: paint/);
     assert.match(revampCssSource, /nav CTA \+ motion toggle must not collide/);
     assert.match(revampCssSource, /\.site-nav-actions > \* \{\s*\n\s*flex-shrink: 0;/);
