@@ -12,6 +12,11 @@ import {
 } from "../src/features/kinetic-canvas/renderer/quality-policy.ts";
 import { resolveMovementSplat } from "../src/lib/portfolio/interaction-policy.ts";
 import {
+  decayScrollVelocity,
+  liquidEmissionAllowed,
+  scrollWakeStrength,
+} from "../src/lib/portfolio/liquid-interaction.ts";
+import {
   GLYPH_STATE_RANGES,
   packGlyphSigned16,
   unpackGlyphSigned16,
@@ -33,12 +38,23 @@ import {
   clickPressureFalloff,
   createGlyphBodies,
   deriveMassAndInertia,
+  glyphHoverStrength,
+  glyphPhaseForIdentity,
+  hasFiniteGlyphBodyState,
+  hoverFalloff,
   neighborArrivalDelay,
+  nearestGlyphIndex,
   offCenterTorque,
   pairwiseSeparationImpulse,
   reducedMotionScale,
   wakeFalloff,
 } from "../src/features/kinetic-canvas/physics/glyphRigidBodies.ts";
+import {
+  createGlyphInteractionState,
+  scheduleGlyphReleaseDroplets,
+  settleCancelledGlyph,
+  transitionGlyphInteraction,
+} from "../src/features/kinetic-canvas/interaction/glyphInteractionState.ts";
 import { validateHeroManifest } from "../src/features/kinetic-canvas/renderer/underwater/heroManifest.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
@@ -130,6 +146,75 @@ const tests = [
     assert.equal(reducedMotionScale(false), 1);
     assert.equal(reducedMotionScale(true), 0.08);
   }],
+  ["Glyph phases and hover ownership are deterministic and bounded", () => {
+    const first = glyphPhaseForIdentity(3, "line1_Z");
+    assert.equal(first, glyphPhaseForIdentity(3, "line1_Z"));
+    assert.notEqual(first, glyphPhaseForIdentity(4, "line1_Z"));
+    assert.ok(hoverFalloff(0, 100) > hoverFalloff(140, 100));
+    const material = new MeshBasicMaterial();
+    const glyphs = heroManifest.glyphs.slice(0, 2).map((manifest) => ({
+      manifest,
+      object: new Mesh(new BufferGeometry(), material),
+    }));
+    const bodies = createGlyphBodies(glyphs);
+    bodies[0].projectedState.center.set(100, 100);
+    bodies[0].projectedState.halfSize.set(20, 20);
+    bodies[1].projectedState.center.set(200, 100);
+    bodies[1].projectedState.halfSize.set(20, 20);
+    assert.equal(nearestGlyphIndex(bodies, [102, 101]), bodies[0].glyph.manifest.glyph_index);
+    assert.equal(nearestGlyphIndex(bodies, [500, 500]), -1);
+    assert.ok(glyphHoverStrength(bodies[0], [100, 100]) > 0.9);
+    bodies[0].position.x = Number.NaN;
+    assert.equal(hasFiniteGlyphBodyState(bodies[0]), false);
+  }],
+  ["Glyph hold, cancellation, release, and droplet scheduling are explicit", () => {
+    let transition = createGlyphInteractionState();
+    transition = transitionGlyphInteraction(transition, { type: "hover", glyphIndex: 4 });
+    assert.deepEqual(transition.state, { kind: "hovering", glyphIndex: 4 });
+    transition = transitionGlyphInteraction(transition, {
+      type: "pointer-down",
+      glyphIndex: 4,
+      pointerId: 9,
+      pressPoint: [20, 10],
+      now: 1,
+    });
+    assert.equal(transition.state.kind, "holding");
+    transition = transitionGlyphInteraction(transition, { type: "pointer-up", pointerId: 9, now: 2 });
+    assert.equal(transition.state.kind, "releasing");
+    const releaseId = transition.state.releaseId;
+    transition = transitionGlyphInteraction(transition, { type: "release-complete", releaseId });
+    assert.equal(transition.state.kind, "idle");
+    transition = transitionGlyphInteraction(transition, {
+      type: "pointer-down",
+      glyphIndex: 2,
+      pointerId: 10,
+      pressPoint: [0, 0],
+      now: 3,
+    });
+    transition = transitionGlyphInteraction(transition, {
+      type: "cancel",
+      pointerId: 10,
+      now: 3.2,
+      reason: "blur",
+    });
+    assert.equal(transition.state.kind, "cancelled");
+    assert.equal(settleCancelledGlyph(transition, null).state.kind, "idle");
+    const droplets = scheduleGlyphReleaseDroplets(10);
+    assert.equal(droplets.length, 5);
+    assert.equal(droplets[0].dueAt, 10.032);
+    assert.equal(droplets[4].dueAt, 10.08);
+  }],
+  ["Scroll currents are monotonic, directional, and lifecycle-gated", () => {
+    assert.equal(scrollWakeStrength(0.1), 0);
+    assert.ok(scrollWakeStrength(0.7) > scrollWakeStrength(0.3));
+    assert.equal(scrollWakeStrength(-0.7), scrollWakeStrength(0.7));
+    assert.ok(Math.abs(decayScrollVelocity(1, 1)) < Math.abs(decayScrollVelocity(1, 0.1)));
+    assert.equal(liquidEmissionAllowed({ visible: true, pageVisible: true, reducedMotion: false, rendererReady: true }), true);
+    assert.equal(liquidEmissionAllowed({ visible: false, pageVisible: true, reducedMotion: false, rendererReady: true }), false);
+    assert.equal(liquidEmissionAllowed({ visible: true, pageVisible: false, reducedMotion: false, rendererReady: true }), false);
+    assert.equal(liquidEmissionAllowed({ visible: true, pageVisible: true, reducedMotion: true, rendererReady: true }), false);
+    assert.equal(liquidEmissionAllowed({ visible: true, pageVisible: true, reducedMotion: false, rendererReady: false }), false);
+  }],
   ["All 13 manifest glyphs become independent GLB body states", () => {
     const material = new MeshBasicMaterial();
     const geometryByIdentity = new Map();
@@ -165,6 +250,13 @@ const tests = [
     assert.match(underwaterRendererSource, /document\.hidden/);
     assert.match(underwaterRendererSource, /addEventListener\("visibilitychange"/);
     assert.match(underwaterRendererSource, /removeEventListener\("visibilitychange"/);
+    assert.match(underwaterRendererSource, /lostpointercapture/);
+    assert.match(underwaterRendererSource, /pointercancel/);
+    assert.match(underwaterRendererSource, /surface-breach/);
+    assert.match(underwaterRendererSource, /scheduledWater/);
+    assert.match(liquidInteractionSource, /addEventListener\("blur"/);
+    assert.match(liquidInteractionSource, /present: boolean/);
+    assert.match(kineticCanvasSource, /liquid-renderer-ready/);
     assert.match(underwaterRendererSource, /heightRead\.dispose\(\)/);
     assert.match(underwaterRendererSource, /glyphDebug\?\.remove\(\)/);
     assert.doesNotMatch(underwaterShaderSource, /smoothstep\(width,\s*0\.0/);
