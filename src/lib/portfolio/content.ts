@@ -218,7 +218,7 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     cautionLabel: "Campaign visualization",
     media: {
       cover: {
-        src: "/projects/flowe/app-icon.png",
+        src: "/projects/flowe/app-icon.webp",
         alt: "FlowE app icon",
         width: 1024,
         height: 1024,
@@ -395,7 +395,7 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
     proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
     media: {
       cover: {
-        src: "/projects/argyph/argyph-identity.png",
+        src: "/projects/argyph/argyph-identity.webp",
         alt: "Argyph local-first code intelligence identity artwork",
         width: 1254,
         height: 1254,
