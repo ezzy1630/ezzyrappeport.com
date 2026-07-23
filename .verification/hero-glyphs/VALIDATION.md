@@ -6,16 +6,16 @@
 - License: SIL Open Font License 1.1; vendored beside the font as `OFL.txt`
 - Production nodes: 13
 - Unique mesh datablocks: 8
-- Visible triangle total: 44,096
-- Unique/shared triangle payload: 27,398
-- GLB size: 501,788 bytes
+- Visible triangle total: 55,100
+- Unique/shared triangle payload: 34,100
+- GLB size: 622,448 bytes
 - Reimported nodes: 13
 - Reimport name match: True
 - Reimport bounds match: True
 
 ## Modeling choices
 
-Exact Inter Tight 900 outlines with a -0.046 em source inset; 0.048 em core extrusion, 0.060 em shoulder, 12 shoulder segments, a 0.024 em planar contour bevel with 6 segments (except A), a 0.0030 em watertight reconciliation, a 0.034 em face dome over a 0.180 em run. The result keeps the face center calm while rolling both front and back into continuous sidewalls. Internal counter walls use the same curve profile as outer contours.
+Exact Inter Tight 900 outlines with a -0.046 em source inset; 0.070 em core extrusion, 0.068 em shoulder, 14 shoulder segments, a 0.035 em planar contour bevel with 8 segments (except A), a 0.0024 em watertight reconciliation, a 0.054 em face dome over a 0.215 em run. The result keeps the face center calm while rolling both front and back into continuous sidewalls. Internal counter walls use the same curve profile as outer contours.
 
 E, Z, Y, and T use custom rounded-bar constructions at the original Inter Tight bounds, producing true XY corner radii rather than relying on depth bevels. A is a custom three-bar rounded solid in Inter Tight proportions. R, P, and O use fine voxel reconciliation of the font silhouette. Every custom glyph is voxel-unioned before relaxation and remains clean and watertight.
 
@@ -23,14 +23,14 @@ Origins are projected-area centroids at mid-depth, calculated from front-facing 
 
 ## Topology
 
-- A: 5,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- E: 2,500 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- O: 4,500 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- P: 4,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- R: 3,998 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- T: 2,200 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- Y: 3,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
-- Z: 2,200 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- A: 6,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- E: 3,200 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- O: 5,500 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- P: 5,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- R: 5,000 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- T: 2,800 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- Y: 3,800 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
+- Z: 2,800 tris; watertight=True; non-manifold=0; loose verts=0; loose edges=0; zero-area faces=0; self-intersections=0
 
 ## Validation renders
 
