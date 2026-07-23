@@ -1,11 +1,13 @@
 .page {
-  --ink: #0a0f1a;
-  --ink-soft: #1c2433;
-  --muted: #5c6573;
-  --faint: #8d98a8;
-  --line: rgba(10, 15, 26, 0.14);
-  --blue: #0066ff;
-  --pearl: #f7f9fc;
+  /* Case pages inherit the route's moored water state. Dark ink belongs in
+     the shallow dock; pale ink belongs in deeper water. */
+  --ink: color-mix(in oklch, #081426 calc(var(--world-light, 1) * 100%), #f4f8ff calc((1 - var(--world-light, 1)) * 100%));
+  --ink-soft: color-mix(in oklch, #1c2b3d calc(var(--world-light, 1) * 100%), #dbe8f5 calc((1 - var(--world-light, 1)) * 100%));
+  --muted: color-mix(in oklch, #526274 calc(var(--world-light, 1) * 100%), #b5c7d9 calc((1 - var(--world-light, 1)) * 100%));
+  --faint: color-mix(in oklch, #7f8d9e calc(var(--world-light, 1) * 100%), #94abc1 calc((1 - var(--world-light, 1)) * 100%));
+  --line: color-mix(in oklch, #0a1c32 22%, transparent);
+  --blue: color-mix(in oklch, #0066ff calc(var(--world-light, 1) * 100%), #8fc7ff calc((1 - var(--world-light, 1)) * 100%));
+  --pearl: color-mix(in oklch, #f7f9fc calc(var(--world-light, 1) * 100%), #091b34 calc((1 - var(--world-light, 1)) * 100%));
   position: relative;
   width: min(72rem, calc(100% - 2.5rem));
   margin: 0 auto;
@@ -27,7 +29,12 @@
   inset: 0 calc(50% - 50vw);
   z-index: -1;
   background:
-    linear-gradient(180deg, rgba(247, 250, 255, 0.74), rgba(247, 249, 252, 0.92) 17%, rgba(247, 249, 252, 0.98));
+    linear-gradient(
+      180deg,
+      rgba(247, 250, 255, calc(var(--world-light, 1) * 0.12)),
+      rgba(247, 249, 252, calc(var(--world-light, 1) * 0.04)) 35%,
+      rgba(4, 20, 43, calc((1 - var(--world-light, 1)) * 0.18))
+    );
 }
 
 .page :where(h1, h2, h3, p, dl, dd, ul, figure) {
@@ -677,39 +684,35 @@
   }
 }
 
-/* Persistent mid-depth case-study material. Content stays code-native while
-   the shared fixed renderer supplies the optical basin behind the page. */
-.page {
-  --ink: rgba(247, 250, 255, 0.97);
-  --ink-soft: rgba(235, 242, 252, 0.84);
-  --muted: rgba(218, 230, 245, 0.67);
-  --faint: rgba(202, 218, 239, 0.48);
-  --line: rgba(222, 237, 255, 0.17);
-  --blue: #4d8dff;
-  --pearl: rgba(7, 24, 49, 0.48);
-}
-
-.page::before {
-  background: linear-gradient(180deg, rgba(2, 18, 42, 0.2), rgba(2, 14, 34, 0.48) 38%, rgba(1, 10, 26, 0.72));
-}
-
 .proofStrip,
 .link,
 .paginationLink {
-  border-color: rgba(222, 237, 255, 0.18);
-  background: rgba(7, 29, 58, 0.34);
+  border-color: color-mix(in oklch, #0a1c32 22%, transparent);
+  background: color-mix(
+    in srgb,
+    rgba(255, 255, 255, 0.52) calc(var(--world-light, 1) * 100%),
+    rgba(7, 29, 58, 0.34) calc((1 - var(--world-light, 1)) * 100%)
+  );
 }
 
 .heroMedia {
-  border-color: rgba(227, 241, 255, 0.28);
-  background: rgba(9, 35, 67, 0.3);
-  box-shadow: 0 2.5rem 6rem -3rem rgba(0, 5, 17, 0.8), inset 0 1px 0 rgba(255,255,255,0.26);
+  border-color: color-mix(in oklch, #0a1c32 18%, transparent);
+  background: color-mix(
+    in srgb,
+    rgba(255, 255, 255, 0.3) calc(var(--world-light, 1) * 100%),
+    rgba(9, 35, 67, 0.3) calc((1 - var(--world-light, 1)) * 100%)
+  );
+  box-shadow: 0 2.5rem 6rem -3rem rgba(16, 42, 80, 0.56), inset 0 1px 0 rgba(255,255,255,0.26);
 }
 
 .chapter,
 .overview,
 .galleryItem {
-  background-color: rgba(5, 23, 49, 0.26);
+  background-color: color-mix(
+    in srgb,
+    rgba(255, 255, 255, 0.18) calc(var(--world-light, 1) * 100%),
+    rgba(5, 23, 49, 0.26) calc((1 - var(--world-light, 1)) * 100%)
+  );
 }
 
 .stack li,
