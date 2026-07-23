@@ -5,6 +5,6 @@ export const portfolioIdentity = {
   domain: "https://www.ezzyrappeport.com",
   email: "ezzyrappeport@gmail.com",
   /** Friendly CTA label; mailto still uses `email`. */
-  emailLabel: "contact ezzy",
+  emailLabel: "Email Ezzy",
   role: "Software Engineer",
 } as const;

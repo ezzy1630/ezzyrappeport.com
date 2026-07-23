@@ -376,15 +376,17 @@ const tests = [
     // The address never breaks mid-domain on phones.
     assert.match(revampCssSource, /white-space: nowrap;\s*\n\s*overflow-wrap: normal;/);
   }],
-  ["MathPilot media clipping and nav/action collision guards stay in place", () => {
-    assert.match(projectsSectionCssSource, /data-artifact="mathpilot"/);
-    assert.match(projectsSectionCssSource, /contain: paint/);
-    assert.match(revampCssSource, /nav CTA \+ motion toggle must not collide/);
+  ["Project identity marks stay scene-native without white media wells", () => {
+    assert.match(projectsSectionCssSource, /data-project-identity="mathpilot"/);
+    assert.match(projectsSectionCssSource, /\.identityStage/);
+    assert.match(projectsSectionCssSource, /\.media \{\s*\n[\s\S]*?background: transparent;/);
+    assert.doesNotMatch(projectsSectionCssSource, /data-artifact=/);
     assert.match(revampCssSource, /\.site-nav-actions > \* \{\s*\n\s*flex-shrink: 0;/);
+    assert.match(revampCssSource, /\.site-nav-ripple/);
   }],
   ["Contact CTA uses a friendly label while mailto stays canonical", () => {
     assert.match(identitySource, /email: "ezzyrappeport@gmail\.com"/);
-    assert.match(identitySource, /emailLabel: "contact ezzy"/);
+    assert.match(identitySource, /emailLabel: "Email Ezzy"/);
     assert.doesNotMatch(identitySource, /gmaill\.com/);
   }],
   ["Hero glyph memory exits before the projects band", () => {
@@ -415,19 +417,19 @@ const tests = [
     assert.doesNotMatch(worldStateSource, /light: 0\.16/);
   }],
   ["Retina 4K stays inside the high pixel budget", () => {
-    const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
-    assert.ok(dpr <= 1.11);
-    assert.ok(2560 * dpr * 1440 * dpr <= 4_500_000 + 1);
+    const dpr = pixelBudgetedDpr(2560, 1440, 2, 2, 6_000_000);
+    assert.ok(dpr <= 1.28);
+    assert.ok(2560 * dpr * 1440 * dpr <= 6_000_000 + 1);
   }],
   ["Oversized CSS viewports can use a sub-1 DPR", () => {
-    const dpr = pixelBudgetedDpr(3840, 2160, 2, 1.75, 4_500_000);
+    const dpr = pixelBudgetedDpr(3840, 2160, 2, 2, 6_000_000);
     assert.ok(dpr < 1);
     assert.ok(dpr >= MIN_PIXEL_BUDGET_DPR);
-    assert.ok(3840 * dpr * 2160 * dpr <= 4_500_000 + 1);
+    assert.ok(3840 * dpr * 2160 * dpr <= 6_000_000 + 1);
   }],
   ["Animated tiers stay inside their fill-rate budgets", () => {
-    assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 270_000_000);
-    assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 90_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 360_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 96_000_000);
     assert.ok(QUALITY_PIXEL_BUDGETS.low * TARGET_FPS_BY_TIER.low <= 45_000_000);
   }],
 
@@ -441,7 +443,8 @@ const tests = [
     assert.doesNotMatch(kineticCanvasSource, /webglFluidRenderer/);
   }],
   ["Underwater glass and boot contracts stay locked", () => {
-    assert.match(underwaterConfigSource, /absorptionDistance: 1\.15/);
+    assert.match(underwaterConfigSource, /absorptionDistance: 1\.05/);
+    assert.match(underwaterConfigSource, /surfaceDistortion: 0\.28/);
     assert.match(underwaterShaderSource, /uLetterEnergy/);
     assert.match(underwaterShaderSource, /Analytic capillary rings/);
     assert.match(bootStateSource, /poster/);

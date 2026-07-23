@@ -756,22 +756,22 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     slowSwell += normalize(idleDelta + vec2(0.0001)) * idleRipple;
     // The fingertip lens + meniscus rim (native cursor retained).
     vec2 pointerDelta = (vUv - uPointer) * vec2(1.72, 1.0);
-    float pointerLens = exp(-dot(pointerDelta, pointerDelta) * 7.5) * uPointerEnergy;
-    vec2 pointerNormal = normalize(pointerDelta + vec2(0.00001)) * pointerLens * 0.0055;
+    float pointerLens = exp(-dot(pointerDelta, pointerDelta) * 6.4) * uPointerEnergy;
+    vec2 pointerNormal = normalize(pointerDelta + vec2(0.00001)) * pointerLens * 0.0072;
     float pointerRadius = length(pointerDelta);
-    float meniscusRing = exp(-pow((pointerRadius - 0.045) * 28.0, 2.0)) * uPointerEnergy;
-    float meniscusRim = exp(-pow((pointerRadius - 0.078) * 36.0, 2.0)) * uPointerEnergy * 0.65;
-    vec2 meniscusNormal = normalize(pointerDelta + vec2(0.00001)) * (meniscusRing * 0.0042 + meniscusRim * 0.0028);
+    float meniscusRing = exp(-pow((pointerRadius - 0.042) * 26.0, 2.0)) * uPointerEnergy;
+    float meniscusRim = exp(-pow((pointerRadius - 0.086) * 32.0, 2.0)) * uPointerEnergy * 0.72;
+    vec2 meniscusNormal = normalize(pointerDelta + vec2(0.00001)) * (meniscusRing * 0.0051 + meniscusRim * 0.0034);
 
     /* Analytic capillary rings + energy-gated normal detail (keep coarse heightfield). */
-    float energyGate = clamp(uPointerEnergy * 1.15 + length(slope) * 18.0, 0.0, 1.0);
+    float energyGate = clamp(uPointerEnergy * 1.2 + length(slope) * 18.0, 0.0, 1.0);
     float qualityGate = mix(0.35, 1.0, step(1.5, float(uQualityTier)));
     float capillary = 0.0;
     if (energyGate > 0.04 && qualityGate > 0.4) {
-      float ringA = sin(pointerRadius * 96.0 - uTime * 7.2) * exp(-pointerRadius * 9.5);
-      float ringB = sin(length((vUv - uPointer) * vec2(2.1, 1.0)) * 140.0 - uTime * 11.0)
-        * exp(-pointerRadius * 14.0) * 0.55;
-      capillary = (ringA + ringB) * energyGate * qualityGate * 0.0038;
+      float ringA = sin(pointerRadius * 88.0 - uTime * 6.6) * exp(-pointerRadius * 8.8);
+      float ringB = sin(length((vUv - uPointer) * vec2(2.1, 1.0)) * 128.0 - uTime * 9.8)
+        * exp(-pointerRadius * 12.8) * 0.58;
+      capillary = (ringA + ringB) * energyGate * qualityGate * 0.0046;
     }
     float detailNoise = sin(vUv.x * 220.0 + uTime * 1.4) * cos(vUv.y * 180.0 - uTime * 1.1);
     vec2 capillaryNormal = normalize(pointerDelta + vec2(0.00001)) * capillary

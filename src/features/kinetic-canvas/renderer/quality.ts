@@ -72,22 +72,22 @@ export function resolveKineticQuality(
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {
       tier: "high",
-      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.75, QUALITY_PIXEL_BUDGETS.high),
-      maxDpr: 1.75,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 2, QUALITY_PIXEL_BUDGETS.high),
+      maxDpr: 2,
       targetFps: TARGET_FPS_BY_TIER.high,
       simWidth: 288,
       textMaxDim: 1800,
       pressureIterations: 8,
       activeRipples: 8,
       startDelayMs: 45,
-      // Trial high-tier sharpness at 1.0; adaptive downgrade still owns recovery.
+      // Full render scale on high; adaptive downgrade still owns recovery.
       renderScale: 1.0,
       pixelBudget: QUALITY_PIXEL_BUDGETS.high,
     },
     balanced: {
       tier: "balanced",
-      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.25, QUALITY_PIXEL_BUDGETS.balanced),
-      maxDpr: 1.25,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.5, QUALITY_PIXEL_BUDGETS.balanced),
+      maxDpr: 1.5,
       targetFps: TARGET_FPS_BY_TIER.balanced,
       simWidth: 224,
       textMaxDim: 1536,

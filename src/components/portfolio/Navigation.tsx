@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, Waves, X } from "lucide-react";
@@ -12,17 +12,42 @@ type Props = {
   onToggleMotion: () => void;
 };
 
+type RippleMetrics = {
+  left: number;
+  width: number;
+  visible: boolean;
+};
+
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
   const [depthMark, setDepthMark] = useState(0);
+  const [ripple, setRipple] = useState<RippleMetrics>({ left: 0, width: 0, visible: false });
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
+  const linksRef = useRef<HTMLElement>(null);
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
     window.requestAnimationFrame(() => menuButtonRef.current?.focus());
+  }, []);
+
+  const syncRipple = useCallback((section: string) => {
+    const navEl = linksRef.current;
+    if (!navEl) return;
+    const active = navEl.querySelector<HTMLAnchorElement>(`a[data-section="${section}"]`);
+    if (!active) {
+      setRipple((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+      return;
+    }
+    const navBox = navEl.getBoundingClientRect();
+    const linkBox = active.getBoundingClientRect();
+    setRipple({
+      left: linkBox.left - navBox.left,
+      width: linkBox.width,
+      visible: true,
+    });
   }, []);
 
   useEffect(() => {
@@ -36,17 +61,24 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         getComputedStyle(document.documentElement).getPropertyValue("--world-depth") || "0",
       );
       setDepthMark(Number.isFinite(depth) ? Math.max(0, Math.min(1, depth)) : 0);
+      syncRipple(section);
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
       window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [syncRipple]);
+
+  useLayoutEffect(() => {
+    syncRipple(activeSection);
+  }, [activeSection, syncRipple]);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -110,12 +142,13 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
             sizes="46px"
             priority
             className="site-nav-headshot"
+            draggable={false}
           />
         </span>
         <span className="site-nav-name">{nav.fullName}</span>
       </Link>
 
-      <nav className="site-nav-links" aria-label="Primary navigation">
+      <nav ref={linksRef} className="site-nav-links" aria-label="Primary navigation">
         {nav.links.map((link) => {
           const section = link.href.replace("#", "");
           return (
@@ -123,6 +156,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
               key={link.href}
               href={hrefFor(link.href)}
               data-liquid-hover
+              data-section={section}
               data-active={activeSection === section ? "true" : "false"}
               aria-current={activeSection === section ? "true" : undefined}
             >
@@ -130,6 +164,15 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
             </Link>
           );
         })}
+        <span
+          className="site-nav-ripple"
+          aria-hidden="true"
+          data-visible={ripple.visible ? "true" : "false"}
+          style={{
+            transform: `translateX(${ripple.left}px)`,
+            width: `${ripple.width}px`,
+          }}
+        />
         <span
           className="site-nav-depth"
           aria-hidden="true"
@@ -149,7 +192,6 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
           onClick={onToggleMotion}
         >
           <Waves aria-hidden="true" />
-          <span className="site-nav-motion-label">{motionEnabled ? "Motion on" : "Motion off"}</span>
         </button>
         <Link href={`/${nav.cta.href}`} className="site-nav-cta" data-liquid-hover>
           <span>{nav.cta.label}</span>

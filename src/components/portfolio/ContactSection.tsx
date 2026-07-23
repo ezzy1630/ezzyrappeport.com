@@ -148,6 +148,7 @@ export default function ContactSection() {
               </span>
               <span className="contact-section__email-copy">
                 <span>{bio.emailLabel}</span>
+                <small>{bio.email}</small>
               </span>
               <span className="contact-section__email-icon" aria-hidden="true">
                 <ArrowUpRight />
@@ -161,7 +162,7 @@ export default function ContactSection() {
               aria-label={`Copy ${bio.email} to clipboard`}
             >
               <Copy aria-hidden="true" />
-              <span>{copied ? "Copied" : "Copy"}</span>
+              <span>{copied ? "Copied" : "Copy address"}</span>
             </button>
           </div>
           <p ref={locationRef} className="contact-section__location">

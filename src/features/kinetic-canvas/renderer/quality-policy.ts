@@ -9,8 +9,8 @@ export const TARGET_FPS_BY_TIER: Record<KineticQualityTier, number> = {
 };
 
 export const QUALITY_PIXEL_BUDGETS: Record<Exclude<KineticQualityTier, "static">, number> = {
-  high: 4_500_000,
-  balanced: 2_750_000,
+  high: 6_000_000,
+  balanced: 3_200_000,
   low: 1_500_000,
 };
 

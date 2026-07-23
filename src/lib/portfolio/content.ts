@@ -454,7 +454,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center",
     offsetY: "0%",
-    wellColor: "#dceceb",
+    wellColor: "#7ec9c4",
   },
   etch: {
     aspectRatio: "1 / 1",
@@ -462,7 +462,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center",
     offsetY: "0%",
-    wellColor: "#030509",
+    wellColor: "#4a6fb0",
   },
   flowe: {
     aspectRatio: "1 / 1",
@@ -470,7 +470,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center",
     offsetY: "0%",
-    wellColor: "#080b11",
+    wellColor: "#3a8fc8",
   },
   velox: {
     aspectRatio: "1 / 1",
@@ -478,7 +478,7 @@ export const projectMediaPresentation = {
     scale: "0.84",
     position: "center",
     offsetY: "0%",
-    wellColor: "#ffffff",
+    wellColor: "#6ea0d8",
   },
   argyph: {
     aspectRatio: "1 / 1",
@@ -486,7 +486,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center",
     offsetY: "0%",
-    wellColor: "#0a1424",
+    wellColor: "#6a78c8",
   },
   nexarad: {
     aspectRatio: "1 / 1",
@@ -494,7 +494,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center",
     offsetY: "0%",
-    wellColor: "#e4eef4",
+    wellColor: "#6b92c8",
   },
   mathpilot: {
     aspectRatio: "1 / 1",
@@ -502,7 +502,7 @@ export const projectMediaPresentation = {
     scale: "1",
     position: "center 44%",
     offsetY: "-3%",
-    wellColor: "#eaf1f7",
+    wellColor: "#4f9ad8",
   },
 } satisfies Record<ProjectSlug, ProjectMediaPresentation>;
 

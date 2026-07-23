@@ -420,7 +420,8 @@ export function startUnderwaterHeroRenderer({
 }: StartOptions) {
   const renderer = new WebGLRenderer({
     canvas,
-    antialias: quality.tier === "high",
+    // MSAA on the canvas path plus multisampled scene targets below.
+    antialias: quality.tier === "high" || quality.tier === "balanced",
     alpha: false,
     powerPreference: "high-performance",
     premultipliedAlpha: false,
@@ -500,6 +501,9 @@ export function startUnderwaterHeroRenderer({
   rim.shadow.camera.far = 12;
   scene.add(rim);
 
+  // No MSAA on these targets: HalfFloat + depthTexture multisample resolve
+  // produced black speck artifacts on the glass glyphs. Sharpness comes from
+  // higher DPR instead.
   const sceneTarget = createRenderTarget(1, 1, true);
   const environmentTarget = createRenderTarget(1, 1, true);
   const frontDepthTarget = createRenderTarget();
@@ -707,7 +711,7 @@ export function startUnderwaterHeroRenderer({
   );
 
   const previousBodyCursor = document.body.style.cursor;
-  const setBodyCursor = (cursor: "pointer" | "grabbing" | null) => {
+  const setBodyCursor = (cursor: "pointer" | null) => {
     if (cursor === null) {
       if (previousBodyCursor) document.body.style.cursor = previousBodyCursor;
       else document.body.style.removeProperty("cursor");
@@ -718,8 +722,9 @@ export function startUnderwaterHeroRenderer({
 
   const syncInteractionDataset = () => {
     canvas.dataset.glyphInteraction = interactionTransition.state.kind;
-    if (interactionTransition.state.kind === "holding") setBodyCursor("grabbing");
-    else if (interactionTransition.state.kind === "hovering") setBodyCursor("pointer");
+    // Native cursor only — never grab/grabbing. Hold is a press into water,
+    // not a drag gesture.
+    if (interactionTransition.state.kind === "hovering") setBodyCursor("pointer");
     else setBodyCursor(null);
   };
 
@@ -841,6 +846,8 @@ export function startUnderwaterHeroRenderer({
     pointerPoint[1] = event.clientY - rect.top;
     const glyphIndex = nearestGlyphIndex(bodies, pointerPoint);
     if (glyphIndex < 0) return;
+    // Press into water — not a browser drag. Kill default drag ghost / text select.
+    event.preventDefault();
     holdPoint[0] = pointerPoint[0];
     holdPoint[1] = pointerPoint[1];
     dispatchGlyphInteraction({
@@ -850,6 +857,10 @@ export function startUnderwaterHeroRenderer({
       pressPoint: holdPoint,
       now: performance.now() / 1000,
     });
+  };
+
+  const onCanvasDragStart = (event: DragEvent) => {
+    event.preventDefault();
   };
 
   const onGlyphPointerMove = (event: PointerEvent) => {
@@ -900,12 +911,14 @@ export function startUnderwaterHeroRenderer({
     if (state.kind === "holding") cancelGlyphPointer(state.pointerId, "blur");
   };
 
-  window.addEventListener("pointerdown", onGlyphPointerDown, { capture: true, passive: true });
+  // passive:false so glyph presses can cancel the browser drag affordance.
+  window.addEventListener("pointerdown", onGlyphPointerDown, { capture: true, passive: false });
   window.addEventListener("pointermove", onGlyphPointerMove, { capture: true, passive: true });
   window.addEventListener("pointerup", onGlyphPointerUp, { capture: true, passive: true });
   window.addEventListener("pointercancel", onGlyphPointerCancel, { capture: true, passive: true });
   window.addEventListener("lostpointercapture", onGlyphLostCapture, { capture: true, passive: true });
   window.addEventListener("blur", onGlyphBlur);
+  canvas.addEventListener("dragstart", onCanvasDragStart);
   (canvas as HTMLCanvasElement & { heroHeightfield?: { splat: (value: HeightfieldSplat) => void } })
     .heroHeightfield = { splat: applySplat };
 
@@ -1654,6 +1667,7 @@ export function startUnderwaterHeroRenderer({
     window.removeEventListener("pointercancel", onGlyphPointerCancel, { capture: true });
     window.removeEventListener("lostpointercapture", onGlyphLostCapture, { capture: true });
     window.removeEventListener("blur", onGlyphBlur);
+    canvas.removeEventListener("dragstart", onCanvasDragStart);
     setBodyCursor(null);
     scheduledWater.length = 0;
     canvas.removeEventListener("webglcontextlost", onContextLost);

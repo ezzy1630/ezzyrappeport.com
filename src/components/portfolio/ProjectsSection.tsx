@@ -1,149 +1,112 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { projects, type Project, type ProjectSlug } from "@/lib/portfolio/content";
+import type { CSSProperties } from "react";
+import { projects } from "@/lib/portfolio/content";
+import ProjectIdentity from "./ProjectIdentity";
 import ProjectTransitionLink from "./ProjectTransitionLink";
+import ProjectsInteraction from "./ProjectsInteraction";
+import VeloxMark from "./VeloxMark";
 import styles from "./ProjectsSection.module.css";
 
-type ArtifactComposition =
-  | "full-frame"
-  | "floating-device"
-  | "diagram"
-  | "evidence"
-  | "typographic";
-
-const COMPOSITIONS: ArtifactComposition[] = [
-  "full-frame",
-  "diagram",
-  "floating-device",
-  "typographic",
-  "evidence",
-  "full-frame",
-  "floating-device",
-];
-
-function compositionFor(project: Project, index: number): ArtifactComposition {
-  if (project.slug === "etch" || project.slug === "argyph") return "diagram";
-  if (project.slug === "flowe" || project.slug === "velox") return "floating-device";
-  if (project.slug === "mathpilot") return "typographic";
-  if (project.slug === "nexarad") return "evidence";
-  return COMPOSITIONS[index % COMPOSITIONS.length];
-}
-
-function artifactMedia(project: Project) {
-  return project.media.gallery?.[0] ?? project.media.cover;
-}
-
 export default function ProjectsSection() {
-  const [activeSlug, setActiveSlug] = useState<ProjectSlug>(projects[0].slug);
-  const rootRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root) return;
-    const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-artifact]"));
-    const preload = (slug: string) => {
-      const project = projects.find((entry) => entry.slug === slug);
-      if (!project) return;
-      const next = artifactMedia(project);
-      const image = new window.Image();
-      image.decoding = "async";
-      image.src = next.src;
-    };
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (!entry.isIntersecting) continue;
-          const slug = entry.target.getAttribute("data-artifact") as ProjectSlug | null;
-          if (!slug) continue;
-          setActiveSlug(slug);
-          const index = projects.findIndex((project) => project.slug === slug);
-          const next = projects[index + 1];
-          if (next) preload(next.slug);
-        }
-      },
-      { root: null, rootMargin: "0px 0px -35% 0px", threshold: 0.35 },
-    );
-    for (const card of cards) observer.observe(card);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      id="projects"
-      ref={rootRef}
-      className={styles.section}
-      aria-labelledby="work-title"
-      data-active={activeSlug}
-    >
+    <section id="projects" className={styles.section} aria-labelledby="work-title">
       <header className={styles.header}>
-        <p className={styles.kicker}>Selected work / {String(projects.length).padStart(2, "0")} projects</p>
-        <h2 id="work-title">Systems built to survive contact with reality.</h2>
+        <div>
+          <p className={styles.kicker}>Selected work / {String(projects.length).padStart(2, "0")} projects</p>
+          <h2 id="work-title">Systems built to survive contact with reality.</h2>
+        </div>
         <p className={styles.intro}>
-          Artifacts discovered in the same water—agent security, hardware,
-          education, medical imaging, and code intelligence—with evidence and
-          constraints intact.
+          A selected body of work across agent security, hardware, education,
+          medical imaging, and code intelligence—presented with the evidence,
+          constraints, and current state intact.
         </p>
       </header>
 
-      <div className={styles.artifactStream}>
-        {projects.map((project, index) => {
-          const media = artifactMedia(project);
-          const composition = compositionFor(project, index);
-          const cue = project.proof.split("·")[0]?.trim() ?? project.status;
-          return (
+      <ol className={styles.index}>
+        {projects.map((project) => (
+          <li key={project.slug}>
             <article
-              key={project.slug}
-              className={styles.artifact}
-              data-artifact={project.slug}
-              data-composition={composition}
-              data-active={project.slug === activeSlug ? "true" : "false"}
+              id={`project-${project.slug}`}
+              className={styles.row}
+              data-project-row
             >
-              <div className={styles.artifactCopy}>
-                <div className={styles.stageMeta}>
-                  <span>{project.status}</span>
-                  <span>{project.year}</span>
-                  <span>{project.role}</span>
-                </div>
-                <h3>{project.title}</h3>
-                <p className={styles.stageTagline}>{project.tagline}</p>
-                <p className={styles.stageProof}>{project.proof}</p>
-                {project.cautionLabel ? (
-                  <p className={styles.stageProof}>{project.cautionLabel}</p>
-                ) : null}
-                <ProjectTransitionLink
-                  href={`/project/${project.slug}`}
-                  className={styles.stageLink}
-                  transitionName={`project-${project.slug}`}
-                >
-                  View case study <span aria-hidden="true">↗</span>
-                </ProjectTransitionLink>
+              <div className={styles.rail} aria-label={`Project ${project.index}, ${project.year}`}>
+                <span>{project.index}</span>
+                <span>{project.year}</span>
               </div>
 
-              <ProjectTransitionLink
-                href={`/project/${project.slug}`}
-                className={styles.artifactMedia}
-                transitionName={`project-${project.slug}`}
-                aria-label={`Open the ${project.title} case study`}
+              <figure
+                className={styles.media}
+                data-project={project.slug}
+                data-project-media
+                style={
+                  {
+                    "--project-aspect": project.mediaPresentation.aspectRatio,
+                    "--project-fit": project.mediaPresentation.fit,
+                    "--project-scale": project.mediaPresentation.scale,
+                    "--project-position": project.mediaPresentation.position,
+                    "--project-offset-y": project.mediaPresentation.offsetY,
+                    "--project-well": project.mediaPresentation.wellColor,
+                  } as CSSProperties
+                }
               >
-                <span className={styles.artifactLight} aria-hidden="true" />
-                <Image
-                  src={media.src}
-                  alt={media.alt}
-                  width={media.width}
-                  height={media.height}
-                  sizes="(max-width: 900px) 92vw, 54vw"
-                  className={styles.artifactImage}
-                  unoptimized={media.src.endsWith(".svg")}
-                  priority={index === 0}
-                />
-                <span className={styles.artifactCue}>{cue}</span>
-              </ProjectTransitionLink>
+                <ProjectTransitionLink
+                  href={`/project/${project.slug}`}
+                  className={styles.mediaLink}
+                  aria-label={`Explore the ${project.title} project`}
+                  transitionName={`project-${project.slug}`}
+                >
+                  {project.slug === "velox" ? (
+                    <VeloxMark className={styles.veloxMark} />
+                  ) : (
+                    <ProjectIdentity
+                      slug={project.slug}
+                      media={project.media.cover}
+                      className={styles.projectIdentity}
+                    />
+                  )}
+                </ProjectTransitionLink>
+                <span className={styles.mediaCue} aria-hidden="true">
+                  View project <span>↗</span>
+                </span>
+              </figure>
+
+              <div className={styles.content}>
+                <div className={styles.meta}>
+                  <span>{project.status}</span>
+                  {project.cautionLabel ? <span>{project.cautionLabel}</span> : null}
+                </div>
+                <div className={styles.heading}>
+                  <h3>{project.title}</h3>
+                  <p>{project.subtitle}</p>
+                </div>
+                <p className={styles.tagline}>{project.tagline}</p>
+                <div className={styles.details}>
+                  <p><span>Role</span>{project.role}</p>
+                  <p><span>Proof</span>{project.proof}</p>
+                </div>
+              </div>
+
+              <div className={styles.actions}>
+                <ProjectTransitionLink href={`/project/${project.slug}`} className={styles.primaryAction}>
+                  Explore project <span aria-hidden="true">↗</span>
+                </ProjectTransitionLink>
+                {project.verifiedLinks.slice(0, 1).map((link) => (
+                  <a
+                    key={`${project.slug}-${link.href}`}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={styles.secondaryAction}
+                  >
+                    {link.label} <span aria-hidden="true">↗</span>
+                  </a>
+                ))}
+              </div>
             </article>
-          );
-        })}
-      </div>
+          </li>
+        ))}
+      </ol>
+      <ProjectsInteraction />
     </section>
   );
 }

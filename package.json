@@ -15,6 +15,7 @@
   "dependencies": {
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^1.1.0",
+    "keel": "^0.469.1",
     "lucide-react": "^0.525.0",
     "next": "^15.3.4",
     "react": "^19.0.0",
