@@ -35,17 +35,18 @@ export type WorldState = {
   moored: boolean;
 };
 
-/** Depth assigned to each section boundary (continuous, monotonic). */
-const SECTION_DEPTH_ANCHORS = {
+/** Depth assigned to named points in the measured section journey. */
+export const WORLD_DEPTH_ANCHORS = {
   heroTop: 0,
   heroBottom: 0.1,
-  projectsBottom: 0.42,
-  aboutBottom: 0.66,
+  projectsBottom: 0.38,
+  aboutMid: 0.56,
+  contactApproach: 0.74,
   contactBottom: 1,
 } as const;
 
-/** Case-study routes hold a fixed deep mooring below the About pocket. */
-const CASE_MOORING_DEPTH = 0.9;
+/** Case-study routes float in the same shallow water as the early index. */
+export const CASE_MOORING_DEPTH = 0.22;
 
 export type SectionRange = {
   id: WorldSectionId;
@@ -112,13 +113,62 @@ function smoothstep(edge0: number, edge1: number, value: number) {
   return t * t * (3 - 2 * t);
 }
 
+function lightForDepth(depth: number) {
+  return 1 - smoothstep(0.06, 0.88, depth) * 0.95;
+}
+
+function smootherstep(value: number) {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * t * (t * (t * 6 - 15) + 10);
+}
+
+type DepthKnot = readonly [position: number, depth: number];
+
+function depthKnots(
+  ranges: readonly SectionRange[],
+  viewportHeight: number,
+  scrollHeight: number,
+): DepthKnot[] {
+  const hero = ranges[0];
+  const projects = ranges[1];
+  const about = ranges[2];
+  const contact = ranges[3];
+  const anchors = WORLD_DEPTH_ANCHORS;
+  const maxScroll = Math.max(scrollHeight - viewportHeight, 1);
+  const contactApproach = Math.max(
+    about.top,
+    Math.min(maxScroll, contact.top - viewportHeight),
+  );
+  const aboutMid = Math.max(
+    projects.bottom,
+    Math.min(contactApproach - 1, about.top + (about.bottom - about.top) * 0.32),
+  );
+  const rawKnots: DepthKnot[] = [
+    [hero.top, anchors.heroTop],
+    [hero.bottom, anchors.heroBottom],
+    [projects.bottom, anchors.projectsBottom],
+    [aboutMid, anchors.aboutMid],
+    [contactApproach, anchors.contactApproach],
+    [maxScroll, anchors.contactBottom],
+  ];
+  const knots = rawKnots.map(([position, depth]) => [
+    Math.max(0, Math.min(maxScroll, position)),
+    depth,
+  ] as DepthKnot);
+  for (let index = 1; index < knots.length; index += 1) {
+    if (knots[index][0] <= knots[index - 1][0]) {
+      knots[index] = [knots[index - 1][0] + 1, knots[index][1]];
+    }
+  }
+  return knots;
+}
+
 /**
- * Map an absolute document scroll position to world depth. Piecewise-linear
- * across viewport-aware anchor points: the hero's depth spans its own
- * scroll-through, Projects own the bright middle, About the quieter pocket,
- * and the final basin descent unfolds while Contact enters the viewport —
- * so reaching the page bottom always arrives at depth 1. Monotonic and
- * clamped, so the upward journey is the exact inverse of the descent.
+ * Map an absolute document scroll position to world depth. The knots are
+ * measured from section geometry, while each segment uses a smootherstep so
+ * its value and slope meet continuously at section-aware anchors. This keeps
+ * the journey monotonic and reversible without making the renderer chase
+ * document-percentage presets.
  */
 export function worldDepthForScroll(
   scrollY: number,
@@ -126,34 +176,17 @@ export function worldDepthForScroll(
   viewportHeight: number,
   scrollHeight: number,
 ): number {
-  const hero = ranges[0];
-  const projects = ranges[1];
-  const about = ranges[2];
-  const a = SECTION_DEPTH_ANCHORS;
-  const maxScroll = Math.max(scrollHeight - viewportHeight, 1);
-  const anchors: Array<readonly [number, number]> = [
-    [hero.top, a.heroTop],
-    [hero.bottom, a.heroBottom],
-    [projects.bottom, a.projectsBottom],
-    // The ocean-floor descent plays out across the whole approach: from the
-    // first pixel of Contact entering the viewport to the page bottom.
-    [Math.max(about.bottom - viewportHeight, about.top), a.aboutBottom],
-    [maxScroll, a.contactBottom],
-  ];
-  // Keep anchor positions strictly ordered even when sections are short.
-  const ordered = anchors.map(([x]) => x);
-  for (let index = 1; index < ordered.length; index += 1) {
-    if (ordered[index] <= ordered[index - 1]) ordered[index] = ordered[index - 1] + 1;
-  }
-  if (scrollY <= ordered[0]) return anchors[0][1];
-  for (let index = 1; index < anchors.length; index += 1) {
-    if (scrollY <= ordered[index]) {
-      const depthSpan = anchors[index][1] - anchors[index - 1][1];
-      const scrollSpan = Math.max(ordered[index] - ordered[index - 1], 1);
-      return anchors[index - 1][1] + depthSpan * ((scrollY - ordered[index - 1]) / scrollSpan);
+  const knots = depthKnots(ranges, viewportHeight, scrollHeight);
+  if (scrollY <= knots[0][0]) return knots[0][1];
+  for (let index = 1; index < knots.length; index += 1) {
+    const [nextPosition, nextDepth] = knots[index];
+    const [previousPosition, previousDepth] = knots[index - 1];
+    if (scrollY <= nextPosition) {
+      const t = (scrollY - previousPosition) / Math.max(nextPosition - previousPosition, 1);
+      return previousDepth + (nextDepth - previousDepth) * smootherstep(t);
     }
   }
-  return a.contactBottom;
+  return knots[knots.length - 1][1];
 }
 
 function activeSection(
@@ -202,7 +235,7 @@ export function computeWorldState(scrollVelocity: number): WorldState {
     return {
       depth: CASE_MOORING_DEPTH,
       velocity: scrollVelocity,
-      light: 0.16,
+      light: lightForDepth(CASE_MOORING_DEPTH),
       calm: 0.25,
       section: "contact",
       sectionProgress: 0,
@@ -219,7 +252,7 @@ export function computeWorldState(scrollVelocity: number): WorldState {
   );
   const { section, sectionProgress } = activeSection(scrollY, viewportHeight, ranges);
   // Sunlight transmission: bright shallows, gentle mid falloff, dark basin.
-  const light = 1 - smoothstep(0.06, 0.88, depth) * 0.95;
+  const light = lightForDepth(depth);
   // The About pocket is physically calmer: full calm at its heart, feathered
   // at both edges so entering and leaving stays continuous.
   const aboutRange = ranges[2];

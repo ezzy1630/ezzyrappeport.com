@@ -34,6 +34,11 @@ export const TONE_MAPPER_NAMES = {
 export const HERO_GLB_URL = "/assets/hero/ezzy-rappeport-glyphs.glb";
 export const HERO_MANIFEST_URL = "/assets/hero/ezzy-rappeport-glyphs.json";
 
+// Keep the high-tier desktop render target below the adaptive-scaling cliff.
+// The canvas remains DPR-aware, but a full 1.5x target at laptop dimensions
+// spends the frame budget on pixels before the water simulation runs.
+export const MAX_DESKTOP_RENDER_DPR = 1.25;
+
 export const WATER_PLATE_URLS = {
   shallowLandscape: "/assets/water/shallow-desktop-v1.webp",
   shallowPortrait: "/assets/water/shallow-portrait-v1.webp",

@@ -22,6 +22,11 @@
   --material-card-contact: rgba(12, 42, 62, 0.42);
   --material-info-fill: rgba(244, 250, 251, 0.4);
   --material-control-fill: rgba(255, 255, 255, 0.55);
+  /* Published by the shared 30 Hz water state. Defaults keep the poster
+     readable before the first client tick and during a failed WebGL start. */
+  --world-depth: 0;
+  --world-light: 1;
+  --world-calm: 0;
 }
 
 html {
@@ -57,6 +62,21 @@ body {
   min-height: 100svh;
   background: var(--rv-pearl);
   isolation: isolate;
+}
+
+/* Server-rendered case pages start at the same shallow dock before the
+   client measurement and renderer effects mount. This prevents a bright
+   index-frame flash on direct route loads. */
+.portfolio-root[data-route="case"] {
+  --world-depth: 0.22;
+  --world-light: 0.9056;
+  --world-calm: 0.25;
+}
+
+html:has(.portfolio-root[data-route="case"]) {
+  --world-depth: 0.22;
+  --world-light: 0.9056;
+  --world-calm: 0.25;
 }
 
 .fluid-canvas {
@@ -1533,25 +1553,32 @@ body {
   .contact-section::after { filter: none; opacity: 0.42; transform: none; }
 }
 
-/* Optical plate system v1. revamp.css is the portfolio style owner. */
+/* Poster fallback follows the same continuous depth variable as WebGL. There
+   are no section-specific image swaps, so failure and startup still retrace
+   one water journey instead of flashing between plates. */
 .portfolio-root,
 .content-layer main { background: transparent; }
 
 .fluid-canvas {
-  background: url("/assets/water/shallow-desktop-v1.webp") center / cover no-repeat #eaf3f8;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(242, 250, 255, calc((1 - var(--world-depth, 0)) * 0.12)),
+      rgba(3, 18, 43, calc(var(--world-depth, 0) * 0.82))
+    ),
+    url("/assets/water/shallow-desktop-v1.webp") center / cover no-repeat #eaf3f8;
 }
 
 @media (max-aspect-ratio: 3 / 4) {
-  .fluid-canvas { background-image: url("/assets/water/shallow-portrait-v1.webp"); }
-}
-
-html[data-water-section="about"] .fluid-canvas {
-  background-image: url("/assets/water/mid-depth-v1.webp");
-}
-
-html[data-water-section="contact"] .fluid-canvas,
-html[data-water-section="case"] .fluid-canvas {
-  background-image: url("/assets/water/deep-basin-v1.webp");
+  .fluid-canvas {
+    background-image:
+      linear-gradient(
+        180deg,
+        rgba(242, 250, 255, calc((1 - var(--world-depth, 0)) * 0.12)),
+        rgba(3, 18, 43, calc(var(--world-depth, 0) * 0.82))
+      ),
+      url("/assets/water/shallow-portrait-v1.webp");
+  }
 }
 
 #projects,
@@ -1564,12 +1591,6 @@ html[data-water-section="case"] .fluid-canvas {
    section instead of an opaque overlay (which used to leave a visible seam
    where the canvas ended and a CSS field began). The module-level ::before
    now owns the soft sunlit pool, so no ID-level rule may override it. */
-
-html[data-water-section="about"] {
-  --rv-ink: oklch(0.2 0.04 240);
-  --rv-muted: oklch(0.37 0.055 235);
-  --rv-line: rgba(9, 34, 65, 0.17);
-}
 
 /* Navigation foreground no longer flips by section flag: the continuous
    --nav-l curve (driven by world light) owns the color, so the descent
@@ -1791,8 +1812,6 @@ html[data-water-section="about"] {
   min-height: 6.1rem;
   padding-block: 1.35rem;
 }
-
-html[data-water-section="case"] .content-layer { color: rgba(247, 250, 255, 0.96); }
 
 @media (max-width: 768px) {
   .site-nav-name { display: inline; }

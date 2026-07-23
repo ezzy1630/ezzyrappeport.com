@@ -61,7 +61,6 @@ import {
   settleCancelledGlyph,
   transitionGlyphInteraction,
   type GlyphInteractionEvent,
-  type GlyphInteractionTransition,
 } from "../../interaction/glyphInteractionState";
 import { clientToWaterUv } from "../../physics/waterCoordinates";
 import type { KineticQuality } from "../quality";
@@ -69,6 +68,7 @@ import {
   HERO_GLB_URL,
   HERO_MANIFEST_URL,
   UNDERWATER_DEBUG,
+  MAX_DESKTOP_RENDER_DPR,
   WATER_PLATE_URLS,
 } from "./config";
 import { validateHeroManifest, type HeroGlyphManifestEntry } from "./heroManifest";
@@ -382,11 +382,15 @@ function applyCameraLife(
   camera.quaternion.copy(rest.quaternion).multiply(new Quaternion().setFromEuler(euler));
 }
 
-function percentile95(values: number[]) {
+function percentile(values: number[], fraction: number) {
   if (values.length === 0) return 0;
   const sorted = [...values].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * 0.95))];
+  return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
 }
+
+const FRAME_BUDGET_MS = 17.3;
+const ADAPTIVE_SLOW_WINDOWS = 2;
+const MIN_RUNTIME_SCALE = 0.8;
 
 /**
  * Production render graph
@@ -465,6 +469,7 @@ export function startUnderwaterHeroRenderer({
       uTheme: { value: 0 },
       uCalm: { value: 0 },
       uPlate: { value: 0 },
+      uQualityTier: { value: quality.tier === "high" ? 2 : quality.tier === "balanced" ? 1 : 0 },
       uMotion: { value: 1 },
       uDebugUv: { value: process.env.NODE_ENV !== "production" && debugSearch.get("heroEnvironment") === "uv" ? 1 : 0 },
     },
@@ -646,6 +651,8 @@ export function startUnderwaterHeroRenderer({
   };
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
+  let slowFrameWindows = 0;
+  let adaptiveDowngrades = 0;
   let frameCount = 0;
   // The one world: continuous depth/calm sampled from the shared physics
   // state and exponentially smoothed per frame for a lag-free but weighty
@@ -886,13 +893,15 @@ export function startUnderwaterHeroRenderer({
     if (disposed) return;
     const width = Math.max(1, canvas.parentElement?.clientWidth ?? window.innerWidth);
     const height = Math.max(1, canvas.parentElement?.clientHeight ?? window.innerHeight);
-    const dpr = Math.min(quality.dpr, quality.maxDpr, 1.5);
+    const dpr = Math.min(quality.dpr, quality.maxDpr, MAX_DESKTOP_RENDER_DPR);
     renderer.setPixelRatio(dpr);
     renderer.setSize(width, height, false);
     backdropMaterial.uniforms.uAspect.value = width / Math.max(height, 1);
     backdropMaterial.uniforms.uPortrait.value = width / Math.max(height, 1) < 0.76 ? 1 : 0;
     const renderWidth = Math.max(1, Math.floor(width * dpr * runtimeScale));
     const renderHeight = Math.max(1, Math.floor(height * dpr * runtimeScale));
+    canvas.dataset.adaptiveScale = runtimeScale.toFixed(2);
+    canvas.dataset.adaptiveDowngrades = String(adaptiveDowngrades);
     sceneTarget.setSize(renderWidth, renderHeight);
     environmentTarget.setSize(renderWidth, renderHeight);
     frontDepthTarget.setSize(renderWidth, renderHeight);
@@ -1023,7 +1032,6 @@ export function startUnderwaterHeroRenderer({
         direction: [0, -0.2],
       });
     }
-    const scrollMagnitude = Math.abs(physics.scroll.velocity);
     const scrollWake = scrollWakeStrength(physics.scroll.velocity);
     scrollChop += (scrollWake - scrollChop) * 0.12;
     if (scrollWake > 0.001 && performance.now() - lastScrollWakeAt > 90) {
@@ -1322,16 +1330,25 @@ export function startUnderwaterHeroRenderer({
     }
     if (delta > 0 && frameSamples.length < 240) frameSamples.push(delta);
     if (frameSamples.length === 240) {
-      const p95 = percentile95(frameSamples);
+      const p50 = percentile(frameSamples, 0.5);
+      const p95 = percentile(frameSamples, 0.95);
       const average = frameSamples.reduce((sum, value) => sum + value, 0) / frameSamples.length;
+      const frameWorst = Math.max(...frameSamples);
       canvas.dataset.frameMsP95 = p95.toFixed(2);
+      canvas.dataset.frameMsP50 = p50.toFixed(2);
+      canvas.dataset.frameMsWorst = frameWorst.toFixed(2);
       canvas.dataset.fps = (1000 / average).toFixed(1);
-      canvas.dataset.workMsP95 = percentile95(workSamples).toFixed(2);
+      canvas.dataset.workMsP95 = percentile(workSamples, 0.95).toFixed(2);
+      canvas.dataset.workMsWorst = Math.max(...workSamples).toFixed(2);
       workSamples.length = 0;
       frameSamples.length = 0;
-      if (p95 > 17.3 && runtimeScale > 0.8) {
-        runtimeScale = Math.max(0.8, runtimeScale - 0.1);
+      slowFrameWindows = p95 > FRAME_BUDGET_MS ? slowFrameWindows + 1 : 0;
+      if (slowFrameWindows >= ADAPTIVE_SLOW_WINDOWS && runtimeScale > MIN_RUNTIME_SCALE) {
+        runtimeScale = Math.max(MIN_RUNTIME_SCALE, runtimeScale - 0.1);
+        slowFrameWindows = 0;
+        adaptiveDowngrades += 1;
         canvas.dataset.adaptiveScale = runtimeScale.toFixed(2);
+        canvas.dataset.adaptiveDowngrades = String(adaptiveDowngrades);
         resize();
       }
     }

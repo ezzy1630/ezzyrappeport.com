@@ -93,6 +93,7 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
   uniform float uTheme;
   uniform float uCalm;
   uniform float uPlate;
+  uniform float uQualityTier;
   uniform float uDebugUv;
   uniform float uMotion;
 
@@ -191,6 +192,23 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     return focus * focus * breakup;
   }
 
+  /* Two allocation-free particle fields occupy the deep water. Grid cells
+     provide stable identities, while the small lateral drift and twinkle keep
+     the field from reading as a repeated texture or a JS particle system. */
+  float marineSnowLayer(vec2 uv, float scale, float speed, float seed) {
+    vec2 drifted = uv;
+    drifted.x += sin((uv.y + seed) * 7.0 + uTime * 0.13) * 0.018;
+    drifted.y += uTime * speed * uMotion;
+    vec2 grid = drifted * vec2(scale, scale * 0.72);
+    vec2 cell = floor(grid);
+    vec2 local = fract(grid) - 0.5;
+    vec2 jitter = hash22(cell + vec2(seed)) * 0.64 - 0.32;
+    float distanceToFlake = length((local - jitter) * vec2(1.0, 1.24));
+    float flake = 1.0 - smoothstep(0.0, 0.078, distanceToFlake);
+    float twinkle = 0.5 + 0.5 * sin(uTime * (0.28 + seed * 0.04) + hash21(cell + vec2(seed)) * 6.283);
+    return flake * mix(0.42, 1.0, twinkle);
+  }
+
   void main() {
     if (uDebugUv > 0.5) { gl_FragColor = vec4(vUv, 0.0, 1.0); return; }
     float t = uTime * uMotion;
@@ -218,6 +236,14 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float broadIllumination = noise21(vec2(vUv.x * 3.8 + t * 0.018, depth * 4.6 - t * 0.014));
     color += mix(vec3(0.06, 0.08, 0.10), vec3(0.018, 0.045, 0.09), deepMix)
       * (broadIllumination - 0.48);
+
+    // A small, soft contrast pocket keeps the crystal title legible in the
+    // bright surface without introducing a flat opaque plate behind it.
+    float titleContrastPocket = exp(
+      -pow((vUv.x - 0.5) * 2.15, 2.0)
+      -pow((vUv.y - 0.48) * 2.7, 2.0)
+    );
+    color *= 1.0 - titleContrastPocket * (1.0 - deepMix) * 0.10;
 
     // Perspective floor projection: near cells grow toward the viewer, while
     // two moving folds create focused, non-sliding caustic illumination.
@@ -252,6 +278,16 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float volumeNoise = noise21(vec2(vUv.x * 7.0 + t * 0.035, depth * 9.0 - t * 0.028));
     color += mix(vec3(0.74, 0.88, 1.0), vec3(0.3, 0.62, 0.98), deepMix)
       * shaft * (0.05 + volumeNoise * 0.05) * mix(0.42, 1.3, deepMix);
+
+    // Marine snow only occupies the deeper column. Balanced keeps the far
+    // layer; high adds the nearer layer. Low retains shafts and caustics while
+    // avoiding the extra procedural work. Reduced motion freezes uTime.
+    float snowDepth = smoothstep(0.34, 0.92, uTheme) * (0.18 + depth * 0.82);
+    float farSnow = marineSnowLayer(vUv * vec2(1.0, 1.18), 52.0, 0.020, 1.7);
+    float nearSnow = marineSnowLayer(vUv * vec2(1.0, 1.12), 92.0, 0.034, 4.3);
+    float snow = farSnow * 0.34 + nearSnow * 0.22 * step(1.5, uQualityTier);
+    color += mix(vec3(0.62, 0.79, 0.98), vec3(0.78, 0.90, 1.0), deepMix)
+      * snow * snowDepth * 0.24;
 
     // Silvery underside of the free surface, with genuine perspective waves.
     float surfaceWave = sin(centered.x * 22.0 + normalField.x * 1.7 - t * 0.55)
