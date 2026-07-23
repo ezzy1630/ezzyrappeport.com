@@ -40,8 +40,6 @@ export default function LoadingVeil() {
 
   return (
     <div className="loading-veil" data-ready={ready ? "true" : "false"} aria-hidden="true">
-      <div className="loading-veil__water" />
-      <p className="loading-veil__name">Ezzy Rappeport</p>
       <span className="loading-veil__line" />
     </div>
   );

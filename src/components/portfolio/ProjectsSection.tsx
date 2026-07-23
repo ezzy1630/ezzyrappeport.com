@@ -17,11 +17,12 @@ export default function ProjectsSection() {
   return (
     <section id="projects" className={styles.section} aria-labelledby="work-title">
       <header className={styles.header}>
-        <p className={styles.kicker}>Selected work</p>
+        <p className={styles.kicker}>Selected work / {String(projects.length).padStart(2, "0")} projects</p>
         <h2 id="work-title">Systems built to survive contact with reality.</h2>
         <p className={styles.intro}>
-          Security, hardware, education, medical imaging, and code intelligence.
-          Each case shows what shipped, what was verified, and what remains bounded.
+          A selected body of work across agent security, hardware, education,
+          medical imaging, and code intelligence—presented with the evidence,
+          constraints, and current state intact.
         </p>
       </header>
 
@@ -29,12 +30,16 @@ export default function ProjectsSection() {
         <article className={styles.stage} data-project={activeProject.slug}>
           <div className={styles.stageCopy}>
             <div className={styles.stageMeta}>
+              <span>{activeProject.status}</span>
               <span>{activeProject.year}</span>
               <span>{activeProject.role}</span>
             </div>
             <h3>{activeProject.title}</h3>
             <p className={styles.stageTagline}>{activeProject.tagline}</p>
-            <p className={styles.stageProof}>{activeProject.proof.split("·").join(" / ")}</p>
+            <p className={styles.stageProof}>{activeProject.proof}</p>
+            {activeProject.cautionLabel ? (
+              <p className={styles.stageProof}>{activeProject.cautionLabel}</p>
+            ) : null}
             <ProjectTransitionLink
               href={`/project/${activeProject.slug}`}
               className={styles.stageLink}

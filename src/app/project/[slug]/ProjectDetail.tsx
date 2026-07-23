@@ -11,9 +11,15 @@ type Props = {
 
 const chapters = [
   { key: "problem", label: "Problem" },
-  { key: "approach", label: "Build" },
-  { key: "outcome", label: "Result" },
+  { key: "approach", label: "Approach" },
+  { key: "outcome", label: "Outcome" },
 ] as const;
+
+const linkKindLabels = {
+  source: "Source",
+  site: "Live site",
+  releases: "Releases",
+} as const;
 
 export default function ProjectDetail({ project }: Props) {
   const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
@@ -33,7 +39,7 @@ export default function ProjectDetail({ project }: Props) {
           <CaseArrivalWater />
           <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
             <span aria-hidden="true">←</span>
-            Back to work
+            Back to selected work
           </ProjectTransitionLink>
 
           <header className={styles.hero}>
@@ -69,8 +75,8 @@ export default function ProjectDetail({ project }: Props) {
 
           <section className={styles.caseBody} aria-labelledby="case-story-title">
             <aside className={styles.overview}>
-              <p className={styles.sectionLabel}>What shipped</p>
-              <h2 id="case-story-title">Built from constraint to evidence.</h2>
+              <p className={styles.sectionLabel}>Overview</p>
+              <h2 id="case-story-title">What shipped</h2>
               <p>{project.description}</p>
               {project.cautionLabel ? <p className={styles.caution}>{project.cautionLabel}</p> : null}
 
@@ -79,10 +85,18 @@ export default function ProjectDetail({ project }: Props) {
               </ul>
 
               {project.verifiedLinks.length > 0 ? (
-                <div className={styles.links}>
+                <div className={styles.links} aria-label="Verified project links">
                   {project.verifiedLinks.map((link) => (
-                    <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
-                      {link.label} <span aria-hidden="true">↗</span>
+                    <a
+                      key={link.href}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label={`${link.label} for ${project.title} (opens in a new tab)`}
+                    >
+                      <span>{linkKindLabels[link.kind]}</span>
+                      <span>{link.label}</span>
+                      <span aria-hidden="true">↗</span>
                     </a>
                   ))}
                 </div>
@@ -128,10 +142,10 @@ export default function ProjectDetail({ project }: Props) {
 
           <nav className={styles.pagination} aria-label="Project navigation">
             <ProjectTransitionLink href={`/project/${previous.slug}`} transitionDirection="back">
-              <small>Previous</small><strong>{previous.title}</strong>
+              <small>Previous project</small><strong>{previous.title}</strong>
             </ProjectTransitionLink>
             <ProjectTransitionLink href={`/project/${next.slug}`}>
-              <small>Next</small><strong>{next.title}</strong>
+              <small>Next project</small><strong>{next.title}</strong>
             </ProjectTransitionLink>
           </nav>
 

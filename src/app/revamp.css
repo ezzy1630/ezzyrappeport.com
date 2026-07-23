@@ -136,7 +136,7 @@ html:has(.portfolio-root[data-route="case"]) {
   opacity: 0;
   filter: none;
   mix-blend-mode: normal;
-  transition: opacity 720ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 650ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* DOM acknowledgment stays a tiny surface cue; the shared water carries the
@@ -197,42 +197,13 @@ html:has(.portfolio-root[data-route="case"]) {
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: #f1f7fa;
+  pointer-events: none;
   transition: opacity 700ms cubic-bezier(0.22, 1, 0.36, 1), visibility 700ms;
 }
 
 .loading-veil[data-ready="true"] {
   opacity: 0;
   visibility: hidden;
-  pointer-events: none;
-}
-
-.loading-veil__water {
-  position: absolute;
-  inset: -8%;
-  background: url("/assets/water/shallow-desktop-v1.webp") center / cover no-repeat;
-  animation: loading-water-settle 2.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.loading-veil__water::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: rgba(245, 250, 252, 0.36);
-  backdrop-filter: blur(10px) saturate(0.8);
-}
-
-.loading-veil__name {
-  position: relative;
-  margin: 0;
-  color: rgba(9, 27, 48, 0.88);
-  font-family: var(--font-inter-tight), sans-serif;
-  font-size: clamp(1.1rem, 1.6vw, 1.45rem);
-  font-weight: 560;
-  letter-spacing: -0.025em;
 }
 
 .loading-veil__line {
@@ -253,11 +224,6 @@ html:has(.portfolio-root[data-route="case"]) {
   background: #3977ee;
   transform: translateX(-100%);
   animation: loading-line 1.5s cubic-bezier(0.16, 1, 0.3, 1) infinite;
-}
-
-@keyframes loading-water-settle {
-  from { filter: blur(18px); transform: scale(1.12); }
-  to { filter: blur(0); transform: scale(1.04); }
 }
 
 @keyframes loading-line {
@@ -661,7 +627,6 @@ html:has(.portfolio-root[data-route="case"]) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .loading-veil__water,
   .loading-veil__line::after {
     animation: none;
   }
@@ -1330,7 +1295,9 @@ html:has(.portfolio-root[data-route="case"]) {
     padding: 2.2rem 1.25rem 1.5rem;
     /* A restrained translucent water sheet — the live surface stays visible
        behind the menu instead of a flat white interruption. */
-    background: rgba(237, 246, 250, 0.94);
+    background:
+      linear-gradient(180deg, rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.42)), rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.3))),
+      linear-gradient(180deg, rgba(240, 248, 252, calc(0.42 + var(--world-light, 1) * 0.3)), rgba(226, 241, 249, calc(0.36 + var(--world-light, 1) * 0.26)));
     -webkit-backdrop-filter: blur(22px) saturate(1.18);
     backdrop-filter: blur(22px) saturate(1.18);
     opacity: 0;
@@ -1338,7 +1305,6 @@ html:has(.portfolio-root[data-route="case"]) {
     transform: translateY(-1rem);
     transition: opacity 220ms ease, transform 320ms cubic-bezier(0.22, 1, 0.36, 1), visibility 0s linear 320ms;
   }
-  .mobile-navigation:focus { outline: none; }
   .site-nav[data-menu-open="true"] .mobile-navigation {
     z-index: 0;
     visibility: visible;

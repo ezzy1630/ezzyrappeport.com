@@ -46,8 +46,8 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
     const panel = mobileNavigationRef.current;
     const focusableSelector =
       'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const focusPanel = () => panel?.focus();
-    window.requestAnimationFrame(focusPanel);
+    const focusFirstItem = () => panel?.querySelector<HTMLElement>(focusableSelector)?.focus();
+    window.requestAnimationFrame(focusFirstItem);
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -91,7 +91,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         href="/#top"
         className="site-nav-brand"
         data-liquid-hover
-        aria-label={`${nav.fullName}, home`}
+        aria-label={`${nav.fullName} — home`}
       >
         <span className="site-nav-monogram">
           <Image
@@ -149,7 +149,6 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         id="mobile-navigation"
         className="mobile-navigation"
         role="dialog"
-        tabIndex={-1}
         aria-modal="true"
         aria-label="Mobile navigation"
         aria-hidden={!menuOpen}
