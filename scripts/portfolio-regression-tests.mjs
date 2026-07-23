@@ -26,7 +26,10 @@ import {
   stepGlyphPlanarState,
 } from "../src/features/kinetic-canvas/physics/glyphImpulseModel.ts";
 import { accumulateFixedSteps } from "../src/features/kinetic-canvas/physics/fixedStep.ts";
-import { worldDepthForScroll } from "../src/lib/portfolio/world-state.ts";
+import {
+  WORLD_DEPTH_ANCHORS,
+  worldDepthForScroll,
+} from "../src/lib/portfolio/world-state.ts";
 import {
   canvasPointToUv,
   clientToCanvasPoint,
@@ -84,6 +87,22 @@ const heroNameSource = readFileSync(
 );
 const underwaterRendererSource = readFileSync(
   new URL("../src/features/kinetic-canvas/renderer/underwater/underwaterHeroRenderer.ts", import.meta.url),
+  "utf8",
+);
+const projectDetailSource = readFileSync(
+  new URL("../src/app/project/[slug]/ProjectDetail.tsx", import.meta.url),
+  "utf8",
+);
+const transitionLinkSource = readFileSync(
+  new URL("../src/components/portfolio/ProjectTransitionLink.tsx", import.meta.url),
+  "utf8",
+);
+const portfolioShellSource = readFileSync(
+  new URL("../src/components/portfolio/PortfolioShell.tsx", import.meta.url),
+  "utf8",
+);
+const worldStateSource = readFileSync(
+  new URL("../src/lib/portfolio/world-state.ts", import.meta.url),
   "utf8",
 );
 const underwaterShaderSource = readFileSync(
@@ -279,6 +298,8 @@ const tests = [
     assert.match(underwaterRendererSource, /authored-high-pass-v2/);
     assert.match(underwaterShaderSource, /Perspective floor projection/);
     assert.match(underwaterShaderSource, /Volumetric shafts/);
+    assert.match(underwaterShaderSource, /marineSnowLayer/);
+    assert.match(underwaterShaderSource, /uQualityTier/);
     assert.match(underwaterShaderSource, /Beer-Lambert-style blue absorption/);
     assert.match(underwaterShaderSource, /high-pass recovery restores subpixel caustic filaments/);
     assert.match(underwaterShaderSource, /opticalCenter - opticalLow/);
@@ -333,7 +354,14 @@ const tests = [
     // The hero exit window and the basin descent both own real scroll room.
     assert.ok(worldDepthForScroll(450, ranges, vh, scrollHeight) > 0.03);
     assert.ok(worldDepthForScroll(6317, ranges, vh, scrollHeight) > 0.66);
-    assert.ok(worldDepthForScroll(5418, ranges, vh, scrollHeight) <= 0.67);
+    assert.equal(worldDepthForScroll(5418, ranges, vh, scrollHeight), WORLD_DEPTH_ANCHORS.contactApproach);
+    // Sampling the same scroll positions in reverse must reproduce the same
+    // curve. This guards against hidden direction state or hysteresis.
+    const forward = [0, 450, 900, 2700, 5109, 5418, 6000, 6318]
+      .map((y) => worldDepthForScroll(y, ranges, vh, scrollHeight));
+    const reverse = [6318, 6000, 5418, 5109, 2700, 900, 450, 0]
+      .map((y) => worldDepthForScroll(y, ranges, vh, scrollHeight));
+    assert.deepEqual(reverse.reverse(), forward);
   }],
   ["Water interaction is global across every section", () => {
     // No hero-only gate remains on wakes or presses.
@@ -370,9 +398,21 @@ const tests = [
     assert.match(revampCssSource, /\.hero-shell\s*\{/);
     assert.doesNotMatch(globalsCssSource, /\.fluid-canvas\s*\{/);
     assert.doesNotMatch(globalsCssSource, /\.hero-shell\s*\{/);
-    assert.match(revampCssSource, /data-water-section="about"/);
-    assert.match(revampCssSource, /data-water-section="contact"/);
-    assert.match(revampCssSource, /data-water-section="case"/);
+    assert.match(revampCssSource, /--world-depth/);
+    assert.doesNotMatch(revampCssSource, /html\[data-water-section="(?:about|contact|case)"\]\s+\.fluid-canvas/);
+    assert.doesNotMatch(revampCssSource, /background-image:\s*url\("\/assets\/water\/(?:mid-depth|deep-basin)/);
+  }],
+  ["Case-study routes use the shared water grammar", () => {
+    assert.match(projectDetailSource, /CaseArrivalWater/);
+    assert.match(projectDetailSource, /routeMode="case"/);
+    assert.match(projectDetailSource, /data-liquid-hover/);
+    assert.match(transitionLinkSource, /emitLiquidWake/);
+    assert.match(transitionLinkSource, /transitionDirection/);
+    assert.match(portfolioShellSource, /data-route=\{routeMode\}/);
+    assert.match(revampCssSource, /portfolio-root\[data-route="case"\]/);
+    assert.match(worldStateSource, /CASE_MOORING_DEPTH/);
+    assert.match(worldStateSource, /lightForDepth\(CASE_MOORING_DEPTH\)/);
+    assert.doesNotMatch(worldStateSource, /light: 0\.16/);
   }],
   ["Retina 4K stays inside the high pixel budget", () => {
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 1.75, 4_500_000);
