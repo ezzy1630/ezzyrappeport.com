@@ -1,6 +1,12 @@
 "use client";
 
 import { resolveMovementSplat } from "./interaction-policy";
+import {
+  computeWorldState,
+  invalidateWorldMeasurement,
+  stillWorld,
+  type WorldState,
+} from "./world-state";
 
 export type LiquidPointerState = {
   x: number;
@@ -38,6 +44,9 @@ export type LiquidPhysics = {
   ripples: LiquidRippleState[];
   interactions: LiquidInteractionEvent[];
   scroll: LiquidScrollState;
+  /** Continuous underwater world: depth, light, calm. One curve for the
+      renderer, the DOM, and the navigation. */
+  world: WorldState;
   time: number;
 };
 
@@ -97,6 +106,7 @@ const state: LiquidPhysics = {
     section: 0,
     time: 0,
   },
+  world: stillWorld(),
   time: 0,
 };
 
@@ -114,8 +124,6 @@ let rootVarsKey = "";
 let pendingPointer: { x: number; y: number; time: number } | null = null;
 let pendingPointerSamples: Array<{ x: number; y: number; time: number; pointerType: string }> = [];
 let interactionId = 0;
-let runtimeVisible = true;
-let visibilityObserver: IntersectionObserver | null = null;
 
 const PHYSICS_INTERVAL_MS = 1000 / 30;
 
@@ -130,6 +138,9 @@ function setRootVars() {
     state.scroll.progress.toFixed(3),
     state.scroll.velocity.toFixed(2),
     state.scroll.depth.toFixed(2),
+    state.world.depth.toFixed(3),
+    state.world.light.toFixed(3),
+    state.world.calm.toFixed(3),
   ].join("|");
   if (nextKey === rootVarsKey) return;
   rootVarsKey = nextKey;
@@ -142,6 +153,15 @@ function setRootVars() {
   root.style.setProperty("--liquid-scroll", state.scroll.progress.toFixed(4));
   root.style.setProperty("--liquid-scroll-velocity", state.scroll.velocity.toFixed(3));
   root.style.setProperty("--liquid-depth", state.scroll.depth.toFixed(3));
+  // The shared world curve. Every layer — renderer, sections, navigation —
+  // reads the same depth so the descent stays physically coherent.
+  root.style.setProperty("--world-depth", state.world.depth.toFixed(4));
+  root.style.setProperty("--world-light", state.world.light.toFixed(4));
+  root.style.setProperty("--world-calm", state.world.calm.toFixed(4));
+  // Navigation foreground: dark ink against the bright shallows, pale against
+  // the basin. Expressed as an oklch lightness so CSS stays declarative.
+  const navLightness = (0.2 + state.world.light * 0.09 + (1 - state.world.light) * 0.76).toFixed(3);
+  root.style.setProperty("--nav-l", navLightness);
 }
 
 function emitPointer() {
@@ -163,15 +183,6 @@ function pushRipple(x: number, y: number, intensity: number, now: number) {
   if (state.ripples.length > MAX_RIPPLES) state.ripples.shift();
   emitRipple(ripple);
   emitPhysics();
-}
-
-function heroRect() {
-  return document.querySelector<HTMLElement>(".hero-shell")?.getBoundingClientRect() ?? null;
-}
-
-function insideHero(x: number, y: number) {
-  const rect = heroRect();
-  return Boolean(rect && x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom);
 }
 
 function pushInteraction(event: Omit<LiquidInteractionEvent, "id">) {
@@ -226,14 +237,13 @@ function applyPendingPointer() {
   emitPointer();
   emitPhysics();
 
+  // The water is one continuous body: pointer travel disturbs it everywhere,
+  // in every section — not only inside the hero. Zones decide which objects
+  // receive forces; the shared heightfield always responds.
   let previous = hadPointerSample
     ? { x: x - dx, y: y - dy, time: prevTime, pointerType: initialSample.pointerType }
     : initialSample;
   for (const sample of samples) {
-    if (!insideHero(sample.x, sample.y) && !insideHero(previous.x, previous.y)) {
-      previous = sample;
-      continue;
-    }
     const sampleDt = Math.max((sample.time - previous.time) / 1000, 1 / 240);
     const sampleDx = sample.x - previous.x;
     const sampleDy = sample.y - previous.y;
@@ -248,7 +258,8 @@ function applyPendingPointer() {
         vx: sampleDx / sampleDt,
         vy: sampleDy / sampleDt,
         strength: Math.min(1, 0.10 + sampleSpeed / 1450),
-        radius: Math.min(54, 18 + sampleSpeed * 0.018),
+        // Broad, soft depressions — water with weight, not laser lines.
+        radius: Math.min(112, 44 + sampleSpeed * 0.03),
         time: now / 1000,
         pointerType: sample.pointerType,
       });
@@ -291,23 +302,22 @@ function onPointerDown(e: PointerEvent) {
   state.pointer.time = now;
   emitPointer();
   emitPhysics();
-  if (insideHero(e.clientX, e.clientY)) {
-    const inheritedLength = Math.max(incomingSpeed, 1);
-    pushInteraction({
-      kind: "press",
-      startX: e.clientX,
-      startY: e.clientY,
-      endX: e.clientX,
-      endY: e.clientY,
-      vx: state.pointer.vx,
-      vy: state.pointer.vy,
-      strength: Math.min(1, 0.72 + inheritedLength / 2600),
-      radius: e.pointerType === "touch" ? 48 : 38,
-      time: now / 1000,
-      pointerType: e.pointerType || "mouse",
-    });
-    pushRipple(e.clientX, e.clientY, Math.min(0.88, 0.72 + incomingSpeed / 5000), now);
-  }
+  // A press is a droplet landing in the shared water, wherever it falls.
+  const inheritedLength = Math.max(incomingSpeed, 1);
+  pushInteraction({
+    kind: "press",
+    startX: e.clientX,
+    startY: e.clientY,
+    endX: e.clientX,
+    endY: e.clientY,
+    vx: state.pointer.vx,
+    vy: state.pointer.vy,
+    strength: Math.min(1, 0.72 + inheritedLength / 2600),
+    radius: e.pointerType === "touch" ? 78 : 62,
+    time: now / 1000,
+    pointerType: e.pointerType || "mouse",
+  });
+  pushRipple(e.clientX, e.clientY, Math.min(0.88, 0.72 + incomingSpeed / 5000), now);
 }
 
 function onPointerEnd() {
@@ -320,7 +330,7 @@ function onPointerEnd() {
 }
 
 function tick(now: number) {
-  if (document.hidden || !runtimeVisible) return;
+  if (document.hidden) return;
   if (now - lastTickAt < PHYSICS_INTERVAL_MS) {
     raf = requestAnimationFrame(tick);
     return;
@@ -330,6 +340,7 @@ function tick(now: number) {
   applyPendingPointer();
   const t = now / 1000;
   state.time = t;
+  state.world = computeWorldState(state.scroll.velocity);
 
   if (state.pointer.active && now - lastInputTime > 620) {
     state.pointer.active = false;
@@ -372,20 +383,14 @@ function tick(now: number) {
 
 function onVisibilityChange() {
   cancelAnimationFrame(raf);
-  if (!document.hidden && runtimeVisible && started) {
+  if (!document.hidden && started) {
     lastTickAt = 0;
     raf = requestAnimationFrame(tick);
   }
 }
 
-function setRuntimeVisible(visible: boolean) {
-  if (runtimeVisible === visible) return;
-  runtimeVisible = visible;
-  cancelAnimationFrame(raf);
-  if (runtimeVisible && !document.hidden && started) {
-    lastTickAt = 0;
-    raf = requestAnimationFrame(tick);
-  }
+function onResize() {
+  invalidateWorldMeasurement();
 }
 
 function start() {
@@ -395,27 +400,18 @@ function start() {
   lastInputTime = now;
   lastTickAt = 0;
   lastMovementSplatAt = 0;
-  runtimeVisible = true;
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("pointerdown", onPointerDown, { passive: true });
   window.addEventListener("pointerup", onPointerEnd, { passive: true });
   window.addEventListener("pointercancel", onPointerEnd, { passive: true });
   window.addEventListener("pointerleave", onPointerEnd);
+  window.addEventListener("resize", onResize, { passive: true });
   document.addEventListener("visibilitychange", onVisibilityChange);
 
-  const renderSurface = document.querySelector<HTMLElement>(".hero-shell, .case-hero");
-  if (renderSurface && "IntersectionObserver" in window) {
-    const rect = renderSurface.getBoundingClientRect();
-    runtimeVisible = rect.bottom > -180 && rect.top < window.innerHeight + 180;
-    visibilityObserver = new IntersectionObserver(
-      ([entry]) => setRuntimeVisible(Boolean(entry?.isIntersecting)),
-      { rootMargin: "180px 0px" },
-    );
-    visibilityObserver.observe(renderSurface);
-  }
-
-  if (runtimeVisible && !document.hidden) raf = requestAnimationFrame(tick);
+  // The world persists for the whole session: the loop suspends only for a
+  // hidden tab, never because the hero left the viewport.
+  if (!document.hidden) raf = requestAnimationFrame(tick);
 }
 
 function stop() {
@@ -426,9 +422,8 @@ function stop() {
   window.removeEventListener("pointerup", onPointerEnd);
   window.removeEventListener("pointercancel", onPointerEnd);
   window.removeEventListener("pointerleave", onPointerEnd);
+  window.removeEventListener("resize", onResize);
   document.removeEventListener("visibilitychange", onVisibilityChange);
-  visibilityObserver?.disconnect();
-  visibilityObserver = null;
   cancelAnimationFrame(raf);
   pendingPointer = null;
   pendingPointerSamples = [];
@@ -451,6 +446,79 @@ export function emitLiquidPointer(pointer: Partial<LiquidPointerState>) {
 
 export function emitLiquidRipple(ripple: LiquidRippleState) {
   pushRipple(ripple.x, ripple.y, ripple.intensity, ripple.time);
+}
+
+/**
+ * Inject a directional wake through the shared water — used when hovering
+ * between suspended objects so the current visibly redirects from the
+ * previous object toward the next one.
+ */
+export function emitLiquidWake({
+  startX,
+  startY,
+  endX,
+  endY,
+  strength = 0.5,
+  radius = 34,
+}: {
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  strength?: number;
+  radius?: number;
+}) {
+  const now = performance.now();
+  lastInputTime = now;
+  const seconds = 1 / 120;
+  pushInteraction({
+    kind: "wake",
+    startX,
+    startY,
+    endX,
+    endY,
+    vx: (endX - startX) / seconds,
+    vy: (endY - startY) / seconds,
+    strength: Math.max(0, Math.min(1, strength)),
+    radius,
+    time: now / 1000,
+    pointerType: "world",
+  });
+  emitPhysics();
+}
+
+/**
+ * Inject a soft localized press — used when the cursor approaches a suspended
+ * object (project showcase, contact slab) so the object visibly displaces the
+ * water beneath it.
+ */
+export function emitLiquidPress({
+  x,
+  y,
+  strength = 0.4,
+  radius = 44,
+}: {
+  x: number;
+  y: number;
+  strength?: number;
+  radius?: number;
+}) {
+  const now = performance.now();
+  lastInputTime = now;
+  pushInteraction({
+    kind: "press",
+    startX: x,
+    startY: y,
+    endX: x,
+    endY: y,
+    vx: 0,
+    vy: 0,
+    strength: Math.max(0, Math.min(1, strength)),
+    radius,
+    time: now / 1000,
+    pointerType: "world",
+  });
+  pushRipple(x, y, Math.min(0.6, strength), now);
 }
 
 export function emitLiquidScroll(scroll: Partial<LiquidScrollState>) {

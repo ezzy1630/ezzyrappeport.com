@@ -6,17 +6,24 @@
   padding: clamp(4rem, 6vw, 5.75rem) 0 clamp(3.75rem, 5.5vw, 5.25rem);
 }
 
+/* A sunlit pool inside the calm pocket: soft pearl light gathers where the
+   typography lives, feathered to nothing at the edges so the shared water
+   stays continuous — a pocket, never a seam. */
 .section::before {
   content: "";
   position: absolute;
   inset: 0 calc(50% - 50vw);
   z-index: -1;
   background:
-    radial-gradient(42rem 13rem at 16% 8%, rgba(102, 198, 246, 0.09), transparent 72%),
-    radial-gradient(34rem 16rem at 82% 64%, rgba(54, 135, 227, 0.065), transparent 74%),
-    linear-gradient(112deg, transparent 24%, rgba(255, 255, 255, 0.33) 43%, transparent 57%);
+    radial-gradient(76% 62% at 28% 46%, rgba(240, 248, 252, 0.88), rgba(240, 248, 252, 0.42) 52%, transparent 82%),
+    radial-gradient(56% 46% at 80% 56%, rgba(226, 242, 250, 0.66), transparent 86%),
+    radial-gradient(44% 30% at 50% 98%, rgba(208, 232, 245, 0.42), transparent 84%);
+  filter: blur(1.4rem);
   pointer-events: none;
 }
+
+.copy > p,
+.layout blockquote { text-shadow: 0 1px 14px rgba(240, 248, 252, 0.55); }
 
 .header { margin-bottom: clamp(2.8rem, 4.6vw, 4.5rem); }
 .kicker { margin: 0 0 1rem; color: var(--rv-blue); font-family: var(--font-geist-mono), monospace; font-size: 0.68rem; letter-spacing: 0.07em; text-transform: uppercase; }
@@ -32,10 +39,26 @@
 .signature > span:last-child { display: flex; flex-direction: column; }
 .signature strong { color: var(--rv-ink); font-size: 0.86rem; }
 .signature small { margin-top: 0.2rem; color: var(--rv-muted); font-size: 0.68rem; }
-.portrait { display: grid; place-items: center; margin: 0; }
-.portraitRing { position: relative; width: min(28rem, 38vw); aspect-ratio: 1; padding: clamp(0.7rem, 1.4vw, 1.2rem); border: 1px solid rgba(255,255,255,0.72); border-radius: 50%; background: radial-gradient(circle at 30% 18%, rgba(255,255,255,0.68), rgba(129,189,232,0.12) 48%, rgba(13,66,113,0.2)); box-shadow: inset 0 0 0 0.35rem rgba(255,255,255,0.18), 0 2rem 5rem -3rem rgba(2,29,60,0.68); }
-.portraitRing::after { content: ""; position: absolute; inset: -0.45rem; border: 2px solid rgba(233,248,255,0.48); border-radius: inherit; filter: blur(0.7px); }
+.portrait { display: grid; place-items: center; margin: 0; will-change: transform; }
+.story,
+.principles { will-change: transform; }
+/* The portrait sits behind a soft layer of the same moving water — not a
+   decorated frame. A thin glass meniscus, a slow caustic drift across the
+   surface, and the live environment visible at the rim. */
+.portraitRing { position: relative; width: min(28rem, 38vw); aspect-ratio: 1; padding: clamp(0.55rem, 1vw, 0.9rem); border: 1px solid rgba(255,255,255,0.55); border-radius: 50%; background: radial-gradient(circle at 30% 18%, rgba(255,255,255,0.4), rgba(129,189,232,0.08) 52%, rgba(13,66,113,0.14)); box-shadow: inset 0 0 0 0.3rem rgba(255,255,255,0.12), 0 2rem 5rem -3rem rgba(2,29,60,0.6); overflow: hidden; }
 .portraitImage { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; object-position: 50% 36%; }
+.portraitWater { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background:
+    linear-gradient(118deg, transparent 32%, rgba(255, 255, 255, 0.09) 45%, transparent 58%),
+    radial-gradient(90% 24% at 50% 0%, rgba(255, 255, 255, 0.13), transparent 70%),
+    radial-gradient(120% 40% at 50% 108%, rgba(74, 144, 205, 0.1), transparent 72%); background-size: 220% 220%, 100% 100%, 100% 100%; animation: portrait-water-drift 14s ease-in-out infinite alternate; }
+.portraitWater::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 2.2rem rgba(9, 52, 96, 0.22), inset 0 1px 0 rgba(255,255,255,0.5); }
+@keyframes portrait-water-drift {
+  0% { background-position: 0% 0%, 50% 0%, 50% 100%; }
+  100% { background-position: 68% 32%, 50% 0%, 50% 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portraitWater { animation: none; }
+}
 .portrait figcaption { display: flex; align-items: center; gap: 0.5rem; margin-top: 1rem; color: var(--rv-muted); font-size: 0.78rem; }
 .portrait figcaption svg { width: 0.95rem; color: var(--rv-blue); }
 .principles { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: clamp(2rem, 5vw, 5rem); margin: clamp(3rem, 4.5vw, 4.5rem) 0 0; padding: clamp(1.4rem, 2.2vw, 2rem) 0 0; list-style: none; }

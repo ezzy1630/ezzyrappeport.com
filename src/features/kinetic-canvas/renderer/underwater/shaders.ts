@@ -91,6 +91,8 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
   uniform float uAspect;
   uniform float uPortrait;
   uniform float uTheme;
+  uniform float uCalm;
+  uniform float uPlate;
   uniform float uDebugUv;
   uniform float uMotion;
 
@@ -140,17 +142,38 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     return n;
   }
 
-  vec3 sampleOpticalDetail(vec2 screenUv) {
-    if (uTheme > 0.72) {
-      return texture2D(uOpticalDeepBasin, clamp(coverUv(screenUv, 1672.0 / 941.0), 0.003, 0.997)).rgb;
-    }
-    if (uTheme > 0.20) {
-      return texture2D(uOpticalMidDepth, clamp(coverUv(screenUv, 1672.0 / 941.0), 0.003, 0.997)).rgb;
-    }
+  /* The authored plates form one continuous radiance family. uPlate is a
+     continuous 0=shallow → 1=mid → 2=basin coordinate so a scroll-driven
+     descent crossfades between plates instead of popping at thresholds.
+     Texture reads double only inside the narrow transition windows. */
+  vec3 shallowOptical(vec2 screenUv) {
     if (uPortrait > 0.5) {
       return texture2D(uOpticalShallowPortrait, clamp(coverUv(screenUv, 390.0 / 844.0), 0.003, 0.997)).rgb;
     }
     return texture2D(uOpticalShallowLandscape, clamp(coverUv(screenUv, 1672.0 / 941.0), 0.003, 0.997)).rgb;
+  }
+
+  vec3 midOptical(vec2 screenUv) {
+    return texture2D(uOpticalMidDepth, clamp(coverUv(screenUv, 1672.0 / 941.0), 0.003, 0.997)).rgb;
+  }
+
+  vec3 deepOptical(vec2 screenUv) {
+    return texture2D(uOpticalDeepBasin, clamp(coverUv(screenUv, 1672.0 / 941.0), 0.003, 0.997)).rgb;
+  }
+
+  vec3 sampleOpticalDetail(vec2 screenUv) {
+    float plate = clamp(uPlate, 0.0, 2.0);
+    if (plate < 0.5) {
+      vec3 shallow = shallowOptical(screenUv);
+      if (plate <= 0.001) return shallow;
+      return mix(shallow, midOptical(screenUv), plate * 2.0);
+    }
+    if (plate < 1.5) {
+      vec3 mid = midOptical(screenUv);
+      if (plate <= 1.001) return mid;
+      return mix(mid, deepOptical(screenUv), (plate - 1.0) * 2.0);
+    }
+    return deepOptical(screenUv);
   }
 
   float causticNetwork(vec2 point, float time) {
@@ -176,14 +199,17 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float surfaceHorizon = mix(0.79, 0.92, deepMix) + uPortrait * 0.025;
     float depth = clamp((surfaceHorizon - vUv.y) / max(surfaceHorizon, 0.001), 0.0, 1.0);
     vec2 centered = vec2((vUv.x - 0.5) * uAspect, vUv.y - surfaceHorizon);
-    vec2 normalField = waveNormal(centered * vec2(2.6, 3.8), t);
+    // The About pocket is a quieter region of the same water: the ambient
+    // wave field softens locally instead of the theme changing.
+    float waveEnergy = mix(1.0, 0.42, uCalm);
+    vec2 normalField = waveNormal(centered * vec2(2.6, 3.8), t) * waveEnergy;
 
     vec3 shallowTop = vec3(0.69, 0.82, 0.94);
     vec3 shallowBottom = vec3(0.31, 0.48, 0.67);
     vec3 midTop = vec3(0.56, 0.75, 0.88);
     vec3 midBottom = vec3(0.14, 0.35, 0.56);
-    vec3 deepTop = vec3(0.012, 0.105, 0.27);
-    vec3 deepBottom = vec3(0.001, 0.007, 0.032);
+    vec3 deepTop = vec3(0.010, 0.086, 0.238);
+    vec3 deepBottom = vec3(0.0005, 0.005, 0.024);
     vec3 shallow = mix(shallowTop, shallowBottom, pow(depth, 0.78));
     vec3 middle = mix(midTop, midBottom, pow(depth, 0.72));
     vec3 basin = mix(deepTop, deepBottom, pow(depth, 0.62));
@@ -204,26 +230,28 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float shallowFloor = smoothstep(0.08, 0.94, depth);
     float deepFloor = smoothstep(0.58, 1.0, depth);
     float floorMask = mix(shallowFloor, deepFloor, deepMix);
-    float basinFocus = exp(-pow((vUv.x - 0.52) * 2.15, 2.0) - pow((depth - 0.82) * 3.8, 2.0));
-    floorMask *= mix(1.0, 0.18 + basinFocus * 1.18, deepMix);
+    /* The light pools where the glass slab rests on the floor. */
+    float basinFocus = exp(-pow((vUv.x - 0.36) * 2.05, 2.0) - pow((depth - 0.80) * 3.6, 2.0));
+    floorMask *= mix(1.0, 0.18 + basinFocus * 1.55, deepMix);
     color += mix(vec3(0.70, 0.86, 1.0), vec3(0.24, 0.58, 1.0), deepMix)
       * (sqrt(max(caustic, 0.0)) * 0.42 + caustic * 0.58) * floorMask * mix(0.92, 0.78, deepMix);
     color *= 1.0 - (1.0 - caustic) * floorMask * mix(0.29, 0.34, deepMix);
 
     // Volumetric shafts widen with depth and attenuate through the column.
+    // Over the basin they stay as long, quiet beams from a distant surface.
     float shaft = 0.0;
     for (int i = 0; i < 4; i++) {
       float fi = float(i);
       float origin = 0.18 + fi * 0.22 + sin(t * (0.11 + fi * 0.013) + fi * 2.1) * 0.035;
       float center = origin + (depth - 0.2) * (0.055 + fi * 0.012)
         + sin(depth * (4.2 + fi * 0.45) + t * 0.12 + fi) * 0.018;
-      float width = 0.009 + depth * (0.018 + fi * 0.0035);
-      shaft += pow(max(0.0, 1.0 - abs(vUv.x - center) / width), 2.4)
-        * exp(-depth * mix(2.2, 0.72, deepMix));
+      float width = 0.009 + depth * (0.018 + fi * 0.0035) + deepMix * 0.016;
+      shaft += pow(max(0.0, 1.0 - abs(vUv.x - center) / width), mix(2.4, 1.85, deepMix))
+        * exp(-depth * mix(2.2, 0.52, deepMix));
     }
     float volumeNoise = noise21(vec2(vUv.x * 7.0 + t * 0.035, depth * 9.0 - t * 0.028));
-    color += mix(vec3(0.74, 0.88, 1.0), vec3(0.24, 0.58, 0.92), deepMix)
-      * shaft * (0.05 + volumeNoise * 0.045) * mix(0.42, 0.62, deepMix);
+    color += mix(vec3(0.74, 0.88, 1.0), vec3(0.3, 0.62, 0.98), deepMix)
+      * shaft * (0.05 + volumeNoise * 0.05) * mix(0.42, 1.3, deepMix);
 
     // Silvery underside of the free surface, with genuine perspective waves.
     float surfaceWave = sin(centered.x * 22.0 + normalField.x * 1.7 - t * 0.55)
@@ -272,6 +300,9 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
       * (opticalLuma - 0.48);
     float masterWeight = mix(0.93, 0.94, deepMix);
     color = mix(color, opticalMaster, masterWeight);
+    // The basin reads as deep navy, not slate: pull the authored plate down
+    // into blue darkness as the floor approaches.
+    color *= mix(vec3(1.0), vec3(0.40, 0.56, 0.92), deepMix * 0.58);
 
     // A restrained high-pass recovery restores subpixel caustic filaments after
     // the warped radiance blend. It never supplies motion on its own.
@@ -346,6 +377,9 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   uniform float uFillIntensity;
   uniform int uRefractionTaps;
   uniform float uCausticStrength;
+  /* 0 = fully present glass, 1 = dissolved into the water behind. Drives the
+     hero→projects descent: the name rises, thins, and becomes water again. */
+  uniform float uExitFade;
 
   float linearViewDepth(float depth) {
     float viewZ = (uCameraNear * uCameraFar) / ((uCameraFar - uCameraNear) * depth - uCameraFar);
@@ -401,7 +435,7 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.34 + internalWarp,
       vec2(0.002), vec2(0.998)
     );
-    float samplingRadius = 0.00018 + internalRough * 0.0032 + shoulder * 0.00075;
+    float samplingRadius = 0.00012 + internalRough * 0.0021 + shoulder * 0.00055;
     vec3 environment = sampleEnvironment(refractedUv, refractionDirection, samplingRadius);
     /* A small wavelength split gives the thick crystal its prismatic contour
        without blurring away the water visible through the broad front faces. */
@@ -445,7 +479,7 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     body += vec3(0.34, 0.68, 1.0) * internalFire * 0.045;
     body += vec3(0.90, 0.98, 1.0) * innerFoldA * innerFoldB * 0.09;
     /* Clear faces; dense blue internal reflection on the convex shoulder. */
-    body *= mix(1.0, 0.72, shoulder * shoulder);
+    body *= mix(1.0, 0.80, shoulder * shoulder);
     /* embedded micro-bubbles catch a faint internal sparkle */
     body += vec3(0.86, 0.95, 0.99) * bubbleMask * transmittance * 0.055;
 
@@ -470,12 +504,12 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.016 + opticalThickness * 0.03), 0.002, 0.998);
     vec3 reflectedEnvironment = texture2D(uEnvironment, reflectedUv).rgb;
     vec3 edgeWater = mix(
-      reflectedEnvironment * vec3(0.38, 0.62, 0.96),
-      vec3(0.006, 0.055, 0.25),
-      0.70 + shoulder * 0.12
+      reflectedEnvironment * vec3(0.42, 0.66, 0.98),
+      vec3(0.02, 0.10, 0.34),
+      0.62 + shoulder * 0.12
     );
     body = mix(body, edgeWater, grazing * 0.93);
-    body = mix(body, vec3(0.006, 0.045, 0.23), tightBoundary * 0.78);
+    body = mix(body, vec3(0.012, 0.07, 0.28), tightBoundary * 0.72);
 
     /* caustic fire concentrating through the letterforms */
     float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.2 + vWorldPosition.z * 5.4 - uTime * 0.16), 7.0)
@@ -488,15 +522,22 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       vWorldPosition.x * 11.0 - vWorldPosition.y * 7.0 + vWorldPosition.z * 9.0
     ), 12.0) * smoothstep(0.12, 0.9, shoulder);
     vec3 reflected = vec3(0.20, 0.54, 1.0) * fresnel * 1.55;
-    reflected += vec3(0.92, 0.985, 1.0) * glassRim * (0.075 + keySpec * 0.44);
+    reflected += vec3(0.92, 0.985, 1.0) * glassRim * (0.095 + keySpec * 0.5);
     reflected += vec3(0.74, 0.91, 1.0) * convexBand * 0.15;
     reflected += vec3(0.96, 0.995, 1.0) * edgeSpark * 0.27;
     reflected += vec3(0.92, 0.985, 1.0) * brightBoundary * 0.31;
-    reflected += uKeyColor * keySpec * uKeyIntensity * 0.068;
+    reflected += uKeyColor * keySpec * uKeyIntensity * 0.085;
     reflected += uFillColor * fillSpec * uFillIntensity * 0.034;
     reflected += vec3(0.55, 0.70, 0.78) * lowerBounce * 0.05;
     reflected += vec3(0.78, 0.90, 0.94) * causticFold * uCausticStrength * 0.34;
-    gl_FragColor = vec4(max(body + reflected, vec3(0.0)), 1.0);
+    vec3 glyphColor = max(body + reflected, vec3(0.0));
+    /* Descent fade: the letter dissolves into the exact water refracted
+       behind it — an optical exit, never an opacity pop. */
+    if (uExitFade > 0.001) {
+      vec3 behind = texture2D(uEnvironment, vScreenUv).rgb;
+      glyphColor = mix(glyphColor, behind, smoothstep(0.0, 1.0, uExitFade));
+    }
+    gl_FragColor = vec4(glyphColor, 1.0);
   }
 `;
 
@@ -517,6 +558,10 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
   uniform float uCameraFar;
   uniform float uTime;
   uniform float uTheme;
+  uniform float uCalm;
+  /* 1 = letters fully present, 0 = dissolved. Their caustic imprint and
+     contact shadow leave with them — no ghosts beneath the water. */
+  uniform float uGlyphPresence;
   uniform vec2 uPointer;
   uniform vec2 uPointerVelocity;
   uniform float uPointerEnergy;
@@ -597,29 +642,25 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     }
     float upperIdentity = smoothstep(0.48, 0.96, vUv.y);
     float copyCalm = 1.0 - exp(-pow((vUv.y - 0.37) / 0.15, 2.0)) * 0.30;
-    float regionalStrength = (0.46 + upperIdentity * 0.72) * copyCalm;
+    // The About pocket quiets the whole surface response without freezing it.
+    float pocketCalm = mix(1.0, 0.58, uCalm);
+    float regionalStrength = (0.46 + upperIdentity * 0.72) * copyCalm * pocketCalm;
     vec2 slowSwell = vec2(
       sin(vUv.y * 8.2 + uTime * 0.42) + sin(vUv.x * 3.7 - uTime * 0.21) * 0.45,
       cos(vUv.x * 7.8 - uTime * 0.36) + cos(vUv.y * 4.9 + uTime * 0.18) * 0.42
-    ) * 0.0072 * (0.45 + upperIdentity * 0.55);
+    ) * 0.0072 * (0.45 + upperIdentity * 0.55) * pocketCalm;
     vec2 idleDelta = (vUv - vec2(0.18, 0.12)) * vec2(1.72, 1.0);
     float idleRadius = length(idleDelta);
     float idleRipple = sin(idleRadius * 58.0 - uTime * 1.55)
       * exp(-idleRadius * 7.5) * 0.0042;
     slowSwell += normalize(idleDelta + vec2(0.0001)) * idleRipple;
+    // The fingertip lens: one wide, soft depression that trails the pointer.
+    // Deliberately gentle — the simulated heightfield owns the visible waves;
+    // this only keeps the water alive directly beneath the fingertip, with
+    // no rim and no added light.
     vec2 pointerDelta = (vUv - uPointer) * vec2(1.72, 1.0);
-    float pointerFocus = exp(-dot(pointerDelta, pointerDelta) * 34.0) * uPointerEnergy;
-    float pointerSpeed = min(length(uPointerVelocity), 1.0);
-    vec2 travelDirection = normalize(uPointerVelocity + vec2(0.00001));
-    float behindPointer = max(0.0, -dot(pointerDelta, travelDirection));
-    float acrossPointer = abs(pointerDelta.x * travelDirection.y - pointerDelta.y * travelDirection.x);
-    float pointerWake = exp(-acrossPointer * acrossPointer * 46.0)
-      * exp(-behindPointer * 5.8)
-      * step(dot(pointerDelta, travelDirection), 0.04)
-      * pointerSpeed * uPointerEnergy;
-    vec2 pointerNormal = normalize(pointerDelta + vec2(0.00001)) * pointerFocus * 0.0175;
-    pointerNormal += vec2(-travelDirection.y, travelDirection.x)
-      * sin(behindPointer * 62.0 - uTime * 4.4) * pointerWake * 0.0115;
+    float pointerLens = exp(-dot(pointerDelta, pointerDelta) * 7.5) * uPointerEnergy;
+    vec2 pointerNormal = normalize(pointerDelta + vec2(0.00001)) * pointerLens * 0.0055;
     vec2 surfaceVector = slope * regionalStrength + slowSwell + pointerNormal;
     vec2 refraction = surfaceVector * uSurfaceDistortion * (0.72 + depthTravel * 0.72);
     vec2 refractionDirection = normalize(surfaceVector + vec2(0.00001));
@@ -630,13 +671,13 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     );
 
     /* crisp contact shadow anchoring the glyphs to the sand */
-    float glyphHere = step(frontDepth, 0.9995);
+    float glyphHere = step(frontDepth, 0.9995) * uGlyphPresence;
     vec2 shadowDirection = vec2(-0.005, 0.0075) * (0.72 + depthTravel * 0.4);
     float projectedShadow = 0.0;
     projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection, 0.002, 0.998)).r, 0.9995);
     projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 1.8, 0.002, 0.998)).r, 0.9995);
     projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 2.7, 0.002, 0.998)).r, 0.9995);
-    projectedShadow = projectedShadow / 3.0 * (1.0 - glyphHere);
+    projectedShadow = projectedShadow / 3.0 * (1.0 - glyphHere) * uGlyphPresence;
     scene *= 1.0 - projectedShadow * (0.07 + depthTravel * 0.04);
 
     // The same surface normal that refracts the complete scene drives the
@@ -645,14 +686,10 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float focus = 1.0 - smoothstep(0.008, 0.11, length(surfaceVector));
     float caustic = (focus * focus * 0.35 + compression * 0.65) * uCausticStrength
       * (0.20 + depthTravel * 0.34) * (0.45 + upperIdentity * 0.55);
-    scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85);
-    float wakeRidge = 0.5 + 0.5 * sin(behindPointer * 62.0 - uTime * 4.4);
-    scene += vec3(0.72, 0.88, 1.0) * pointerFocus * (0.18 + glyphThickness * 0.08);
-    scene += vec3(0.70, 0.88, 1.0) * pointerWake * wakeRidge * 0.15;
-    scene *= 1.0 - pointerWake * (1.0 - wakeRidge) * 0.045;
-    float simulatedWake = smoothstep(0.0015, 0.018, length(slope))
+    scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85 * uGlyphPresence);
+    float simulatedWake = smoothstep(0.0016, 0.018, length(slope))
       * smoothstep(0.0008, 0.012, abs(h));
-    scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.055;
+    scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.05;
 
     /* Section-aware absorption: pearl shallows stay luminous; the basin keeps
        its dark blue distance instead of being mixed back toward pale gray. */
@@ -670,6 +707,11 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
       depthTravel * uDepthAttenuation * mix(0.16, 0.075, finalDeepMix)
     );
 
+    /* Ocean-floor falloff: the basin darkens toward its edges so the glowing
+       glass slab owns the light pool, exactly like the approved endpoint. */
+    float basinVignette = smoothstep(0.32, 1.02, length((vUv - vec2(0.5, 0.44)) * vec2(1.18, 0.96)));
+    scene *= 1.0 - basinVignette * finalDeepMix * 0.55;
+
     /* surface sheen + sun glitter near the top of the frame */
     vec3 normal = normalize(vec3(-surfaceVector * 13.0, 1.0));
     float fresnel = pow(1.0 - max(normal.z, 0.0), 5.0);
@@ -677,7 +719,18 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float glitterBand = pow(0.5 + 0.5 * sin(vUv.x * 14.0 + vUv.y * 5.0 - uTime * 0.22), 9.0) * surfaceSheet;
     scene += vec3(0.80, 0.92, 0.96) * fresnel * (0.03 + surfaceSheet * 0.14);
     scene += vec3(0.9, 0.97, 1.0) * glitterBand * 0.05;
-    scene += vec3(0.05, 0.07, 0.08) * h * 0.06;
+
+    /* Wave light: the same sun that strikes the caustics catches live wave
+       crests while troughs settle into shade. Physically placed on the
+       simulated water itself — this is what makes a wake read as moving
+       water rather than a screen-blended glow. */
+    float waveLightDepth = mix(1.0, 0.38, smoothstep(0.46, 0.94, uTheme));
+    vec3 waveLightNormal = normalize(vec3(-surfaceVector.x * 30.0, -surfaceVector.y * 30.0, 1.0));
+    vec3 waveSun = normalize(vec3(-0.30, 0.46, 0.84));
+    float crestSpecular = pow(max(dot(waveLightNormal, waveSun), 0.0), 16.0);
+    float crestGate = smoothstep(0.0022, 0.016, length(slope));
+    scene += vec3(0.84, 0.94, 1.0) * crestSpecular * crestGate * 0.085 * waveLightDepth;
+    scene += vec3(0.10, 0.17, 0.24) * h * 0.115 * waveLightDepth;
 
     gl_FragColor = vec4(linearToSrgb(underwaterToneMap(scene * uExposure)), 1.0);
   }

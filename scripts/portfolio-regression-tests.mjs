@@ -21,6 +21,7 @@ import {
   stepGlyphPlanarState,
 } from "../src/features/kinetic-canvas/physics/glyphImpulseModel.ts";
 import { accumulateFixedSteps } from "../src/features/kinetic-canvas/physics/fixedStep.ts";
+import { worldDepthForScroll } from "../src/lib/portfolio/world-state.ts";
 import {
   canvasPointToUv,
   clientToCanvasPoint,
@@ -182,22 +183,95 @@ const tests = [
       assert.ok(existsSync(url), `${asset} must exist`);
       assert.ok(statSync(url).size > 10_000, `${asset} must contain a fallback poster`);
     }
-    assert.match(underwaterRendererSource, /procedural-refractive-volume-v3/);
+    assert.match(underwaterRendererSource, /authored-radiance-live-volume-v4/);
     assert.match(underwaterRendererSource, /authored-high-pass-v2/);
     assert.match(underwaterShaderSource, /Perspective floor projection/);
     assert.match(underwaterShaderSource, /Volumetric shafts/);
     assert.match(underwaterShaderSource, /Beer-Lambert-style blue absorption/);
-    assert.match(underwaterShaderSource, /authored fields contribute high-frequency optical structure only/);
+    assert.match(underwaterShaderSource, /high-pass recovery restores subpixel caustic filaments/);
     assert.match(underwaterShaderSource, /opticalCenter - opticalLow/);
     assert.match(underwaterShaderSource, /sampleOpticalDetail/);
-    assert.doesNotMatch(underwaterShaderSource, /color\s*=\s*mix\(color,\s*optical/);
+    // The authored plates may be warped and blended, but the background must
+    // never become a raw, unmodulated texture paste.
     assert.doesNotMatch(underwaterShaderSource, /color\s*=\s*texture2D\(uOptical/);
     assert.match(underwaterRendererSource, /source\.geometry\.clone\(\)/);
     assert.match(underwaterRendererSource, /authored inflated Inter Tight mesh/);
-    assert.match(underwaterRendererSource, /const liveGlyphsVisible = heroVisible/);
     assert.doesNotMatch(underwaterRendererSource, /canvas\.clientWidth > 768/);
     assert.match(kineticCanvasSource, /renderHeroGlyphs: heroNameRef\.current/);
     assert.doesNotMatch(kineticCanvasSource, /webglFluidRenderer/);
+  }],
+  ["One continuous world drives depth, glyph exit, plates, and calm", () => {
+    // The renderer consumes the shared world curve, not section presets.
+    assert.match(underwaterRendererSource, /getPhysics\(\)\.world/);
+    assert.match(underwaterRendererSource, /world\?\.depth \?\? 0/);
+    assert.match(underwaterRendererSource, /world\?\.calm \?\? 0/);
+    assert.match(underwaterRendererSource, /glyphExitForDepth/);
+    assert.match(underwaterRendererSource, /plateForDepth/);
+    assert.match(underwaterRendererSource, /canvas\.dataset\.worldDepth/);
+    assert.doesNotMatch(underwaterRendererSource, /WATER_SECTION_THEME/);
+    // The hero name exits by rising and dissolving, never by observer hide.
+    assert.match(underwaterRendererSource, /glyphGroup\.visible = glyphsPresent/);
+    assert.match(underwaterShaderSource, /uExitFade/);
+    assert.doesNotMatch(underwaterRendererSource, /IntersectionObserver/);
+    // Calm pocket and continuous plates reach the shaders.
+    assert.match(underwaterShaderSource, /uniform float uCalm/);
+    assert.match(underwaterShaderSource, /uniform float uPlate/);
+  }],
+  ["World depth is continuous, monotonic, reversible, and reaches the floor", () => {
+    const ranges = [
+      { id: "hero", top: 0, bottom: 900 },
+      { id: "projects", top: 900, bottom: 5109 },
+      { id: "about", top: 5109, bottom: 6318 },
+      { id: "contact", top: 6318, bottom: 7218 },
+    ];
+    const vh = 900;
+    const scrollHeight = 7218;
+    // Endpoints: surface at rest, floor at page bottom.
+    assert.equal(worldDepthForScroll(0, ranges, vh, scrollHeight), 0);
+    assert.equal(worldDepthForScroll(6318, ranges, vh, scrollHeight), 1);
+    // Monotonic non-decreasing across the whole document, and the upward
+    // journey retraces the identical values (pure function of scrollY).
+    let previous = -1;
+    for (let y = 0; y <= 6318; y += 37) {
+      const depth = worldDepthForScroll(y, ranges, vh, scrollHeight);
+      assert.ok(depth >= previous, `depth must be monotonic at ${y}: ${depth} < ${previous}`);
+      assert.ok(depth >= 0 && depth <= 1, `depth must stay normalized at ${y}`);
+      previous = depth;
+    }
+    // The hero exit window and the basin descent both own real scroll room.
+    assert.ok(worldDepthForScroll(450, ranges, vh, scrollHeight) > 0.03);
+    assert.ok(worldDepthForScroll(6317, ranges, vh, scrollHeight) > 0.66);
+    assert.ok(worldDepthForScroll(5418, ranges, vh, scrollHeight) <= 0.67);
+  }],
+  ["Water interaction is global across every section", () => {
+    // No hero-only gate remains on wakes or presses.
+    assert.doesNotMatch(liquidInteractionSource, /insideHero/);
+    assert.doesNotMatch(liquidInteractionSource, /heroRect/);
+    // The physics loop suspends only for hidden tabs, never for leaving the
+    // hero viewport.
+    assert.doesNotMatch(liquidInteractionSource, /visibilityObserver/);
+    assert.doesNotMatch(liquidInteractionSource, /setRuntimeVisible/);
+    // World state is computed into the shared physics object and published
+    // as CSS vars for DOM consumers (navigation, sections).
+    assert.match(liquidInteractionSource, /computeWorldState/);
+    assert.match(liquidInteractionSource, /--world-depth/);
+    assert.match(liquidInteractionSource, /--world-light/);
+    // Suspended objects can displace and redirect the shared water.
+    assert.match(liquidInteractionSource, /export function emitLiquidWake/);
+    assert.match(liquidInteractionSource, /export function emitLiquidPress/);
+  }],
+  ["Reduced motion renders one frame and stops the loop", () => {
+    assert.match(underwaterRendererSource, /motionLoop = "stopped"/);
+    assert.match(underwaterRendererSource, /renderOneStaticFrame/);
+    assert.match(underwaterRendererSource, /addEventListener\("scroll", onStaticScroll/);
+    assert.match(underwaterRendererSource, /removeEventListener\("scroll", onStaticScroll/);
+  }],
+  ["Mobile contact slab stays inside the viewport bounds", () => {
+    // The desktop composition offsets are explicitly reset on small screens.
+    assert.match(revampCssSource, /clipped the arrow/);
+    assert.match(revampCssSource, /\.contact-basin__copy,\s*\n\s*\.contact-section__email,\s*\n\s*\.contact-section__location \{ transform: none; \}/);
+    // The address never breaks mid-domain on phones.
+    assert.match(revampCssSource, /white-space: nowrap;\s*\n\s*overflow-wrap: normal;/);
   }],
   ["Revamp stylesheet is the single owner for canvas and hero geometry", () => {
     assert.match(revampCssSource, /\.fluid-canvas\s*\{/);
