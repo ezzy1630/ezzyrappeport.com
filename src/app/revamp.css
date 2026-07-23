@@ -660,12 +660,6 @@ html:has(.portfolio-root[data-route="case"]) {
   text-align: right;
 }
 
-.hero-annotations__line {
-  width: 2rem;
-  height: 1px;
-  background: #3977ee;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .loading-veil__water,
   .loading-veil__line::after {

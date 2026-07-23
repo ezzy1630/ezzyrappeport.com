@@ -15,14 +15,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const project = projects.find((p) => p.slug === slug);
   if (!project) {
-    return { title: "Not found | Ezzy Rappeport" };
+    return { title: "Not found — Ezzy Rappeport" };
   }
   return {
-    title: `${project.title} | Ezzy Rappeport`,
+    title: `${project.title} — Ezzy Rappeport`,
     description: project.tagline,
     alternates: { canonical: `/project/${project.slug}` },
     openGraph: {
-      title: `${project.title} | Ezzy Rappeport`,
+      title: `${project.title} — Ezzy Rappeport`,
       description: project.tagline,
       url: `/project/${project.slug}`,
     },

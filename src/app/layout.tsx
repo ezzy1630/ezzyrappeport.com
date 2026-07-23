@@ -19,14 +19,14 @@ const interTight = Inter_Tight({
 
 export const metadata: Metadata = {
   metadataBase: new URL(portfolioIdentity.domain),
-  title: "Ezzy Rappeport | Software Engineer, AI Systems, Founder",
+  title: "Ezzy Rappeport — Software Engineer • AI Systems • Founder",
   description:
     "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
   keywords: ["Ezzy Rappeport", "AI", "multi-agent", "software engineer", "founder", "portfolio"],
   authors: [{ name: "Ezzy Rappeport" }],
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Ezzy Rappeport | Software Engineer, AI Systems, Founder",
+    title: "Ezzy Rappeport — Software Engineer • AI Systems • Founder",
     description:
       "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
     type: "website",

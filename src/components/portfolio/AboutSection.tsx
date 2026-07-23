@@ -63,14 +63,14 @@ export default function AboutSection() {
       <div className={styles.layout}>
         <div className={styles.story} data-depth-plane="0.45">
           <blockquote>
-            “I build at the intersection of engineering and intelligence, then stay
+            “I build at the intersection of engineering and intelligence—then stay
             for the hard part: making the system trustworthy, useful, and real.”
           </blockquote>
           <div className={styles.copy}>
             {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
             <p className={styles.signature}>
               <span aria-hidden="true">ER</span>
-              <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" / ")}</small></span>
+              <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
             </p>
           </div>
         </div>
