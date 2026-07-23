@@ -117,7 +117,41 @@ html:has(.portfolio-root[data-route="case"]) {
   box-shadow: none;
 }
 
-.fluid-canvas::before,
+.fluid-canvas::before {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 18%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(120, 190, 230, 0.15),
+    rgba(210, 240, 255, 0.55),
+    rgba(120, 190, 230, 0.15),
+    transparent
+  );
+  box-shadow: 0 0 18px rgba(140, 200, 240, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 420ms ease;
+}
+
+.fluid-canvas[data-boot="waterline"]::before,
+.fluid-canvas[data-boot="chunk"]::before,
+.fluid-canvas[data-boot="assets"]::before,
+.fluid-canvas[data-boot="hiddenFrame"]::before {
+  opacity: 1;
+  animation: boot-waterline 1.6s ease-in-out infinite;
+}
+
+@keyframes boot-waterline {
+  0%, 100% { transform: scaleX(0.72); opacity: 0.45; }
+  50% { transform: scaleX(1); opacity: 0.9; }
+}
+
 .fluid-canvas::after {
   display: none;
 }
@@ -136,7 +170,7 @@ html:has(.portfolio-root[data-route="case"]) {
   opacity: 0;
   filter: none;
   mix-blend-mode: normal;
-  transition: opacity 650ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity var(--boot-crossfade-ms, 620ms) cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* DOM acknowledgment stays a tiny surface cue; the shared water carries the

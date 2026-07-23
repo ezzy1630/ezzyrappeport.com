@@ -106,6 +106,31 @@
   transform: scaleX(1);
 }
 
+.roles,
+.copy,
+.cta {
+  opacity: 0;
+  transform: translateY(0.45rem);
+  transition: opacity 420ms cubic-bezier(0.22, 1, 0.36, 1), transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.roles[data-visible="true"],
+.copy[data-visible="true"],
+.cta[data-visible="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roles,
+  .copy,
+  .cta {
+    opacity: 1;
+    transform: none;
+    transition: opacity 220ms ease;
+  }
+}
+
 .ctaIcon {
   width: 0.95rem;
   height: 0.95rem;

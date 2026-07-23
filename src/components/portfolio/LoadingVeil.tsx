@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BOOT_CROSSFADE_MS, BOOT_REPEAT_CROSSFADE_MS } from "@/features/kinetic-canvas/boot/heroBootState";
 
-const MINIMUM_DISPLAY_MS = 520;
 const FAIL_OPEN_MS = 5200;
 
 export default function LoadingVeil() {
@@ -12,9 +12,12 @@ export default function LoadingVeil() {
   useEffect(() => {
     const startedAt = performance.now();
     let dismissalTimer = 0;
+    const minimumMs = document.documentElement.dataset.heroBoot === "repeat"
+      ? BOOT_REPEAT_CROSSFADE_MS
+      : Math.min(BOOT_CROSSFADE_MS, 520);
 
     const finish = () => {
-      const remaining = Math.max(0, MINIMUM_DISPLAY_MS - (performance.now() - startedAt));
+      const remaining = Math.max(0, minimumMs - (performance.now() - startedAt));
       window.clearTimeout(dismissalTimer);
       dismissalTimer = window.setTimeout(() => setReady(true), remaining);
     };
@@ -32,7 +35,7 @@ export default function LoadingVeil() {
 
   useEffect(() => {
     if (!ready) return;
-    const timer = window.setTimeout(() => setDismissed(true), 760);
+    const timer = window.setTimeout(() => setDismissed(true), 640);
     return () => window.clearTimeout(timer);
   }, [ready]);
 

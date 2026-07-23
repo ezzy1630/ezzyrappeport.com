@@ -181,6 +181,7 @@ const GLYPH_LAYER = 1;
 const MAX_SPLATS = 8;
 const MAX_SCHEDULED_WATER_EVENTS = 32;
 const FIRST_LOAD_BREACH_KEY = "dive-upgrade.hero-breach.v1";
+const BOOT_SESSION_KEY = "portfolio.hero-boot.v1";
 
 type ScheduledWaterEvent = Readonly<{
   dueAt: number;
@@ -1586,17 +1587,25 @@ export function startUnderwaterHeroRenderer({
       });
       resize();
       let runEntrance = false;
-      if (!reducedMotionRef.current && !staticModeRef.current && bodies.length > 0) {
+      let shortenedEntrance = false;
+      if (!reducedMotionRef.current && !staticModeRef.current && bodies.length > 0 && renderHeroGlyphs) {
+        // Repeat visits get a shorter breach — never none.
         try {
-          runEntrance = sessionStorage.getItem(FIRST_LOAD_BREACH_KEY) !== "seen";
-          if (runEntrance) sessionStorage.setItem(FIRST_LOAD_BREACH_KEY, "seen");
+          shortenedEntrance = sessionStorage.getItem(BOOT_SESSION_KEY) === "seen"
+            || sessionStorage.getItem(FIRST_LOAD_BREACH_KEY) === "seen";
+          sessionStorage.setItem(FIRST_LOAD_BREACH_KEY, "seen");
+          sessionStorage.setItem(BOOT_SESSION_KEY, "seen");
         } catch {
-          runEntrance = false;
+          shortenedEntrance = false;
         }
+        runEntrance = true;
       }
       if (runEntrance) {
-        entranceStart = performance.now() / 1000 + 0.04;
+        const breachDelay = shortenedEntrance ? 0.02 : 0.04;
+        entranceStart = performance.now() / 1000 + breachDelay;
         stepControl.entranceStart = entranceStart;
+        stepControl.entranceDepth = shortenedEntrance ? -0.028 : -0.045;
+        stepControl.entranceStagger = shortenedEntrance ? 0.022 : 0.04;
         const rect = canvas.getBoundingClientRect();
         const viewport = [Math.max(rect.width, 1), Math.max(rect.height, 1)] as const;
         for (const body of bodies) {
@@ -1608,12 +1617,12 @@ export function startUnderwaterHeroRenderer({
           scheduleWater({
             dueAt: entranceStart + body.glyph.manifest.glyph_index * stepControl.entranceStagger,
             position: uv,
-            radius: 0.032,
-            impulse: -0.018,
-            wake: 0.01,
+            radius: shortenedEntrance ? 0.024 : 0.032,
+            impulse: shortenedEntrance ? -0.012 : -0.018,
+            wake: shortenedEntrance ? 0.006 : 0.01,
           });
         }
-        canvas.dataset.entrance = "surface-breach";
+        canvas.dataset.entrance = shortenedEntrance ? "surface-breach-short" : "surface-breach";
       } else {
         canvas.dataset.entrance = "skipped";
       }
