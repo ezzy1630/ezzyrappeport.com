@@ -1,6 +1,6 @@
 # Dive Upgrade — Implementation Ledger
 
-**Run**: 1 of 3 — Crystal Rendering Foundation
+**Run**: 2 of 3 — Living Buoyancy and Shared Interaction Language
 **Date**: 2026-07-23
 
 ## 1. Commits
@@ -10,10 +10,19 @@
 | Pre-0 | `e49a404` | feat: underwater revamp - working-tree checkpoint (sections, world-state, interaction, shaders) |
 | 1 | `9a4ebe6` | feat(hero): thicker crystal-letter geometry |
 | 2 | `cbfabb0` | feat(hero): crystal material, clarity, rims, and anti-washout |
+| 3 | `d766462` | feat(hero): add living glyph buoyancy and press state |
+| 4 | `3ffdb15` | feat(portfolio): add shared DOM water dialogue |
 
 **Starting commit**: `e49a404` (main, working-tree checkpoint)
 **Final Run 1 commit**: `cbfabb0`
 **Branch**: `dive/run-1-crystal-foundation`
+
+Run 1 was independently rechecked before Run 2. The production browser surface
+reported 13 glyphs, `thickness-refraction`, the expected five-stage underwater
+render graph, a `0.008333` simulation step, 60 FPS, 17.60 ms frame p95, and no
+console errors. Runtime proof is in
+`.verification/dive-upgrade/run-2/run1-baseline-idle.png`. The existing untracked
+`assets/blender/hero-title/hero-title.blend1` was preserved.
 
 ## 2. Checkpoint Decision
 
@@ -190,3 +199,135 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 10. **No new dependencies added**
 11. **No render pass structure changed**
 12. **washoutGate**: composite slope-dependent gate must be preserved when adding new additive terms
+
+## 13. Run 2 — Verified Implementation
+
+### Scope and repairs
+
+Run 2 adds living buoyancy, one explicit glyph interaction state machine, and
+one DOM-to-heightfield dialogue path. The Run 1 crystal geometry, shader
+material, render graph, fallback tiers, and 120 Hz fixed-step contract were not
+redesigned.
+
+One Run 1-adjacent repair was required: `liquid-interaction.ts` now uses explicit
+`.ts` local imports so the existing strip-types regression runner can resolve
+the module. The Run 2 soak also verified the projected mooring against the live
+camera each frame; the current implementation does not cache a stale rest
+screen point during scroll.
+
+### Phase 3 files
+
+- `src/features/kinetic-canvas/interaction/glyphInteractionState.ts` — explicit idle, hovering, holding, releasing, cancelled, and disabled states; deterministic release droplet schedule.
+- `src/features/kinetic-canvas/physics/glyphRigidBodies.ts` — deterministic phase generation, bounded ambient motion, hover/hold/release forces, neighbor separation, finite-state recovery, velocity/depth/rotation clamps, and live mooring projection.
+- `src/features/kinetic-canvas/renderer/underwater/underwaterHeroRenderer.ts` — glyph ownership, pointer capture/cancel paths, cursor restoration, scheduled rings/droplets, first-load breach, scroll wakes, hold churn, and debug datasets.
+- `src/lib/portfolio/liquid-interaction.ts` — pointer presence/type hygiene, blur/visibility cleanup, scroll decay, wake strength, and emission gating.
+- `src/features/kinetic-canvas/KineticCanvas.tsx` — renderer-ready event bridge.
+- `scripts/portfolio-regression-tests.mjs` — deterministic state, falloff, finite-state, release, lifecycle, and scroll tests.
+
+### Phase 4 files
+
+- `src/hooks/portfolio/use-liquid-dialogue.ts` — delegated fine-pointer hover dialogue and intersection/visibility/reduced-motion/renderer-gated persistent surfaces.
+- `src/components/portfolio/HeroIntro.tsx` — phase-offset Explore-work surface.
+- `src/components/portfolio/ContactSection.tsx` — phase-offset contact email surface.
+- `src/components/portfolio/Navigation.tsx` — shared hover markers on foreground controls.
+- `src/components/portfolio/PortfolioShell.tsx` — delegated hook ownership and motion data attribute.
+- `src/app/revamp.css` — restrained 2px DOM acknowledgment, motion-gated.
+
+### State and ownership design
+
+Glyph ownership is a pure transition function. A pointer-down can only create a
+holding state for one nearest eligible glyph; pointer-up creates a release with
+a monotonically increasing release ID; pointer cancel, lost capture, blur,
+hidden page, teardown, and disabled motion all leave holding/grabbing through
+the same cancellation path. The renderer owns the fixed-step simulation,
+scheduled water queue, cursor restoration, and WeakSet ripple de-duplication.
+The DOM hook owns only delegated DOM events and bounded self-rescheduling
+surface emissions. No CSS physics system or orphaned release timer was added.
+
+### Final tuned constants
+
+- Fixed step: `1 / 120` seconds.
+- Phase: golden-angle index plus stable manifest identity hash.
+- Idle: alternating `0.46 Hz` / `0.71 Hz`, amplitude `0.013` to `0.0166` world units, tilt `0.60` to `1.14` degrees, zeroed under reduced motion.
+- Hover: one nearest glyph, `1.4x` projected half-diagonal ownership radius, smooth falloff, approximately `0.028` world-unit lift target, off-center torque.
+- Hold: `-0.050` to `-0.062` world-unit depth target, 6 Hz strain wobble, pointer capture and `grabbing` cursor.
+- Release: upward bounded impulse, one broad ring, five droplets at `32/46/61/74/80 ms`, bounded angular release, 0.9-second release state.
+- Physics clamps: linear speed `0.58`, depth `[-0.078, 0.043]`, planar travel per body `0.068` to `0.078`, angular velocity `±1.35`, per-glyph tilt approximately `4.0` to `5.35` degrees.
+- Neighbor separation: `0.022` base impulse with bounded velocity clamp.
+- Persistent DOM surfaces: `2.4 s` cadence, CTA phase `320 ms`, contact phase `1540 ms`, IntersectionObserver plus bounded hash-scroll bootstrap recheck.
+- Scroll: wake starts at absolute filtered velocity `0.12`, smooth normalized strength, 90 ms injection throttle, exponential velocity decay `7.5`, ambient chop contribution `0.018`.
+
+### Tests and exact results
+
+| Gate | Result |
+|------|--------|
+| `npm run typecheck` | PASS |
+| `npm run lint` | PASS |
+| `npm run test:portfolio` | PASS — 33 portfolio regression tests |
+| `npm run build` | PASS — production build completed |
+| `git diff --check` | PASS |
+
+The regression suite covers deterministic phase generation, hover falloff and
+ownership, hold/release/cancel transitions, droplet timing, invalid-number
+detection, scroll monotonicity and decay, visibility/reduced-motion gating,
+pointer cancellation source checks, and cleanup markers.
+
+### Soak and live evidence
+
+The clean glyph-only soak ran for `63.4 s`: 19 repeated hold/release cycles,
+four pointer positions, 57 state samples, zero invalid numeric states, maximum
+projected displacement `18.33 px`, maximum depth `0.0356`, maximum rotation
+`3.89 degrees`, and no scheduled water residue at the end. Evidence:
+`.verification/dive-upgrade/run-2/soak-60s-glyph-only.json`.
+
+A second stress trace included scroll currents and recorded no invalid numbers;
+its larger projected excursion was camera/scroll motion, which motivated the
+live mooring reprojection repair. Evidence:
+`.verification/dive-upgrade/run-2/soak-60s.json`.
+
+Runtime captures:
+
+- Idle buoyancy: `.verification/dive-upgrade/run-2/phase3-final-idle.png`
+- Hover greeting and cursor ownership: `.verification/dive-upgrade/run-2/phase3-final-hover-greeting.png`
+- Hold/submerge/grab: `.verification/dive-upgrade/run-2/phase3-final-hold.png`
+- Release ring, droplets, and neighbor response: `.verification/dive-upgrade/run-2/phase3-final-release.png`
+- Release settle: `.verification/dive-upgrade/run-2/phase3-final-settle.png`
+- Explore-work cadence: `.verification/dive-upgrade/run-2/phase4-explore-rings-final.png`
+- Contact cadence: `.verification/dive-upgrade/run-2/phase4-contact-rings-final.png`
+- Fast scroll current and settled calm: `.verification/dive-upgrade/run-2/phase4-fast-scroll-current.png`, `.verification/dive-upgrade/run-2/phase4-settled-current.png`
+- Mobile layout: `.verification/dive-upgrade/run-2/mobile-coarse-pointer.png`
+- Reduced motion: `.verification/dive-upgrade/run-2/reduced-motion.png`
+
+### Performance
+
+The browser performance artifact is
+`.verification/dive-upgrade/run-2/performance.json`. The visible production
+surface measured `43.5 FPS`, `35 ms` frame p95, `1.7 ms` work p95, adaptive scale
+`0.90`, 1728×972 render size, 256×144 simulation, 58 draw calls, 220,412
+triangles, and 51.8 MB estimated texture memory. The 60-second interaction
+sample measured `50.9 FPS`, `33.4 ms` frame p95, and `1.2 ms` work p95 at the
+0.80 adaptive floor. The low CPU work figure indicates the added fixed-step
+glyph work is bounded; the visible-browser GPU/frame-time result remains a
+Run 3 performance risk and is not hidden by claiming a green 60 FPS result.
+
+### Run 2 remaining risks
+
+1. The production browser harness shows frame-time variance versus the Run 1
+   baseline; verify on a single clean browser tab and physical mobile hardware
+   before release.
+2. The accepted Run 1 material remains the source of truth, but the runtime
+   capture is brighter/washed compared with the authored reference under this
+   browser surface. No material retune was made in Run 2.
+3. Entrance behavior was verified in code and runtime skip mode; the captured
+   session had already-seen session semantics, so a fresh-session breach proof
+   should be re-recorded in Run 3.
+4. No final scroll-depth remap, deep-basin upgrade, case-study integration, or
+   final release audit was attempted.
+
+### Preconditions for Run 3
+
+Run 3 may begin when the two implementation commits and this ledger are on the
+branch, the 33-test suite and production build remain green, the single-tab
+performance result is rechecked, and the remaining live-only browser/device
+proof is scheduled. Run 3 scope is explicitly limited to the final scroll-depth
+remap, deep-basin upgrade, case-study integration, and final release audit.
