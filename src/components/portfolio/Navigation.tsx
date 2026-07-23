@@ -100,6 +100,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
             width={46}
             height={46}
             sizes="46px"
+            priority
             className="site-nav-headshot"
           />
         </span>

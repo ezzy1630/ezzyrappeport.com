@@ -7,7 +7,7 @@ The site pairs an editorial portfolio with an interactive liquid surface. It is 
 ## What is included
 
 - A responsive landing page covering the portfolio, experience, about, location, and contact sections.
-- Five project case studies with dedicated, statically generated routes: MonkeyClaw, Velox, FlowE, NexaRad, and Etch.
+- Seven project case studies with dedicated, statically generated routes, including MonkeyClaw, Velox, FlowE, NexaRad, and Etch.
 - Project-specific media, verified links, capability details, and clear demo/research boundaries where appropriate.
 - A custom WebGL2 fluid renderer with a water-material hero title, pointer ripples, scroll response, and liquid-glass cards.
 - A poster/CSS fallback when WebGL2 is unavailable, plus a static mode for reduced motion and data-saving contexts.
@@ -16,7 +16,7 @@ The site pairs an editorial portfolio with an interactive liquid surface. It is 
 ## Stack
 
 - [Next.js 15](https://nextjs.org/) with React 19 and TypeScript
-- Custom WebGL2 shaders and fluid simulation (no 3D rendering dependency)
+- Three.js r180 with a custom WebGL2 render graph, thickness/refraction shaders, and a GPU fluid simulation
 - CSS-first responsive design with `next/font`
 - ESLint and TypeScript for static checks
 
@@ -59,6 +59,10 @@ npm run assets:fluid
 
 The liquid treatment is decorative; the portfolio content, heading structure, navigation, project routes, and contact paths remain usable without it. The renderer selects a lower-cost or static profile for coarse pointers, `prefers-reduced-motion`, `Save-Data`, and constrained devices. If WebGL2 initialization fails, the page retains its poster treatment instead of blocking the content.
 
+The index is one measured water journey: section geometry maps the hero, Projects, About, and Contact ranges to a monotonic reversible depth curve. Case-study routes use the same renderer at a shallow mooring and add route-scoped wakes and arrival presses. Deep Contact adds procedural god rays, two quality-gated marine-snow layers, floor caustics, and a restrained slab rim. Reduced motion freezes one composed frame; poster/CSS fallbacks preserve essential content.
+
+The source asset workflow is `public/assets/hero/ezzy-rappeport-glyphs.glb` plus its manifest and the generated optical water plates. Regenerate only through the documented asset scripts, then run the full validation suite, including `npm run test:portfolio`.
+
 ## Project structure
 
 ```text
@@ -81,6 +85,7 @@ Before publishing changes, run:
 ```bash
 npm run lint
 npm run typecheck
+npm run test:portfolio
 npm run build
 ```
 

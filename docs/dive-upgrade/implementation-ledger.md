@@ -1,6 +1,6 @@
 # Dive Upgrade — Implementation Ledger
 
-**Run**: 2 of 3 — Living Buoyancy and Shared Interaction Language
+**Run**: 3 of 3 — Complete Dive Closure
 **Date**: 2026-07-23
 
 ## 1. Commits
@@ -24,14 +24,43 @@ console errors. Runtime proof is in
 `.verification/dive-upgrade/run-2/run1-baseline-idle.png`. The existing untracked
 `assets/blender/hero-title/hero-title.blend1` was preserved.
 
-## 2. Checkpoint Decision
+## 2. Final requirement matrix — Run 3
+
+This is the final evidence matrix for the complete three-run plan. Runtime and
+visual rows cite production-browser captures, not source inspection alone.
+
+| Phase | Requirement | Implementation location | Verification method | Status | Evidence path or command | Corrective action |
+|---|---|---|---|---|---|---|
+| 0 | Baseline checkpoint and green gates | `e49a404`; repo scripts | Typecheck, lint, regression suite, production build | verified | Final commands in §4; build output recorded 2026-07-23 | None |
+| 1 | Inflated cast-glass hero geometry | Blender source; GLB; manifest | Asset validation plus runtime `glyphCount=13` | verified | `.verification/hero-glyphs/VALIDATION.md`; final production canvas dataset | None |
+| 2 | Clear crystal material with controlled agitation | `config.ts`; underwater glyph/backdrop shaders | Rest, hover, release, anti-washout, and final runtime captures | verified | `final/hero-rest-desktop.png`; `final/hero-pointer-release.png`; `final/interaction-trace.json` | Keep the authored material contract and washout gate |
+| 3 | Living glyph buoyancy | glyph rigid-body physics; underwater renderer | Runtime motion dataset, release trace, finite-state and soak checks | verified | `final/hero-pointer-release.png`; `final/stability-soak.json`; 34-test suite | None |
+| 3 | Hold-to-dive, cancellation, release ring/droplets, neighbor wobble | glyph interaction state; renderer input ownership | Deterministic state tests plus pointer release trace; Browser CUA has no separate mouse-down-duration primitive | verified | `scripts/portfolio-regression-tests.mjs`; `final/interaction-trace.json` | Hold duration remains unit-test-covered; physical mouse trace is a tooling limitation |
+| 4 | Shared DOM ripple and scroll-current language | delegated dialogue hook; liquid interaction; revamp styles | Pointer/focus/press trace and cross-section production samples | verified | `final/hero-pointer-release.png`; `final/journey-metrics.json`; 34 tests | None |
+| 5 | Section-aware monotonic continuous descent | `world-state.ts`; measurement invalidation; renderer consumers | Pure-function continuity/monotonicity/reversal/endpoints plus live down/up samples | verified | `final/journey-metrics.json`; `npm run test:portfolio` | None |
+| 5 | Readability through depth | world light; title contrast pocket; case CSS | Three screenshot RGB samples with computed WCAG contrast | verified | `final/contrast-samples.json`; all samples ≥ `6.47:1` | None |
+| 5 | Deep-basin god rays and marine snow | backdrop shader; quality tier uniform | Final deep contact capture and shader/source regression checks | verified | `final/contact-deep-basin-desktop.png`; `final/contact-mobile-portrait.png`; `npm run test:portfolio` | None |
+| 5 | Floor caustics and restrained contact slab rim/glow | final composite; ContactSection; revamp styles | Desktop/mobile deep-basin screenshots with readable email slab | verified | `final/contact-deep-basin-desktop.png`; `final/contact-mobile-portrait.png` | None |
+| 5 | Surface meniscus without synthetic stripe | backdrop surface term | Hero rest and production screenshot inspection | verified | `final/hero-rest-desktop.png`; `final/hero-mobile-portrait.png` | None |
+| 6 | Consistent shallow case-study mooring and no first-frame index flash | route seed; `CASE_MOORING_DEPTH`; `ProjectDetail`; shared renderer | Direct route immediate root seed, settled renderer state, client navigation, back route | verified | `final/case-monkeyclaw-direct.png`; `final/production-diagnostics.json`; direct trace root depth `0.22` | None |
+| 6 | Arrival plunge and directional transition wake | `CaseArrivalWater`; `ProjectTransitionLink` | Direct route and client/back transition state; shared wake/press calls | verified | `final/interaction-trace.json`; `npm run test:portfolio` | None |
+| 6 | Shared interaction grammar on case links/media/CTAs | `data-liquid-hover`; transition link; delegated hook | Source checks plus case route DOM and navigation exercise | verified | `final/case-monkeyclaw-direct.png`; 34-test suite | None |
+| 6 | Static/poster/WebGL-failure/reduced-motion/mobile case behavior | FluidScene; ErrorBoundary; quality profiles; case CSS | Missing-GLB development path, motion toggle, mobile capture, direct routes | verified | `final/fallback-missing-glb.png`; `final/fallback-missing-glb.json`; `final/responsive-metrics.json` | Production missing-GLB query is development-only by design |
+| 7 | Full automated gates and regression checks | package scripts; source tests | Typecheck, lint, portfolio regression, production build, diff check | verified | §4 exact commands; 34 tests; final build 14 pages | None |
+| 7 | Final visual evidence suite | `.verification/dive-upgrade/final/` | Named hero, journey, contact, case, mobile, fallback, interaction captures | verified | `final/` image and JSON artifacts; inspected with image viewer | None |
+| 7 | Desktop/mobile performance targets | renderer telemetry; explicit production soak | p50/p95/worst, work p95, adaptive downgrade count, 60.678 s soak | failed | `final/performance.json`; `final/stability-soak.json` | Exact frame p95 varied `16.8–17.6 ms` on the available arm64 Browser host; no exact M-series model/browser version or DevTools trace was available. Work p95 stayed ≤`2.3 ms`, adaptive downgrades `0`. |
+| 7 | Stability and lifecycle adversarial QA | renderer/input/hooks; route/fallback paths | 60 s scroll/pointer soak, route changes, motion toggle, mobile, missing asset, finite-state tests | verified | `final/stability-soak.json`; `final/interaction-trace.json`; 34 tests | None observed |
+| 7 | Keyboard, focus, contrast, reduced-motion, fallback accessibility | DOM/CSS/renderer fallbacks | Keyboard focus outline, motion-off static frame, equivalent DOM content, RGB contrast samples | verified | `final/contrast-samples.json`; motion-off dataset trace; final screenshots | Browser OS-level reduced-motion emulation unavailable; local motion-off path verified |
+| 7 | Documentation and final implementation ledger | `README.md`; this ledger | Claims reconciled with final code, artifacts, commands, commits, and limitations | verified | README and this final ledger | None |
+
+## Historical Run 1 — Checkpoint Decision
 
 The working tree on `main` contained 15 modified + 2 untracked files, all underwater-revamp-related.
 Committed as `e49a404` before creating the feature branch.
 All 14 stale codex/ branches (0 ahead of main) were deleted.
 One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-coupling` was removed.
 
-## 3. Commands Run and Results
+## Historical Run 1 — Commands Run and Results
 
 | Command | Result |
 |---------|--------|
@@ -41,7 +70,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 | `npm run test:portfolio` | ✅ PASS (Phase 0: 30/30, post-Phase 2: 30/30) |
 | Blender pipeline | ✅ PASS (13 nodes, reimport names match, bounds match) |
 
-## 4. Files Changed
+## Historical Run 1 — Files Changed
 
 ### Phase 0
 - `.verification/dive-upgrade/before/baseline-evidence.md` (new, gitignored)
@@ -56,7 +85,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 - `src/features/kinetic-canvas/renderer/underwater/shaders.ts` — Crystal material + anti-washout
 - `src/features/kinetic-canvas/renderer/underwater/config.ts` — Material parameter tuning
 
-## 5. Important Constants Before and After
+## Historical Run 1 — Important Constants Before and After
 
 ### Geometry (build_hero_glyphs.py)
 
@@ -113,7 +142,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 | Crest gate | 0.085 | 0.075 * (0.3 + washoutGate*0.7) |
 | Height shading | 0.115 | 0.10 |
 
-## 6. GLB and Manifest Validation
+## Historical Run 1 — GLB and Manifest Validation
 
 | Metric | Before | After |
 |--------|--------|-------|
@@ -124,7 +153,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 | Names match | ✅ | ✅ |
 | Bounds match | ✅ | ✅ |
 
-## 7. Geometry Counts Before and After
+## Historical Run 1 — Geometry Counts Before and After
 
 | Glyph | Before (tris) | After (tris) | Depth Before | Depth After |
 |-------|--------------|-------------|-------------|------------|
@@ -138,7 +167,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 | O | 4,500 | 5,500 | 0.239 | 0.306 |
 | **Total** | **44,096** | **55,100** | | |
 
-## 8. Visual and Performance Results
+## Historical Run 1 — Visual and Performance Results
 
 > [!IMPORTANT]
 > Screenshots could not be captured in this headless execution environment.
@@ -160,7 +189,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 - Internal effects use existing procedural noise (no texture fetches)
 - washoutGate is a single smoothstep — negligible cost
 
-## 9. Screenshot and Evidence Paths
+## Historical Run 1 — Screenshot and Evidence Paths
 
 | Path | Content |
 |------|---------|
@@ -168,7 +197,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 | `.verification/hero-glyphs/01_full-title.png` through `12_reimport-front.png` | Blender validation renders |
 | `.verification/hero-glyphs/VALIDATION.md` | Blender geometry report |
 
-## 10. Known Limitations and Unresolved Observations
+## Historical Run 1 — Known Limitations and Unresolved Observations
 
 1. **No runtime screenshots**: This run was executed in a headless environment. Visual quality must be verified by running `npm run dev` and inspecting the hero.
 2. **Performance measurement pending**: Frame timing cannot be measured without a browser. The triangle increase is conservative and should remain within budget.
@@ -176,7 +205,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 4. **Exposure tuning**: The exposure change (0.90 → 0.88) was selected based on the material term analysis. It may need further adjustment after visual inspection.
 5. **Internal bubble visibility**: The sparse larger bubbles use 3D value noise and may be too subtle or too visible depending on the geometry's optical thickness in practice. Requires visual inspection.
 
-## 11. Preconditions for Run 2
+## Historical Run 1 — Preconditions for Run 2
 
 1. Run 1 commits are on `dive/run-1-crystal-foundation` branch
 2. All gates green: typecheck, lint, build, 30/30 tests
@@ -185,7 +214,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 5. The composite shader includes anti-washout control
 6. **Run 2 must verify**: runtime visual quality against the acceptance criteria before proceeding
 
-## 12. Engineering Invariants for Later Runs
+## Shared Engineering Invariants
 
 1. **Glyph identity contract**: 13 glyphs, indices 0..12, node names `line1_*`/`line2_*`, manifest version 1
 2. **Shared geometry identifiers**: `custom-rounded-{char}-inflated-v2` and `inter-tight-900-{char}-inflated-v2`
@@ -200,7 +229,7 @@ One worktree at `/Users/ezzyrappeport/.codex/worktrees/hero-liquid-glass-couplin
 11. **No render pass structure changed**
 12. **washoutGate**: composite slope-dependent gate must be preserved when adding new additive terms
 
-## 13. Run 2 — Verified Implementation
+## Historical Run 2 — Verified Implementation
 
 ### Scope and repairs
 
@@ -331,3 +360,65 @@ branch, the 33-test suite and production build remain green, the single-tab
 performance result is rechecked, and the remaining live-only browser/device
 proof is scheduled. Run 3 scope is explicitly limited to the final scroll-depth
 remap, deep-basin upgrade, case-study integration, and final release audit.
+
+## Run 3 Final Closure
+
+### Implemented system
+
+- `world-state.ts` now maps measured section ranges through named smootherstep
+  knots: hero `0.00→0.10`, Projects through `0.38`, About through `0.56`, the
+  contact approach at `0.74`, and the floor at `1.00`. It invalidates on content
+  resize and is pure with respect to scroll direction.
+- The backdrop owns slow god rays, floor caustics, a surface meniscus, and two
+  procedural marine-snow layers. Low/balanced/high tiers reduce the near layer
+  and reduced motion freezes time.
+- Case routes use a server-seeded shallow dock (`0.22`, light `0.9056`) before
+  effects mount, then share the same renderer, DOM dialogue, directional wakes,
+  arrival plunge, and route transitions. No animation gates navigation.
+- The renderer exposes p50/p95/worst frame and work samples, plus an explicit
+  adaptive-downgrade count. High desktop starts at the proven `0.80` render
+  scale; this avoids an adaptive downgrade during normal use.
+- README now describes Three.js/WebGL2 as foundational, the water architecture,
+  quality tiers, fallbacks, and validation commands. Generated hero and water
+  assets remain reproducible through the existing scripts.
+
+### Final commands
+
+| Command | Result |
+|---|---|
+| `./node_modules/.bin/tsc --noEmit` | PASS |
+| `./node_modules/.bin/eslint .` | PASS |
+| `node scripts/portfolio-regression-tests.mjs` | PASS — 34 tests |
+| `./node_modules/.bin/next build` | PASS — 14 routes generated |
+| `git diff --check` | PASS before final commits |
+
+### Final evidence
+
+All final artifacts are under `.verification/dive-upgrade/final/`. The primary
+set is `hero-rest-desktop.png`, `hero-pointer-release.png`,
+`projects-shallow-desktop.png`, `about-midwater-desktop.png`,
+`contact-approach-desktop.png`, `contact-deep-basin-desktop.png`,
+`case-monkeyclaw-direct.png`, `hero-mobile-portrait.png`,
+`contact-mobile-portrait.png`, `fallback-missing-glb.png`, and
+`interaction-trace.json`. Numeric traces are in `journey-metrics.json`,
+`performance.json`, `stability-soak.json`, `responsive-metrics.json`, and
+`contrast-samples.json`.
+
+### Performance and limitations
+
+The explicit production soak ran `60.678 s` at `1280×720`, DPR `1`, high tier,
+with alternating 620 px scroll wakes and pointer moves. It recorded p50
+`16.70 ms`, p95 samples between `16.8` and `17.6 ms`, worst `100.0 ms` during
+one browser scheduling outlier, work p95 between `0.5` and `2.3 ms`, zero
+adaptive downgrades, no scheduled-water residue, and no invalid numeric states.
+The host is arm64, but the exact M-series model, browser version, and Chrome
+DevTools trace were unavailable. The exact `17.3 ms` frame target is therefore
+not claimed as universally passed; this is the sole failed matrix row. Local
+Vercel Analytics/Speed Insights load messages are expected on localhost and are
+not application errors.
+
+### Final commits
+
+Run 3 commits are recorded in §1 after commit creation. The pre-existing
+untracked Blender recovery file `assets/blender/hero-title/hero-title.blend1`
+was preserved and is intentionally not part of the release commits.
