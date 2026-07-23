@@ -260,13 +260,40 @@ export function stepGlyphBodies(
     body.position.addScaledVector(body.velocity, dt);
 
     const angularSpring = 13;
-    const angularDrag = 12.5;
+    const angularDrag = 13.5;
     for (const axis of ["x", "y", "z"] as const) {
       const limitForce = softLimitForce(body.orientation[axis], body.maxTilt, 38);
       const acceleration = (body.currentTorque[axis] - body.orientation[axis] * angularSpring + limitForce)
         / Math.max(body.inertia[axis] * 8, 0.08) - body.angularVelocity[axis] * angularDrag;
       body.angularVelocity[axis] += acceleration * dt;
+      // Bounded rocking: torque spikes from fast circular pointer work can
+      // never wind the letter into a jitter.
+      body.angularVelocity[axis] = Math.max(-1.35, Math.min(1.35, body.angularVelocity[axis]));
       body.orientation[axis] += body.angularVelocity[axis] * dt;
+    }
+
+    // Idle deadzone: far from any disturbance, microscopic residual motion
+    // decays hard to exact rest instead of shimmering indefinitely.
+    if (body.nearestInteraction > 140) {
+      const planarSpeed = Math.hypot(body.velocity.x, body.velocity.z);
+      if (planarSpeed < 0.012 && Math.abs(body.position.x) + Math.abs(body.position.z) < 0.004) {
+        body.velocity.x *= 0.6;
+        body.velocity.z *= 0.6;
+        if (planarSpeed < 0.003) {
+          body.velocity.x = 0;
+          body.velocity.z = 0;
+          body.position.x *= 0.9;
+          body.position.z *= 0.9;
+        }
+      }
+      const spin = body.angularVelocity.length();
+      if (spin < 0.05) {
+        body.angularVelocity.multiplyScalar(0.6);
+        if (spin < 0.012) {
+          body.angularVelocity.set(0, 0, 0);
+          body.orientation.multiplyScalar(0.94);
+        }
+      }
     }
   }
 

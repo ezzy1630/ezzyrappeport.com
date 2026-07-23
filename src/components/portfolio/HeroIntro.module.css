@@ -42,6 +42,7 @@
 }
 
 .cta {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.55rem;
@@ -59,10 +60,50 @@
     background-color 0.3s var(--ease-water);
 }
 
+/* On hover the water beneath the button compresses: a soft ring forms and
+   the button rises closer to the surface. */
+.cta::before,
+.cta::after {
+  content: "";
+  position: absolute;
+  inset: -0.35rem;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.cta::before {
+  border: 1.5px solid rgba(57, 119, 238, 0);
+  transform: scale(0.82);
+  transition: border-color 0.3s var(--ease-water), transform 0.45s var(--ease-water);
+}
+
+.cta::after {
+  inset: auto 12% -0.62rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: radial-gradient(50% 100% at 50% 50%, rgba(35, 93, 209, 0.4), transparent 75%);
+  filter: blur(0.28rem);
+  opacity: 0;
+  transform: scaleX(0.8);
+  transition: opacity 0.3s var(--ease-water), transform 0.45s var(--ease-water);
+}
+
 .cta:hover {
-  transform: translateY(-2px);
+  transform: translateY(-2.5px);
   background: #2867e2;
-  box-shadow: 0 8px 8px -6px rgba(35, 93, 209, 0.82);
+  box-shadow: 0 10px 12px -7px rgba(35, 93, 209, 0.85);
+}
+
+.cta:hover::before,
+.cta:focus-visible::before {
+  border-color: rgba(57, 119, 238, 0.55);
+  transform: scale(1);
+}
+
+.cta:hover::after,
+.cta:focus-visible::after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 
 .ctaIcon {

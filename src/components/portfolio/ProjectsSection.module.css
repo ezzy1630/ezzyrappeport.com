@@ -97,6 +97,111 @@
     "content media"
     "actions media";
 }
+
+/* Suspended arrival: the object enters through the water — media soft and
+   deep, title slightly out of focus — then resolves. Written only by JS, so
+   no-JS visitors always see fully resolved content. */
+.media,
+.heading {
+  transition:
+    opacity 760ms cubic-bezier(0.22, 1, 0.36, 1),
+    filter 760ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 760ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.row[data-resolved="false"] .media {
+  opacity: 0.3;
+  filter: blur(12px) saturate(0.82) brightness(1.04);
+  transform: translateY(2rem) scale(0.985);
+}
+
+.row[data-resolved="false"] .heading {
+  opacity: 0;
+  filter: blur(5px);
+  transform: translateY(0.7rem);
+}
+
+/* The reflection receiver beneath each suspended object: a caustic pool in
+   the project's own light, appearing as the object resolves. */
+.row::after {
+  content: "";
+  position: absolute;
+  right: 10%;
+  bottom: 4%;
+  left: 10%;
+  z-index: -1;
+  height: 24%;
+  background:
+    radial-gradient(58% 100% at 50% 100%,
+      color-mix(in oklch, var(--project-well, #9fc6ea) 34%, transparent),
+      transparent 74%);
+  filter: blur(0.85rem);
+  opacity: 0;
+  transform: scaleX(0.86);
+  transition: opacity 900ms ease 160ms, transform 900ms cubic-bezier(0.22, 1, 0.36, 1) 160ms;
+  pointer-events: none;
+}
+
+.row[data-resolved="true"]::after {
+  opacity: 0.5;
+  transform: scaleX(1);
+}
+
+/* The “View project” cue surfaces naturally when the object is touched. */
+.mediaCue {
+  position: absolute;
+  right: 1.15rem;
+  bottom: 1.05rem;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 999px;
+  background: color-mix(in oklch, rgba(255, 255, 255, 0.72) 82%, var(--project-well, #dbeafa));
+  -webkit-backdrop-filter: blur(10px) saturate(1.15);
+  backdrop-filter: blur(10px) saturate(1.15);
+  box-shadow: 0 0.5rem 1.4rem -0.8rem rgba(10, 38, 74, 0.45);
+  color: var(--rv-ink);
+  font-family: var(--font-inter-tight), sans-serif;
+  font-size: 0.72rem;
+  font-weight: 640;
+  letter-spacing: 0.01em;
+  opacity: 0;
+  transform: translateY(0.45rem);
+  transition:
+    opacity 300ms ease,
+    transform 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.mediaCue > span {
+  font-size: 0.82rem;
+  line-height: 1;
+  transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.media:hover .mediaCue,
+.media:focus-within .mediaCue {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.media:hover .mediaCue > span,
+.media:focus-within .mediaCue > span {
+  transform: translate(1px, -1px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row[data-resolved="false"] .media,
+  .row[data-resolved="false"] .heading {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+  .row::after { opacity: 0.4; transform: none; transition: none; }
+}
 .rail {
   position: absolute;
   top: clamp(2.5rem, 5vw, 4.5rem);

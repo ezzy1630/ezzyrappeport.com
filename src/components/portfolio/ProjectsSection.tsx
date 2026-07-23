@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { projects } from "@/lib/portfolio/content";
 import ProjectIdentity from "./ProjectIdentity";
 import ProjectTransitionLink from "./ProjectTransitionLink";
+import ProjectsInteraction from "./ProjectsInteraction";
 import VeloxMark from "./VeloxMark";
 import styles from "./ProjectsSection.module.css";
 
@@ -26,6 +27,7 @@ export default function ProjectsSection() {
             <article
               id={`project-${project.slug}`}
               className={styles.row}
+              data-project-row
             >
               <div className={styles.rail} aria-label={`Project ${project.index}, ${project.year}`}>
                 <span>{project.index}</span>
@@ -35,6 +37,7 @@ export default function ProjectsSection() {
               <figure
                 className={styles.media}
                 data-project={project.slug}
+                data-project-media
                 style={
                   {
                     "--project-aspect": project.mediaPresentation.aspectRatio,
@@ -62,6 +65,9 @@ export default function ProjectsSection() {
                     />
                   )}
                 </ProjectTransitionLink>
+                <span className={styles.mediaCue} aria-hidden="true">
+                  View project <span>↗</span>
+                </span>
               </figure>
 
               <div className={styles.content}>
@@ -100,6 +106,7 @@ export default function ProjectsSection() {
           </li>
         ))}
       </ol>
+      <ProjectsInteraction />
     </section>
   );
 }

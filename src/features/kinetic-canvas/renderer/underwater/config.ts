@@ -1,22 +1,24 @@
 import { ACESFilmicToneMapping, LinearToneMapping, ReinhardToneMapping } from "three";
 
 export const UNDERWATER_DEBUG = {
-  exposure: 0.88,
+  exposure: 0.9,
   toneMapper: ACESFilmicToneMapping,
   // Sun from the upper-left; bright key, cool transmitted fill.
-  keyIntensity: 5.2,
+  keyIntensity: 5.6,
   fillIntensity: 1.7,
   environmentIntensity: 0.9,
-  // Physical glass: high transmission, low roughness, water IOR.
+  // Physical glass: high transmission, very low roughness, water IOR. The
+  // reference letters have crisp crystalline cores, not milk.
   ior: 1.4,
-  roughness: 0.06,
-  // Pale cerulean attenuation through the letterform depth.
-  absorptionColor: 0x9fd2e4,
-  absorptionDistance: 1.05,
+  roughness: 0.028,
+  // Pale cerulean attenuation through the letterform depth. A longer
+  // absorption distance keeps broad faces optically clear.
+  absorptionColor: 0xb5e0ee,
+  absorptionDistance: 1.55,
   // Visible water surface: restrained refraction wobble.
   surfaceDistortion: 0.34,
   // Animated caustic fire on the sand and through the glyphs.
-  causticStrength: 0.42,
+  causticStrength: 0.5,
   // Bright-shallows depth: deepens gradually, never muddy.
   depthAttenuation: 0.14,
 } as const;

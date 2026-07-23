@@ -178,9 +178,28 @@ body {
   transition: min-height 320ms cubic-bezier(0.22, 1, 0.36, 1), padding 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* The nav floats on the water surface: a soft scrim keeps it legible while
+   the environment moves behind it. The scrim and the foreground both follow
+   the shared world-light curve — dark ink over the shallows, pale glass over
+   the basin — with no discrete section flips. */
 .site-nav::before {
-  display: none;
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(180deg, rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.3)), rgba(5, 19, 41, 0)),
+    linear-gradient(180deg, rgba(243, 249, 252, calc(var(--world-light, 1) * 0.58)), rgba(243, 249, 252, 0));
+  -webkit-backdrop-filter: blur(13px) saturate(1.12);
+  backdrop-filter: blur(13px) saturate(1.12);
+  -webkit-mask-image: linear-gradient(180deg, black 52%, transparent);
+  mask-image: linear-gradient(180deg, black 52%, transparent);
+  pointer-events: none;
 }
+
+.site-nav-brand,
+.site-nav-links,
+.site-nav-actions { position: relative; z-index: 2; }
 
 .site-nav[data-scrolled="true"] {
   min-height: 4rem;
@@ -212,8 +231,8 @@ body {
   align-items: center;
   justify-self: start;
   gap: 0.9rem;
-  color: var(--rv-ink);
-  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
+  color: oklch(var(--nav-l, 0.21) 0.032 235);
+  transition: transform 260ms cubic-bezier(0.22, 1, 0.36, 1), color 400ms ease;
 }
 
 .site-nav-brand:hover { transform: translateY(-1px); }
@@ -257,25 +276,45 @@ body {
   min-height: 2.75rem;
   align-items: center;
   padding: 0.7rem 0;
-  color: color-mix(in oklch, var(--rv-ink) 84%, transparent);
+  color: oklch(var(--nav-l, 0.21) 0.03 235 / 0.88);
   font-size: 0.94rem;
   font-weight: 520;
+  transition: color 400ms ease, text-shadow 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* A tiny horizontal ripple beneath the word, not a conventional underline. */
 .site-nav-links a::after {
   content: "";
   position: absolute;
   right: 0;
-  bottom: 0.25rem;
+  bottom: 0.3rem;
   left: 0;
-  height: 1px;
-  background: var(--rv-blue);
-  transform: scaleX(0);
-  transform-origin: right;
-  transition: transform 240ms ease;
+  height: 0.3rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='5' viewBox='0 0 12 5'%3E%3Cpath d='M0 2.5 Q3 0.4 6 2.5 T12 2.5' fill='none' stroke='%233977ee' stroke-width='1.25' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: 0 50%;
+  background-size: 0.75rem 0.3rem;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 220ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.site-nav-links a:hover::after { transform: scaleX(1); transform-origin: left; }
+.site-nav-links a:hover::after,
+.site-nav-links a:focus-visible::after {
+  opacity: 0.9;
+  transform: translateY(0);
+  animation: rv-nav-ripple 1.15s linear infinite;
+}
+
+@keyframes rv-nav-ripple {
+  from { background-position-x: 0; }
+  to { background-position-x: 0.75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav-links a:hover::after,
+  .site-nav-links a:focus-visible::after { animation: none; }
+}
 
 .site-nav-cta {
   display: inline-flex;
@@ -286,13 +325,13 @@ body {
   padding: 0.25rem 0.1rem;
   border: 0;
   border-radius: 0;
-  color: var(--rv-ink);
+  color: oklch(var(--nav-l, 0.21) 0.032 235);
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
   font-size: 0.92rem;
   font-weight: 560;
-  transition: background 220ms ease, transform 220ms ease;
+  transition: color 400ms ease, transform 220ms ease;
 }
 
 .site-nav-actions {
@@ -312,12 +351,21 @@ body {
   border-radius: 0.7rem;
   background: transparent;
   box-shadow: none;
-  color: var(--rv-ink);
+  color: oklch(var(--nav-l, 0.21) 0.032 235);
   cursor: pointer;
+  transition: color 400ms ease;
 }
 
 .site-nav-motion svg,
 .site-nav-menu-button svg { width: 1rem; }
+
+/* The wave mark breathes with the live water energy of the shared field. */
+.site-nav-motion svg {
+  transform: scaleY(calc(1 + var(--liquid-energy, 0) * 0.55));
+  transition: transform 160ms ease-out;
+  transform-origin: center;
+}
+
 .site-nav-motion[aria-pressed="false"] { color: color-mix(in oklch, var(--rv-muted) 72%, transparent); }
 .site-nav-menu-button { display: none; }
 .mobile-navigation { display: none; }
@@ -1144,7 +1192,13 @@ body {
     flex-direction: column;
     min-height: calc(100svh - 4.8rem);
     padding: 2.2rem 1.25rem 1.5rem;
-    background: rgb(243, 248, 255);
+    /* A restrained translucent water sheet — the live surface stays visible
+       behind the menu instead of a flat white interruption. */
+    background:
+      linear-gradient(180deg, rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.42)), rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.3))),
+      linear-gradient(180deg, rgba(240, 248, 252, calc(0.42 + var(--world-light, 1) * 0.3)), rgba(226, 241, 249, calc(0.36 + var(--world-light, 1) * 0.26)));
+    -webkit-backdrop-filter: blur(22px) saturate(1.18);
+    backdrop-filter: blur(22px) saturate(1.18);
     opacity: 0;
     pointer-events: none;
     transform: translateY(-1rem);
@@ -1401,8 +1455,8 @@ body {
 .contact-section__email:hover .contact-section__email-icon,
 .contact-section__email:focus-visible .contact-section__email-icon { border-color: rgba(255,255,255,0.62); background: rgba(66, 128, 229, 0.18); transform: translate(0.16rem, -0.16rem); }
 .contact-footer {
-  grid-template-columns: minmax(13rem, 1fr) auto minmax(16rem, 1fr);
-  gap: clamp(2rem, 5vw, 5rem);
+  grid-template-columns: minmax(13rem, 1fr) auto minmax(14rem, 1fr) auto;
+  gap: clamp(2rem, 4vw, 4rem);
   align-items: center;
   margin-top: 0;
   padding: clamp(2rem, 3.5vw, 3.25rem) 0;
@@ -1419,6 +1473,24 @@ body {
 .contact-footer nav a:focus-visible { color: white; }
 .contact-footer__meta { grid-column: auto; flex-direction: column; align-items: flex-end; gap: 0.45rem; margin: 0; text-align: right; }
 .contact-footer__meta span { font-size: clamp(0.72rem, 0.68rem + 0.1vw, 0.8rem) !important; }
+
+/* The ascent link: the floor always offers a way back to the surface. */
+.contact-footer__top {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  align-self: center;
+  min-height: 2.75rem;
+  color: rgba(96, 165, 250, 0.92);
+  font-size: clamp(0.82rem, 0.78rem + 0.1vw, 0.92rem);
+  font-weight: 560;
+  transition: color 200ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.contact-footer__top svg { width: 0.95rem; transform: rotate(-45deg); transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1); }
+.contact-footer__top:hover,
+.contact-footer__top:focus-visible { color: rgba(191, 219, 254, 1); transform: translateY(-2px); }
+.contact-footer__top:hover svg,
+.contact-footer__top:focus-visible svg { transform: rotate(-45deg) translate(1px, -1px); }
 
 @media (max-width: 760px) {
   .contact-section__inner { padding-top: 0; }
@@ -1440,7 +1512,7 @@ body {
   .contact-basin__copy { grid-column: 1 / span 7; }
   .contact-section__email { grid-column: 8 / -1; }
   .contact-footer { grid-template-columns: 1fr auto; }
-  .contact-footer__meta { grid-column: 1 / -1; flex-direction: row; align-items: center; justify-content: space-between; text-align: left; }
+  .contact-footer__meta { grid-column: auto; flex-direction: row; align-items: center; justify-content: space-between; text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1474,9 +1546,10 @@ html[data-water-section="case"] .fluid-canvas {
 #projects::before,
 #projects::after { opacity: 0.34; }
 
-#about::before {
-  background: linear-gradient(90deg, rgba(232, 244, 252, 0.82) 0%, rgba(223, 239, 250, 0.58) 42%, rgba(12, 52, 91, 0.08) 72%, transparent 100%);
-}
+/* The About pocket stays fully transparent: the shared water carries the
+   section instead of an opaque overlay (which used to leave a visible seam
+   where the canvas ended and a CSS field began). The module-level ::before
+   now owns the soft sunlit pool, so no ID-level rule may override it. */
 
 html[data-water-section="about"] {
   --rv-ink: oklch(0.2 0.04 240);
@@ -1484,18 +1557,9 @@ html[data-water-section="about"] {
   --rv-line: rgba(9, 34, 65, 0.17);
 }
 
-html[data-water-section="contact"] .site-nav-brand,
-html[data-water-section="contact"] .site-nav-links a,
-html[data-water-section="contact"] .site-nav-cta,
-html[data-water-section="contact"] .site-nav-motion,
-html[data-water-section="contact"] .site-nav-menu-button,
-html[data-water-section="case"] .site-nav-brand,
-html[data-water-section="case"] .site-nav-links a,
-html[data-water-section="case"] .site-nav-cta,
-html[data-water-section="case"] .site-nav-motion,
-html[data-water-section="case"] .site-nav-menu-button {
-  color: rgba(246, 250, 255, 0.94);
-}
+/* Navigation foreground no longer flips by section flag: the continuous
+   --nav-l curve (driven by world light) owns the color, so the descent
+   through mid-depths blends smoothly instead of jumping at Contact. */
 
 .contact-section {
   min-height: 100svh;
@@ -1608,12 +1672,77 @@ html[data-water-section="case"] .site-nav-menu-button {
     linear-gradient(105deg, transparent 16%, rgba(255, 255, 255, 0.26) 34%, transparent 52%),
     radial-gradient(70% 35% at 54% 0%, rgba(255, 255, 255, 0.32), transparent 72%);
   transform: translateX(-38%);
-  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: calc(0.55 + var(--slab-proximity, 0) * 0.45);
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms ease;
   pointer-events: none;
 }
 
 .contact-section__email:hover::before,
 .contact-section__email:focus-visible::before { transform: translateX(42%); }
+
+/* The slab is a registered displacement surface: approaching water lifts it,
+   brightens its edges, and lets it tilt a bounded few degrees toward the
+   cursor. All values arrive as CSS vars from the shared pointer field. */
+.contact-section__email {
+  --slab-proximity: 0;
+  --slab-tilt-x: 0deg;
+  --slab-tilt-y: 0deg;
+  transform:
+    translateX(2rem)
+    perspective(1100px)
+    rotateX(var(--slab-tilt-x))
+    rotateY(var(--slab-tilt-y))
+    translateY(calc(var(--slab-proximity) * -0.45rem));
+  border-color: color-mix(in oklch, rgba(173, 220, 255, 0.72) calc(72% + var(--slab-proximity) * 28%), white 0%);
+  box-shadow:
+    0 0 0 1px rgba(239, 249, 255, calc(0.24 + var(--slab-proximity) * 0.3)) inset,
+    0 -1px 0 rgba(255, 255, 255, calc(0.78 + var(--slab-proximity) * 0.22)) inset,
+    0 0 calc(1.2rem + var(--slab-proximity) * 1.6rem) rgba(118, 190, 255, calc(0.22 + var(--slab-proximity) * 0.3)),
+    0 2rem 4rem -2.6rem rgba(0, 8, 29, 0.78);
+  transition:
+    transform 360ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    color 240ms ease;
+  will-change: transform;
+}
+
+@media (max-width: 768px) {
+  .contact-section__email {
+    transform:
+      perspective(1100px)
+      rotateX(var(--slab-tilt-x))
+      rotateY(var(--slab-tilt-y))
+      translateY(calc(var(--slab-proximity) * -0.3rem));
+  }
+}
+
+/* Sonar answer from the location marker: one quiet ring when touched. */
+.contact-section__location {
+  position: relative;
+  width: fit-content;
+  padding: 0.35rem 0.6rem 0.35rem 0.35rem;
+  border-radius: 999px;
+}
+
+.contact-section__location::after {
+  content: "";
+  position: absolute;
+  inset: -0.15rem;
+  border: 1px solid rgba(96, 165, 250, 0);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.contact-section__location:hover::after,
+.contact-section__location:focus-visible::after {
+  animation: rv-sonar 1.15s cubic-bezier(0.22, 1, 0.36, 1) 1;
+}
+
+@keyframes rv-sonar {
+  0% { border-color: rgba(96, 165, 250, 0.85); box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.45); opacity: 1; }
+  100% { border-color: rgba(96, 165, 250, 0); box-shadow: 0 0 0 1.6rem rgba(96, 165, 250, 0); opacity: 0; }
+}
 
 .contact-section__email-mark {
   position: relative;
@@ -1684,8 +1813,29 @@ html[data-water-section="case"] .content-layer { color: rgba(247, 250, 255, 0.96
   .contact-basin__copy,
   .contact-section__email,
   .contact-section__location { grid-column: 1; }
-  .contact-section__email { min-height: 6.5rem; padding: 1rem 1.15rem; }
-  .contact-section__email-copy > span { font-size: clamp(1rem, 5vw, 1.3rem); }
+  /* The desktop composition offsets are a wide-viewport luxury. On phones
+     they pushed the glass slab past the right edge and clipped the arrow —
+     every offset is removed and the slab stays inside 16–20px side rails. */
+  .contact-basin__copy,
+  .contact-section__email,
+  .contact-section__location { transform: none; }
+  .contact-section__email {
+    justify-self: stretch;
+    width: 100%;
+    max-width: 100%;
+    min-height: 6.5rem;
+    padding: 1rem 1.1rem;
+    box-sizing: border-box;
+  }
+  /* The address never breaks mid-domain; it scales down instead. */
+  .contact-section__email-copy > span {
+    font-size: clamp(0.98rem, 4.6vw, 1.3rem);
+    white-space: nowrap;
+    overflow-wrap: normal;
+    letter-spacing: -0.015em;
+  }
+  .contact-section__email-mark { margin-right: 0.85rem; width: 2.3rem; height: 2.3rem; }
+  .contact-section__email-icon { margin-left: 0.6rem; }
 }
 
 @media (max-width: 430px) {
