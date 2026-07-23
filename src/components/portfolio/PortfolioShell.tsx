@@ -9,6 +9,7 @@ import ErrorBoundary from "./ErrorBoundary";
 import { PortfolioMotionProvider } from "./PortfolioMotionContext";
 import { useLiquidHoverDialogue } from "@/hooks/portfolio/use-liquid-dialogue";
 import { invalidateWorldMeasurement } from "@/lib/portfolio/world-state";
+import LoadingVeil from "./LoadingVeil";
 
 type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
 
@@ -157,6 +158,7 @@ export default function PortfolioShell({
           data-route={routeMode}
           style={routeStyle}
         >
+          <a className="skip-link" href="#main-content">Skip to content</a>
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}
@@ -166,6 +168,8 @@ export default function PortfolioShell({
               heroName={renderHeroName}
             />
           </ErrorBoundary>
+
+          {heroName ? <LoadingVeil /> : null}
 
           {showNav && <Navigation motionEnabled={motionEnabled} onToggleMotion={toggleMotion} />}
 

@@ -138,8 +138,8 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      maxTravel: 0.068 + (index % 3) * 0.005,
-      maxTilt: (4.0 + (index % 4) * 0.45) * Math.PI / 180,
+      maxTravel: 0.086 + (index % 3) * 0.006,
+      maxTilt: (5.2 + (index % 4) * 0.5) * Math.PI / 180,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -148,10 +148,10 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       lastActiveAt: 0,
       ambientPhase: glyphPhaseForIdentity(index, glyph.manifest.object_node_name),
       ambientFrequency: index % 2 === 0 ? 0.46 : 0.71,
-      ambientAmplitude: 0.013 + (index % 3) * 0.0018,
-      ambientTiltAmplitude: (0.6 + (index % 4) * 0.18) * Math.PI / 180,
-      maxDepth: 0.078,
-      maxLinearSpeed: 0.58,
+      ambientAmplitude: 0.009 + (index % 3) * 0.0014,
+      ambientTiltAmplitude: (0.44 + (index % 4) * 0.14) * Math.PI / 180,
+      maxDepth: 0.096,
+      maxLinearSpeed: 0.66,
     };
   });
 }

@@ -592,15 +592,15 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float grazing = smoothstep(0.018, 0.52, shoulder);
     vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.018 + opticalThickness * 0.035), 0.002, 0.998);
     vec3 reflectedEnvironment = texture2D(uEnvironment, reflectedUv).rgb;
-    vec3 edgeWaterCore = vec3(0.05, 0.35, 0.75);
+    vec3 edgeWaterCore = vec3(0.16, 0.52, 0.82);
     vec3 edgeWater = mix(
       reflectedEnvironment * vec3(0.38, 0.62, 0.96),
       edgeWaterCore,
-      0.58 + shoulder * 0.16
+      0.42 + shoulder * 0.14
     );
-    body = mix(body, edgeWater, grazing * 0.92);
+    body = mix(body, edgeWater, grazing * 0.76);
     /* Boundary crease darkening for silhouette readability */
-    body = mix(body, vec3(0.010, 0.06, 0.26), tightBoundary * 0.74);
+    body = mix(body, vec3(0.035, 0.16, 0.34), tightBoundary * 0.46);
 
     /* Caustic fire concentrating through the letterforms */
     float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.2 + vWorldPosition.z * 5.4 - uTime * 0.16), 7.0)
@@ -614,8 +614,8 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     ), 12.0) * smoothstep(0.12, 0.9, shoulder);
 
     /* Reflected light: pushed toward nearly white on rims */
-    vec3 reflected = vec3(0.22, 0.56, 1.0) * fresnel * 1.7;
-    reflected += vec3(0.96, 0.99, 1.0) * glassRim * (0.11 + keySpec * 0.72);
+    vec3 reflected = vec3(0.34, 0.66, 1.0) * fresnel * 1.52;
+    reflected += vec3(0.98, 0.995, 1.0) * glassRim * (0.15 + keySpec * 0.78);
     reflected += vec3(0.97, 0.995, 1.0) * sunGlint * 0.42;
     reflected += vec3(0.76, 0.92, 1.0) * convexBand * 0.16;
     reflected += vec3(0.97, 0.995, 1.0) * edgeSpark * 0.30;

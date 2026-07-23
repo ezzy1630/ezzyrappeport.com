@@ -11,21 +11,16 @@ type Props = {
 
 const chapters = [
   { key: "problem", label: "Problem" },
-  { key: "approach", label: "Approach" },
-  { key: "outcome", label: "Outcome" },
+  { key: "approach", label: "Build" },
+  { key: "outcome", label: "Result" },
 ] as const;
-
-const linkKindLabels = {
-  source: "Source",
-  site: "Live site",
-  releases: "Releases",
-} as const;
 
 export default function ProjectDetail({ project }: Props) {
   const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
   const previous = projects[(projectIndex - 1 + projects.length) % projects.length];
   const next = projects[(projectIndex + 1) % projects.length];
   const gallery = project.media.gallery ?? [];
+  const heroAsset = gallery[0] ?? project.media.cover;
   const proofItems = project.proof
     .split("·")
     .map((item) => item.trim())
@@ -34,106 +29,69 @@ export default function ProjectDetail({ project }: Props) {
   return (
     <PortfolioShell heroName={false} routeMode="case">
       <div className="content-layer">
-        <article className={styles.page} data-project={project.slug} data-water-section="case">
+        <article id="main-content" className={styles.page} data-project={project.slug} data-water-section="case">
           <CaseArrivalWater />
           <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
-            <span className={styles.backIcon} aria-hidden="true">←</span>
-            <span>Back to selected work</span>
+            <span aria-hidden="true">←</span>
+            Back to work
           </ProjectTransitionLink>
 
           <header className={styles.hero}>
-            <div className={styles.heroContent}>
-              <p className={styles.eyebrow}>
-                <span>{project.index}</span>
-                <span aria-hidden="true"> / </span>
-                <time dateTime={project.year}>{project.year}</time>
-              </p>
-              <h1 className={styles.title}>{project.title}</h1>
-              <p className={styles.subtitle}>{project.subtitle}</p>
+            <div className={styles.heroHeading}>
+              <p className={styles.eyebrow}>{project.subtitle}</p>
+              <h1>{project.title}</h1>
               <p className={styles.tagline}>{project.tagline}</p>
+            </div>
 
-              <dl className={styles.facts}>
-                <div className={styles.fact}>
-                  <dt>Role</dt>
-                  <dd>{project.role}</dd>
-                </div>
-                <div className={styles.fact}>
-                  <dt>Status</dt>
-                  <dd>{project.status}</dd>
-                </div>
-              </dl>
+            <dl className={styles.meta}>
+              <div><dt>Role</dt><dd>{project.role}</dd></div>
+              <div><dt>Year</dt><dd>{project.year}</dd></div>
+              <div><dt>Status</dt><dd>{project.status}</dd></div>
+            </dl>
 
-              <div className={styles.proofStrip} aria-label="Verified proof">
-                <p className={styles.proofLabel}>Verified proof</p>
-                <ul className={styles.proofList}>
-                  {proofItems.map((item, index) => (
-                    <li key={item} className={styles.proofItem}>
-                      <span className={styles.proofIndex} aria-hidden="true">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            <figure className={styles.heroMedia} data-liquid-hover style={{ viewTransitionName: `project-${project.slug}` }}>
+              <Image
+                src={heroAsset.src}
+                alt={heroAsset.alt}
+                width={heroAsset.width}
+                height={heroAsset.height}
+                sizes="(max-width: 900px) 100vw, 90vw"
+                className={styles.heroImage}
+                priority
+                unoptimized={heroAsset.src.endsWith(".svg")}
+              />
+            </figure>
+          </header>
 
-              {project.cautionLabel ? (
-                <p className={styles.caution}>{project.cautionLabel}</p>
-              ) : null}
+          <section className={styles.proofBand} aria-label="Verified project evidence">
+            {proofItems.map((item) => <p key={item}>{item}</p>)}
+          </section>
+
+          <section className={styles.caseBody} aria-labelledby="case-story-title">
+            <aside className={styles.overview}>
+              <p className={styles.sectionLabel}>What shipped</p>
+              <h2 id="case-story-title">Built from constraint to evidence.</h2>
+              <p>{project.description}</p>
+              {project.cautionLabel ? <p className={styles.caution}>{project.cautionLabel}</p> : null}
+
+              <ul className={styles.stack} aria-label="Technology stack">
+                {project.stack.map((technology) => <li key={technology}>{technology}</li>)}
+              </ul>
 
               {project.verifiedLinks.length > 0 ? (
-                <div className={styles.links} aria-label="Verified project links">
+                <div className={styles.links}>
                   {project.verifiedLinks.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      className={styles.link}
-                      data-liquid-hover
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      aria-label={`${link.label} for ${project.title} (opens in a new tab)`}
-                    >
-                      <span className={styles.linkKind}>{linkKindLabels[link.kind]}</span>
-                      <span className={styles.linkLabel}>{link.label}</span>
-                      <span className={styles.linkArrow} aria-hidden="true">↗</span>
+                    <a key={link.href} href={link.href} target="_blank" rel="noopener noreferrer">
+                      {link.label} <span aria-hidden="true">↗</span>
                     </a>
                   ))}
                 </div>
               ) : null}
-            </div>
+            </aside>
 
-            <figure
-              className={styles.heroMedia}
-              data-liquid-hover
-              style={{ viewTransitionName: `project-${project.slug}` }}
-            >
-              <Image
-                src={project.media.cover.src}
-                alt={project.media.cover.alt}
-                width={project.media.cover.width}
-                height={project.media.cover.height}
-                sizes="(max-width: 1050px) 100vw, 62vw"
-                className={styles.heroMediaImage}
-                priority
-                unoptimized={project.media.cover.src.endsWith(".svg")}
-              />
-              {project.media.cover.caption ? (
-                <figcaption className={styles.mediaCaption}>{project.media.cover.caption}</figcaption>
-              ) : null}
-            </figure>
-          </header>
-
-          <section className={styles.narrative} aria-labelledby="case-narrative-title">
-            <header className={styles.sectionHeader}>
-              <p>From constraint to evidence</p>
-              <h2 id="case-narrative-title">The work, end to end.</h2>
-            </header>
-            <div className={styles.narrativeGrid}>
-              {chapters.map((chapter, index) => (
+            <div className={styles.chapters}>
+              {chapters.map((chapter) => (
                 <section key={chapter.key} className={styles.chapter}>
-                  <p className={styles.chapterIndex} aria-hidden="true">
-                    0{index + 1}
-                  </p>
                   <h3>{chapter.label}</h3>
                   <p>{project[chapter.key]}</p>
                 </section>
@@ -141,47 +99,27 @@ export default function ProjectDetail({ project }: Props) {
             </div>
           </section>
 
-          <section className={styles.overview} aria-labelledby="case-overview-title">
-            <div className={styles.overviewCopy}>
-              <p>Overview</p>
-              <h2 id="case-overview-title">What shipped</h2>
-              <p>{project.description}</p>
-            </div>
-            <div className={styles.overviewStack}>
-              <h3>Built with</h3>
-              <ul className={styles.stack} aria-label="Technology stack">
-                {project.stack.map((technology) => (
-                  <li key={technology}>{technology}</li>
-                ))}
-              </ul>
-            </div>
-          </section>
-
           {gallery.length > 0 ? (
             <section className={styles.gallery} aria-labelledby="case-gallery-title">
-              <header className={styles.sectionHeader}>
-                <p>Evidence</p>
+              <header>
+                <p className={styles.sectionLabel}>Evidence</p>
                 <h2 id="case-gallery-title">Inside the system</h2>
               </header>
               <div className={styles.galleryGrid}>
-                {gallery.map((asset) => (
-                  <figure key={asset.src} className={styles.galleryItem}>
-                    <div className={styles.galleryMedia} data-liquid-hover>
+                {gallery.map((asset, index) => (
+                  <figure key={asset.src} className={styles.galleryItem} data-wide={index === 0 ? "true" : "false"}>
+                    <div className={styles.galleryMedia}>
                       <Image
                         src={asset.src}
                         alt={asset.alt}
                         width={asset.width}
                         height={asset.height}
-                        sizes="(max-width: 760px) 100vw, 50vw"
+                        sizes={index === 0 ? "100vw" : "(max-width: 760px) 100vw, 50vw"}
                         className={styles.galleryImage}
                         unoptimized={asset.src.endsWith(".svg")}
                       />
                     </div>
-                    {asset.caption ? (
-                      <figcaption className={styles.galleryCaption}>
-                        {asset.caption}
-                      </figcaption>
-                    ) : null}
+                    {asset.caption ? <figcaption>{asset.caption}</figcaption> : null}
                   </figure>
                 ))}
               </div>
@@ -189,34 +127,16 @@ export default function ProjectDetail({ project }: Props) {
           ) : null}
 
           <nav className={styles.pagination} aria-label="Project navigation">
-            <ProjectTransitionLink
-              href={`/project/${previous.slug}`}
-              className={`${styles.paginationLink} ${styles.paginationPrevious}`}
-              transitionDirection="back"
-            >
-              <span className={styles.paginationArrow} aria-hidden="true">←</span>
-              <span className={styles.paginationText}>
-                <small>Previous project</small>
-                <strong>{previous.title}</strong>
-              </span>
+            <ProjectTransitionLink href={`/project/${previous.slug}`} transitionDirection="back">
+              <small>Previous</small><strong>{previous.title}</strong>
             </ProjectTransitionLink>
-            <ProjectTransitionLink
-              href={`/project/${next.slug}`}
-              className={`${styles.paginationLink} ${styles.paginationNext}`}
-              transitionDirection="forward"
-            >
-              <span className={styles.paginationText}>
-                <small>Next project</small>
-                <strong>{next.title}</strong>
-              </span>
-              <span className={styles.paginationArrow} aria-hidden="true">→</span>
+            <ProjectTransitionLink href={`/project/${next.slug}`}>
+              <small>Next</small><strong>{next.title}</strong>
             </ProjectTransitionLink>
           </nav>
 
           <footer className={styles.footer}>
-            <p>
-              © {new Date().getFullYear()} {bio.name}
-            </p>
+            <p>© {new Date().getFullYear()} {bio.name}</p>
             <a href={`mailto:${bio.email}`}>{bio.email}</a>
           </footer>
         </article>

@@ -122,12 +122,12 @@ export default function ContactSection() {
           <div className="contact-basin__copy">
             <p className="contact-section__eyebrow">Contact</p>
             <h2 id="contact-title">
-              <span>Let’s build something</span>
-              <span>that matters.</span>
+              <span>Build something</span>
+              <span>difficult.</span>
             </h2>
             <p className="contact-section__intro">
-              I’m always open to discussing AI systems, developer tools,
-              product software, or founder work that makes an impact.
+              I design and ship intelligent systems, developer tools, and
+              interfaces with a strong point of view.
             </p>
           </div>
           <a
