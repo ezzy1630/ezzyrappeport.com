@@ -15,6 +15,8 @@ type Props = {
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [activeSection, setActiveSection] = useState("hero");
+  const [depthMark, setDepthMark] = useState(0);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
 
@@ -28,6 +30,12 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
     const update = () => {
       frame = 0;
       setScrolled(window.scrollY > Math.min(72, window.innerHeight * 0.08));
+      const section = document.documentElement.dataset.waterSection ?? "hero";
+      setActiveSection(section);
+      const depth = Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--world-depth") || "0",
+      );
+      setDepthMark(Number.isFinite(depth) ? Math.max(0, Math.min(1, depth)) : 0);
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
@@ -108,11 +116,26 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       </Link>
 
       <nav className="site-nav-links" aria-label="Primary navigation">
-        {nav.links.map((link) => (
-          <Link key={link.href} href={hrefFor(link.href)} data-liquid-hover>
-            {link.label}
-          </Link>
-        ))}
+        {nav.links.map((link) => {
+          const section = link.href.replace("#", "");
+          return (
+            <Link
+              key={link.href}
+              href={hrefFor(link.href)}
+              data-liquid-hover
+              data-active={activeSection === section ? "true" : "false"}
+              aria-current={activeSection === section ? "true" : undefined}
+            >
+              {link.label}
+            </Link>
+          );
+        })}
+        <span
+          className="site-nav-depth"
+          aria-hidden="true"
+          style={{ ["--nav-depth" as string]: depthMark.toFixed(3) }}
+          title={`Depth ${Math.round(depthMark * 100)}%`}
+        />
       </nav>
 
       <div className="site-nav-actions">
@@ -126,6 +149,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
           onClick={onToggleMotion}
         >
           <Waves aria-hidden="true" />
+          <span className="site-nav-motion-label">{motionEnabled ? "Motion on" : "Motion off"}</span>
         </button>
         <Link href={`/${nav.cta.href}`} className="site-nav-cta" data-liquid-hover>
           <span>{nav.cta.label}</span>
