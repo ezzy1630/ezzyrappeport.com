@@ -12,6 +12,9 @@
 | 2 | `cbfabb0` | feat(hero): crystal material, clarity, rims, and anti-washout |
 | 3 | `d766462` | feat(hero): add living glyph buoyancy and press state |
 | 4 | `3ffdb15` | feat(portfolio): add shared DOM water dialogue |
+| 5 | `6df860d` | feat(dive): finish continuous descent and basin |
+| 6 | `cf9759a` | feat(dive): integrate case-study water routes |
+| 7 | `d878e41` | docs(dive): close final verification ledger |
 
 **Starting commit**: `e49a404` (main, working-tree checkpoint)
 **Final Run 1 commit**: `cbfabb0`
@@ -419,6 +422,6 @@ not application errors.
 
 ### Final commits
 
-Run 3 commits are recorded in §1 after commit creation. The pre-existing
+Run 3 commits are `6df860d`, `cf9759a`, and `d878e41`. The pre-existing
 untracked Blender recovery file `assets/blender/hero-title/hero-title.blend1`
 was preserved and is intentionally not part of the release commits.
