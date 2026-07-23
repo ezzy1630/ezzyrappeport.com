@@ -25,7 +25,7 @@ export type WorldState = {
   velocity: number;
   /** 1 at the bright surface → ~0.05 in the basin. Drives DOM legibility. */
   light: number;
-  /** 1 inside the About pocket → water locally calms; 0 elsewhere. */
+  /** 1 inside calm reading pockets (Projects copy + About) → water locally calms. */
   calm: number;
   /** Which section currently owns the viewport midline. */
   section: WorldSectionId;
@@ -253,15 +253,23 @@ export function computeWorldState(scrollVelocity: number): WorldState {
   const { section, sectionProgress } = activeSection(scrollY, viewportHeight, ranges);
   // Sunlight transmission: bright shallows, gentle mid falloff, dark basin.
   const light = lightForDepth(depth);
-  // The About pocket is physically calmer: full calm at its heart, feathered
-  // at both edges so entering and leaving stays continuous.
+  // Calm reading pockets: Projects copy zones get a partial pocket so
+  // refraction stays soft behind text while open water keeps caustics.
+  // About retains the deeper quiet pocket.
+  const projectsRange = ranges[1];
   const aboutRange = ranges[2];
   const line = scrollY + viewportHeight * 0.48;
+  const projectsSpan = Math.max(projectsRange.bottom - projectsRange.top, 1);
   const aboutSpan = Math.max(aboutRange.bottom - aboutRange.top, 1);
+  const distanceIntoProjects = (line - projectsRange.top) / projectsSpan;
   const distanceIntoAbout = (line - aboutRange.top) / aboutSpan;
-  const calm = section === "about"
+  const projectsCalm = section === "projects"
+    ? smoothstep(0, 0.12, distanceIntoProjects) * (1 - smoothstep(0.88, 1, distanceIntoProjects)) * 0.55
+    : 0;
+  const aboutCalm = section === "about"
     ? smoothstep(0, 0.22, distanceIntoAbout) * (1 - smoothstep(0.78, 1, distanceIntoAbout))
     : 0;
+  const calm = Math.max(projectsCalm, aboutCalm);
   return {
     depth,
     velocity: scrollVelocity,

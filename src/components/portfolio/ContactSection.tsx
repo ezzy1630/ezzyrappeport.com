@@ -135,13 +135,13 @@ export default function ContactSection() {
             className="contact-section__email liquid-dialogue"
             href={`mailto:${bio.email}`}
             data-liquid-hover
-            aria-label={`Start a conversation with ${bio.name} by email`}
+            aria-label={`Email ${bio.name} at ${bio.email}`}
           >
             <span className="contact-section__email-mark" aria-hidden="true">
               <Mail />
             </span>
             <span className="contact-section__email-copy">
-              <span>{bio.email}</span>
+              <span>{bio.emailLabel}</span>
             </span>
             <span className="contact-section__email-icon" aria-hidden="true">
               <ArrowUpRight />

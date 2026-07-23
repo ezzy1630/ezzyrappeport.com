@@ -64,6 +64,24 @@
   min-width: 0;
   max-width: 45rem;
   gap: 1rem;
+  /* Calm reading pocket: atmosphere via color/contrast, never blur on copy. */
+  padding: 0.35rem 0.15rem 0.55rem;
+  border-radius: 0.35rem;
+  background: color-mix(in oklch, var(--rv-pearl) calc(18% + (1 - var(--world-light, 1)) * 28%), transparent);
+  color: color-mix(in oklch, var(--rv-ink) calc(88% + (1 - var(--world-light, 1)) * 12%), white);
+  filter: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.stageTagline,
+.stageProof,
+.stage h3,
+.header h2,
+.intro,
+.kicker {
+  filter: none !important;
+  text-shadow: 0 1px 0 color-mix(in oklch, var(--rv-pearl) 35%, transparent);
 }
 
 .stageMeta {
@@ -163,6 +181,20 @@
   padding: clamp(2rem, 5vw, 5rem);
   object-fit: contain;
   background: #07111d;
+}
+
+/* Regression fixture: MathPilot icon/mark must stay inside the media frame
+   (audit reported edge clipping). Treat as guard, not a confirmed live bug. */
+.stage[data-project="mathpilot"] .stageMedia {
+  overflow: hidden;
+  contain: paint;
+}
+
+.stage[data-project="mathpilot"] .stageImage {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
 }
 
 .stageMedia:hover .stageImage,

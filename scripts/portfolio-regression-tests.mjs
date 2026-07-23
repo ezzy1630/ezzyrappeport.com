@@ -119,6 +119,14 @@ const kineticCanvasSource = readFileSync(
 );
 const revampCssSource = readFileSync(new URL("../src/app/revamp.css", import.meta.url), "utf8");
 const globalsCssSource = readFileSync(new URL("../src/app/globals.css", import.meta.url), "utf8");
+const projectsSectionCssSource = readFileSync(
+  new URL("../src/components/portfolio/ProjectsSection.module.css", import.meta.url),
+  "utf8",
+);
+const identitySource = readFileSync(
+  new URL("../src/lib/portfolio/identity.ts", import.meta.url),
+  "utf8",
+);
 const heroManifest = validateHeroManifest(JSON.parse(readFileSync(
   new URL("../public/assets/hero/ezzy-rappeport-glyphs.json", import.meta.url),
   "utf8",
@@ -392,6 +400,23 @@ const tests = [
     assert.match(revampCssSource, /\.contact-basin__copy,\s*\n\s*\.contact-section__email,\s*\n\s*\.contact-section__location \{ transform: none; \}/);
     // The address never breaks mid-domain on phones.
     assert.match(revampCssSource, /white-space: nowrap;\s*\n\s*overflow-wrap: normal;/);
+  }],
+  ["MathPilot media clipping and nav/action collision guards stay in place", () => {
+    assert.match(projectsSectionCssSource, /data-project="mathpilot"/);
+    assert.match(projectsSectionCssSource, /contain: paint/);
+    assert.match(revampCssSource, /nav CTA \+ motion toggle must not collide/);
+    assert.match(revampCssSource, /\.site-nav-actions > \* \{\s*\n\s*flex-shrink: 0;/);
+  }],
+  ["Contact CTA uses a friendly label while mailto stays canonical", () => {
+    assert.match(identitySource, /email: "ezzyrappeport@gmail\.com"/);
+    assert.match(identitySource, /emailLabel: "contact ezzy"/);
+    assert.doesNotMatch(identitySource, /gmaill\.com/);
+  }],
+  ["Hero glyph memory exits before the projects band", () => {
+    assert.match(underwaterRendererSource, /GLYPH_EXIT_START_DEPTH = 0\.018/);
+    assert.match(underwaterRendererSource, /GLYPH_EXIT_SPAN = 0\.062/);
+    assert.match(worldStateSource, /projectsCalm/);
+    assert.match(underwaterShaderSource, /Reading pockets/);
   }],
   ["Revamp stylesheet is the single owner for canvas and hero geometry", () => {
     assert.match(revampCssSource, /\.fluid-canvas\s*\{/);

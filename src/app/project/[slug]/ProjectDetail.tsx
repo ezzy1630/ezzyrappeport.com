@@ -151,7 +151,7 @@ export default function ProjectDetail({ project }: Props) {
 
           <footer className={styles.footer}>
             <p>© {new Date().getFullYear()} {bio.name}</p>
-            <a href={`mailto:${bio.email}`}>{bio.email}</a>
+            <a href={`mailto:${bio.email}`} aria-label={`Email ${bio.name} at ${bio.email}`}>{bio.emailLabel}</a>
           </footer>
         </article>
       </div>

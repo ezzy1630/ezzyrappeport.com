@@ -17,8 +17,9 @@ export const UNDERWATER_DEBUG = {
   // faces optically clear.
   absorptionColor: 0xc6e5ef,
   absorptionDistance: 1.55,
-  // Visible water surface: restrained refraction wobble.
-  surfaceDistortion: 0.28,
+  // Visible water surface: restrained refraction wobble — large cloudy
+  // deformation behind copy is owned by calm reading pockets, not this.
+  surfaceDistortion: 0.22,
   // Animated caustic fire on the sand and through the glyphs.
   causticStrength: 0.5,
   // Bright-shallows depth: deepens gradually, never muddy.

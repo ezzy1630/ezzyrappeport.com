@@ -736,14 +736,16 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
       return;
     }
     float upperIdentity = smoothstep(0.48, 0.96, vUv.y);
-    float copyCalm = 1.0 - exp(-pow((vUv.y - 0.37) / 0.15, 2.0)) * 0.30;
-    // The About pocket quiets the whole surface response without freezing it.
-    float pocketCalm = mix(1.0, 0.58, uCalm);
-    float regionalStrength = (0.46 + upperIdentity * 0.72) * copyCalm * pocketCalm;
+    /* Reading pockets: lower third of the frame (where index/hero copy sits)
+       suppresses broad cloudy refraction while open upper water keeps caustics. */
+    float copyBand = 1.0 - smoothstep(0.18, 0.52, vUv.y);
+    float copyCalm = mix(1.0, 0.38, copyBand * 0.92);
+    float pocketCalm = mix(1.0, 0.48, uCalm);
+    float regionalStrength = (0.38 + upperIdentity * 0.78) * copyCalm * pocketCalm;
     vec2 slowSwell = vec2(
       sin(vUv.y * 8.2 + uTime * 0.42) + sin(vUv.x * 3.7 - uTime * 0.21) * 0.45,
       cos(vUv.x * 7.8 - uTime * 0.36) + cos(vUv.y * 4.9 + uTime * 0.18) * 0.42
-    ) * 0.0072 * (0.45 + upperIdentity * 0.55) * pocketCalm;
+    ) * 0.0054 * (0.32 + upperIdentity * 0.68) * pocketCalm * mix(1.0, 0.42, copyBand);
     vec2 idleDelta = (vUv - vec2(0.18, 0.12)) * vec2(1.72, 1.0);
     float idleRadius = length(idleDelta);
     float idleRipple = sin(idleRadius * 58.0 - uTime * 1.55)
@@ -785,7 +787,8 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float focus = 1.0 - smoothstep(0.008, 0.11, slopeIntensity);
     float caustic = (focus * focus * 0.35 + compression * 0.65) * uCausticStrength
       * (0.20 + depthTravel * 0.34) * (0.45 + upperIdentity * 0.55)
-      * washoutGate;
+      * washoutGate
+      * mix(1.0, 0.55, copyBand);
     scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85 * uGlyphPresence);
     float simulatedWake = smoothstep(0.0016, 0.018, length(slope))
       * smoothstep(0.0008, 0.012, abs(h));

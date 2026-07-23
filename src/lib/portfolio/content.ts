@@ -489,9 +489,10 @@ export const bio = {
     { label: "LinkedIn", href: "https://linkedin.com/in/ezzy-rappeport", handle: "/in/ezzy-rappeport" },
     { label: "X", href: "https://x.com/ezzy1630", handle: "@ezzy1630" },
     { label: "Instagram", href: "https://instagram.com/ezzy1630", handle: "@ezzy1630" },
-    { label: "Email", href: `mailto:${portfolioIdentity.email}`, handle: portfolioIdentity.email },
+    { label: "Email", href: `mailto:${portfolioIdentity.email}`, handle: portfolioIdentity.emailLabel },
   ],
   email: portfolioIdentity.email,
+  emailLabel: portfolioIdentity.emailLabel,
 };
 
 export const nav = {

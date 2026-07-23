@@ -145,18 +145,19 @@ function plateForDepth(depth: number) {
   return 2;
 }
 
-/** The hero name rides the world-depth curve: it begins its buoyant exit
-    just below the surface and has fully dissolved before Projects arrive.
-    The window is deliberately tight so tall mobile sections clear the name
-    before the Projects heading occupies the same space. */
+/** Hero glyphs become a memory during early descent — not a watermark
+    behind projects. Exit starts near the surface and completes by the
+    shallow projects band (~depth 0.08). */
+const GLYPH_EXIT_START_DEPTH = 0.018;
+const GLYPH_EXIT_SPAN = 0.062;
+
 function glyphExitForDepth(depth: number) {
-  return smoothstep01((depth - 0.035) / 0.095);
+  return smoothstep01((depth - GLYPH_EXIT_START_DEPTH) / GLYPH_EXIT_SPAN);
 }
 
-/** The optical dissolve runs ahead of the rise: letters thin into water
-    early, then drift out. */
+/** Optical dissolve leads the rise: letters thin into water early. */
 function glyphFadeForExit(exit: number) {
-  return smoothstep01(exit / 0.78);
+  return smoothstep01(exit / 0.62);
 }
 
 async function loadOpticalMicrostructure() {

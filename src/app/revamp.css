@@ -276,20 +276,33 @@ html:has(.portfolio-root[data-route="case"]) {
 /* The nav floats on the water surface: a soft scrim keeps it legible while
    the environment moves behind it. The scrim and the foreground both follow
    the shared world-light curve — dark ink over the shallows, pale glass over
-   the basin — with no discrete section flips. */
+   the basin — with no discrete section flips. Adaptive opacity tracks depth
+   so mid-water and basin stay readable without a heavy frosted slab. */
 .site-nav::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 0;
   background:
-    linear-gradient(180deg, rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.3)), rgba(5, 19, 41, 0)),
-    linear-gradient(180deg, rgba(243, 249, 252, calc(var(--world-light, 1) * 0.58)), rgba(243, 249, 252, 0));
-  -webkit-backdrop-filter: blur(13px) saturate(1.12);
-  backdrop-filter: blur(13px) saturate(1.12);
+    linear-gradient(
+      180deg,
+      rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.38)),
+      rgba(5, 19, 41, calc((1 - var(--world-light, 1)) * 0.08)) 55%,
+      transparent
+    ),
+    linear-gradient(
+      180deg,
+      rgba(243, 249, 252, calc(var(--world-light, 1) * 0.62)),
+      rgba(243, 249, 252, calc(var(--world-light, 1) * 0.18)) 58%,
+      transparent
+    );
+  -webkit-backdrop-filter: blur(calc(10px + (1 - var(--world-light, 1)) * 8px)) saturate(1.1);
+  backdrop-filter: blur(calc(10px + (1 - var(--world-light, 1)) * 8px)) saturate(1.1);
+  opacity: calc(0.72 + (1 - var(--world-light, 1)) * 0.22);
   -webkit-mask-image: linear-gradient(180deg, black 52%, transparent);
   mask-image: linear-gradient(180deg, black 52%, transparent);
   pointer-events: none;
+  transition: opacity 320ms ease, backdrop-filter 320ms ease;
 }
 
 .site-nav-brand,
@@ -363,6 +376,8 @@ html:has(.portfolio-root[data-route="case"]) {
   align-items: center;
   gap: clamp(2rem, 4vw, 3.8rem);
   justify-self: center;
+  min-width: 0;
+  max-width: min(28rem, 42vw);
 }
 
 .site-nav-links a {
@@ -434,6 +449,14 @@ html:has(.portfolio-root[data-route="case"]) {
   align-items: center;
   justify-self: end;
   gap: 0.65rem;
+  /* Regression: nav CTA + motion toggle must not collide on mid widths. */
+  min-width: 0;
+  flex-wrap: nowrap;
+  isolation: isolate;
+}
+
+.site-nav-actions > * {
+  flex-shrink: 0;
 }
 
 .site-nav-motion,
