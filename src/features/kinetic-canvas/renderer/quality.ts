@@ -80,7 +80,10 @@ export function resolveKineticQuality(
       pressureIterations: 8,
       activeRipples: 8,
       startDelayMs: 45,
-      renderScale: 1,
+      // The authored high-tier scene is already pixel-heavy at retina DPR.
+      // Start at the stable desktop fill-rate budget so normal use does not
+      // spend its first seconds triggering adaptive recovery.
+      renderScale: 0.8,
       pixelBudget: QUALITY_PIXEL_BUDGETS.high,
     },
     balanced: {

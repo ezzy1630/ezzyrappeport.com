@@ -47,26 +47,26 @@ GLYPHS = [
 # ordinary extruded type: its planar silhouette is softened and its face rolls
 # continuously into a deep shoulder. A fine voxel pass rounds the font's hard
 # XY corners before the cap dome is applied.
-EXTRUDE = 0.048
+EXTRUDE = 0.070
 CURVE_OFFSET = -0.046
-BEVEL = 0.060
-BEVEL_SEGMENTS = 12
+BEVEL = 0.068
+BEVEL_SEGMENTS = 14
 CURVE_RESOLUTION = 8
-BULGE = 0.034
+BULGE = 0.054
 DIRECT_BULGE = BULGE
-BULGE_RUN = 0.180
-VOXEL_SIZE = 0.0030
-CONTOUR_BEVEL = 0.024
-CONTOUR_BEVEL_SEGMENTS = 6
+BULGE_RUN = 0.215
+VOXEL_SIZE = 0.0024
+CONTOUR_BEVEL = 0.035
+CONTOUR_BEVEL_SEGMENTS = 8
 TARGET_TRIANGLES = {
-    "E": 2500,
-    "Z": 2200,
-    "Y": 3000,
-    "T": 2200,
-    "A": 5000,
-    "P": 4000,
-    "R": 4000,
-    "O": 4500,
+    "E": 3200,
+    "Z": 2800,
+    "Y": 3800,
+    "T": 2800,
+    "A": 6000,
+    "P": 5000,
+    "R": 5000,
+    "O": 5500,
 }
 TRACKING = 0.025
 LINE_SCALES = {0: 1.36, 1: 1.0}
@@ -172,9 +172,9 @@ def make_custom_rounded_a_mesh() -> bpy.types.Mesh:
     """
     bars: list[bpy.types.Object] = []
     specifications = (
-        ("A_left_leg", (-0.105, 0.035, 0.0), (0.620, 0.160, 0.224), math.radians(69.5)),
-        ("A_right_leg", (0.105, 0.035, 0.0), (0.620, 0.160, 0.224), math.radians(110.5)),
-        ("A_crossbar", (0.0, -0.050, 0.0), (0.330, 0.105, 0.205), 0.0),
+        ("A_left_leg", (-0.105, 0.035, 0.0), (0.620, 0.170, 0.276), math.radians(69.5)),
+        ("A_right_leg", (0.105, 0.035, 0.0), (0.620, 0.170, 0.276), math.radians(110.5)),
+        ("A_crossbar", (0.0, -0.050, 0.0), (0.330, 0.115, 0.276), 0.0),
     )
     for name, location, dimensions, angle in specifications:
         bpy.ops.mesh.primitive_cube_add(location=location)
@@ -185,8 +185,8 @@ def make_custom_rounded_a_mesh() -> bpy.types.Mesh:
         set_active(bar)
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
         rounding = bar.modifiers.new("Cast_Glass_Rounding", "BEVEL")
-        rounding.width = 0.052
-        rounding.segments = 10
+        rounding.width = 0.062
+        rounding.segments = 12
         rounding.limit_method = "NONE"
         bpy.ops.object.modifier_apply(modifier=rounding.name)
         bars.append(bar)
@@ -244,24 +244,24 @@ def make_custom_rounded_bar_mesh(char: str) -> bpy.types.Mesh:
     """Construct hard-cornered display glyphs from overlapping rounded bars."""
     specifications = {
         "E": (
-            ("spine", (-0.135, 0.0, 0.0), (0.540, 0.135, 0.224), math.radians(90.0)),
-            ("top", (0.0, 0.205, 0.0), (0.400, 0.130, 0.224), 0.0),
-            ("middle", (-0.020, 0.0, 0.0), (0.360, 0.125, 0.224), 0.0),
-            ("bottom", (0.0, -0.205, 0.0), (0.400, 0.130, 0.224), 0.0),
+            ("spine", (-0.135, 0.0, 0.0), (0.540, 0.145, 0.276), math.radians(90.0)),
+            ("top", (0.0, 0.205, 0.0), (0.400, 0.140, 0.276), 0.0),
+            ("middle", (-0.020, 0.0, 0.0), (0.360, 0.135, 0.276), 0.0),
+            ("bottom", (0.0, -0.205, 0.0), (0.400, 0.140, 0.276), 0.0),
         ),
         "Z": (
-            ("top", (0.0, 0.205, 0.0), (0.448, 0.135, 0.224), 0.0),
-            ("diagonal", (0.0, 0.0, 0.0), (0.505, 0.145, 0.224), math.radians(50.0)),
-            ("bottom", (0.0, -0.205, 0.0), (0.448, 0.135, 0.224), 0.0),
+            ("top", (0.0, 0.205, 0.0), (0.448, 0.145, 0.276), 0.0),
+            ("diagonal", (0.0, 0.0, 0.0), (0.505, 0.155, 0.276), math.radians(50.0)),
+            ("bottom", (0.0, -0.205, 0.0), (0.448, 0.145, 0.276), 0.0),
         ),
         "Y": (
-            ("left_arm", (-0.082, 0.142, 0.0), (0.330, 0.145, 0.224), math.radians(124.0)),
-            ("right_arm", (0.082, 0.142, 0.0), (0.330, 0.145, 0.224), math.radians(56.0)),
-            ("stem", (0.0, -0.145, 0.0), (0.330, 0.145, 0.224), math.radians(90.0)),
+            ("left_arm", (-0.082, 0.142, 0.0), (0.330, 0.155, 0.276), math.radians(124.0)),
+            ("right_arm", (0.082, 0.142, 0.0), (0.330, 0.155, 0.276), math.radians(56.0)),
+            ("stem", (0.0, -0.145, 0.0), (0.330, 0.155, 0.276), math.radians(90.0)),
         ),
         "T": (
-            ("top", (0.0, 0.205, 0.0), (0.400, 0.145, 0.224), 0.0),
-            ("stem", (0.0, -0.070, 0.0), (0.480, 0.145, 0.224), math.radians(90.0)),
+            ("top", (0.0, 0.205, 0.0), (0.400, 0.155, 0.276), 0.0),
+            ("stem", (0.0, -0.070, 0.0), (0.480, 0.155, 0.276), math.radians(90.0)),
         ),
     }[char]
     bars: list[bpy.types.Object] = []
@@ -274,8 +274,8 @@ def make_custom_rounded_bar_mesh(char: str) -> bpy.types.Mesh:
         set_active(bar)
         bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
         rounding = bar.modifiers.new("Cast_Glass_Rounding", "BEVEL")
-        rounding.width = 0.058
-        rounding.segments = 10
+        rounding.width = 0.068
+        rounding.segments = 12
         rounding.limit_method = "NONE"
         bpy.ops.object.modifier_apply(modifier=rounding.name)
         bars.append(bar)

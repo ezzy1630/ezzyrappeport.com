@@ -93,6 +93,7 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
   uniform float uTheme;
   uniform float uCalm;
   uniform float uPlate;
+  uniform float uQualityTier;
   uniform float uDebugUv;
   uniform float uMotion;
 
@@ -191,6 +192,23 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     return focus * focus * breakup;
   }
 
+  /* Two allocation-free particle fields occupy the deep water. Grid cells
+     provide stable identities, while the small lateral drift and twinkle keep
+     the field from reading as a repeated texture or a JS particle system. */
+  float marineSnowLayer(vec2 uv, float scale, float speed, float seed) {
+    vec2 drifted = uv;
+    drifted.x += sin((uv.y + seed) * 7.0 + uTime * 0.13) * 0.018;
+    drifted.y += uTime * speed * uMotion;
+    vec2 grid = drifted * vec2(scale, scale * 0.72);
+    vec2 cell = floor(grid);
+    vec2 local = fract(grid) - 0.5;
+    vec2 jitter = hash22(cell + vec2(seed)) * 0.64 - 0.32;
+    float distanceToFlake = length((local - jitter) * vec2(1.0, 1.24));
+    float flake = 1.0 - smoothstep(0.0, 0.078, distanceToFlake);
+    float twinkle = 0.5 + 0.5 * sin(uTime * (0.28 + seed * 0.04) + hash21(cell + vec2(seed)) * 6.283);
+    return flake * mix(0.42, 1.0, twinkle);
+  }
+
   void main() {
     if (uDebugUv > 0.5) { gl_FragColor = vec4(vUv, 0.0, 1.0); return; }
     float t = uTime * uMotion;
@@ -218,6 +236,14 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float broadIllumination = noise21(vec2(vUv.x * 3.8 + t * 0.018, depth * 4.6 - t * 0.014));
     color += mix(vec3(0.06, 0.08, 0.10), vec3(0.018, 0.045, 0.09), deepMix)
       * (broadIllumination - 0.48);
+
+    // A small, soft contrast pocket keeps the crystal title legible in the
+    // bright surface without introducing a flat opaque plate behind it.
+    float titleContrastPocket = exp(
+      -pow((vUv.x - 0.5) * 2.15, 2.0)
+      -pow((vUv.y - 0.48) * 2.7, 2.0)
+    );
+    color *= 1.0 - titleContrastPocket * (1.0 - deepMix) * 0.10;
 
     // Perspective floor projection: near cells grow toward the viewer, while
     // two moving folds create focused, non-sliding caustic illumination.
@@ -252,6 +278,16 @@ export const BACKDROP_FRAGMENT = /* glsl */ `
     float volumeNoise = noise21(vec2(vUv.x * 7.0 + t * 0.035, depth * 9.0 - t * 0.028));
     color += mix(vec3(0.74, 0.88, 1.0), vec3(0.3, 0.62, 0.98), deepMix)
       * shaft * (0.05 + volumeNoise * 0.05) * mix(0.42, 1.3, deepMix);
+
+    // Marine snow only occupies the deeper column. Balanced keeps the far
+    // layer; high adds the nearer layer. Low retains shafts and caustics while
+    // avoiding the extra procedural work. Reduced motion freezes uTime.
+    float snowDepth = smoothstep(0.34, 0.92, uTheme) * (0.18 + depth * 0.82);
+    float farSnow = marineSnowLayer(vUv * vec2(1.0, 1.18), 52.0, 0.020, 1.7);
+    float nearSnow = marineSnowLayer(vUv * vec2(1.0, 1.12), 92.0, 0.034, 4.3);
+    float snow = farSnow * 0.34 + nearSnow * 0.22 * step(1.5, uQualityTier);
+    color += mix(vec3(0.62, 0.79, 0.98), vec3(0.78, 0.90, 1.0), deepMix)
+      * snow * snowDepth * 0.24;
 
     // Silvery underside of the free surface, with genuine perspective waves.
     float surfaceWave = sin(centered.x * 22.0 + normalField.x * 1.7 - t * 0.55)
@@ -398,10 +434,17 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     return color / 5.0;
   }
 
+  /* Deterministic procedural noise for internal glyph volume effects.
+     All functions are pure and stable under GPU precision. */
   float hash21g(vec2 p) {
     p = fract(p * vec2(234.34, 435.345));
     p += dot(p, p + 34.23);
     return fract(p.x * p.y);
+  }
+  float hash31g(vec3 p) {
+    p = fract(p * vec3(234.34, 435.345, 312.67));
+    p += dot(p, p.yzx + 34.23);
+    return fract((p.x + p.y) * p.z);
   }
   float vnoiseg(vec2 p) {
     vec2 i = floor(p); vec2 f = fract(p);
@@ -409,8 +452,16 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     return mix(mix(hash21g(i), hash21g(i + vec2(1, 0)), u.x),
                mix(hash21g(i + vec2(0, 1)), hash21g(i + vec2(1, 1)), u.x), u.y);
   }
-  /* pale cerulean used for the grazing-edge internal reflection */
-  vec3 ceruleanEdge() { return vec3(0.62, 0.82, 0.90); }
+  float vnoise3(vec3 p) {
+    vec3 i = floor(p); vec3 f = fract(p);
+    vec3 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash31g(i), hash31g(i + vec3(1,0,0)), u.x),
+          mix(hash31g(i + vec3(0,1,0)), hash31g(i + vec3(1,1,0)), u.x), u.y),
+      mix(mix(hash31g(i + vec3(0,0,1)), hash31g(i + vec3(1,0,1)), u.x),
+          mix(hash31g(i + vec3(0,1,1)), hash31g(i + vec3(1,1,1)), u.x), u.y),
+      u.z);
+  }
 
   void main() {
     float frontDepth = linearViewDepth(texture2D(uFrontDepth, vScreenUv).r);
@@ -420,32 +471,54 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float opticalThickness = geometricThickness * (1.0 + shoulder * 1.65) + shoulder * 0.05;
     float eta = (uIor - 1.0) / uIor;
 
-    /* micro-bubble inclusions: tiny internal roughness/normal variation so
-       the crystal feels embedded, not painted. Embedded, not surface. */
-    float bubbles = vnoiseg(vWorldPosition.xz * 34.0 + vWorldPosition.yy * 21.0);
-    float bubbleMask = smoothstep(0.78, 0.98, bubbles);
-    float internalRough = uRoughness + bubbleMask * 0.10;
+    /* --- 1. Internal micro-bubble field --- */
+    float microBubble = vnoiseg(vWorldPosition.xz * 38.0 + vWorldPosition.yy * 24.0);
+    float microBubbleMask = smoothstep(0.76, 0.97, microBubble);
+    float internalRough = uRoughness + microBubbleMask * 0.08;
+
+    /* --- 2. Sparse larger bubbles with dark center and bright rim --- */
+    float largeBubbleField = vnoise3(vWorldPosition * 14.0 + vec3(uTime * 0.02, 0.0, -uTime * 0.015));
+    float largeBubbleMask = smoothstep(0.88, 0.95, largeBubbleField);
+    /* The bright edge simulates a convex meniscus catching light. */
+    float largeBubbleRim = smoothstep(0.85, 0.88, largeBubbleField) * (1.0 - largeBubbleMask);
+    /* Gate both bubble types by optical thickness so they occupy the volume. */
+    float volumeGate = smoothstep(0.04, 0.18, opticalThickness);
+
+    /* --- 3. Elongated anisotropic internal streaks --- */
+    /* Two crossing sets of stretched folds create visible refraction lanes
+       inside the thick glass without producing uniform noise. */
+    float streakA = pow(0.5 + 0.5 * sin(
+      vWorldPosition.x * 6.8 + vWorldPosition.z * 2.1
+      + sin(vWorldPosition.y * 4.5) * 1.8 - uTime * 0.07
+    ), 14.0);
+    float streakB = pow(0.5 + 0.5 * sin(
+      vWorldPosition.z * 7.4 - vWorldPosition.x * 1.6
+      + sin(vWorldPosition.y * 3.8) * 1.5 + uTime * 0.055
+    ), 16.0);
+    float streakField = max(streakA, streakB) * volumeGate;
 
     vec2 internalWarp = vec2(
       sin(vWorldPosition.z * 8.5 + sin(vWorldPosition.x * 3.2) + uTime * 0.10),
       sin(vWorldPosition.x * 7.2 - sin(vWorldPosition.z * 2.8) - uTime * 0.08)
-    ) * (0.0034 + opticalThickness * 0.0028);
+    ) * (0.0038 + opticalThickness * 0.0032);
     vec2 refractionDirection = normalize(vViewNormal.xy + vec2(0.0001));
     vec2 refractedUv = clamp(
-      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.34 + internalWarp,
+      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.36 + internalWarp,
       vec2(0.002), vec2(0.998)
     );
     float samplingRadius = 0.00012 + internalRough * 0.0021 + shoulder * 0.00055;
     vec3 environment = sampleEnvironment(refractedUv, refractionDirection, samplingRadius);
-    /* A small wavelength split gives the thick crystal its prismatic contour
-       without blurring away the water visible through the broad front faces. */
-    vec2 dispersion = refractionDirection * (0.00045 + opticalThickness * 0.0012);
+
+    /* --- 4. Enhanced spectral dispersion at shoulders --- */
+    /* The split increases near high-curvature boundaries and diminishes on
+       broad, clear faces to keep the title readable at rest. */
+    float dispersionScale = 0.0006 + opticalThickness * 0.0015 + shoulder * 0.0008;
+    vec2 dispersion = refractionDirection * dispersionScale;
     environment.r = texture2D(uEnvironment, clamp(refractedUv + dispersion, 0.002, 0.998)).r;
     environment.b = texture2D(uEnvironment, clamp(refractedUv - dispersion, 0.002, 0.998)).b;
     vec3 directEnvironment = texture2D(uEnvironment, vScreenUv).rgb;
-    /* Screen-space optical boundary: the rounded mesh supplies the broad
-       convex shoulder; this depth ring preserves a crisp nested glass edge at
-       any responsive scale, including counters and narrow mobile strokes. */
+
+    /* Screen-space optical boundary ring. */
     vec2 wideStep = vec2(0.0042, 0.0064);
     vec2 tightStep = wideStep * 0.46;
     float wideBoundary = 0.0;
@@ -460,77 +533,99 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     tightBoundary = max(tightBoundary, step(0.985, texture2D(uFrontDepth, vScreenUv - vec2(0.0, tightStep.y)).r));
     float brightBoundary = max(wideBoundary - tightBoundary, 0.0);
 
-    /* pale-cerulean attenuation through the letterform depth */
+    /* --- 5. Deeper cerulean absorption --- */
     vec3 safeAttenuation = max(uAttenuationColor, vec3(0.05));
     vec3 absorption = -log(safeAttenuation) / max(uAbsorptionDistance, 0.01);
-    vec3 transmittance = exp(-absorption * opticalThickness * (0.12 + shoulder * 0.48));
-    /* Broad faces transmit the live scene almost unchanged. Convex shoulders
-       carry the bend, attenuation and internal reflection. */
-    vec3 body = mix(directEnvironment, environment, 0.82) * transmittance
-      + uAttenuationColor * (1.0 - transmittance) * 0.018;
-    body += (environment - directEnvironment) * (0.22 + shoulder * 0.72);
+    /* Shortened effective distance pushes saturated blue into convex shoulders
+       while broad faces stay optically clear. */
+    vec3 transmittance = exp(-absorption * opticalThickness * (0.14 + shoulder * 0.56));
+
+    /* Body: broad faces transmit the live scene; shoulders carry attenuation. */
+    vec3 body = mix(directEnvironment, environment, 0.84) * transmittance
+      + uAttenuationColor * (1.0 - transmittance) * 0.022;
+    body += (environment - directEnvironment) * (0.24 + shoulder * 0.74);
+
+    /* Internal caustic fire with concentration through thick regions */
     float innerFoldA = pow(0.5 + 0.5 * sin(
       vWorldPosition.x * 8.6 + sin(vWorldPosition.z * 6.2) * 1.5 - uTime * 0.11
     ), 10.0);
     float innerFoldB = pow(0.5 + 0.5 * sin(
       vWorldPosition.z * 10.4 - sin(vWorldPosition.x * 5.3) * 1.25 + uTime * 0.09
     ), 12.0);
-    float internalFire = max(innerFoldA, innerFoldB) * (0.24 + opticalThickness * 1.6);
-    body += vec3(0.34, 0.68, 1.0) * internalFire * 0.045;
-    body += vec3(0.90, 0.98, 1.0) * innerFoldA * innerFoldB * 0.09;
-    /* Clear faces; dense blue internal reflection on the convex shoulder. */
-    body *= mix(1.0, 0.80, shoulder * shoulder);
-    /* embedded micro-bubbles catch a faint internal sparkle */
-    body += vec3(0.86, 0.95, 0.99) * bubbleMask * transmittance * 0.055;
+    float internalFire = max(innerFoldA, innerFoldB) * (0.28 + opticalThickness * 2.0);
+    body += vec3(0.34, 0.68, 1.0) * internalFire * 0.06;
+    body += vec3(0.92, 0.98, 1.0) * innerFoldA * innerFoldB * 0.12;
 
-    /* strong controlled Fresnel rims */
+    /* Anisotropic streaks: elongated refraction lanes inside the volume */
+    body += vec3(0.38, 0.72, 1.0) * streakField * 0.055 * opticalThickness;
+    body += vec3(0.88, 0.96, 1.0) * streakA * streakB * 0.08 * volumeGate;
+
+    /* Clear faces; dense blue internal reflection on the convex shoulder. */
+    body *= mix(1.0, 0.78, shoulder * shoulder);
+
+    /* Embedded micro-bubbles: internal sparkle gated by volume */
+    body += vec3(0.88, 0.96, 1.0) * microBubbleMask * transmittance * 0.065 * volumeGate;
+    /* Larger bubbles: dark center with bright meniscus rim */
+    body -= vec3(0.04, 0.06, 0.08) * largeBubbleMask * volumeGate * 0.35;
+    body += vec3(0.82, 0.94, 1.0) * largeBubbleRim * volumeGate * 0.09;
+
+    /* --- 6. Strong Fresnel rims pushed toward white --- */
     vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
     float fresnelBase = pow((uIor - 1.0) / (uIor + 1.0), 2.0);
     float fresnel = fresnelBase + (1.0 - fresnelBase)
       * pow(1.0 - clamp(dot(vWorldNormal, viewDirection), 0.0, 1.0), 4.0);
 
-    /* crisp key + soft fill speculars (clearcoat-like bright edge) */
+    /* --- 7. White key rims: tighter lobes, stronger contribution --- */
     vec3 keyDirection = normalize(uKeyPosition - vWorldPosition);
     vec3 fillDirection = normalize(uFillPosition - vWorldPosition);
     vec3 keyHalf = normalize(keyDirection + viewDirection);
     vec3 fillHalf = normalize(fillDirection + viewDirection);
-    float keySpec = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(90.0, 240.0, 1.0 - uRoughness));
-    float fillSpec = pow(max(dot(vWorldNormal, fillHalf), 0.0), 40.0);
+    /* Primary key specular: exponent ~240 for crisp, nearly white highlights */
+    float keySpec = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(110.0, 260.0, 1.0 - uRoughness));
+    /* Secondary sun-glint: narrower lobe for concentrated bright spots */
+    float sunGlint = pow(max(dot(vWorldNormal, keyHalf), 0.0), 520.0);
+    float fillSpec = pow(max(dot(vWorldNormal, fillHalf), 0.0), 48.0);
     float lowerBounce = max(dot(vWorldNormal, normalize(vec3(0.1, -0.5, 0.3))), 0.0);
 
-    /* edge/internal reflection: refracted environment at grazing angles,
-       never a muddy dark sidewall */
-    float grazing = smoothstep(0.018, 0.56, shoulder);
-    vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.016 + opticalThickness * 0.03), 0.002, 0.998);
+    /* Edge/internal reflection: saturated cerulean at grazing angles,
+       never muddy or gray. Shortened absorption pushes color inward. */
+    float grazing = smoothstep(0.018, 0.52, shoulder);
+    vec2 reflectedUv = clamp(vScreenUv - vViewNormal.xy * (0.018 + opticalThickness * 0.035), 0.002, 0.998);
     vec3 reflectedEnvironment = texture2D(uEnvironment, reflectedUv).rgb;
+    vec3 edgeWaterCore = vec3(0.05, 0.35, 0.75);
     vec3 edgeWater = mix(
-      reflectedEnvironment * vec3(0.42, 0.66, 0.98),
-      vec3(0.02, 0.10, 0.34),
-      0.62 + shoulder * 0.12
+      reflectedEnvironment * vec3(0.38, 0.62, 0.96),
+      edgeWaterCore,
+      0.58 + shoulder * 0.16
     );
-    body = mix(body, edgeWater, grazing * 0.93);
-    body = mix(body, vec3(0.012, 0.07, 0.28), tightBoundary * 0.72);
+    body = mix(body, edgeWater, grazing * 0.92);
+    /* Boundary crease darkening for silhouette readability */
+    body = mix(body, vec3(0.010, 0.06, 0.26), tightBoundary * 0.74);
 
-    /* caustic fire concentrating through the letterforms */
+    /* Caustic fire concentrating through the letterforms */
     float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.2 + vWorldPosition.z * 5.4 - uTime * 0.16), 7.0)
       * (0.3 + shoulder * 0.7);
 
-    float glassRim = smoothstep(0.055, 0.76, shoulder);
-    float convexBand = smoothstep(0.035, 0.24, shoulder)
-      * (1.0 - smoothstep(0.62, 0.96, shoulder));
+    float glassRim = smoothstep(0.045, 0.72, shoulder);
+    float convexBand = smoothstep(0.030, 0.22, shoulder)
+      * (1.0 - smoothstep(0.58, 0.94, shoulder));
     float edgeSpark = pow(0.5 + 0.5 * sin(
       vWorldPosition.x * 11.0 - vWorldPosition.y * 7.0 + vWorldPosition.z * 9.0
     ), 12.0) * smoothstep(0.12, 0.9, shoulder);
-    vec3 reflected = vec3(0.20, 0.54, 1.0) * fresnel * 1.55;
-    reflected += vec3(0.92, 0.985, 1.0) * glassRim * (0.095 + keySpec * 0.5);
-    reflected += vec3(0.74, 0.91, 1.0) * convexBand * 0.15;
-    reflected += vec3(0.96, 0.995, 1.0) * edgeSpark * 0.27;
-    reflected += vec3(0.92, 0.985, 1.0) * brightBoundary * 0.31;
-    reflected += uKeyColor * keySpec * uKeyIntensity * 0.085;
-    reflected += uFillColor * fillSpec * uFillIntensity * 0.034;
+
+    /* Reflected light: pushed toward nearly white on rims */
+    vec3 reflected = vec3(0.22, 0.56, 1.0) * fresnel * 1.7;
+    reflected += vec3(0.96, 0.99, 1.0) * glassRim * (0.11 + keySpec * 0.72);
+    reflected += vec3(0.97, 0.995, 1.0) * sunGlint * 0.42;
+    reflected += vec3(0.76, 0.92, 1.0) * convexBand * 0.16;
+    reflected += vec3(0.97, 0.995, 1.0) * edgeSpark * 0.30;
+    reflected += vec3(0.96, 0.99, 1.0) * brightBoundary * 0.34;
+    reflected += uKeyColor * keySpec * uKeyIntensity * 0.11;
+    reflected += uFillColor * fillSpec * uFillIntensity * 0.038;
     reflected += vec3(0.55, 0.70, 0.78) * lowerBounce * 0.05;
-    reflected += vec3(0.78, 0.90, 0.94) * causticFold * uCausticStrength * 0.34;
+    reflected += vec3(0.80, 0.92, 0.96) * causticFold * uCausticStrength * 0.38;
     vec3 glyphColor = max(body + reflected, vec3(0.0));
+
     /* Descent fade: the letter dissolves into the exact water refracted
        behind it — an optical exit, never an opacity pop. */
     if (uExitFade > 0.001) {
@@ -678,18 +773,23 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 1.8, 0.002, 0.998)).r, 0.9995);
     projectedShadow += step(texture2D(uFrontDepth, clamp(vUv + shadowDirection * 2.7, 0.002, 0.998)).r, 0.9995);
     projectedShadow = projectedShadow / 3.0 * (1.0 - glyphHere) * uGlyphPresence;
-    scene *= 1.0 - projectedShadow * (0.07 + depthTravel * 0.04);
+    scene *= 1.0 - projectedShadow * (0.09 + depthTravel * 0.05);
 
     // The same surface normal that refracts the complete scene drives the
     // restrained caustic modulation. Glyph thickness gates its interior reach.
+    // Anti-washout: gate additive lighting by slope magnitude so the water
+    // stays structured instead of becoming a white fog under hard wakes.
+    float slopeIntensity = length(surfaceVector);
+    float washoutGate = 1.0 - smoothstep(0.014, 0.055, slopeIntensity);
     float compression = smoothstep(0.003, 0.028, abs(dot(surfaceVector, normalize(vec2(0.72, 0.38)))));
-    float focus = 1.0 - smoothstep(0.008, 0.11, length(surfaceVector));
+    float focus = 1.0 - smoothstep(0.008, 0.11, slopeIntensity);
     float caustic = (focus * focus * 0.35 + compression * 0.65) * uCausticStrength
-      * (0.20 + depthTravel * 0.34) * (0.45 + upperIdentity * 0.55);
+      * (0.20 + depthTravel * 0.34) * (0.45 + upperIdentity * 0.55)
+      * washoutGate;
     scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85 * uGlyphPresence);
     float simulatedWake = smoothstep(0.0016, 0.018, length(slope))
       * smoothstep(0.0008, 0.012, abs(h));
-    scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.05;
+    scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.04 * washoutGate;
 
     /* Section-aware absorption: pearl shallows stay luminous; the basin keeps
        its dark blue distance instead of being mixed back toward pale gray. */
@@ -723,14 +823,16 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     /* Wave light: the same sun that strikes the caustics catches live wave
        crests while troughs settle into shade. Physically placed on the
        simulated water itself — this is what makes a wake read as moving
-       water rather than a screen-blended glow. */
+       water rather than a screen-blended glow.
+       Anti-washout: crest specular is gated by washoutGate so strong
+       disturbances produce structured highlights, not a milky smear. */
     float waveLightDepth = mix(1.0, 0.38, smoothstep(0.46, 0.94, uTheme));
     vec3 waveLightNormal = normalize(vec3(-surfaceVector.x * 30.0, -surfaceVector.y * 30.0, 1.0));
     vec3 waveSun = normalize(vec3(-0.30, 0.46, 0.84));
-    float crestSpecular = pow(max(dot(waveLightNormal, waveSun), 0.0), 16.0);
+    float crestSpecular = pow(max(dot(waveLightNormal, waveSun), 0.0), 18.0);
     float crestGate = smoothstep(0.0022, 0.016, length(slope));
-    scene += vec3(0.84, 0.94, 1.0) * crestSpecular * crestGate * 0.085 * waveLightDepth;
-    scene += vec3(0.10, 0.17, 0.24) * h * 0.115 * waveLightDepth;
+    scene += vec3(0.84, 0.94, 1.0) * crestSpecular * crestGate * 0.075 * waveLightDepth * (0.3 + washoutGate * 0.7);
+    scene += vec3(0.10, 0.17, 0.24) * h * 0.10 * waveLightDepth;
 
     gl_FragColor = vec4(linearToSrgb(underwaterToneMap(scene * uExposure)), 1.0);
   }

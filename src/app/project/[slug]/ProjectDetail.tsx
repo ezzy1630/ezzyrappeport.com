@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { bio, type Project, projects } from "@/lib/portfolio/content";
 import PortfolioShell from "@/components/portfolio/PortfolioShell";
+import CaseArrivalWater from "@/components/portfolio/CaseArrivalWater";
 import ProjectTransitionLink from "@/components/portfolio/ProjectTransitionLink";
 import styles from "./ProjectDetail.module.css";
 
@@ -31,10 +32,11 @@ export default function ProjectDetail({ project }: Props) {
     .filter(Boolean);
 
   return (
-    <PortfolioShell heroName={false}>
+    <PortfolioShell heroName={false} routeMode="case">
       <div className="content-layer">
         <article className={styles.page} data-project={project.slug} data-water-section="case">
-          <ProjectTransitionLink href="/#projects" className={styles.back}>
+          <CaseArrivalWater />
+          <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
             <span className={styles.backIcon} aria-hidden="true">←</span>
             <span>Back to selected work</span>
           </ProjectTransitionLink>
@@ -86,6 +88,7 @@ export default function ProjectDetail({ project }: Props) {
                       key={link.href}
                       href={link.href}
                       className={styles.link}
+                      data-liquid-hover
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`${link.label} for ${project.title} (opens in a new tab)`}
@@ -101,6 +104,7 @@ export default function ProjectDetail({ project }: Props) {
 
             <figure
               className={styles.heroMedia}
+              data-liquid-hover
               style={{ viewTransitionName: `project-${project.slug}` }}
             >
               <Image
@@ -162,7 +166,7 @@ export default function ProjectDetail({ project }: Props) {
               <div className={styles.galleryGrid}>
                 {gallery.map((asset) => (
                   <figure key={asset.src} className={styles.galleryItem}>
-                    <div className={styles.galleryMedia}>
+                    <div className={styles.galleryMedia} data-liquid-hover>
                       <Image
                         src={asset.src}
                         alt={asset.alt}
@@ -188,6 +192,7 @@ export default function ProjectDetail({ project }: Props) {
             <ProjectTransitionLink
               href={`/project/${previous.slug}`}
               className={`${styles.paginationLink} ${styles.paginationPrevious}`}
+              transitionDirection="back"
             >
               <span className={styles.paginationArrow} aria-hidden="true">←</span>
               <span className={styles.paginationText}>
@@ -198,6 +203,7 @@ export default function ProjectDetail({ project }: Props) {
             <ProjectTransitionLink
               href={`/project/${next.slug}`}
               className={`${styles.paginationLink} ${styles.paginationNext}`}
+              transitionDirection="forward"
             >
               <span className={styles.paginationText}>
                 <small>Next project</small>
