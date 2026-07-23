@@ -90,6 +90,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       <Link
         href="/#top"
         className="site-nav-brand"
+        data-liquid-hover
         aria-label={`${nav.fullName} — home`}
       >
         <span className="site-nav-monogram">
@@ -107,7 +108,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
 
       <nav className="site-nav-links" aria-label="Primary navigation">
         {nav.links.map((link) => (
-          <Link key={link.href} href={hrefFor(link.href)}>
+          <Link key={link.href} href={hrefFor(link.href)} data-liquid-hover>
             {link.label}
           </Link>
         ))}
@@ -117,6 +118,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         <button
           type="button"
           className={`site-nav-motion ${styles.navigationControl}`}
+          data-liquid-hover
           aria-pressed={motionEnabled}
           aria-label={motionEnabled ? "Turn motion off" : "Turn motion on"}
           title={motionEnabled ? "Turn motion off" : "Turn motion on"}
@@ -124,13 +126,14 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         >
           <Waves aria-hidden="true" />
         </button>
-        <Link href={`/${nav.cta.href}`} className="site-nav-cta">
+        <Link href={`/${nav.cta.href}`} className="site-nav-cta" data-liquid-hover>
           <span>{nav.cta.label}</span>
         </Link>
         <button
           type="button"
           ref={menuButtonRef}
           className={`site-nav-menu-button ${styles.navigationControl}`}
+          data-liquid-hover
           aria-expanded={menuOpen}
           aria-controls="mobile-navigation"
           aria-label={menuOpen ? "Close navigation" : "Open navigation"}

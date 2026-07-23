@@ -96,6 +96,20 @@ body {
   transition: none;
 }
 
+/* DOM acknowledgment stays a tiny surface cue; the shared water carries the
+   displacement. `translate` composes with each control's existing transform. */
+.liquid-dialogue {
+  translate: 0 0;
+  transition: translate 320ms var(--ease-water);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .portfolio-root[data-motion="on"] .liquid-dialogue:hover,
+  .portfolio-root[data-motion="on"] .liquid-dialogue:focus-visible {
+    translate: 0 -2px;
+  }
+}
+
 .fluid-canvas[data-fluid="ready"] canvas {
   opacity: 1;
 }

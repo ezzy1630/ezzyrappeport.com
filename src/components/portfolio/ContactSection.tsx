@@ -7,6 +7,7 @@ import {
   emitLiquidPress,
   subscribeLiquidPointer,
 } from "@/lib/portfolio/liquid-interaction";
+import { useLiquidPersistentSurface } from "@/hooks/portfolio/use-liquid-dialogue";
 
 /**
  * ContactSection — the ocean floor.
@@ -18,6 +19,7 @@ import {
 export default function ContactSection() {
   const emailRef = useRef<HTMLAnchorElement>(null);
   const locationRef = useRef<HTMLParagraphElement>(null);
+  useLiquidPersistentSurface(emailRef, { phaseOffsetMs: 1540, strength: 0.16, radius: 54 });
 
   // Rising back to the surface retraces the same depth curve — the inverse
   // journey, not a jump.
@@ -130,8 +132,9 @@ export default function ContactSection() {
           </div>
           <a
             ref={emailRef}
-            className="contact-section__email"
+            className="contact-section__email liquid-dialogue"
             href={`mailto:${bio.email}`}
+            data-liquid-hover
             aria-label={`Start a conversation with ${bio.name} by email`}
           >
             <span className="contact-section__email-mark" aria-hidden="true">
