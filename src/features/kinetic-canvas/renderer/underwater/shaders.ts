@@ -416,6 +416,8 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   /* 0 = fully present glass, 1 = dissolved into the water behind. Drives the
      hero→projects descent: the name rises, thins, and becomes water again. */
   uniform float uExitFade;
+  /* 0..1 interaction energy on the active letter (hover/hold/release). */
+  uniform float uLetterEnergy;
 
   float linearViewDepth(float depth) {
     float viewZ = (uCameraNear * uCameraFar) / ((uCameraFar - uCameraNear) * depth - uCameraFar);
@@ -471,18 +473,18 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float opticalThickness = geometricThickness * (1.0 + shoulder * 1.65) + shoulder * 0.05;
     float eta = (uIor - 1.0) / uIor;
 
-    /* --- 1. Internal micro-bubble field --- */
+    /* --- 1. Restrained internal micro-bubble field (Canvas UI glass) --- */
     float microBubble = vnoiseg(vWorldPosition.xz * 38.0 + vWorldPosition.yy * 24.0);
-    float microBubbleMask = smoothstep(0.76, 0.97, microBubble);
-    float internalRough = uRoughness + microBubbleMask * 0.08;
+    float microBubbleMask = smoothstep(0.84, 0.98, microBubble);
+    float internalRough = uRoughness + microBubbleMask * 0.035;
 
     /* --- 2. Sparse larger bubbles with dark center and bright rim --- */
     float largeBubbleField = vnoise3(vWorldPosition * 14.0 + vec3(uTime * 0.02, 0.0, -uTime * 0.015));
-    float largeBubbleMask = smoothstep(0.88, 0.95, largeBubbleField);
+    float largeBubbleMask = smoothstep(0.91, 0.97, largeBubbleField);
     /* The bright edge simulates a convex meniscus catching light. */
-    float largeBubbleRim = smoothstep(0.85, 0.88, largeBubbleField) * (1.0 - largeBubbleMask);
+    float largeBubbleRim = smoothstep(0.88, 0.91, largeBubbleField) * (1.0 - largeBubbleMask);
     /* Gate both bubble types by optical thickness so they occupy the volume. */
-    float volumeGate = smoothstep(0.04, 0.18, opticalThickness);
+    float volumeGate = smoothstep(0.05, 0.20, opticalThickness);
 
     /* --- 3. Elongated anisotropic internal streaks --- */
     /* Two crossing sets of stretched folds create visible refraction lanes
@@ -509,10 +511,9 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float samplingRadius = 0.00012 + internalRough * 0.0021 + shoulder * 0.00055;
     vec3 environment = sampleEnvironment(refractedUv, refractionDirection, samplingRadius);
 
-    /* --- 4. Enhanced spectral dispersion at shoulders --- */
-    /* The split increases near high-curvature boundaries and diminishes on
-       broad, clear faces to keep the title readable at rest. */
-    float dispersionScale = 0.0006 + opticalThickness * 0.0015 + shoulder * 0.0008;
+    /* --- 4. Thin spectral edge split (grazing only) --- */
+    float dispersionScale = (0.00035 + opticalThickness * 0.0009 + shoulder * 0.0012)
+      * smoothstep(0.22, 0.78, shoulder);
     vec2 dispersion = refractionDirection * dispersionScale;
     environment.r = texture2D(uEnvironment, clamp(refractedUv + dispersion, 0.002, 0.998)).r;
     environment.b = texture2D(uEnvironment, clamp(refractedUv - dispersion, 0.002, 0.998)).b;
@@ -533,28 +534,29 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     tightBoundary = max(tightBoundary, step(0.985, texture2D(uFrontDepth, vScreenUv - vec2(0.0, tightStep.y)).r));
     float brightBoundary = max(wideBoundary - tightBoundary, 0.0);
 
-    /* --- 5. Deeper cerulean absorption --- */
+    /* --- 5. Selective cerulean absorption (shoulders, not milky faces) --- */
     vec3 safeAttenuation = max(uAttenuationColor, vec3(0.05));
     vec3 absorption = -log(safeAttenuation) / max(uAbsorptionDistance, 0.01);
-    /* Shortened effective distance pushes saturated blue into convex shoulders
-       while broad faces stay optically clear. */
-    vec3 transmittance = exp(-absorption * opticalThickness * (0.14 + shoulder * 0.56));
+    vec3 transmittance = exp(-absorption * opticalThickness * (0.08 + shoulder * 0.72));
 
-    /* Body: broad faces transmit the live scene; shoulders carry attenuation. */
-    vec3 body = mix(directEnvironment, environment, 0.84) * transmittance
-      + uAttenuationColor * (1.0 - transmittance) * 0.022;
-    body += (environment - directEnvironment) * (0.24 + shoulder * 0.74);
+    /* Clean white core on broad faces; cerulean only on convex shoulders. */
+    float faceClarity = 1.0 - shoulder * shoulder;
+    vec3 body = mix(directEnvironment, environment, 0.72 + faceClarity * 0.18) * transmittance
+      + uAttenuationColor * (1.0 - transmittance) * (0.012 + shoulder * 0.028);
+    body += (environment - directEnvironment) * (0.14 + shoulder * 0.82);
+    body = mix(body, vec3(0.97, 0.99, 1.0), faceClarity * 0.08 * transmittance);
 
-    /* Internal caustic fire with concentration through thick regions */
+    /* Internal caustic fire — concentrates under active letters */
+    float letterGate = 0.55 + uLetterEnergy * 0.85;
     float innerFoldA = pow(0.5 + 0.5 * sin(
       vWorldPosition.x * 8.6 + sin(vWorldPosition.z * 6.2) * 1.5 - uTime * 0.11
     ), 10.0);
     float innerFoldB = pow(0.5 + 0.5 * sin(
       vWorldPosition.z * 10.4 - sin(vWorldPosition.x * 5.3) * 1.25 + uTime * 0.09
     ), 12.0);
-    float internalFire = max(innerFoldA, innerFoldB) * (0.28 + opticalThickness * 2.0);
-    body += vec3(0.34, 0.68, 1.0) * internalFire * 0.06;
-    body += vec3(0.92, 0.98, 1.0) * innerFoldA * innerFoldB * 0.12;
+    float internalFire = max(innerFoldA, innerFoldB) * (0.28 + opticalThickness * 2.0) * letterGate;
+    body += vec3(0.34, 0.68, 1.0) * internalFire * 0.055;
+    body += vec3(0.92, 0.98, 1.0) * innerFoldA * innerFoldB * 0.10 * letterGate;
 
     /* Anisotropic streaks: elongated refraction lanes inside the volume */
     body += vec3(0.38, 0.72, 1.0) * streakField * 0.055 * opticalThickness;
@@ -563,11 +565,11 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     /* Clear faces; dense blue internal reflection on the convex shoulder. */
     body *= mix(1.0, 0.78, shoulder * shoulder);
 
-    /* Embedded micro-bubbles: internal sparkle gated by volume */
-    body += vec3(0.88, 0.96, 1.0) * microBubbleMask * transmittance * 0.065 * volumeGate;
+    /* Embedded micro-bubbles: restrained sparkle */
+    body += vec3(0.88, 0.96, 1.0) * microBubbleMask * transmittance * 0.028 * volumeGate;
     /* Larger bubbles: dark center with bright meniscus rim */
-    body -= vec3(0.04, 0.06, 0.08) * largeBubbleMask * volumeGate * 0.35;
-    body += vec3(0.82, 0.94, 1.0) * largeBubbleRim * volumeGate * 0.09;
+    body -= vec3(0.04, 0.06, 0.08) * largeBubbleMask * volumeGate * 0.22;
+    body += vec3(0.82, 0.94, 1.0) * largeBubbleRim * volumeGate * 0.055;
 
     /* --- 6. Strong Fresnel rims pushed toward white --- */
     vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
@@ -580,10 +582,10 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     vec3 fillDirection = normalize(uFillPosition - vWorldPosition);
     vec3 keyHalf = normalize(keyDirection + viewDirection);
     vec3 fillHalf = normalize(fillDirection + viewDirection);
-    /* Primary key specular: exponent ~240 for crisp, nearly white highlights */
-    float keySpec = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(110.0, 260.0, 1.0 - uRoughness));
+    /* Primary key specular: sharper grazing lobes for crystalline rims */
+    float keySpec = pow(max(dot(vWorldNormal, keyHalf), 0.0), mix(140.0, 320.0, 1.0 - uRoughness));
     /* Secondary sun-glint: narrower lobe for concentrated bright spots */
-    float sunGlint = pow(max(dot(vWorldNormal, keyHalf), 0.0), 520.0);
+    float sunGlint = pow(max(dot(vWorldNormal, keyHalf), 0.0), 640.0);
     float fillSpec = pow(max(dot(vWorldNormal, fillHalf), 0.0), 48.0);
     float lowerBounce = max(dot(vWorldNormal, normalize(vec3(0.1, -0.5, 0.3))), 0.0);
 
@@ -599,8 +601,9 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       0.42 + shoulder * 0.14
     );
     body = mix(body, edgeWater, grazing * 0.76);
-    /* Boundary crease darkening for silhouette readability */
-    body = mix(body, vec3(0.035, 0.16, 0.34), tightBoundary * 0.46);
+    /* Boundary crease darkening for silhouette separation vs bright water */
+    body = mix(body, vec3(0.028, 0.14, 0.32), tightBoundary * 0.58);
+    body = mix(body, vec3(0.04, 0.18, 0.38), brightBoundary * 0.22);
 
     /* Caustic fire concentrating through the letterforms */
     float causticFold = pow(0.5 + 0.5 * sin(vWorldPosition.x * 4.2 + vWorldPosition.z * 5.4 - uTime * 0.16), 7.0)
@@ -623,7 +626,7 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     reflected += uKeyColor * keySpec * uKeyIntensity * 0.11;
     reflected += uFillColor * fillSpec * uFillIntensity * 0.038;
     reflected += vec3(0.55, 0.70, 0.78) * lowerBounce * 0.05;
-    reflected += vec3(0.80, 0.92, 0.96) * causticFold * uCausticStrength * 0.38;
+    reflected += vec3(0.80, 0.92, 0.96) * causticFold * uCausticStrength * (0.32 + uLetterEnergy * 0.28);
     vec3 glyphColor = max(body + reflected, vec3(0.0));
 
     /* Descent fade: the letter dissolves into the exact water refracted

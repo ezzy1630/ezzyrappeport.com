@@ -268,6 +268,7 @@ function makeThicknessGlyphMaterial(
       uRefractionTaps: { value: 5 },
       uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
       uExitFade: { value: 0 },
+      uLetterEnergy: { value: 0 },
     },
     side: FrontSide,
     depthWrite: true,
@@ -1231,6 +1232,12 @@ export function startUnderwaterHeroRenderer({
     glyphGroup.position.set(0, glyphExit * 0.55, -glyphExit * 3.35);
     if (glyphMaterial instanceof ShaderMaterial) {
       glyphMaterial.uniforms.uExitFade.value = glyphFadeForExit(glyphExit);
+      const letterEnergy =
+        interactionTransition.state.kind === "holding" ? 1
+          : interactionTransition.state.kind === "hovering" ? 0.55
+            : interactionTransition.state.kind === "releasing" ? 0.85
+              : 0;
+      glyphMaterial.uniforms.uLetterEnergy.value = letterEnergy;
     }
     finalMaterial.uniforms.uGlyphPresence.value = renderHeroGlyphs
       ? 1 - glyphFadeForExit(glyphExit)
