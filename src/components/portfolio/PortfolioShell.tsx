@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import dynamic from "next/dynamic";
 import { useReducedMotion } from "@/hooks/portfolio/use-reduced-motion";
 import SmoothScrollProvider from "./SmoothScrollProvider";
@@ -8,6 +8,7 @@ import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
 import { PortfolioMotionProvider } from "./PortfolioMotionContext";
 import { useLiquidHoverDialogue } from "@/hooks/portfolio/use-liquid-dialogue";
+import { invalidateWorldMeasurement } from "@/lib/portfolio/world-state";
 
 type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
 
@@ -47,6 +48,14 @@ function useWaterSection() {
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
+    const layoutRoot = document.querySelector<HTMLElement>(".content-layer");
+    const layoutObserver = typeof ResizeObserver === "undefined" || !layoutRoot
+      ? null
+      : new ResizeObserver(() => {
+          invalidateWorldMeasurement();
+          onScroll();
+        });
+    if (layoutObserver && layoutRoot) layoutObserver.observe(layoutRoot);
     update();
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
@@ -54,6 +63,7 @@ function useWaterSection() {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       window.cancelAnimationFrame(frame);
+      layoutObserver?.disconnect();
       delete document.documentElement.dataset.waterSection;
     };
   }, []);
@@ -79,6 +89,8 @@ type Props = {
   showNav?: boolean;
   /** Keep the route to one viewport; modal content handles overflow. */
   screenLocked?: boolean;
+  /** Seed the shallow dock before client effects and the renderer mount. */
+  routeMode?: "index" | "case";
 };
 
 /**
@@ -97,21 +109,32 @@ export default function PortfolioShell({
   heroName = true,
   showNav = true,
   screenLocked = false,
+  routeMode = "index",
 }: Props) {
   const reducedMotion = useReducedMotion();
   const [motionPreference, setMotionPreference] = useState<boolean | null>(null);
-  const motionEnabled = motionPreference ?? !reducedMotion;
+  const motionEnabled = !reducedMotion && (motionPreference ?? true);
   const motionReduced = !motionEnabled;
   const renderHeroName = heroName;
+  const routeStyle: CSSProperties | undefined = routeMode === "case"
+    ? {
+        "--world-depth": "0.22",
+        "--world-light": "0.9056",
+        "--world-calm": "0.25",
+      } as CSSProperties
+    : undefined;
   useWaterSection();
   useLiquidHoverDialogue();
 
   useEffect(() => {
     const stored = window.localStorage.getItem("portfolio-motion");
-    if (stored === "on" || stored === "off") setMotionPreference(stored === "on");
-  }, []);
+    if (!reducedMotion && (stored === "on" || stored === "off")) {
+      setMotionPreference(stored === "on");
+    }
+  }, [reducedMotion]);
 
   const toggleMotion = () => {
+    if (reducedMotion) return;
     setMotionPreference((current) => {
       const next = !(current ?? !reducedMotion);
       window.localStorage.setItem("portfolio-motion", next ? "on" : "off");
@@ -131,6 +154,8 @@ export default function PortfolioShell({
           id="top"
           className={`portfolio-root ${screenLocked ? "portfolio-root--locked" : ""}`}
           data-motion={motionEnabled ? "on" : "off"}
+          data-route={routeMode}
+          style={routeStyle}
         >
           <ErrorBoundary>
             <FluidScene

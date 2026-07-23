@@ -464,6 +464,12 @@ function start() {
   lastInputTime = now;
   lastTickAt = 0;
   lastMovementSplatAt = 0;
+  // Route markers are mounted before the shared input subscription starts.
+  // Refresh synchronously so a case route never renders one index-depth frame
+  // while the 30 Hz publisher waits for its first tick.
+  state.world = computeWorldState(state.scroll.velocity);
+  rootVarsKey = "";
+  setRootVars();
 
   window.addEventListener("pointermove", onPointerMove, { passive: true });
   window.addEventListener("pointerdown", onPointerDown, { passive: true });
