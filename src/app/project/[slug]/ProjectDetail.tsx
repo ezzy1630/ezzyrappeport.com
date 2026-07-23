@@ -9,9 +9,10 @@ type Props = {
   project: Project;
 };
 
-const chapters = [
+const railStates = [
   { key: "problem", label: "Problem" },
-  { key: "approach", label: "Approach" },
+  { key: "system", label: "System" },
+  { key: "evidence", label: "Evidence" },
   { key: "outcome", label: "Outcome" },
 ] as const;
 
@@ -35,7 +36,12 @@ export default function ProjectDetail({ project }: Props) {
   return (
     <PortfolioShell heroName={false} routeMode="case">
       <div className="content-layer">
-        <article id="main-content" className={styles.page} data-project={project.slug} data-water-section="case">
+        <article
+          id="main-content"
+          className={styles.page}
+          data-project={project.slug}
+          data-water-section="case"
+        >
           <CaseArrivalWater />
           <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
             <span aria-hidden="true">←</span>
@@ -55,7 +61,7 @@ export default function ProjectDetail({ project }: Props) {
               <div><dt>Status</dt><dd>{project.status}</dd></div>
             </dl>
 
-            <figure className={styles.heroMedia} data-liquid-hover style={{ viewTransitionName: `project-${project.slug}` }}>
+            <figure className={styles.heroMedia} data-liquid-hover>
               <Image
                 src={heroAsset.src}
                 alt={heroAsset.alt}
@@ -71,6 +77,32 @@ export default function ProjectDetail({ project }: Props) {
 
           <section className={styles.proofBand} aria-label="Verified project evidence">
             {proofItems.map((item) => <p key={item}>{item}</p>)}
+          </section>
+
+          {project.slug === "nexarad" || project.cautionLabel ? (
+            <p className={styles.clinicalNote} role="note">
+              {project.slug === "nexarad"
+                ? "Demo / Research / Not for Clinical Use"
+                : project.cautionLabel}
+            </p>
+          ) : null}
+
+          <section className={styles.evidenceRail} aria-label="Case narrative rail">
+            <div className={styles.railSticky}>
+              {railStates.map((state) => (
+                <a key={state.key} href={`#case-${state.key}`} className={styles.railLink}>
+                  {state.label}
+                </a>
+              ))}
+            </div>
+            <div className={styles.railPanels}>
+              {railStates.map((state) => (
+                <section key={state.key} id={`case-${state.key}`} className={styles.railPanel}>
+                  <h2>{state.label}</h2>
+                  <p>{project[state.key]}</p>
+                </section>
+              ))}
+            </div>
           </section>
 
           <section className={styles.caseBody} aria-labelledby="case-story-title">
@@ -104,12 +136,14 @@ export default function ProjectDetail({ project }: Props) {
             </aside>
 
             <div className={styles.chapters}>
-              {chapters.map((chapter) => (
-                <section key={chapter.key} className={styles.chapter}>
-                  <h3>{chapter.label}</h3>
-                  <p>{project[chapter.key]}</p>
-                </section>
-              ))}
+              <section className={styles.chapter}>
+                <h3>Approach</h3>
+                <p>{project.approach}</p>
+              </section>
+              <section className={styles.chapter}>
+                <h3>Constraints</h3>
+                <p>{project.constraints}</p>
+              </section>
             </div>
           </section>
 
@@ -139,6 +173,18 @@ export default function ProjectDetail({ project }: Props) {
               </div>
             </section>
           ) : null}
+
+          <nav className={styles.nextBleed} aria-label="Next project">
+            <ProjectTransitionLink
+              href={`/project/${next.slug}`}
+              className={styles.nextBleedLink}
+              transitionName={`project-${next.slug}`}
+            >
+              <small>Next project</small>
+              <strong>{next.title}</strong>
+              <span>{next.tagline}</span>
+            </ProjectTransitionLink>
+          </nav>
 
           <nav className={styles.pagination} aria-label="Project navigation">
             <ProjectTransitionLink href={`/project/${previous.slug}`} transitionDirection="back">

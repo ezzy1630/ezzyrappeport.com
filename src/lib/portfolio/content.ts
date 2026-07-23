@@ -47,6 +47,10 @@ export type Project = {
   problem: string;
   approach: string;
   outcome: string;
+  /** Sticky rail states: Problem / System / Evidence / Outcome. */
+  system: string;
+  evidence: string;
+  constraints: string;
   stack: string[];
   year: string;
   role: string;
@@ -75,6 +79,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built a five-stage loop: red-team ideation across 18 attack-surface zones, programmatic and semantic judging, repro and root-cause analysis, blue-team patch generation, and purple-team detection-as-pass verification. The demo path runs with zero model credentials against a planted victim.",
     outcome:
       "The repo now includes a working CLI, seeded demo, live dashboard, tiered verifier gates, attack coverage tracking, Telegram alert paths, and a growing regression model that treats silent controls as incomplete defenses.",
+    system:
+      "Eleven-panel dashboard over an 18-zone attack map. Red → judge → repro → blue → purple loop with detection-as-pass gates.",
+    evidence:
+      "Attack-blocked / detection-fired matrix, zero-credential demo path, 8 verifier gates, 1,051 tracked test functions.",
+    constraints:
+      "Multi-contributor project. Demo runs without model credentials; live LLM paths remain optional and environment-gated.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
     year: "2026",
     role: "Lead Engineer & Contributor",
@@ -129,6 +139,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built a desktop shell, React browser chrome, Express/WebSocket agent server, Playwright research runtime, source shelf, export path, and no-key demo mode. The research flow streams session state as agents navigate, capture evidence, and hand off to a synthesis agent.",
     outcome:
       "The local app ships as a hackathon-ready alpha with predictive intent, visible agent tabs, live browsing evidence, cited answer generation, Markdown/JSON export, persisted session snapshots, and a one-command macOS boot path.",
+    system:
+      "Predictive omnibox → visible agent tabs → research canvas. Cerebras × Gemma 4 hackathon origin for low-latency drafting.",
+    evidence:
+      "Real browser UI as the hero surface; agent work stays inspectable with citation-backed canvas trails.",
+    constraints:
+      "Product still evolving; agent actions remain user-initiated and inspectable.",
     stack: ["Electron", "React", "TypeScript", "Express", "WebSocket", "Playwright"],
     year: "2026",
     role: "Co-Founder & CTO",
@@ -186,6 +202,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built the iOS app with MVVM, dependency injection, offline mutation retry, Clerk auth, Canvas REST and ICS ingestion, EventKit, push notifications, analytics, and Convex schema/functions for tasks, events, Canvas data, wallets, and sync.",
     outcome:
       "The repo has a generated Xcode project, production-shaped config boundaries, local Convex workflows, Canvas sync validation, authentication paths, and simulator build commands for the current iOS app.",
+    system:
+      "Brain dump → structured plan → focus loop, surfaced through real iPhone frames and campaign footage.",
+    evidence:
+      "Native mobile frames and existing campaign videos where real footage exists; muted loops only.",
+    constraints:
+      "Calm operating system for tasks and focus — not a generic productivity collage.",
     stack: ["SwiftUI", "Convex", "TypeScript", "Clerk", "Canvas LMS", "EventKit"],
     year: "2026",
     role: "Founder & CEO",
@@ -239,6 +261,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built a local stack with web, API, OHIF, Orthanc, MinIO, Alembic migrations, seeded non-PHI studies, synthetic upload smoke tests, demo/research safety defaults, and a rule that browser clients only call the NexaRad API.",
     outcome:
       "The founder-ready walkthrough can boot the full local demo, seed visible research-only studies and draft reports, rehearse uploads, and keep AI providers and PHI disabled by default.",
+    system:
+      "OHIF/product frame with synthetic DICOM evidence and report provenance.",
+    evidence:
+      "Demo / Research / Not for Clinical Use labels stay visible near every relevant claim.",
+    constraints:
+      "Not for clinical use. Synthetic evidence only; no diagnostic claims.",
     stack: ["Next.js", "FastAPI", "DICOM", "OHIF", "Orthanc", "MinIO"],
     year: "2026",
     role: "Founder & Engineer",
@@ -292,6 +320,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built a FastAPI backend, React/Vite workbench, Electron shell, file-backed run workspace, deterministic FIFO demo, optional LLM proposal path, simulation/formal/synthesis adapters, claims ledger, and status-aware cockpit views for trust and diagnostics.",
     outcome:
       "The saved vertical slice carries a synchronous FIFO through typed specs, three candidates, independent oracle artifacts, simulation and bounded-formal gates, Yosys metrics, explicit missing-tool states, and Markdown/JSON proof dossiers. Physical signoff remains pending.",
+    system:
+      "FIFO → arbiter → AXI-lite → DMA → cache → RV32I → accelerator → SoC ladder with verification gates.",
+    evidence:
+      "Cockpit screenshots, proof dossier, and verification-gate sequence as the architecture story.",
+    constraints:
+      "Hardware proof is staged; claims track the verified ladder, not aspirational silicon.",
     stack: ["Python", "FastAPI", "React", "Electron", "Yosys", "Verilator"],
     year: "2026",
     role: "Founder & Engineer",
@@ -346,6 +380,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I built a tiered Rust index that becomes useful immediately: file inventory first, symbol and structural indexes next, then local embeddings in the background. Queries return bounded spans and disclose index coverage so the caller knows what evidence was available.",
     outcome:
       "Argyph ships as a read-only MCP server and CLI through npm, crates.io, Homebrew, and release binaries, with incremental indexing and nineteen tools across retrieval, symbols, packing, and local memory.",
+    system:
+      "Three-tier local index. Lead claim: stop wiring six MCP servers.",
+    evidence:
+      "Tier-zero indexing under a second, benchmark evidence, 19 read-only tools across npm/crates/Homebrew.",
+    constraints:
+      "Local-first read-only tools; no write-path claims without explicit user action.",
     stack: ["Rust", "MCP", "Tree-sitter", "LanceDB", "ONNX Runtime", "SQLite"],
     year: "2026",
     role: "Creator & Engineer",
@@ -380,6 +420,12 @@ const projectRecords: Omit<Project, "mediaPresentation">[] = [
       "I combined a Tauri desktop shell, React interface, SQLite persistence, FSRS review scheduling, MathLive typesetting, bundled Python and SymPy, Vision OCR, and deterministic offline fallbacks. Optional Codex features use the local CLI rather than an in-app API key.",
     outcome:
       "The repository includes more than 1,080 curated problems, a native macOS build, diagnostic and practice loops, mastery and review systems, local homework analysis, and automated unit and end-to-end coverage.",
+    system:
+      "Mastery graph + diagnostic loop + FSRS review + symbolic checking in one native Mac cockpit.",
+    evidence:
+      "1,080+ problem corpus, 171 unit tests, 15 end-to-end tests, local SymPy checking.",
+    constraints:
+      "Private local-first learning history; optional Codex uses local CLI, not an in-app API key.",
     stack: ["Tauri", "React", "TypeScript", "SQLite", "SymPy", "FSRS"],
     year: "2026",
     role: "Creator & Engineer",
