@@ -57,11 +57,18 @@ const tests = [
   }],
 
   ["renderer copies environment once then draws glyphs only", () => {
-    assert.match(rendererSource, /envCopyMaterial/);
-    assert.match(rendererSource, /envCopyScene/);
+    assert.match(rendererSource, /backdropScene/);
+    assert.match(rendererSource, /render\(backdropScene, fullscreenCamera\)/);
+    assert.match(rendererSource, /backdrop\.frustumCulled = false/);
+    assert.match(rendererSource, /renderer\.resetState\(\)/);
+    // environmentTarget still filled for glyph refraction; sceneTarget paints the plate directly.
+    assert.match(rendererSource, /setRenderTarget\(environmentTarget\)/);
+    assert.match(rendererSource, /setRenderTarget\(sceneTarget\)/);
     assert.match(rendererSource, /camera\.layers\.set\(GLYPH_LAYER\)/);
-    assert.match(rendererSource, /RELEASE_TEXTURE_UNITS/);
-    assert.match(rendererSource, /for \(let unit = 0; unit < RELEASE_TEXTURE_UNITS/);
+    // Glyph pass must not wipe the optical plate (Color background force-clears).
+    assert.match(rendererSource, /scene\.background = null/);
+    assert.match(rendererSource, /renderer\.autoClear = false/);
+    assert.match(rendererSource, /renderer\.clearDepth\(\)/);
     // Production thickness path keeps shadows off.
     assert.match(rendererSource, /renderer\.shadowMap\.enabled = false/);
     assert.match(rendererSource, /usePhysicalMaterial/);

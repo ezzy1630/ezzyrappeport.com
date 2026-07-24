@@ -90,6 +90,8 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   useEffect(() => {
     if (!motionEnabled) return;
     const spring = rippleSpringRef.current;
+    const rippleEl = rippleRef.current;
+    if (rippleEl) rippleEl.style.willChange = "transform, width";
 
     const tick = (_timeMs: number, deltaMs: number) => {
       const el = rippleRef.current;
@@ -101,12 +103,10 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       spring.vWidth += aw * dt;
       spring.left += spring.vLeft * dt;
       spring.width += spring.vWidth * dt;
-      el.style.willChange = "transform, width";
       el.style.transform = `translateX(${spring.left.toFixed(2)}px)`;
       el.style.width = `${Math.max(0, spring.width).toFixed(2)}px`;
     };
 
-    const rippleEl = rippleRef.current;
     subscribeFrameClock(RIPPLE_CLOCK_ID, tick);
     return () => {
       unsubscribeFrameClock(RIPPLE_CLOCK_ID);

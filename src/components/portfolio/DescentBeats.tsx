@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createScrubBeat, initScrollChoreography } from "@/lib/portfolio/scroll-choreography";
+import { unbindGsapFromFrameClock } from "@/lib/portfolio/frame-clock";
 import { emitLiquidPress } from "@/lib/portfolio/liquid-interaction";
 import { readMotionPolicy, subscribeMotionPolicy } from "@/lib/portfolio/motion-policy";
 
@@ -19,6 +20,7 @@ import { readMotionPolicy, subscribeMotionPolicy } from "@/lib/portfolio/motion-
 export default function DescentBeats() {
   useEffect(() => {
     let disposed = false;
+    let gsapBound = false;
     const cleanups: Array<() => void> = [];
     const root = document.documentElement;
 
@@ -63,8 +65,18 @@ export default function DescentBeats() {
     };
 
     const run = async () => {
-      await initScrollChoreography();
-      if (disposed) return;
+      try {
+        await initScrollChoreography();
+      } catch (error) {
+        console.warn("[portfolio] descent choreography init failed", error);
+        if (!disposed) revealInstant();
+        return;
+      }
+      if (disposed) {
+        unbindGsapFromFrameClock();
+        return;
+      }
+      gsapBound = true;
 
       if (!motionAllowed()) {
         revealInstant();
@@ -152,6 +164,7 @@ export default function DescentBeats() {
       disposed = true;
       unsubscribePolicy();
       cleanups.forEach((fn) => fn());
+      if (gsapBound) unbindGsapFromFrameClock();
       root.style.removeProperty("--descent-projects");
       root.style.removeProperty("--descent-about");
       root.style.removeProperty("--descent-contact");

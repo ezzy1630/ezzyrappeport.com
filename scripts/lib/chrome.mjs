@@ -93,8 +93,8 @@ export async function waitForSelector(page, selector, opts = {}) {
   });
 }
 
-/** Hero / fluid canvas reached a terminal boot state. */
-export async function waitForHeroReady(page, timeoutMs = 45000) {
+export async function waitForHeroReady(page, opts = {}) {
+  const timeoutMs = typeof opts === "number" ? opts : (opts.timeoutMs ?? 45000);
   return waitForPageCondition(
     page,
     () => {

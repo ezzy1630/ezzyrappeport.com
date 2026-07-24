@@ -5,7 +5,7 @@
  *
  * Invariants:
  * - Semantic HTML + poster paint before any WebGL work.
- * - No spinner / percentage UI — only a thin caustic waterline.
+ * - No spinner / percentage UI -  only a thin caustic waterline.
  * - Save-Data / 2g stays poster/static.
  * - Case routes never run the full hero entrance.
  * - Repeat visits get a shorter breach, never none.
@@ -25,7 +25,11 @@ export type HeroBootPhase =
 
 export const BOOT_CROSSFADE_MS = 620;
 export const BOOT_REPEAT_CROSSFADE_MS = 420;
-export const BOOT_COPY_STAGGER_MS = 55;
+/** Breach → live dolly window (first visit). Copy reveals after this. */
+export const BOOT_BREACH_MS = 1500;
+/** Shorter, subtler breach on repeat visits — never none. */
+export const BOOT_REPEAT_BREACH_MS = 900;
+export const BOOT_COPY_STAGGER_MS = 40;
 export const BOOT_SESSION_KEY = "portfolio.hero-boot.v1";
 
 export type BootVisitKind = "first" | "repeat";
@@ -43,6 +47,10 @@ export function readBootVisitKind(): BootVisitKind {
 
 export function crossfadeMsForVisit(kind: BootVisitKind) {
   return kind === "repeat" ? BOOT_REPEAT_CROSSFADE_MS : BOOT_CROSSFADE_MS;
+}
+
+export function breachMsForVisit(kind: BootVisitKind) {
+  return kind === "repeat" ? BOOT_REPEAT_BREACH_MS : BOOT_BREACH_MS;
 }
 
 /** Capable devices may early-fetch the GLB after first paint. */

@@ -468,8 +468,10 @@ html:has(.portfolio-root[data-route="case"]) {
   opacity: 1;
 }
 
+/* Keep the authored water plate under the canvas as a seam-safe underlay.
+   Never swap to flat pearl on ready — that reads as a missing backdrop if the
+   first WebGL frames are clear-colored or mid-recovery. */
 .fluid-canvas[data-fluid="ready"] {
-  background: var(--rv-pearl);
   box-shadow: none;
 }
 

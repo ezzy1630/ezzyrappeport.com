@@ -291,17 +291,16 @@ const tests = [
     }
     assert.match(underwaterRendererSource, /authored-radiance-live-volume-v4/);
     assert.match(underwaterRendererSource, /authored-high-pass-v2/);
-    assert.match(underwaterShaderSource, /Perspective floor projection/);
-    assert.match(underwaterShaderSource, /Volumetric god rays/);
+    // Structural shader contracts (symbols), not comment prose.
     assert.match(underwaterShaderSource, /marineSnowLayer/);
     assert.match(underwaterShaderSource, /uQualityTier/);
-    assert.match(underwaterShaderSource, /Bioluminescent abyss accents/);
     assert.match(underwaterShaderSource, /shaftCount/);
     assert.match(underwaterShaderSource, /calmRayBoost/);
-    assert.match(underwaterShaderSource, /Beer-Lambert-style blue absorption/);
-    assert.match(underwaterShaderSource, /high-pass recovery restores subpixel caustic filaments/);
     assert.match(underwaterShaderSource, /opticalCenter - opticalLow/);
     assert.match(underwaterShaderSource, /sampleOpticalDetail/);
+    assert.match(underwaterShaderSource, /abyssMix/);
+    assert.match(underwaterShaderSource, /bioSpark|biolum/);
+    assert.match(underwaterShaderSource, /pow\(max\(0\.0,\s*1\.0 - abs\(vUv\.x - center\)/);
     // The authored plates may be warped and blended, but the background must
     // never become a raw, unmodulated texture paste.
     assert.doesNotMatch(underwaterShaderSource, /color\s*=\s*texture2D\(uOptical/);
@@ -440,6 +439,8 @@ const tests = [
     assert.match(descentBeatsSource, /createScrubBeat/);
     assert.match(descentBeatsSource, /data-section-reveal|sectionReveal/);
     assert.match(descentBeatsSource, /abyssArrived|abyss-arrived/);
+    assert.match(descentBeatsSource, /unbindGsapFromFrameClock/);
+    assert.match(descentBeatsSource, /descent choreography init failed|revealInstant/);
     assert.doesNotMatch(descentBeatsSource, /pin:\s*true/);
     assert.match(revampCssSource, /\[data-section-reveal="out"\]/);
     assert.match(revampCssSource, /--abyss-biolum/);
@@ -569,9 +570,12 @@ const tests = [
     assert.match(underwaterRendererSource, /source\.scale\.x/);
     assert.match(underwaterRendererSource, /if \(glyphsPresent\)/);
     assert.match(underwaterRendererSource, /offHero/);
-    assert.match(underwaterRendererSource, /envCopyMaterial/);
+    assert.match(underwaterRendererSource, /backdropScene/);
+    assert.match(underwaterRendererSource, /renderer\.resetState\(\)/);
+    assert.match(underwaterRendererSource, /scene\.background = null/);
+    assert.match(underwaterRendererSource, /renderer\.autoClear = false/);
+    assert.match(underwaterRendererSource, /renderer\.clearDepth\(\)/);
     assert.match(underwaterRendererSource, /refreshCanvasRect/);
-    assert.match(underwaterRendererSource, /RELEASE_TEXTURE_UNITS/);
     assert.match(underwaterRendererSource, /heroMetrics/);
     assert.match(bootStateSource, /poster/);
     assert.match(kineticCanvasSource, /shouldEarlyFetchGlb/);
@@ -916,8 +920,16 @@ const tests = [
 
     assert.equal(existsSync(new URL("../public/projects/velox/velox-icon.png", import.meta.url)), false);
     assert.equal(existsSync(new URL("../public/projects/mathpilot/mathpilot-icon-512.png", import.meta.url)), false);
+    assert.equal(existsSync(new URL("../public/assets/pearl-liquid-background.webp", import.meta.url)), false);
+    assert.equal(existsSync(new URL("../public/assets/pearl-liquid-background-poster.webp", import.meta.url)), false);
     assert.doesNotMatch(contentSource, /mathpilot-icon-512\.png/);
     assert.doesNotMatch(revampCssSource, /\.liquid-glass-card|\.location-capsule|\.project-buttons-row|\.hero-section-anchors|\.work-item\b/);
+
+    const navWillChange = readFileSync(new URL("../src/components/portfolio/Navigation.tsx", import.meta.url), "utf8");
+    assert.match(navWillChange, /willChange = "transform, width"/);
+    const rippleTick = navWillChange.match(/const tick = \([^)]*\) => \{[\s\S]*?\n    \};/);
+    assert.ok(rippleTick, "nav ripple tick must exist");
+    assert.doesNotMatch(rippleTick[0], /willChange/);
 
     const smoothScrollSource = readFileSync(
       new URL("../src/components/portfolio/SmoothScrollProvider.tsx", import.meta.url),

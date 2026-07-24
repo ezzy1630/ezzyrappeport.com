@@ -409,10 +409,11 @@ const MIN_RUNTIME_SCALE = 0.68;
 /**
  * Production render graph
  * -----------------------
- * 1. Render the pale submerged studio into `environmentTarget` (once).
+ * 1. Render the authored optical backdrop into `environmentTarget` once
+ *    per presented frame via an ortho NDC pass (not the perspective hero camera).
  * 2. Render GLB glyph back depth, then front depth, using the same camera.
- * 3. Copy environment color into `sceneTarget`, clear depth, then shade glyphs
- *    only (thickness refraction) into that target.
+ * 3. Paint the optical plate into `sceneTarget`, clear depth only, then shade
+ *    glyphs (thickness refraction) without wiping the plate color.
  * 4. Update the low-resolution GPU surface heightfield.
  * 5. Refract the complete scene color/depth through that surface, apply the
  *    compatible caustic field and depth attenuation, then run one ACES/sRGB
@@ -452,7 +453,9 @@ export function startUnderwaterHeroRenderer({
   canvas.dataset.toneMapper = "underwater shallow shoulder";
 
   const scene = new Scene();
-  scene.background = new Color(0xdceef4);
+  // Backdrop lives in `backdropScene`. A Color background here would force-clear
+  // sceneTarget on the glyph pass and wipe the optical plate (even with autoClear off).
+  scene.background = null;
   const camera = new PerspectiveCamera(42, 1, 0.1, 30);
   camera.layers.enable(GLYPH_LAYER);
   const debugCamera = process.env.NODE_ENV !== "production"
@@ -493,9 +496,13 @@ export function startUnderwaterHeroRenderer({
     depthTest: false,
     depthWrite: false,
   });
+  // NDC fullscreen plate — must use the ortho camera, never the perspective
+  // hero camera (frustum culling + matrix path would drop or wash the optical field).
   const backdrop = new Mesh(new PlaneGeometry(2, 2, 1, 1), backdropMaterial);
+  backdrop.frustumCulled = false;
   backdrop.renderOrder = -100;
-  scene.add(backdrop);
+  const backdropScene = new Scene();
+  backdropScene.add(backdrop);
 
   const keyPosition = new Vector3(-2.2, 2.8, -3.2);
   const fillPosition = new Vector3(2.5, 1.8, 2.4);
@@ -623,22 +630,6 @@ export function startUnderwaterHeroRenderer({
   });
   const finalScene = new Scene();
   finalScene.add(new Mesh(fullscreenGeometry, finalMaterial));
-  // Color blit: environmentTarget → sceneTarget without re-running the backdrop shader.
-  const envCopyMaterial = new ShaderMaterial({
-    vertexShader: FULLSCREEN_VERTEX,
-    fragmentShader: /* glsl */ `
-      uniform sampler2D uSource;
-      varying vec2 vUv;
-      void main() {
-        gl_FragColor = texture2D(uSource, vUv);
-      }
-    `,
-    uniforms: { uSource: { value: environmentTarget.texture } },
-    depthTest: false,
-    depthWrite: false,
-  });
-  const envCopyScene = new Scene();
-  envCopyScene.add(new Mesh(fullscreenGeometry, envCopyMaterial));
 
   renderer.setRenderTarget(heightRead);
   renderer.setClearColor(0x000000, 1);
@@ -724,8 +715,6 @@ export function startUnderwaterHeroRenderer({
     || (typeof navigator !== "undefined" && navigator.webdriver === true);
   let offHeroSimDebt = 0;
   const OFF_HERO_MAX_CATCHUP_STEPS = 3;
-  // Texture units our materials actually sample (glyph 3 + final ~6 + height 1 + copy 1).
-  const RELEASE_TEXTURE_UNITS = 12;
   const stepControl: GlyphStepControl = {
     ambientScale: 1,
     hoverGlyphIndex: -1,
@@ -1085,24 +1074,8 @@ export function startUnderwaterHeroRenderer({
     canvas.dataset.glyphCount = String(glyphs.length);
   };
 
-  /**
-   * Chrome validates that no texture unit still samples a color/depth
-   * attachment of the current draw framebuffer. Prior passes leave glyph and
-   * composite samplers bound (environment, front/back depth, scene), so the
-   * next RT pass must clear those units before drawing - otherwise every frame
-   * spam-logs GL_INVALID_OPERATION feedback-loop errors.
-   */
-  const releaseSampledTextures = () => {
-    // Unbind only the sampler units our passes use — not every MAX_TEXTURE_IMAGE_UNITS slot.
-    const gl = renderer.getContext();
-    for (let unit = 0; unit < RELEASE_TEXTURE_UNITS; unit += 1) {
-      renderer.state.activeTexture(gl.TEXTURE0 + unit);
-      renderer.state.unbindTexture();
-    }
-  };
-
   const renderDepth = (target: WebGLRenderTarget, side: typeof FrontSide | typeof BackSide) => {
-    releaseSampledTextures();
+    renderer.resetState();
     renderer.setRenderTarget(target);
     renderer.setClearColor(0xffffff, 1);
     renderer.clear(true, true, true);
@@ -1479,9 +1452,9 @@ export function startUnderwaterHeroRenderer({
       ? 0
       : 0.032 * (1 - worldCalm * 0.9) + scrollChop * 0.012 * (1 - worldCalm * 0.55);
     heightMaterial.uniforms.uPrevious.value = heightRead.texture;
-    // finalMaterial still samples the previous heightfield; clear units so the
-    // write target cannot alias a live sampler from last composite.
-    releaseSampledTextures();
+    // Height ping-pong: reset GL state so the write target cannot alias a live
+    // sampler from last composite / previous height read.
+    renderer.resetState();
     renderer.setRenderTarget(heightWrite);
     renderer.render(heightScene, fullscreenCamera);
     const previous = heightRead;
@@ -1769,14 +1742,15 @@ export function startUnderwaterHeroRenderer({
     glyphDebug?.tick(now);
     if (offHero) lastPresentedAt = now;
     const previousMask = camera.layers.mask;
-    camera.layers.set(0);
-    // Glyph material still samples environmentTarget from last frame - clear
-    // texture units before writing the environment plate.
-    releaseSampledTextures();
+    // Optical backdrop is an NDC fullscreen plate — draw it with the ortho
+    // camera into environmentTarget (glyph refraction samples this).
+    // resetState (not a blanket texture unbind) avoids feedback-loop errors
+    // without preventing the plate samplers from rebinding on this draw.
+    renderer.resetState();
     renderer.setRenderTarget(environmentTarget);
     renderer.setClearColor(0xdceef4, 1);
     renderer.clear(true, true, true);
-    renderer.render(scene, camera);
+    renderer.render(backdropScene, fullscreenCamera);
     // Glyph thickness refraction needs linear depth. Once the name has exited,
     // skip both depth passes through projects/about/contact.
     if (glyphsPresent) {
@@ -1784,19 +1758,23 @@ export function startUnderwaterHeroRenderer({
       renderDepth(backDepthTarget, BackSide);
       renderDepth(frontDepthTarget, FrontSide);
     }
-    // Copy environment color into sceneTarget once, clear depth, draw glyphs only.
-    releaseSampledTextures();
-    envCopyMaterial.uniforms.uSource.value = environmentTarget.texture;
+    // Paint the optical plate into sceneTarget with the same ortho pass, then
+    // composite glyphs without clearing color (autoClear would wipe the plate).
+    renderer.resetState();
     renderer.setRenderTarget(sceneTarget);
     renderer.setClearColor(0xdceef4, 1);
     renderer.clear(true, true, true);
-    renderer.render(envCopyScene, fullscreenCamera);
+    renderer.render(backdropScene, fullscreenCamera);
     if (glyphsPresent) {
+      const previousAutoClear = renderer.autoClear;
+      renderer.autoClear = false;
+      renderer.clearDepth();
       camera.layers.set(GLYPH_LAYER);
       renderer.render(scene, camera);
+      renderer.autoClear = previousAutoClear;
     }
     camera.layers.mask = previousMask;
-    releaseSampledTextures();
+    renderer.resetState();
     renderer.setRenderTarget(null);
     renderer.render(finalScene, fullscreenCamera);
     if (heroMetricsEnabled) {
@@ -2080,26 +2058,30 @@ export function startUnderwaterHeroRenderer({
       // frame does not pay shader-compile / pipeline spikes.
       try {
         renderer.compile(scene, camera);
+        renderer.compile(backdropScene, fullscreenCamera);
         renderer.compile(heightScene, fullscreenCamera);
         renderer.compile(finalScene, fullscreenCamera);
         // One hidden draw of each pass to warm pipeline state.
         const previousVisibility = canvas.style.visibility;
         canvas.style.visibility = "hidden";
         const warmupMask = camera.layers.mask;
-        camera.layers.set(0);
-        releaseSampledTextures();
+        renderer.resetState();
         renderer.setRenderTarget(environmentTarget);
-        renderer.render(scene, camera);
-        camera.layers.mask = warmupMask;
-        releaseSampledTextures();
-        envCopyMaterial.uniforms.uSource.value = environmentTarget.texture;
+        renderer.setClearColor(0xdceef4, 1);
+        renderer.clear(true, true, true);
+        renderer.render(backdropScene, fullscreenCamera);
+        renderer.resetState();
         renderer.setRenderTarget(sceneTarget);
         renderer.clear(true, true, true);
-        renderer.render(envCopyScene, fullscreenCamera);
+        renderer.render(backdropScene, fullscreenCamera);
+        const warmupAutoClear = renderer.autoClear;
+        renderer.autoClear = false;
+        renderer.clearDepth();
         camera.layers.set(GLYPH_LAYER);
         renderer.render(scene, camera);
+        renderer.autoClear = warmupAutoClear;
         camera.layers.mask = warmupMask;
-        releaseSampledTextures();
+        renderer.resetState();
         renderer.setRenderTarget(null);
         renderer.render(finalScene, fullscreenCamera);
         canvas.style.visibility = previousVisibility || "";
@@ -2197,6 +2179,8 @@ export function startUnderwaterHeroRenderer({
     glyphMaterial.dispose();
     opticalMicrostructure.forEach((texture) => texture.dispose());
     disposeObject(scene);
+    disposeObject(backdropScene);
+    backdropMaterial.dispose();
     sceneTarget.dispose();
     environmentTarget.dispose();
     frontDepthTarget.dispose();
@@ -2206,7 +2190,6 @@ export function startUnderwaterHeroRenderer({
     fullscreenGeometry.dispose();
     heightMaterial.dispose();
     finalMaterial.dispose();
-    envCopyMaterial.dispose();
     depthMaterial.dispose();
     renderer.renderLists.dispose();
     renderer.dispose();
