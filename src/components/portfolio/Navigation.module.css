@@ -5,7 +5,9 @@
 
 .mobileNavigationTouchTarget {
   display: inline-flex;
+  min-width: 2.75rem;
   min-height: 2.75rem;
   align-items: center;
   padding-block: 0.45rem;
+  padding-inline: 0.65rem;
 }

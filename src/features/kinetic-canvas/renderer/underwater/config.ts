@@ -1,47 +1,36 @@
-import { ACESFilmicToneMapping, LinearToneMapping, ReinhardToneMapping } from "three";
+/**
+ * Look-dev material / lighting knobs for the underwater hero.
+ * Asset URLs and exposure helpers live in assetUrls.ts (no three.js).
+ */
+
+export {
+  EXPOSURE_BY_DEPTH,
+  HERO_GLB_URL,
+  HERO_MANIFEST_URL,
+  MAX_DESKTOP_RENDER_DPR,
+  WATER_PLATE_URLS,
+  exposureForDepth,
+} from "./assetUrls";
 
 export const UNDERWATER_DEBUG = {
-  exposure: 0.88,
-  toneMapper: ACESFilmicToneMapping,
+  // Surface stays bright and dimensional without blowing the glass name white.
+  exposure: 0.9,
   // Sun from the upper-left; bright key, cool transmitted fill.
-  // Raised key to push rim highlights toward nearly white.
-  keyIntensity: 6.4,
-  fillIntensity: 1.8,
-  environmentIntensity: 0.92,
-  // Physical glass: high transmission, very low roughness, water IOR. The
-  // reference letters have crisp crystalline cores, not milk.
+  keyIntensity: 7.4,
+  fillIntensity: 1.9,
+  environmentIntensity: 1.0,
+  // Canvas UI-derived crystalline glass: clean white core, water IOR,
+  // very low roughness. Cerulean lives on shoulders, not milky faces.
   ior: 1.4,
-  roughness: 0.022,
-  // Saturated cerulean attenuation. Shortened absorption distance pushes
-  // visible blue into the thicker shoulder geometry while keeping broad
-  // faces optically clear.
-  absorptionColor: 0xa8d8ea,
-  absorptionDistance: 1.22,
-  // Visible water surface: restrained refraction wobble.
-  surfaceDistortion: 0.34,
+  roughness: 0.009,
+  // Deeper cerulean absorption so glyph bodies carry readable mass
+  // against near-white shallow water.
+  absorptionColor: 0x7ec8e8,
+  absorptionDistance: 0.82,
+  // Soft optical wobble — enough to read as water, not jelly smear on glyphs.
+  surfaceDistortion: 0.095,
   // Animated caustic fire on the sand and through the glyphs.
-  causticStrength: 0.58,
+  causticStrength: 0.62,
   // Bright-shallows depth: deepens gradually, never muddy.
   depthAttenuation: 0.14,
-} as const;
-
-export const TONE_MAPPER_NAMES = {
-  [ACESFilmicToneMapping]: "ACES filmic",
-  [LinearToneMapping]: "linear",
-  [ReinhardToneMapping]: "Reinhard",
-} as const;
-
-export const HERO_GLB_URL = "/assets/hero/ezzy-rappeport-glyphs.glb";
-export const HERO_MANIFEST_URL = "/assets/hero/ezzy-rappeport-glyphs.json";
-
-// Keep the high-tier desktop render target below the adaptive-scaling cliff.
-// The canvas remains DPR-aware, but a full 1.5x target at laptop dimensions
-// spends the frame budget on pixels before the water simulation runs.
-export const MAX_DESKTOP_RENDER_DPR = 1.25;
-
-export const WATER_PLATE_URLS = {
-  shallowLandscape: "/assets/water/shallow-desktop-v1.webp",
-  shallowPortrait: "/assets/water/shallow-portrait-v1.webp",
-  midDepth: "/assets/water/mid-depth-v1.webp",
-  deepBasin: "/assets/water/deep-basin-v1.webp",
 } as const;

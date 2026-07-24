@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * World state — one continuous body of water
+ * World state -  one continuous body of water
  * ------------------------------------------
  * The whole site is a single descent: the hero floats just beneath the
  * surface, Projects hang in the bright middle depth, About is a calmer
@@ -9,7 +9,7 @@
  * scroll position into one normalized, monotonic, reversible `depth` value
  * (0 = surface, 1 = floor) plus derived physical quantities. The WebGL
  * renderer, the DOM, and the navigation all read from this same curve, so
- * color, light, fog, and calm stay physically coherent — and scrolling back
+ * color, light, fog, and calm stay physically coherent -  and scrolling back
  * up retraces the exact inverse journey.
  *
  * Depth is anchored to measured section geometry (not a raw 0..1 document
@@ -25,7 +25,7 @@ export type WorldState = {
   velocity: number;
   /** 1 at the bright surface → ~0.05 in the basin. Drives DOM legibility. */
   light: number;
-  /** 1 inside the About pocket → water locally calms; 0 elsewhere. */
+  /** 1 inside calm reading pockets (Projects copy + About) → water locally calms. */
   calm: number;
   /** Which section currently owns the viewport midline. */
   section: WorldSectionId;
@@ -195,6 +195,18 @@ function activeSection(
   ranges: SectionRange[],
 ): { section: WorldSectionId; sectionProgress: number } {
   const line = scrollY + viewportHeight * 0.48;
+  const contact = ranges[3];
+  // Contact owns nav once its top crosses the lower ~62% of the viewport.
+  // About's tall reading pocket otherwise kept "About" lit deep into the basin.
+  if (contact && contact.top <= scrollY + viewportHeight * 0.62) {
+    return {
+      section: "contact",
+      sectionProgress: Math.max(
+        0,
+        Math.min(1, (line - contact.top) / Math.max(contact.bottom - contact.top, 1)),
+      ),
+    };
+  }
   for (const range of ranges) {
     if (line >= range.top && line <= range.bottom) {
       return {
@@ -206,6 +218,16 @@ function activeSection(
   return line < ranges[0].top
     ? { section: "hero", sectionProgress: 0 }
     : { section: "contact", sectionProgress: 1 };
+}
+
+/**
+ * Single DOM-facing section id for nav + chrome. Case routes moor as "case";
+ * the index descent uses the same geometry as `computeWorldState`.
+ */
+export function resolveDocumentWaterSection(): WorldSectionId | "case" {
+  if (typeof document === "undefined") return "hero";
+  const world = computeWorldState(0);
+  return world.moored ? "case" : world.section;
 }
 
 const STILL_WORLD: WorldState = {
@@ -229,7 +251,7 @@ export function stillWorld(): WorldState {
  */
 export function computeWorldState(scrollVelocity: number): WorldState {
   if (typeof document === "undefined") return stillWorld();
-  const isCaseRoute = Boolean(document.querySelector("[data-water-section='case']"));
+  const isCaseRoute = Boolean(document.querySelector(".portfolio-root[data-route='case']"));
   const ranges = sectionRanges();
   if (isCaseRoute || !ranges) {
     return {
@@ -253,15 +275,23 @@ export function computeWorldState(scrollVelocity: number): WorldState {
   const { section, sectionProgress } = activeSection(scrollY, viewportHeight, ranges);
   // Sunlight transmission: bright shallows, gentle mid falloff, dark basin.
   const light = lightForDepth(depth);
-  // The About pocket is physically calmer: full calm at its heart, feathered
-  // at both edges so entering and leaving stays continuous.
+  // Calm reading pockets: Projects get a light discovery pocket so caustics
+  // soften behind media; About is the intentional quiet mid-column (god rays
+  // + damped heightfield). Enter sooner / leave later so the pocket reads.
+  const projectsRange = ranges[1];
   const aboutRange = ranges[2];
   const line = scrollY + viewportHeight * 0.48;
+  const projectsSpan = Math.max(projectsRange.bottom - projectsRange.top, 1);
   const aboutSpan = Math.max(aboutRange.bottom - aboutRange.top, 1);
+  const distanceIntoProjects = (line - projectsRange.top) / projectsSpan;
   const distanceIntoAbout = (line - aboutRange.top) / aboutSpan;
-  const calm = section === "about"
-    ? smoothstep(0, 0.22, distanceIntoAbout) * (1 - smoothstep(0.78, 1, distanceIntoAbout))
+  const projectsCalm = section === "projects"
+    ? smoothstep(0, 0.1, distanceIntoProjects) * (1 - smoothstep(0.9, 1, distanceIntoProjects)) * 0.62
     : 0;
+  const aboutCalm = section === "about"
+    ? smoothstep(0, 0.12, distanceIntoAbout) * (1 - smoothstep(0.52, 0.78, distanceIntoAbout))
+    : 0;
+  const calm = Math.max(projectsCalm, aboutCalm);
   return {
     depth,
     velocity: scrollVelocity,

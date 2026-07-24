@@ -1,6 +1,9 @@
 "use client";
 
+import { subscribeFrameClock, unsubscribeFrameClock } from "./frame-clock.ts";
 import { resolveMovementSplat } from "./interaction-policy.ts";
+import { navThemeFromSection } from "./nav-theme.ts";
+import { setAmbientDepth } from "./sound.ts";
 import {
   computeWorldState,
   invalidateWorldMeasurement,
@@ -54,7 +57,7 @@ export type LiquidPhysics = {
 
 export type LiquidInteractionEvent = {
   id: number;
-  kind: "wake" | "press";
+  kind: "wake" | "press" | "shockwave" | "suction" | "release-wave";
   startX: number;
   startY: number;
   endX: number;
@@ -106,6 +109,19 @@ const MAX_RIPPLES = 16;
 const MAX_INTERACTIONS = 48;
 const POINTER_WAKE_RADIUS = 260;
 const RIPPLE_SPEED = 155;
+/** Pointer energy charges with travel and decays with ~0.5s time constant. */
+const POINTER_ENERGY_TAU_CHARGE = 0.22;
+const POINTER_ENERGY_TAU_DECAY = 0.45;
+const SHOCKWAVE_DEFAULT_STRENGTH = 1;
+const SHOCKWAVE_RELEASE_STRENGTH = 0.28;
+/** Clearer tap plunk on finger — still capped in emitLiquidShockwave. */
+const SHOCKWAVE_TOUCH_STRENGTH = 1.18;
+/** Finger press footprint — larger than mouse so a tap reads on low-tier water. */
+const TOUCH_PRESS_RADIUS = 118;
+const MOUSE_PRESS_RADIUS = 88;
+/** Broad soft wakes — water displacement, not plastic creases. */
+const TOUCH_WAKE_RADIUS_MAX = 148;
+const MOUSE_WAKE_RADIUS_MAX = 124;
 
 const defaultX = typeof window !== "undefined" ? window.innerWidth * 0.62 : 0;
 const defaultY = typeof window !== "undefined" ? window.innerHeight * 0.54 : 0;
@@ -142,7 +158,7 @@ const rippleSubscribers = new Set<RippleSubscriber>();
 const physicsSubscribers = new Set<PhysicsSubscriber>();
 
 let started = false;
-let raf = 0;
+const LIQUID_CLOCK_ID = "liquid-interaction";
 let nextIdleRipple = 8;
 let lastInputTime = 0;
 let lastTickAt = 0;
@@ -156,8 +172,34 @@ let pendingPointer: {
 } | null = null;
 let pendingPointerSamples: Array<{ x: number; y: number; time: number; pointerType: string }> = [];
 let interactionId = 0;
+/** Seconds since the current press began; 0 when the pointer is up. */
+let pressHoldStartedAt = 0;
+let lastSuctionEmitAt = 0;
+let reducedMotionCached: boolean | null = null;
+let coarsePointerCached: boolean | null = null;
 
 const PHYSICS_INTERVAL_MS = 1000 / 30;
+
+function prefersReducedMotion() {
+  if (typeof window === "undefined") return false;
+  if (reducedMotionCached === null) {
+    reducedMotionCached = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+  return reducedMotionCached;
+}
+
+function isCoarsePointerMedia() {
+  if (typeof window === "undefined") return false;
+  if (coarsePointerCached === null) {
+    coarsePointerCached = window.matchMedia("(pointer: coarse)").matches;
+  }
+  return coarsePointerCached;
+}
+
+/** Touch events or a coarse primary pointer — finger-tuned splat radii. */
+function isTouchLikePointer(pointerType: string) {
+  return pointerType === "touch" || isCoarsePointerMedia();
+}
 
 function setRootVars() {
   if (typeof document === "undefined") return;
@@ -173,6 +215,8 @@ function setRootVars() {
     state.world.depth.toFixed(3),
     state.world.light.toFixed(3),
     state.world.calm.toFixed(3),
+    state.world.section,
+    state.world.moored ? 1 : 0,
   ].join("|");
   if (nextKey === rootVarsKey) return;
   rootVarsKey = nextKey;
@@ -186,15 +230,26 @@ function setRootVars() {
   root.style.setProperty("--liquid-scroll", state.scroll.progress.toFixed(4));
   root.style.setProperty("--liquid-scroll-velocity", state.scroll.velocity.toFixed(3));
   root.style.setProperty("--liquid-depth", state.scroll.depth.toFixed(3));
-  // The shared world curve. Every layer — renderer, sections, navigation —
+  // The shared world curve. Every layer -  renderer, sections, navigation -
   // reads the same depth so the descent stays physically coherent.
   root.style.setProperty("--world-depth", state.world.depth.toFixed(4));
   root.style.setProperty("--world-light", state.world.light.toFixed(4));
   root.style.setProperty("--world-calm", state.world.calm.toFixed(4));
-  // Navigation foreground: dark ink against the bright shallows, pale against
-  // the basin. Expressed as an oklch lightness so CSS stays declarative.
-  const navLightness = (0.2 + state.world.light * 0.09 + (1 - state.world.light) * 0.76).toFixed(3);
+  // Navigation foreground: stay ink-dark through the bright shallows / mid
+  // caustics, then lift toward pearl only as the basin really darkens.
+  // Previous linear mix hit ~0.5 lightness by mid-projects and washed out.
+  const navLightness = (
+    0.2
+    + state.world.light * 0.04
+    + Math.pow(1 - state.world.light, 1.55) * 0.74
+  ).toFixed(3);
   root.style.setProperty("--nav-l", navLightness);
+  const section = state.world.moored ? "case" : state.world.section;
+  root.dataset.navTheme = navThemeFromSection(section, state.world.depth);
+  // One owner for active section: world geometry (with contact anticipation).
+  root.dataset.waterSection = section;
+  // Depth-band ambient bed (no-op when sound is off / unavailable).
+  setAmbientDepth(state.world.depth);
 }
 
 function emitPointer() {
@@ -271,16 +326,20 @@ function applyPendingPointer() {
   state.pointer.vy += (dy / dt - state.pointer.vy) * velocityResponse;
   state.pointer.speed = speed;
   state.pointer.active = true;
-  const trailEnergy = Math.min(0.68, Math.max(0.18, 0.16 + speed * 0.14));
-  state.pointer.energy = Math.max(state.pointer.energy, trailEnergy);
+  // Charge energy with sustained travel; slow glide stays glassy, fast churn peaks.
+  const travelCharge = Math.min(1, Math.max(0, 0.12 + speed * 0.55 + Math.min(0.35, travelEnergyBoost(dx, dy))));
+  const chargeResponse = 1 - Math.exp(-dt / POINTER_ENERGY_TAU_CHARGE);
+  state.pointer.energy += (Math.max(state.pointer.energy, travelCharge) - state.pointer.energy) * chargeResponse;
+  state.pointer.energy = Math.min(1, state.pointer.energy);
   state.pointer.time = now;
 
   emitPointer();
   emitPhysics();
 
   // The water is one continuous body: pointer travel disturbs it everywhere,
-  // in every section — not only inside the hero. Zones decide which objects
+  // in every section -  not only inside the hero. Zones decide which objects
   // receive forces; the shared heightfield always responds.
+  // Gate wakes: require meaningful travel so idle hover does not smear the field.
   let previous = hadPointerSample
     ? { x: x - dx, y: y - dy, time: prevTime, pointerType: initialSample.pointerType }
     : initialSample;
@@ -289,7 +348,10 @@ function applyPendingPointer() {
     const sampleDx = sample.x - previous.x;
     const sampleDy = sample.y - previous.y;
     const sampleSpeed = Math.hypot(sampleDx, sampleDy) / sampleDt;
-    if (Math.hypot(sampleDx, sampleDy) > 0.5) {
+    const travel = Math.hypot(sampleDx, sampleDy);
+    if (travel > 2.5 && sampleSpeed > 70) {
+      const speedNorm = Math.min(1, sampleSpeed / 1800);
+      const touchLike = isTouchLikePointer(sample.pointerType);
       pushInteraction({
         kind: "wake",
         startX: previous.x,
@@ -298,9 +360,11 @@ function applyPendingPointer() {
         endY: sample.y,
         vx: sampleDx / sampleDt,
         vy: sampleDy / sampleDt,
-        strength: Math.min(1, 0.10 + sampleSpeed / 1450),
-        // Broad, soft depressions — water with weight, not laser lines.
-        radius: Math.min(112, 44 + sampleSpeed * 0.03),
+        // Readable push without knife-edge carving.
+        strength: Math.min(0.78, 0.06 + sampleSpeed / 2400 + speedNorm * 0.2),
+        radius: touchLike
+          ? Math.min(TOUCH_WAKE_RADIUS_MAX, 52 + sampleSpeed * 0.03 + speedNorm * 26)
+          : Math.min(MOUSE_WAKE_RADIUS_MAX, 42 + sampleSpeed * 0.026 + speedNorm * 22),
         time: now / 1000,
         pointerType: sample.pointerType,
       });
@@ -308,20 +372,27 @@ function applyPendingPointer() {
     previous = sample;
   }
 
-  // Add an occasional low-energy wake to ordinary pointer travel. The
-  // distance and elapsed-time gates keep it legible as water motion instead
-  // of turning a fast sweep into a particle trail.
+  // Occasional soft splat on sustained travel — distance + time gates keep it
+  // from becoming a continuous particle trail. Touch uses a slightly wider gate
+  // so finger jitter does not smear, with a clearer intensity when it fires.
+  const touchLike = isTouchLikePointer(state.pointer.pointerType);
   const movementDistance = Math.hypot(dx, dy);
   const movementIntensity = resolveMovementSplat({
     distance: movementDistance,
     now,
     lastAt: lastMovementSplatAt,
+    minDistance: touchLike ? 18 : 14,
+    minInterval: touchLike ? 90 : 72,
   });
   if (movementIntensity !== null) {
-    pushRipple(x, y, movementIntensity, now);
+    pushRipple(x, y, movementIntensity * (touchLike ? 0.88 : 0.72), now);
     lastMovementSplatAt = now;
   }
 
+}
+
+function travelEnergyBoost(dx: number, dy: number) {
+  return Math.hypot(dx, dy) / Math.max(window.innerWidth, window.innerHeight, 1) * 4;
 }
 
 function onPointerDown(e: PointerEvent) {
@@ -341,16 +412,20 @@ function onPointerDown(e: PointerEvent) {
   state.pointer.vx *= 0.62;
   state.pointer.vy *= 0.62;
   state.pointer.active = true;
+  pressHoldStartedAt = now / 1000;
+  lastSuctionEmitAt = 0;
   const incomingSpeed = Math.hypot(state.pointer.vx, state.pointer.vy);
   state.pointer.energy = Math.max(
     state.pointer.energy,
-    Math.min(0.66, 0.42 + incomingSpeed * 0.16),
+    Math.min(1, 0.48 + incomingSpeed * 0.14),
   );
   state.pointer.time = now;
   emitPointer();
   emitPhysics();
   // A press is a droplet landing in the shared water, wherever it falls.
+  // Kept for sound/glyph bus compatibility; the marquee visual is the shockwave.
   const inheritedLength = Math.max(incomingSpeed, 1);
+  const touchLike = isTouchLikePointer(e.pointerType || "mouse");
   pushInteraction({
     kind: "press",
     startX: e.clientX,
@@ -359,20 +434,60 @@ function onPointerDown(e: PointerEvent) {
     endY: e.clientY,
     vx: state.pointer.vx,
     vy: state.pointer.vy,
-    strength: Math.min(1, 0.72 + inheritedLength / 2600),
-    radius: e.pointerType === "touch" ? 78 : 62,
+    strength: Math.min(1, 0.92 + inheritedLength / 2200),
+    radius: touchLike ? TOUCH_PRESS_RADIUS : MOUSE_PRESS_RADIUS,
     time: now / 1000,
     pointerType: e.pointerType || "mouse",
   });
-  pushRipple(e.clientX, e.clientY, Math.min(0.88, 0.72 + incomingSpeed / 5000), now);
+  pushRipple(
+    e.clientX,
+    e.clientY,
+    Math.min(1, (touchLike ? 0.98 : 0.9) + incomingSpeed / 4000),
+    now,
+  );
+  // Touch gets a clearer plunk; mouse keeps the authored desktop strength.
+  emitLiquidShockwave(e.clientX, e.clientY, {
+    strength: touchLike ? SHOCKWAVE_TOUCH_STRENGTH : SHOCKWAVE_DEFAULT_STRENGTH,
+    radius: touchLike ? 148 : undefined,
+    pointerType: e.pointerType || "mouse",
+  });
 }
 
 function onPointerEnd(e: PointerEvent) {
+  const wasActive = state.pointer.active;
+  const holdAge = pressHoldStartedAt > 0
+    ? Math.max(0, performance.now() / 1000 - pressHoldStartedAt)
+    : 0;
   pendingPointer = null;
   state.pointer.active = false;
   if (e.type === "pointercancel") state.pointer.present = false;
   state.pointer.vx *= 0.35;
   state.pointer.vy *= 0.35;
+  // Soft micro-ring on release; stronger rebound after a sustained suction hold.
+  if (wasActive && e.type === "pointerup" && !prefersReducedMotion()) {
+    const releaseStrength = holdAge > 0.18
+      ? Math.min(0.72, SHOCKWAVE_RELEASE_STRENGTH + holdAge * 0.35)
+      : SHOCKWAVE_RELEASE_STRENGTH;
+    if (holdAge > 0.18) {
+      pushInteraction({
+        kind: "release-wave",
+        startX: state.pointer.x,
+        startY: state.pointer.y,
+        endX: state.pointer.x,
+        endY: state.pointer.y,
+        vx: state.pointer.vx,
+        vy: state.pointer.vy,
+        strength: releaseStrength,
+        radius: 72 + holdAge * 40,
+        time: performance.now() / 1000,
+        pointerType: state.pointer.pointerType,
+      });
+    } else {
+      emitLiquidShockwave(state.pointer.x, state.pointer.y, { strength: releaseStrength });
+    }
+  }
+  pressHoldStartedAt = 0;
+  lastSuctionEmitAt = 0;
   emitPointer();
   emitPhysics();
 }
@@ -384,6 +499,8 @@ function onPointerLeave() {
   state.pointer.active = false;
   state.pointer.vx = 0;
   state.pointer.vy = 0;
+  pressHoldStartedAt = 0;
+  lastSuctionEmitAt = 0;
   emitPointer();
   emitPhysics();
 }
@@ -394,10 +511,8 @@ function onWindowBlur() {
 
 function tick(now: number) {
   if (document.hidden) return;
-  if (now - lastTickAt < PHYSICS_INTERVAL_MS) {
-    raf = requestAnimationFrame(tick);
-    return;
-  }
+  // Cadence is enforced by the unified frame clock (~30 Hz); keep the delta
+  // path identical to the previous self-managed rAF publisher.
   const tickDelta = lastTickAt > 0 ? Math.min(0.1, (now - lastTickAt) / 1000) : 1 / 30;
   lastTickAt = now;
   applyPendingPointer();
@@ -407,15 +522,52 @@ function tick(now: number) {
 
   if (state.pointer.active && now - lastInputTime > 620) {
     state.pointer.active = false;
+    pressHoldStartedAt = 0;
   }
-  const targetEnergy = state.pointer.active
-    ? Math.min(0.68, Math.max(0.18, 0.16 + state.pointer.speed * 0.14))
+  // Energy breathes with exploration: charge while moving, decay at rest (~0.5s).
+  const speedEnergy = Math.min(1, state.pointer.speed * 0.9);
+  const holdBoost = state.pointer.active && pressHoldStartedAt > 0
+    ? Math.min(0.22, (t - pressHoldStartedAt) * 0.12)
     : 0;
-  const energyResponse = 1 - Math.exp(-(state.pointer.active ? 7.5 : 5.5) * tickDelta);
+  const targetEnergy = Math.max(speedEnergy, state.pointer.active ? 0.08 + holdBoost : 0);
+  const energyTau = targetEnergy > state.pointer.energy
+    ? POINTER_ENERGY_TAU_CHARGE
+    : POINTER_ENERGY_TAU_DECAY;
+  const energyResponse = 1 - Math.exp(-tickDelta / energyTau);
   state.pointer.energy += (targetEnergy - state.pointer.energy) * energyResponse;
+  if (state.pointer.energy < 0.001) state.pointer.energy = 0;
   state.pointer.speed *= Math.exp(-(state.pointer.active ? 5.5 : 8.5) * tickDelta);
   state.pointer.vx *= Math.exp(-6.5 * tickDelta);
   state.pointer.vy *= Math.exp(-6.5 * tickDelta);
+
+  // Press-and-hold suction dimple while held in open water (renderer skips when
+  // a glyph owns the hold). Emitted sparsely so the 8-splat budget stays free.
+  if (
+    state.pointer.active
+    && pressHoldStartedAt > 0
+    && !prefersReducedMotion()
+    && now - lastSuctionEmitAt > 48
+  ) {
+    const holdAge = Math.max(0, t - pressHoldStartedAt);
+    if (holdAge > 0.05) {
+      const suction = Math.min(1, 0.2 + holdAge * 0.9);
+      pushInteraction({
+        kind: "suction",
+        startX: state.pointer.x,
+        startY: state.pointer.y,
+        endX: state.pointer.x,
+        endY: state.pointer.y,
+        vx: state.pointer.vx,
+        vy: state.pointer.vy,
+        strength: suction,
+        radius: 52 + holdAge * 28,
+        time: t,
+        pointerType: state.pointer.pointerType,
+      });
+      lastSuctionEmitAt = now;
+    }
+  }
+
   state.scroll.velocity = decayScrollVelocity(state.scroll.velocity, tickDelta);
   state.scroll.depth +=
     (state.scroll.progress - state.scroll.depth) * (1 - Math.exp(-3.2 * tickDelta));
@@ -441,15 +593,12 @@ function tick(now: number) {
 
   emitPointer();
   emitPhysics();
-  raf = requestAnimationFrame(tick);
 }
 
 function onVisibilityChange() {
-  cancelAnimationFrame(raf);
   if (document.hidden) onPointerLeave();
   if (!document.hidden && started) {
     lastTickAt = 0;
-    raf = requestAnimationFrame(tick);
   }
 }
 
@@ -481,8 +630,9 @@ function start() {
   document.addEventListener("visibilitychange", onVisibilityChange);
 
   // The world persists for the whole session: the loop suspends only for a
-  // hidden tab, never because the hero left the viewport.
-  if (!document.hidden) raf = requestAnimationFrame(tick);
+  // hidden tab, never because the hero left the viewport. Cadence stays ~30 Hz
+  // via the unified frame clock.
+  subscribeFrameClock(LIQUID_CLOCK_ID, tick, { cadenceMs: PHYSICS_INTERVAL_MS });
 }
 
 function stop() {
@@ -496,7 +646,7 @@ function stop() {
   window.removeEventListener("blur", onWindowBlur);
   window.removeEventListener("resize", onResize);
   document.removeEventListener("visibilitychange", onVisibilityChange);
-  cancelAnimationFrame(raf);
+  unsubscribeFrameClock(LIQUID_CLOCK_ID);
   pendingPointer = null;
   pendingPointerSamples = [];
 }
@@ -518,10 +668,11 @@ export function emitLiquidPointer(pointer: Partial<LiquidPointerState>) {
 
 export function emitLiquidRipple(ripple: LiquidRippleState) {
   pushRipple(ripple.x, ripple.y, ripple.intensity, ripple.time);
+  void import("./sound").then(({ playSound }) => playSound("ripple")).catch(() => undefined);
 }
 
 /**
- * Inject a directional wake through the shared water — used when hovering
+ * Inject a directional wake through the shared water -  used when hovering
  * between suspended objects so the current visibly redirects from the
  * previous object toward the next one.
  */
@@ -560,7 +711,7 @@ export function emitLiquidWake({
 }
 
 /**
- * Inject a soft localized press — used when the cursor approaches a suspended
+ * Inject a soft localized press -  used when the cursor approaches a suspended
  * object (project showcase, contact slab) so the object visibly displaces the
  * water beneath it.
  */
@@ -591,6 +742,45 @@ export function emitLiquidPress({
     pointerType: "world",
   });
   pushRipple(x, y, Math.min(0.6, strength), now);
+  void import("./sound").then(({ playSound }) => playSound("press")).catch(() => undefined);
+}
+
+/**
+ * Annular click shockwave — a crisp plunk ring in the shared heightfield plus
+ * a radial impulse for nearby glyph bodies. Strength 1 is a full page click;
+ * use lower values for programmatic / secondary rings.
+ */
+export function emitLiquidShockwave(
+  clientX: number,
+  clientY: number,
+  options?: { strength?: number; radius?: number; pointerType?: string },
+) {
+  if (prefersReducedMotion()) return;
+  const now = performance.now();
+  lastInputTime = now;
+  const strength = Math.max(0, Math.min(1.5, options?.strength ?? SHOCKWAVE_DEFAULT_STRENGTH));
+  if (strength < 0.02) return;
+  const touchLike = isTouchLikePointer(options?.pointerType ?? "world");
+  const radius = options?.radius
+    ?? (touchLike ? 130 + strength * 48 : 110 + strength * 40);
+  pushInteraction({
+    kind: "shockwave",
+    startX: clientX,
+    startY: clientY,
+    endX: clientX,
+    endY: clientY,
+    vx: 0,
+    vy: 0,
+    strength,
+    radius,
+    time: now / 1000,
+    pointerType: options?.pointerType ?? "world",
+  });
+  pushRipple(clientX, clientY, Math.min(1, 0.55 + strength * 0.4), now);
+  void import("./sound").then(({ playSound }) =>
+    playSound("shockwave", { intensity: Math.min(1, strength) }),
+  ).catch(() => undefined);
+  emitPhysics();
 }
 
 export function emitLiquidScroll(scroll: Partial<LiquidScrollState>) {

@@ -1,0 +1,241 @@
+.root {
+  --diagram-ink: var(--rv-ink, #0b1828);
+  --diagram-muted: var(--rv-muted, #536478);
+  --diagram-line: var(--rv-line, rgba(11, 38, 66, 0.14));
+  --diagram-accent: var(--case-accent, var(--rv-blue, #2367d9));
+  --diagram-fill-a: color-mix(in oklch, var(--rv-pearl, #eaf3f8) 82%, var(--diagram-accent));
+  --diagram-fill-b: color-mix(in oklch, var(--case-band, #e8f1f8) 70%, var(--rv-pearl, #eaf3f8));
+  margin: 0;
+  padding: clamp(2rem, 4vw, 3.2rem);
+  border: 1px solid var(--diagram-line);
+  border-radius: 1.15rem;
+  background:
+    linear-gradient(165deg, color-mix(in oklch, var(--rv-pearl, #eaf3f8) 72%, transparent), transparent 58%),
+    color-mix(in oklch, var(--case-band, #eaf3f9) 55%, var(--rv-pearl, #eaf3f8));
+  box-shadow: inset 0 1px 0 color-mix(in oklch, white 70%, transparent);
+}
+
+.root[data-accent="blue-strong"] {
+  --diagram-accent: oklch(0.5 0.12 232);
+  --diagram-fill-a: oklch(0.94 0.03 230);
+  --diagram-fill-b: oklch(0.88 0.045 225);
+}
+
+.root[data-accent="blue-medium"] {
+  --diagram-accent: oklch(0.54 0.1 245);
+  --diagram-fill-a: oklch(0.95 0.025 245);
+  --diagram-fill-b: oklch(0.9 0.04 240);
+}
+
+.root[data-accent="blue-low"] {
+  --diagram-accent: oklch(0.58 0.08 255);
+  --diagram-fill-a: oklch(0.96 0.02 255);
+  --diagram-fill-b: oklch(0.91 0.035 250);
+}
+
+.root[data-accent="blue-flow"] {
+  --diagram-accent: oklch(0.56 0.1 215);
+  --diagram-fill-a: oklch(0.95 0.03 210);
+  --diagram-fill-b: oklch(0.89 0.045 205);
+}
+
+.header {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: clamp(1.4rem, 3vw, 2.2rem);
+}
+
+.kicker {
+  margin: 0;
+  color: var(--diagram-accent);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 0;
+  color: var(--diagram-ink);
+  font-family: var(--font-general-sans), sans-serif;
+  font-size: clamp(1.35rem, 2.2vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.caption {
+  max-width: 58ch;
+  margin: 0.15rem 0 0;
+  color: var(--diagram-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.edgeTrack {
+  fill: none;
+  stroke: color-mix(in oklch, var(--diagram-accent) 22%, var(--diagram-line));
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.edgeFlow {
+  fill: none;
+  stroke: var(--diagram-accent);
+  stroke-width: 2.1;
+  stroke-linecap: round;
+  stroke-dasharray: 7 11;
+  marker-end: inherit;
+  opacity: 0.92;
+}
+
+.edgeFlow[data-emphasis="true"] {
+  stroke-width: 2.55;
+  stroke-dasharray: 9 10;
+}
+
+.arrow {
+  fill: var(--diagram-accent);
+}
+
+.edgeLabel {
+  fill: var(--diagram-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-anchor: middle;
+}
+
+.nodeShell {
+  fill: url(#placeholder);
+  fill: color-mix(in oklch, var(--rv-pearl, #eaf3f8) 55%, var(--diagram-fill-a));
+  stroke: color-mix(in oklch, var(--diagram-accent) 42%, white);
+  stroke-width: 1.35;
+  filter: drop-shadow(0 10px 18px color-mix(in oklch, var(--diagram-accent) 14%, transparent));
+}
+
+.node[data-kind="gate"] .nodeShell {
+  stroke-width: 1.7;
+  stroke: color-mix(in oklch, var(--diagram-accent) 62%, #0b1828);
+}
+
+.node[data-kind="store"] .nodeShell {
+  fill: color-mix(in oklch, var(--diagram-fill-b) 70%, var(--rv-pearl, #eaf3f8));
+}
+
+.node[data-kind="io"] .nodeShell {
+  stroke-dasharray: 4 3;
+}
+
+.nodeLabel,
+.nodeDetail {
+  fill: var(--diagram-ink);
+  text-anchor: middle;
+  font-family: var(--font-general-sans), sans-serif;
+}
+
+.nodeLabel {
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.nodeDetail {
+  fill: var(--diagram-muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.03em;
+}
+
+/* Scroll draw-in */
+.root[data-drawn="false"] .edgeFlow,
+.root[data-drawn="false"] .edgeTrack {
+  stroke-dasharray: 480;
+  stroke-dashoffset: 480;
+}
+
+.root[data-drawn="true"] .edgeTrack {
+  animation: diagram-draw 920ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--draw-delay, 0ms);
+}
+
+.root[data-drawn="true"] .edgeFlow {
+  animation:
+    diagram-draw 920ms cubic-bezier(0.22, 1, 0.36, 1) forwards,
+    diagram-flow 1.5s linear calc(920ms + var(--draw-delay, 0ms)) infinite;
+}
+
+.root[data-drawn="false"] .node {
+  opacity: 0;
+  transform: translateY(6px) scale(0.985);
+}
+
+.root[data-drawn="true"] .node {
+  animation: diagram-node 640ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation-delay: var(--node-delay, 0ms);
+}
+
+@keyframes diagram-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@keyframes diagram-flow {
+  from {
+    stroke-dasharray: 7 11;
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dasharray: 7 11;
+    stroke-dashoffset: -72;
+  }
+}
+
+@keyframes diagram-node {
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 720px) {
+  .root { padding: 1.25rem; border-radius: 0.9rem; }
+  .caption { font-size: 0.84rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-drawn="true"] .edgeTrack,
+  .root[data-drawn="true"] .edgeFlow,
+  .root[data-drawn="true"] .node {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    stroke-dashoffset: 0;
+  }
+
+  .root[data-motion="reduce"] .edgeFlow {
+    stroke-dasharray: none;
+  }
+}
+
+:root:has(.portfolio-root[data-motion="off"]) .root[data-drawn="true"] .edgeTrack,
+:root:has(.portfolio-root[data-motion="off"]) .root[data-drawn="true"] .edgeFlow,
+:root:has(.portfolio-root[data-motion="off"]) .root[data-drawn="true"] .node,
+.root[data-motion="reduce"][data-drawn="true"] .edgeTrack,
+.root[data-motion="reduce"][data-drawn="true"] .edgeFlow,
+.root[data-motion="reduce"][data-drawn="true"] .node {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  stroke-dashoffset: 0;
+}
+
+:root:has(.portfolio-root[data-motion="off"]) .root[data-motion="reduce"] .edgeFlow,
+.root[data-motion="reduce"] .edgeFlow {
+  stroke-dasharray: none;
+}

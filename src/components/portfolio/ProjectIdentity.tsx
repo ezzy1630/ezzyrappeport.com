@@ -1,15 +1,20 @@
 import type { ProjectMediaAsset, ProjectSlug } from "@/lib/portfolio/content";
 import styles from "./ProjectsSection.module.css";
 
-type IdentitySlug = Exclude<ProjectSlug, "velox">;
-
 type ProjectIdentityProps = {
-  slug: IdentitySlug;
+  slug: ProjectSlug;
   media: ProjectMediaAsset;
   className?: string;
 };
 
 type MarkProps = { className?: string };
+
+/** SVG `<image>` for raster mask/sources. Lazy-mounting is handled by LazyProjectIdentity. */
+function IdentityAssetImage(
+  props: React.SVGProps<SVGImageElement> & { href: string },
+) {
+  return <image {...props} />;
+}
 
 export default function ProjectIdentity({ slug, media, className }: ProjectIdentityProps) {
   switch (slug) {
@@ -19,6 +24,8 @@ export default function ProjectIdentity({ slug, media, className }: ProjectIdent
       return <EtchMark className={className} />;
     case "flowe":
       return <FloweMark media={media} className={className} />;
+    case "velox":
+      return <VeloxMark className={className} />;
     case "argyph":
       return <ArgyphMark media={media} className={className} />;
     case "nexarad":
@@ -33,12 +40,18 @@ function MarkShell({
   label,
   className,
   children,
-}: MarkProps & { slug: IdentitySlug; label: string; children: React.ReactNode }) {
+  viewBox = "0 0 760 320",
+}: MarkProps & {
+  slug: ProjectSlug;
+  label: string;
+  children: React.ReactNode;
+  viewBox?: string;
+}) {
   return (
     <span className={`${styles.identityStage} ${className ?? ""}`} data-project-identity={slug}>
       <svg
         className={styles.identityCanvas}
-        viewBox="0 0 760 320"
+        viewBox={viewBox}
         role="img"
         aria-label={label}
         xmlns="http://www.w3.org/2000/svg"
@@ -49,6 +62,61 @@ function MarkShell({
   );
 }
 
+function VeloxMark({ className }: MarkProps) {
+  return (
+    <MarkShell slug="velox" label="Velox layered signal mark" className={className} viewBox="0 0 760 300">
+      <defs>
+        <linearGradient id="velox-pale" x1="44" y1="48" x2="250" y2="244" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#F4F5FF" />
+          <stop offset="0.42" stopColor="#D9DCFF" />
+          <stop offset="1" stopColor="#A7A9F4" />
+        </linearGradient>
+        <linearGradient id="velox-mid" x1="210" y1="40" x2="438" y2="252" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#D5D6FF" />
+          <stop offset="0.44" stopColor="#9694F7" />
+          <stop offset="1" stopColor="#5650CF" />
+        </linearGradient>
+        <linearGradient id="velox-lead" x1="422" y1="36" x2="698" y2="260" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#777BFF" />
+          <stop offset="0.38" stopColor="#3838F0" />
+          <stop offset="1" stopColor="#2311A8" />
+        </linearGradient>
+        <linearGradient id="velox-edge" x1="0" y1="0" x2="0" y2="1">
+          <stop stopColor="#F0F0FF" stopOpacity="0.88" />
+          <stop offset="1" stopColor="#5147D6" stopOpacity="0.38" />
+        </linearGradient>
+        <filter id="velox-shadow-soft" x="-12%" y="-18%" width="124%" height="140%" colorInterpolationFilters="sRGB">
+          <feDropShadow dx="0" dy="16" stdDeviation="14" floodColor="#4345A8" floodOpacity="0.17" />
+        </filter>
+        <filter id="velox-shadow-mid" x="-12%" y="-18%" width="124%" height="140%" colorInterpolationFilters="sRGB">
+          <feDropShadow dx="0" dy="19" stdDeviation="14" floodColor="#3335A2" floodOpacity="0.23" />
+        </filter>
+        <filter id="velox-shadow-lead" x="-12%" y="-18%" width="124%" height="140%" colorInterpolationFilters="sRGB">
+          <feDropShadow dx="0" dy="22" stdDeviation="15" floodColor="#2625A2" floodOpacity="0.3" />
+        </filter>
+      </defs>
+      <ellipse cx="382" cy="248" rx="286" ry="26" fill="#3334B2" fillOpacity="0.09" />
+      <g className={styles.veloxSignalPale} filter="url(#velox-shadow-soft)">
+        <path d="M58 61L181 150L58 239L98 150L58 61Z" fill="url(#velox-pale)" />
+        <path d="M58 61L181 150L170 159L96 112L58 61Z" fill="#FFFFFF" fillOpacity="0.72" />
+        <path d="M181 150L58 239L98 150L170 141L181 150Z" fill="#7775D8" fillOpacity="0.25" />
+      </g>
+      <g className={styles.veloxSignalMid} filter="url(#velox-shadow-mid)">
+        <path d="M226 50L372 150L226 250L274 150L226 50Z" fill="url(#velox-mid)" />
+        <path d="M226 50L372 150L360 159L273 106L226 50Z" fill="#F0F0FF" fillOpacity="0.68" />
+        <path d="M372 150L226 250L274 150L360 141L372 150Z" fill="#38339B" fillOpacity="0.3" />
+      </g>
+      <g className={styles.veloxSignalLead} filter="url(#velox-shadow-lead)">
+        <path d="M427 38L628 150L427 262L493 150L427 38Z" fill="url(#velox-lead)" />
+        <path d="M427 38L628 150L615 160L492 94L427 38Z" fill="#C9CAFF" fillOpacity="0.62" />
+        <path d="M628 150L427 262L493 150L615 140L628 150Z" fill="#160A76" fillOpacity="0.38" />
+        <path d="M451 66L593 150L503 150L451 66Z" fill="url(#velox-edge)" fillOpacity="0.34" />
+      </g>
+    </MarkShell>
+  );
+}
+
+
 function MonkeyClawMark({ media, className }: MarkProps & { media: ProjectMediaAsset }) {
   return (
     <MarkShell slug="monkeyclaw" label="MonkeyClaw geometric monkey head mark" className={className}>
@@ -57,10 +125,10 @@ function MonkeyClawMark({ media, className }: MarkProps & { media: ProjectMediaA
           <feColorMatrix
             result="monkey-alpha"
             type="matrix"
-            values="0 0 0 0 0.018  0 0 0 0 0.19  0 0 0 0 0.22  -3.6 3 3 0 -0.08"
+            values="0 0 0 0 0.08  0 0 0 0 0.78  0 0 0 0 0.74  -2.2 2.4 2.4 0 0.05"
           />
-          <feMorphology in="monkey-alpha" operator="dilate" radius="1.05" result="monkey-weight" />
-          <feDropShadow dx="0" dy="12" stdDeviation="9" floodColor="#087A80" floodOpacity="0.2" />
+          <feMorphology in="monkey-alpha" operator="dilate" radius="1.55" result="monkey-weight" />
+          <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor="#14C8C0" floodOpacity="0.45" />
         </filter>
         <filter id="monkey-echo" x="-35%" y="-35%" width="170%" height="190%" colorInterpolationFilters="sRGB">
           <feColorMatrix
@@ -78,10 +146,10 @@ function MonkeyClawMark({ media, className }: MarkProps & { media: ProjectMediaA
       </defs>
       <path className={styles.monkeyFloor} d="M170 260C282 244 478 244 590 260C478 276 282 276 170 260Z" fill="url(#monkey-floor)" />
       <g className={styles.monkeyEcho} clipPath="url(#monkey-head-crop)" opacity="0.13" transform="translate(7 4)">
-        <image href={media.src} x="-70" y="-150" width="900" height="900" preserveAspectRatio="xMidYMid meet" filter="url(#monkey-echo)" />
+        <IdentityAssetImage href={media.src} x="-70" y="-150" width="900" height="900" preserveAspectRatio="xMidYMid meet" filter="url(#monkey-echo)" />
       </g>
       <g className={styles.identityMark} clipPath="url(#monkey-head-crop)">
-        <image href={media.src} x="-70" y="-150" width="900" height="900" preserveAspectRatio="xMidYMid meet" filter="url(#monkey-extract)" />
+        <IdentityAssetImage href={media.src} x="-70" y="-150" width="900" height="900" preserveAspectRatio="xMidYMid meet" filter="url(#monkey-extract)" />
       </g>
     </MarkShell>
   );
@@ -139,7 +207,7 @@ function FloweMark({ media, className }: MarkProps & { media: ProjectMediaAsset 
           <feMorphology operator="dilate" radius="0.35" />
         </filter>
         <mask id="flowe-native-mask" maskUnits="userSpaceOnUse" x="172" y="-18" width="416" height="416">
-          <image href={media.src} x="184" y="-12" width="392" height="392" filter="url(#flowe-mask-filter)" />
+          <IdentityAssetImage href={media.src} x="184" y="-12" width="392" height="392" filter="url(#flowe-mask-filter)" />
         </mask>
         <linearGradient id="flowe-pearl" x1="258" y1="41" x2="487" y2="275" gradientUnits="userSpaceOnUse">
           <stop stopColor="#E9F3FC" /><stop offset="0.22" stopColor="#BCD9F0" /><stop offset="0.55" stopColor="#7EA6CF" /><stop offset="0.82" stopColor="#4B73A7" /><stop offset="1" stopColor="#294E7F" />
@@ -169,7 +237,7 @@ function ArgyphMark({ media, className }: MarkProps & { media: ProjectMediaAsset
         </filter>
         <mask id="argyph-native-mask" maskUnits="userSpaceOnUse" x="214" y="16" width="332" height="280">
           <g clipPath="url(#argyph-symbol-crop)">
-            <image href={media.src} x="-519" y="-213" width="1800" height="1800" filter="url(#argyph-mask-filter)" />
+            <IdentityAssetImage href={media.src} x="-519" y="-213" width="1800" height="1800" filter="url(#argyph-mask-filter)" />
           </g>
         </mask>
         <clipPath id="argyph-symbol-crop"><rect x="214" y="16" width="332" height="280" /></clipPath>
@@ -200,7 +268,7 @@ function NexaRadMark({ media, className }: MarkProps & { media: ProjectMediaAsse
           <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.55 0.7 1 0 -0.37" />
         </filter>
         <mask id="nexa-native-mask" maskUnits="userSpaceOnUse" x="154" y="-26" width="452" height="452">
-          <image href={media.src} x="154" y="-26" width="452" height="452" filter="url(#nexa-mask-filter)" />
+          <IdentityAssetImage href={media.src} x="154" y="-26" width="452" height="452" filter="url(#nexa-mask-filter)" />
         </mask>
         <linearGradient id="nexa-bone" x1="227" y1="28" x2="529" y2="298" gradientUnits="userSpaceOnUse">
           <stop stopColor="#CFE1F6" /><stop offset="0.25" stopColor="#9CBDE9" /><stop offset="0.58" stopColor="#5D89CB" /><stop offset="1" stopColor="#294F91" />

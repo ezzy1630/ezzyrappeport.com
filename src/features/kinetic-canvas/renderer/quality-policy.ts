@@ -3,22 +3,31 @@ export type KineticQualityTier = "high" | "balanced" | "low" | "static";
 export const TARGET_FPS = 60;
 export const TARGET_FPS_BY_TIER: Record<KineticQualityTier, number> = {
   high: TARGET_FPS,
-  balanced: 30,
-  low: 30,
+  balanced: TARGET_FPS,
+  low: 45,
   static: 0,
 };
 
 export const QUALITY_PIXEL_BUDGETS: Record<Exclude<KineticQualityTier, "static">, number> = {
-  high: 4_500_000,
-  balanced: 2_750_000,
-  low: 1_500_000,
+  // Crisp Retina glyphs without blowing the frame budget on large desktops.
+  high: 6_200_000,
+  balanced: 3_200_000,
+  // Native-DPR phones need headroom; shading stays cheap on the low tier.
+  low: 2_100_000,
 };
 
 /** A bounded safety floor for very large CSS viewports; normal viewports stay at DPR 1+. */
 export const MIN_PIXEL_BUDGET_DPR = 0.7;
 
 export type QualitySignals = {
+  /** Primary pointing device is coarse (typical phones). */
   coarsePointer: boolean;
+  /**
+   * Any attached pointing device is fine (mouse / trackpad).
+   * Hybrid touch laptops report this even when a finger is also available —
+   * used so we do not force the phone ladder on capable desktops.
+   */
+  anyFinePointer?: boolean;
   saveData: boolean;
   deviceMemory: number;
   hardwareConcurrency: number;
@@ -27,8 +36,16 @@ export type QualitySignals = {
   staticMode?: boolean;
 };
 
+/**
+ * Resolve the kinetic quality tier from explicit capability signals.
+ *
+ * Static is reserved for Save-Data / explicit static mode only.
+ * Coarse phone-class devices get a *live* low tier (readable heightfield @ 45fps).
+ * Reduced motion keeps the GLB path on low (frozen frame), never CSS fallback.
+ */
 export function resolveQualityTier({
   coarsePointer,
+  anyFinePointer = false,
   saveData,
   deviceMemory,
   hardwareConcurrency,
@@ -40,7 +57,13 @@ export function resolveQualityTier({
   // Reduced motion freezes the optical renderer at one complete frame. It must
   // not downgrade the rounded GLB title to the CSS emergency fallback.
   if (reducedMotion) return "low";
-  if (coarsePointer || deviceMemory <= 2) return "low";
+
+  // Phone-class coarse: live low. Never static from coarse / low-memory alone.
+  // Hybrid desktops (coarse primary + any fine pointer) keep the desktop ladder
+  // only when the viewport is clearly not phone-sized.
+  const phoneClassCoarse = coarsePointer && !anyFinePointer;
+  if (phoneClassCoarse || deviceMemory <= 2) return "low";
+  if (coarsePointer && viewportWidth < 700) return "low";
 
   const hasDesktopHeadroom = deviceMemory >= 8 || hardwareConcurrency >= 8;
   if (!coarsePointer && viewportWidth >= 1024 && hasDesktopHeadroom) return "high";

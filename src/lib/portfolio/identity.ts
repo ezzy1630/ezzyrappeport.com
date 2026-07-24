@@ -3,6 +3,8 @@ export const portfolioIdentity = {
   displayName: "EZZY RAPPEPORT",
   titleLines: ["EZZY", "RAPPEPORT"] as const,
   domain: "https://www.ezzyrappeport.com",
-  email: "ezzyrappeport@gmaill.com",
+  email: "ezzyrappeport@gmail.com",
+  /** Friendly CTA label; mailto still uses `email`. */
+  emailLabel: "Email Ezzy",
   role: "Software Engineer",
 } as const;
