@@ -1,20 +1,24 @@
 import Image from "next/image";
-import { bio, type Project, projects } from "@/lib/portfolio/content";
+import type { CSSProperties } from "react";
+import {
+  bio,
+  caseMooringDepth,
+  projectDepthBand,
+  type Project,
+  projects,
+} from "@/lib/portfolio/content";
 import PortfolioShell from "@/components/portfolio/PortfolioShell";
 import CaseArrivalWater from "@/components/portfolio/CaseArrivalWater";
+import CaseEvidenceRail from "@/components/portfolio/CaseEvidenceRail";
+import CaseDescentNav from "@/components/portfolio/CaseDescentNav";
 import ProjectTransitionLink from "@/components/portfolio/ProjectTransitionLink";
+import ProjectIdentity from "@/components/portfolio/ProjectIdentity";
+import SystemDiagram from "@/components/portfolio/diagrams/SystemDiagram";
 import styles from "./ProjectDetail.module.css";
 
 type Props = {
   project: Project;
 };
-
-const railStates = [
-  { key: "problem", label: "Problem" },
-  { key: "system", label: "System" },
-  { key: "evidence", label: "Evidence" },
-  { key: "outcome", label: "Outcome" },
-] as const;
 
 const linkKindLabels = {
   source: "Source",
@@ -22,27 +26,44 @@ const linkKindLabels = {
   releases: "Releases",
 } as const;
 
+function isArchitectureAsset(src: string) {
+  return /architecture\.svg$/i.test(src);
+}
+
 export default function ProjectDetail({ project }: Props) {
   const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
   const previous = projects[(projectIndex - 1 + projects.length) % projects.length];
   const next = projects[(projectIndex + 1) % projects.length];
-  const gallery = project.media.gallery ?? [];
-  const heroAsset = gallery[0] ?? project.media.cover;
+  const gallery = (project.media.gallery ?? []).filter((asset) => !isArchitectureAsset(asset.src));
   const proofItems = project.proof
     .split("·")
     .map((item) => item.trim())
     .filter(Boolean);
+  const depth = caseMooringDepth(project.slug);
 
   return (
     <PortfolioShell heroName={false} routeMode="case">
       <div className="content-layer">
-        <article
+        <main
           id="main-content"
           className={styles.page}
           data-project={project.slug}
+          data-accent={project.accent}
+          data-depth={depth}
+          data-band={projectDepthBand(project.slug)}
           data-water-section="case"
+          style={
+            {
+              "--case-depth": String(depth),
+              "--project-scale": project.mediaPresentation.scale,
+              "--project-offset-y": project.mediaPresentation.offsetY,
+              viewTransitionName: `project-${project.slug}`,
+            } as CSSProperties
+          }
         >
-          <CaseArrivalWater />
+          <article>
+          <CaseArrivalWater accent={project.accent} depth={depth} />
+
           <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
             <span aria-hidden="true">←</span>
             Back to selected work
@@ -61,22 +82,19 @@ export default function ProjectDetail({ project }: Props) {
               <div><dt>Status</dt><dd>{project.status}</dd></div>
             </dl>
 
-            <figure className={styles.heroMedia} data-liquid-hover>
-              <Image
-                src={heroAsset.src}
-                alt={heroAsset.alt}
-                width={heroAsset.width}
-                height={heroAsset.height}
-                sizes="(max-width: 900px) 100vw, 90vw"
-                className={styles.heroImage}
-                priority
-                unoptimized={heroAsset.src.endsWith(".svg")}
+            <figure className={styles.heroMark} data-liquid-hover aria-label={`${project.title} identity`}>
+              <ProjectIdentity
+                slug={project.slug}
+                media={project.media.cover}
+                className={styles.heroIdentity}
               />
             </figure>
           </header>
 
           <section className={styles.proofBand} aria-label="Verified project evidence">
-            {proofItems.map((item) => <p key={item}>{item}</p>)}
+            {proofItems.map((item) => (
+              <p key={item}>{item}</p>
+            ))}
           </section>
 
           {project.slug === "nexarad" || project.cautionLabel ? (
@@ -87,22 +105,15 @@ export default function ProjectDetail({ project }: Props) {
             </p>
           ) : null}
 
-          <section className={styles.evidenceRail} aria-label="Case narrative rail">
-            <div className={styles.railSticky}>
-              {railStates.map((state) => (
-                <a key={state.key} href={`#case-${state.key}`} className={styles.railLink}>
-                  {state.label}
-                </a>
-              ))}
-            </div>
-            <div className={styles.railPanels}>
-              {railStates.map((state) => (
-                <section key={state.key} id={`case-${state.key}`} className={styles.railPanel}>
-                  <h2>{state.label}</h2>
-                  <p>{project[state.key]}</p>
-                </section>
-              ))}
-            </div>
+          <CaseEvidenceRail
+            problem={project.problem}
+            system={project.system}
+            evidence={project.evidence}
+            outcome={project.outcome}
+          />
+
+          <section className={styles.diagramSection} aria-label="System diagram">
+            <SystemDiagram diagram={project.diagram} accent={project.accent} />
           </section>
 
           <section className={styles.caseBody} aria-labelledby="case-story-title">
@@ -113,7 +124,9 @@ export default function ProjectDetail({ project }: Props) {
               {project.cautionLabel ? <p className={styles.caution}>{project.cautionLabel}</p> : null}
 
               <ul className={styles.stack} aria-label="Technology stack">
-                {project.stack.map((technology) => <li key={technology}>{technology}</li>)}
+                {project.stack.map((technology) => (
+                  <li key={technology}>{technology}</li>
+                ))}
               </ul>
 
               {project.verifiedLinks.length > 0 ? (
@@ -124,7 +137,6 @@ export default function ProjectDetail({ project }: Props) {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      aria-label={`${link.label} for ${project.title} (opens in a new tab)`}
                     >
                       <span>{linkKindLabels[link.kind]}</span>
                       <span>{link.label}</span>
@@ -155,7 +167,11 @@ export default function ProjectDetail({ project }: Props) {
               </header>
               <div className={styles.galleryGrid}>
                 {gallery.map((asset, index) => (
-                  <figure key={asset.src} className={styles.galleryItem} data-wide={index === 0 ? "true" : "false"}>
+                  <figure
+                    key={asset.src}
+                    className={styles.galleryItem}
+                    data-wide={index === 0 && gallery.length > 1 ? "true" : "false"}
+                  >
                     <div className={styles.galleryMedia}>
                       <Image
                         src={asset.src}
@@ -164,6 +180,7 @@ export default function ProjectDetail({ project }: Props) {
                         height={asset.height}
                         sizes={index === 0 ? "100vw" : "(max-width: 760px) 100vw, 50vw"}
                         className={styles.galleryImage}
+                        priority={index === 0}
                         unoptimized={asset.src.endsWith(".svg")}
                       />
                     </div>
@@ -174,32 +191,19 @@ export default function ProjectDetail({ project }: Props) {
             </section>
           ) : null}
 
-          <nav className={styles.nextBleed} aria-label="Next project">
-            <ProjectTransitionLink
-              href={`/project/${next.slug}`}
-              className={styles.nextBleedLink}
-              transitionName={`project-${next.slug}`}
-            >
-              <small>Next project</small>
-              <strong>{next.title}</strong>
-              <span>{next.tagline}</span>
-            </ProjectTransitionLink>
-          </nav>
-
-          <nav className={styles.pagination} aria-label="Project navigation">
-            <ProjectTransitionLink href={`/project/${previous.slug}`} transitionDirection="back">
-              <small>Previous project</small><strong>{previous.title}</strong>
-            </ProjectTransitionLink>
-            <ProjectTransitionLink href={`/project/${next.slug}`}>
-              <small>Next project</small><strong>{next.title}</strong>
-            </ProjectTransitionLink>
-          </nav>
+          <CaseDescentNav
+            previous={{ slug: previous.slug, title: previous.title, tagline: previous.tagline }}
+            next={{ slug: next.slug, title: next.title, tagline: next.tagline }}
+          />
 
           <footer className={styles.footer}>
             <p>© {new Date().getFullYear()} {bio.name}</p>
-            <a href={`mailto:${bio.email}`} aria-label={`Email ${bio.name} at ${bio.email}`}>{bio.emailLabel}</a>
+            <a href={`mailto:${bio.email}`} aria-label={`Email ${bio.name} at ${bio.email}`}>
+              {bio.emailLabel}
+            </a>
           </footer>
-        </article>
+          </article>
+        </main>
       </div>
     </PortfolioShell>
   );

@@ -12,19 +12,55 @@ export default function OpengraphImage() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          background: "linear-gradient(160deg, #f7f9fc 0%, #e8f1ff 55%, #c3dbff 100%)",
-          padding: 96,
+          justifyContent: "flex-end",
+          background: "linear-gradient(180deg, #dceef4 0%, #9ec8e0 42%, #1a4a78 78%, #021428 100%)",
+          padding: "72px 88px",
+          position: "relative",
         }}
       >
-        <div style={{ display: "flex", fontSize: 26, color: "#0066ff", letterSpacing: 6, marginBottom: 28 }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse at 30% 18%, rgba(255,255,255,0.55) 0%, transparent 42%), radial-gradient(ellipse at 70% 60%, rgba(0,140,255,0.28) 0%, transparent 50%)",
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            fontSize: 22,
+            color: "#e8f4ff",
+            letterSpacing: 5,
+            marginBottom: 22,
+            opacity: 0.9,
+          }}
+        >
           SOFTWARE ENGINEER · AI SYSTEMS · FOUNDER
         </div>
-        <div style={{ display: "flex", fontSize: 116, fontWeight: 800, color: "#0a0f1a", lineHeight: 1.02, letterSpacing: -3 }}>
-          EZZY
+        <div
+          style={{
+            display: "flex",
+            fontSize: 96,
+            fontWeight: 700,
+            color: "#f7fbff",
+            lineHeight: 0.95,
+            letterSpacing: -2.5,
+          }}
+        >
+          EZZY RAPPEPORT
         </div>
-        <div style={{ display: "flex", fontSize: 116, fontWeight: 800, color: "#0a0f1a", lineHeight: 1.02, letterSpacing: -3 }}>
-          RAPPEPORT
+        <div
+          style={{
+            display: "flex",
+            marginTop: 28,
+            fontSize: 28,
+            color: "#9fd0ff",
+            letterSpacing: -0.4,
+            maxWidth: 760,
+          }}
+        >
+          Descend into the work.
         </div>
       </div>
     ),

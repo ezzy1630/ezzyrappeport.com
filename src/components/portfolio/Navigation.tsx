@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, Waves, X } from "lucide-react";
+import { Menu, Volume2, VolumeX, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
+import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/frame-clock";
+import {
+  initSoundFromStorage,
+  isSoundEnabled,
+  setSoundEnabled,
+} from "@/lib/portfolio/sound";
 import styles from "./Navigation.module.css";
 
 type Props = {
@@ -12,21 +18,47 @@ type Props = {
   onToggleMotion: () => void;
 };
 
-type RippleMetrics = {
-  left: number;
-  width: number;
-  visible: boolean;
-};
+type NavTheme = "ink-on-light" | "white-on-deep";
 
+const RIPPLE_CLOCK_ID = "portfolio.nav-ripple";
+const RIPPLE_STIFFNESS = 280;
+const RIPPLE_DAMPING = 22;
+
+function themeFromDepth(depth: number): NavTheme {
+  return depth >= 0.62 ? "white-on-deep" : "ink-on-light";
+}
+
+/**
+ * Continuous depth/ripple metrics write directly to the DOM.
+ * React state updates only for discrete chrome changes (menu, sound, active link, theme band).
+ */
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState("hero");
-  const [depthMark, setDepthMark] = useState(0);
-  const [ripple, setRipple] = useState<RippleMetrics>({ left: 0, width: 0, visible: false });
+  const [navTheme, setNavTheme] = useState<NavTheme>("ink-on-light");
+  const [isCaseRoute, setIsCaseRoute] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [rippleVisible, setRippleVisible] = useState(false);
+  const [soundOn, setSoundOn] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const linksRef = useRef<HTMLElement>(null);
+  const rippleRef = useRef<HTMLSpanElement>(null);
+  const depthMarkRef = useRef<HTMLSpanElement>(null);
+  const activeSectionRef = useRef("hero");
+  const navThemeRef = useRef<NavTheme>("ink-on-light");
+  const scrolledRef = useRef(false);
+  const isCaseRef = useRef(false);
+  const rippleVisibleRef = useRef(false);
+  const rippleSpringRef = useRef({
+    left: 0,
+    width: 0,
+    targetLeft: 0,
+    targetWidth: 0,
+    vLeft: 0,
+    vWidth: 0,
+  });
 
   const closeMenu = useCallback(() => {
     setMenuOpen(false);
@@ -35,48 +67,134 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
 
   const syncRipple = useCallback((section: string) => {
     const navEl = linksRef.current;
-    if (!navEl) return;
+    const rippleEl = rippleRef.current;
+    if (!navEl || !rippleEl) return;
     const active = navEl.querySelector<HTMLAnchorElement>(`a[data-section="${section}"]`);
     if (!active) {
-      setRipple((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+      if (rippleVisibleRef.current) {
+        rippleVisibleRef.current = false;
+        setRippleVisible(false);
+      }
       return;
     }
-    const navBox = navEl.getBoundingClientRect();
-    const linkBox = active.getBoundingClientRect();
-    setRipple({
-      left: linkBox.left - navBox.left,
-      width: linkBox.width,
-      visible: true,
-    });
+    const left = active.offsetLeft;
+    const width = active.offsetWidth;
+    rippleSpringRef.current.targetLeft = left;
+    rippleSpringRef.current.targetWidth = width;
+    if (!rippleVisibleRef.current) {
+      rippleVisibleRef.current = true;
+      setRippleVisible(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!motionEnabled) return;
+    const spring = rippleSpringRef.current;
+
+    const tick = (_timeMs: number, deltaMs: number) => {
+      const el = rippleRef.current;
+      if (!el) return;
+      const dt = Math.min(32, Math.max(8, deltaMs)) / 1000;
+      const ax = (spring.targetLeft - spring.left) * RIPPLE_STIFFNESS - spring.vLeft * RIPPLE_DAMPING;
+      const aw = (spring.targetWidth - spring.width) * RIPPLE_STIFFNESS - spring.vWidth * RIPPLE_DAMPING;
+      spring.vLeft += ax * dt;
+      spring.vWidth += aw * dt;
+      spring.left += spring.vLeft * dt;
+      spring.width += spring.vWidth * dt;
+      el.style.willChange = "transform, width";
+      el.style.transform = `translateX(${spring.left.toFixed(2)}px)`;
+      el.style.width = `${Math.max(0, spring.width).toFixed(2)}px`;
+    };
+
+    const rippleEl = rippleRef.current;
+    subscribeFrameClock(RIPPLE_CLOCK_ID, tick);
+    return () => {
+      unsubscribeFrameClock(RIPPLE_CLOCK_ID);
+      if (rippleEl) rippleEl.style.willChange = "";
+    };
+  }, [motionEnabled]);
+
+  const onNavLinkMove = useCallback((event: React.PointerEvent<HTMLAnchorElement>) => {
+    if (!motionEnabled) return;
+    const link = event.currentTarget;
+    const rect = link.getBoundingClientRect();
+    const originPct = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 100;
+    link.style.setProperty("--nav-ripple-x", `${originPct.toFixed(2)}%`);
+    rippleRef.current?.style.setProperty("--nav-ripple-x", `${originPct.toFixed(2)}%`);
+  }, [motionEnabled]);
+
+  useEffect(() => {
+    initSoundFromStorage();
+    setSoundOn(isSoundEnabled());
   }, []);
 
   useEffect(() => {
     let frame = 0;
     const update = () => {
       frame = 0;
-      setScrolled(window.scrollY > Math.min(72, window.innerHeight * 0.08));
-      const section = document.documentElement.dataset.waterSection ?? "hero";
-      setActiveSection(section);
-      const depth = Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--world-depth") || "0",
-      );
-      setDepthMark(Number.isFinite(depth) ? Math.max(0, Math.min(1, depth)) : 0);
+      const nextScrolled = window.scrollY > Math.min(72, window.innerHeight * 0.08);
+      if (nextScrolled !== scrolledRef.current) {
+        scrolledRef.current = nextScrolled;
+        setScrolled(nextScrolled);
+      }
+
+      const html = document.documentElement;
+      const section = html.dataset.waterSection ?? "hero";
+      if (section !== activeSectionRef.current) {
+        activeSectionRef.current = section;
+        setActiveSection(section);
+      }
+
+      // Liquid publishes --world-depth as an inline style on :root — no layout read.
+      const portfolioRoot = document.querySelector<HTMLElement>(".portfolio-root");
+      const depthRaw = html.style.getPropertyValue("--world-depth").trim()
+        || portfolioRoot?.style.getPropertyValue("--world-depth").trim()
+        || "";
+      let nextDepth = Number.parseFloat(depthRaw);
+      if (!Number.isFinite(nextDepth)) nextDepth = 0;
+      nextDepth = Math.max(0, Math.min(1, nextDepth));
+
+      if (depthMarkRef.current) {
+        depthMarkRef.current.style.setProperty("--nav-depth", nextDepth.toFixed(3));
+        depthMarkRef.current.title = `Depth ${Math.round(nextDepth * 100)}%`;
+      }
+
+      const publishedTheme = html.dataset.navTheme as NavTheme | undefined;
+      const nextTheme = publishedTheme === "white-on-deep" || publishedTheme === "ink-on-light"
+        ? publishedTheme
+        : themeFromDepth(nextDepth);
+      if (nextTheme !== navThemeRef.current) {
+        navThemeRef.current = nextTheme;
+        setNavTheme(nextTheme);
+      }
+
+      const nextCase = section === "case"
+        || portfolioRoot?.getAttribute("data-route") === "case";
+      if (nextCase !== isCaseRef.current) {
+        isCaseRef.current = nextCase;
+        setIsCaseRoute(nextCase);
+      }
+
       syncRipple(section);
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
     };
     update();
+    subscribeFrameClock("portfolio.nav-section", () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    }, { cadenceMs: 80 });
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", onScroll, { passive: true });
     return () => {
+      unsubscribeFrameClock("portfolio.nav-section");
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
       window.cancelAnimationFrame(frame);
     };
   }, [syncRipple]);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     syncRipple(activeSection);
   }, [activeSection, syncRipple]);
 
@@ -120,18 +238,22 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   }, [closeMenu, menuOpen]);
 
   const hrefFor = (href: string) => `/${href}`;
+  const showScrim = scrolled || isCaseRoute;
 
   return (
     <header
+      ref={headerRef}
       className="site-nav"
       data-menu-open={menuOpen ? "true" : "false"}
-      data-scrolled={scrolled ? "true" : "false"}
+      data-scrolled={showScrim ? "true" : "false"}
+      data-nav-theme={navTheme}
+      data-case={isCaseRoute ? "true" : "false"}
     >
       <Link
         href="/#top"
         className="site-nav-brand"
         data-liquid-hover
-        aria-label={`${nav.fullName} — home`}
+        aria-label={`${nav.fullName} home`}
       >
         <span className="site-nav-monogram">
           <Image
@@ -156,29 +278,34 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
               key={link.href}
               href={hrefFor(link.href)}
               data-liquid-hover
+              data-magnetic="nav"
               data-section={section}
               data-active={activeSection === section ? "true" : "false"}
               aria-current={activeSection === section ? "true" : undefined}
+              onPointerMove={onNavLinkMove}
             >
               {link.label}
             </Link>
           );
         })}
         <span
+          ref={rippleRef}
           className="site-nav-ripple"
           aria-hidden="true"
-          data-visible={ripple.visible ? "true" : "false"}
-          style={{
-            transform: `translateX(${ripple.left}px)`,
-            width: `${ripple.width}px`,
-          }}
+          data-visible={rippleVisible ? "true" : "false"}
         />
         <span
+          ref={depthMarkRef}
           className="site-nav-depth"
           aria-hidden="true"
-          style={{ ["--nav-depth" as string]: depthMark.toFixed(3) }}
-          title={`Depth ${Math.round(depthMark * 100)}%`}
-        />
+          title="Depth 0%"
+        >
+          <i data-band="surface" />
+          <i data-band="shallow" />
+          <i data-band="mid" />
+          <i data-band="deep" />
+          <b />
+        </span>
       </nav>
 
       <div className="site-nav-actions">
@@ -186,6 +313,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
           type="button"
           className={`site-nav-motion ${styles.navigationControl}`}
           data-liquid-hover
+          data-magnetic="button"
           aria-pressed={motionEnabled}
           aria-label={motionEnabled ? "Turn motion off" : "Turn motion on"}
           title={motionEnabled ? "Turn motion off" : "Turn motion on"}
@@ -193,8 +321,23 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         >
           <Waves aria-hidden="true" />
         </button>
-        <Link href={`/${nav.cta.href}`} className="site-nav-cta" data-liquid-hover>
-          <span>{nav.cta.label}</span>
+        <button
+          type="button"
+          className={`site-nav-motion ${styles.navigationControl}`}
+          data-liquid-hover
+          data-magnetic="button"
+          aria-pressed={soundOn}
+          aria-label={soundOn ? "Turn sound off" : "Turn sound on"}
+          title={soundOn ? "Turn sound off" : "Turn sound on"}
+          onClick={() => {
+            const next = setSoundEnabled(!soundOn);
+            setSoundOn(next);
+          }}
+        >
+          {soundOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+        </button>
+        <Link href={`/${nav.cta.href}`} className="site-nav-cta rv-pill-fill" data-liquid-hover data-magnetic="button" data-sound-hover>
+          <span data-magnetic-label>{nav.cta.label}</span>
         </Link>
         <button
           type="button"
@@ -221,9 +364,9 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         inert={!menuOpen}
       >
         <nav aria-label="Mobile navigation">
-          {nav.links.map((link, index) => (
+          {nav.links.map((link) => (
             <Link key={link.href} href={hrefFor(link.href)} onClick={closeMenu}>
-              <span>0{index + 1}</span>{link.label}
+              {link.label}
             </Link>
           ))}
         </nav>
@@ -247,6 +390,20 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
           >
             Motion: {motionEnabled ? "On" : "Off"}
           </button>
+          <button
+            type="button"
+            className={styles.mobileNavigationTouchTarget}
+            aria-pressed={soundOn}
+            onClick={() => {
+              const next = setSoundEnabled(!soundOn);
+              setSoundOn(next);
+            }}
+          >
+            Sound: {soundOn ? "On" : "Off"}
+          </button>
+          <Link className={styles.mobileNavigationTouchTarget} href="/resume" onClick={closeMenu}>
+            Resume
+          </Link>
         </div>
         <Link className="mobile-navigation__contact" href="/#contact" onClick={closeMenu}>
           Get in touch <span aria-hidden="true">↘</span>

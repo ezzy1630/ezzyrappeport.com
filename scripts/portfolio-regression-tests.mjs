@@ -1,4 +1,3 @@
-/* eslint-disable no-console -- this script is a CLI regression reporter */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { BufferGeometry, Mesh, MeshBasicMaterial } from "three";
@@ -550,7 +549,13 @@ const tests = [
       "utf8",
     );
     assert.match(underwaterConfigSource, /absorptionDistance: 0\.82/);
-    assert.match(underwaterConfigSource, /surfaceDistortion: 0\.095/);
+    {
+      const distortionMatch = underwaterConfigSource.match(/surfaceDistortion:\s*([0-9.]+)/);
+      assert.ok(distortionMatch, "surfaceDistortion must be declared");
+      const distortion = Number.parseFloat(distortionMatch[1]);
+      assert.ok(Number.isFinite(distortion) && distortion > 0.04 && distortion < 0.2,
+        `surfaceDistortion ${distortion} out of expected optical range`);
+    }
     assert.match(assetUrlsSource, /MAX_DESKTOP_RENDER_DPR = 2/);
     assert.match(assetUrlsSource, /export function exposureForDepth/);
     assert.match(underwaterConfigSource, /exposureForDepth/);
@@ -726,6 +731,8 @@ const tests = [
     assert.match(revampCssSource, /\[data-depth-band="deep"\]/);
     assert.match(revampCssSource, /--rv-ease|cubic-bezier\(0\.16, 1, 0\.3, 1\)/);
     assert.doesNotMatch(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8"), /Inter_Tight/);
+    assert.doesNotMatch(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8"), /next\/font\/google|Geist_Mono/);
+    assert.match(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8"), /fonts\/geist-mono/);
     assert.match(readFileSync(new URL("../src/lib/portfolio/sound.ts", import.meta.url), "utf8"), /setSoundEnabled/);
     assert.equal(existsSync(new URL("../src/app/resume/page.tsx", import.meta.url)), true);
     assert.equal(existsSync(new URL("../src/app/sitemap.ts", import.meta.url)), true);
@@ -794,16 +801,26 @@ const tests = [
       readFileSync(new URL("../src/lib/portfolio/sound.ts", import.meta.url), "utf8"),
       /export function setAmbientDepth/,
     );
-    // Below-fold identity SVG <image> assets stay lazy (LCP was blaming nexarad).
+    // Raster-backed identities lazy-mount via LazyProjectIdentity (SVG loading=lazy is ineffective).
     const projectIdentitySource = readFileSync(
       new URL("../src/components/portfolio/ProjectIdentity.tsx", import.meta.url),
       "utf8",
     );
+    const lazyIdentitySource = readFileSync(
+      new URL("../src/components/portfolio/LazyProjectIdentity.tsx", import.meta.url),
+      "utf8",
+    );
     assert.match(projectIdentitySource, /function IdentityAssetImage/);
-    assert.match(projectIdentitySource, /loading:\s*"lazy"/);
+    assert.doesNotMatch(projectIdentitySource, /loading:\s*"lazy"/);
     assert.equal(
       [...projectIdentitySource.matchAll(/<IdentityAssetImage\b/g)].length,
       5,
+    );
+    assert.match(lazyIdentitySource, /IntersectionObserver/);
+    assert.match(lazyIdentitySource, /RASTER_SLUGS/);
+    assert.match(
+      readFileSync(new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url), "utf8"),
+      /LazyProjectIdentity/,
     );
     // WebGL boot still yields to idle before the heavy chunk (TBT hygiene).
     assert.match(kineticCanvasSource, /requestIdleCallback/);
@@ -817,6 +834,106 @@ const tests = [
     assert.match(contentSource, /satisfies Record<ProjectSlug, ProjectMediaPresentation>/);
     assert.equal(new Set(orderedSlugs).size, orderedSlugs.length);
     assert.deepEqual([...presentationSlugs].sort(), [...orderedSlugs].sort());
+  }],
+  ["Application audit: landmarks, modal, motion policy, timers, metadata, dead assets", async () => {
+    const { createMotionPolicy } = await import("../src/lib/portfolio/motion-policy.ts");
+    const off = createMotionPolicy({ osReducedMotion: true, siteMotionEnabled: true });
+    assert.equal(off.effectsAllowed, false);
+    assert.equal(off.liquidAllowed, false);
+    assert.equal(off.soundAllowed, false);
+    assert.equal(off.choreographyAllowed, false);
+    const siteOff = createMotionPolicy({ osReducedMotion: false, siteMotionEnabled: false });
+    assert.equal(siteOff.effectsAllowed, false);
+    const on = createMotionPolicy({ osReducedMotion: false, siteMotionEnabled: true });
+    assert.equal(on.effectsAllowed, true);
+
+    const abyssSource = readFileSync(new URL("../src/components/portfolio/AbyssEasterEgg.tsx", import.meta.url), "utf8");
+    assert.match(abyssSource, /aria-modal/);
+    assert.match(abyssSource, /restoreFocusRef|restore\?\.focus/);
+    assert.match(abyssSource, /HOLD_MS|1400/);
+    assert.match(abyssSource, /onKeyUp/);
+    assert.match(abyssSource, /Escape/);
+
+    assert.match(projectDetailSource, /<main[\s\S]*id="main-content"/);
+    assert.match(projectDetailSource, /<article>/);
+
+    const heroIntroSource = readFileSync(new URL("../src/components/portfolio/HeroIntro.tsx", import.meta.url), "utf8");
+    assert.match(heroIntroSource, /tabIndex=\{revealed \? undefined : -1\}|tabIndex=\{revealStep >= 3/);
+    assert.match(heroIntroSource, /setAttribute\("inert"/);
+
+    const aboutDepthSource = readFileSync(new URL("../src/components/portfolio/AboutDepthPlanes.tsx", import.meta.url), "utf8");
+    assert.match(aboutDepthSource, /createGeometryCache/);
+    assert.doesNotMatch(aboutDepthSource, /getBoundingClientRect\(\)/);
+    const contactSlabSource = readFileSync(new URL("../src/components/portfolio/ContactEmailSlab.tsx", import.meta.url), "utf8");
+    assert.match(contactSlabSource, /createGeometryCache/);
+    assert.match(contactSlabSource, /copiedTimerRef|clearTimeout/);
+
+    assert.match(transitionLinkSource, /activeWipeTimer|clearTimeout/);
+    const caseArrivalSource = readFileSync(new URL("../src/components/portfolio/CaseArrivalWater.tsx", import.meta.url), "utf8");
+    assert.match(caseArrivalSource, /snapshot/);
+    assert.match(caseArrivalSource, /removeProperty\("--world-depth"\)|setProperty\("--world-depth"/);
+
+    const navSource = readFileSync(new URL("../src/components/portfolio/Navigation.tsx", import.meta.url), "utf8");
+    assert.match(navSource, /depthMarkRef/);
+    assert.match(navSource, /style\.getPropertyValue\("--world-depth"\)/);
+    assert.doesNotMatch(navSource, /getComputedStyle/);
+
+    const projectsInteractionSource = readFileSync(
+      new URL("../src/components/portfolio/ProjectsInteraction.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(projectsInteractionSource, /stopFloatClockIfIdle|unregisterFloat/);
+    assert.match(projectsInteractionSource, /readMotionPolicy/);
+
+    const projectsCss = readFileSync(new URL("../src/components/portfolio/ProjectsSection.module.css", import.meta.url), "utf8");
+    assert.match(projectsCss, /content-visibility:\s*auto/);
+    assert.match(projectsCss, /contain-intrinsic-size/);
+
+    const layoutSource = readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
+    assert.match(layoutSource, /email:\s*portfolioIdentity\.email/);
+    assert.doesNotMatch(layoutSource, /mailto:\$\{portfolioIdentity\.email\}|email:\s*`mailto:/);
+    assert.match(layoutSource, /creator:\s*"@ezzy1630"/);
+
+    const projectPageSource = readFileSync(new URL("../src/app/project/[slug]/page.tsx", import.meta.url), "utf8");
+    assert.match(projectPageSource, /twitter:\s*\{/);
+    assert.match(projectPageSource, /offers:/);
+
+    const sitemapSource = readFileSync(new URL("../src/app/sitemap.ts", import.meta.url), "utf8");
+    assert.match(sitemapSource, /SITE_LAST_MODIFIED/);
+    assert.doesNotMatch(sitemapSource, /new Date\(\)/);
+
+    const resumeSource = readFileSync(new URL("../src/app/resume/page.tsx", import.meta.url), "utf8");
+    assert.doesNotMatch(resumeSource, /\.replace\("https:\/\/", "https:\/\/"\)/);
+
+    const nextConfigSource = readFileSync(new URL("../next.config.ts", import.meta.url), "utf8");
+    assert.match(nextConfigSource, /Content-Security-Policy/);
+    assert.match(nextConfigSource, /X-Frame-Options/);
+
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
+    assert.match(String(pkg.packageManager ?? ""), /^npm@/);
+    assert.equal(existsSync(new URL("../bun.lock", import.meta.url)), false);
+    assert.equal(existsSync(new URL("../package-lock.json", import.meta.url)), true);
+
+    assert.equal(existsSync(new URL("../public/projects/velox/velox-icon.png", import.meta.url)), false);
+    assert.equal(existsSync(new URL("../public/projects/mathpilot/mathpilot-icon-512.png", import.meta.url)), false);
+    assert.doesNotMatch(contentSource, /mathpilot-icon-512\.png/);
+    assert.doesNotMatch(revampCssSource, /\.liquid-glass-card|\.location-capsule|\.project-buttons-row|\.hero-section-anchors|\.work-item\b/);
+
+    const smoothScrollSource = readFileSync(
+      new URL("../src/components/portfolio/SmoothScrollProvider.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(smoothScrollSource, /bindNativeScrollFallback|smooth scroll init failed/);
+
+    const errorBoundarySource = readFileSync(
+      new URL("../src/components/portfolio/ErrorBoundary.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.doesNotMatch(errorBoundarySource, /LiquidGlassCard/);
+    assert.match(errorBoundarySource, /console\.error/);
+
+    assert.equal(existsSync(new URL("../scripts/lib/chrome.mjs", import.meta.url)), true);
+    assert.equal(existsSync(new URL("../public/fonts/geist-mono/GeistMono-Latin.woff2", import.meta.url)), true);
   }],
 ];
 

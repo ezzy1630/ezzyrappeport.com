@@ -8,43 +8,29 @@ import Navigation from "./Navigation";
 import ErrorBoundary from "./ErrorBoundary";
 import { PortfolioMotionProvider } from "./PortfolioMotionContext";
 import { useLiquidHoverDialogue } from "@/hooks/portfolio/use-liquid-dialogue";
-import { invalidateWorldMeasurement } from "@/lib/portfolio/world-state";
+import { useMagneticInteractions } from "@/lib/portfolio/use-magnetic";
+import {
+  disposeDeviceTilt,
+  enableDeviceTiltFromGesture,
+  setDeviceTiltAllowed,
+} from "@/lib/portfolio/device-tilt";
+import {
+  invalidateWorldMeasurement,
+  resolveDocumentWaterSection,
+} from "@/lib/portfolio/world-state";
 import LoadingVeil from "./LoadingVeil";
 
-type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
-
-const WATER_SECTION_SELECTORS: ReadonlyArray<readonly [WaterSection, string]> = [
-  ["hero", ".hero-shell"],
-  ["projects", "#projects"],
-  ["about", "#about"],
-  ["contact", "#contact"],
-  ["case", "[data-water-section='case']"],
-];
-
+/**
+ * Bootstrap + layout-invalidation path for `data-water-section`.
+ * Liquid physics also publishes the same value every frame; this keeps nav
+ * correct before the clock starts and after content reflows.
+ */
 function useWaterSection() {
   useEffect(() => {
     let frame = 0;
     const update = () => {
       frame = 0;
-      const viewportLine = window.innerHeight * 0.48;
-      let active: WaterSection = document.querySelector("[data-water-section='case']") ? "case" : "hero";
-      let nearest = Number.POSITIVE_INFINITY;
-      for (const [section, selector] of WATER_SECTION_SELECTORS) {
-        const element = document.querySelector<HTMLElement>(selector);
-        if (!element) continue;
-        const rect = element.getBoundingClientRect();
-        if (rect.top <= viewportLine && rect.bottom >= viewportLine) {
-          active = section;
-          nearest = 0;
-          break;
-        }
-        const distance = Math.min(Math.abs(rect.top - viewportLine), Math.abs(rect.bottom - viewportLine));
-        if (distance < nearest) {
-          active = section;
-          nearest = distance;
-        }
-      }
-      document.documentElement.dataset.waterSection = active;
+      document.documentElement.dataset.waterSection = resolveDocumentWaterSection();
     };
     const onScroll = () => {
       if (!frame) frame = window.requestAnimationFrame(update);
@@ -97,13 +83,13 @@ type Props = {
 /**
  * PortfolioShell
  * --------------
- * Shared chrome for every portfolio route: reduced-motion-aware Framer config,
- * Lenis smooth scroll, the unified fluid canvas, and the floating nav. Wrapping
- * both `/` and `/project/[slug]` in this keeps the surface one connected
- * material system (a core PRODUCT.md principle).
+ * Shared chrome for every portfolio route: reduced-motion-aware native scroll
+ * (SmoothScrollProvider), the unified fluid canvas, and the floating nav.
+ * Wrapping both `/` and `/project/[slug]` in this keeps the surface one
+ * connected material system (a core PRODUCT.md principle).
  *
- * The cursor is the native pointer — the only "cursor effect" is the live
- * ripple the pointer generates inside the fluid simulation (FluidScene).
+ * Pointer input uses the native cursor; the only pointer-driven visual is the
+ * live ripple inside the fluid simulation (FluidScene).
  */
 export default function PortfolioShell({
   children,
@@ -114,7 +100,8 @@ export default function PortfolioShell({
 }: Props) {
   const reducedMotion = useReducedMotion();
   const [motionPreference, setMotionPreference] = useState<boolean | null>(null);
-  const motionEnabled = !reducedMotion && (motionPreference ?? true);
+  const siteMotionEnabled = motionPreference ?? true;
+  const motionEnabled = !reducedMotion && siteMotionEnabled;
   const motionReduced = !motionEnabled;
   const renderHeroName = heroName;
   const routeStyle: CSSProperties | undefined = routeMode === "case"
@@ -126,6 +113,7 @@ export default function PortfolioShell({
     : undefined;
   useWaterSection();
   useLiquidHoverDialogue();
+  useMagneticInteractions();
 
   useEffect(() => {
     const stored = window.localStorage.getItem("portfolio-motion");
@@ -134,18 +122,48 @@ export default function PortfolioShell({
     }
   }, [reducedMotion]);
 
+  // Device tilt: allowed only while motion is on. Never request permission on
+  // load — the first user gesture opts in via enableDeviceTiltFromGesture.
+  useEffect(() => {
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+    setDeviceTiltAllowed(motionEnabled && coarse);
+    if (!(motionEnabled && coarse)) return;
+
+    let armed = false;
+    const onFirstGesture = () => {
+      if (armed) return;
+      armed = true;
+      void enableDeviceTiltFromGesture();
+      window.removeEventListener("pointerdown", onFirstGesture);
+    };
+    window.addEventListener("pointerdown", onFirstGesture, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", onFirstGesture);
+      setDeviceTiltAllowed(false);
+    };
+  }, [motionEnabled]);
+
+  useEffect(() => () => {
+    disposeDeviceTilt();
+  }, []);
+
   const toggleMotion = () => {
     if (reducedMotion) return;
     setMotionPreference((current) => {
-      const next = !(current ?? !reducedMotion);
+      const next = !(current ?? true);
       window.localStorage.setItem("portfolio-motion", next ? "on" : "off");
       return next;
     });
   };
 
   const motionState = useMemo(
-    () => ({ motionEnabled, reducedMotion: motionReduced }),
-    [motionEnabled, motionReduced],
+    () => ({
+      motionEnabled,
+      reducedMotion: motionReduced,
+      osReducedMotion: reducedMotion,
+      siteMotionEnabled: !reducedMotion && siteMotionEnabled,
+    }),
+    [motionEnabled, motionReduced, reducedMotion, siteMotionEnabled],
   );
 
   return (

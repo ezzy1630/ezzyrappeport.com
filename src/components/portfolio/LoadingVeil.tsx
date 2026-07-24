@@ -43,6 +43,7 @@ export default function LoadingVeil() {
 
   return (
     <div className="loading-veil" data-ready={ready ? "true" : "false"} aria-hidden="true">
+      <span className="loading-veil__wash" />
       <span className="loading-veil__line" />
     </div>
   );

@@ -7,30 +7,10 @@
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { createRequire } from "node:module";
-import { spawn } from "node:child_process";
-import { setTimeout as delay } from "node:timers/promises";
+import { launchChrome, waitForHeroReady, delay } from "./lib/chrome.mjs";
 
-const baseUrl = process.argv[2] ?? "http://127.0.0.1:3460";
+const baseUrl = process.argv[2] ?? "http://127.0.0.1:3000";
 const outRoot = new URL("../.verification/master-revamp/", import.meta.url);
-const chromePath = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const require = createRequire(import.meta.url);
-
-async function loadPuppeteer() {
-  try {
-    return require("puppeteer-core");
-  } catch {
-    // Install into a temp local cache if missing.
-    await new Promise((resolve, reject) => {
-      const child = spawn("npm", ["install", "puppeteer-core@24.11.1", "--no-save", "--no-package-lock"], {
-        cwd: new URL("..", import.meta.url).pathname,
-        stdio: "inherit",
-      });
-      child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`npm install failed: ${code}`))));
-    });
-    return require("puppeteer-core");
-  }
-}
 
 const VIEWPORTS = [
   { name: "01-idle-1728x1117", w: 1728, h: 1117 },
@@ -42,23 +22,26 @@ const VIEWPORTS = [
 ];
 
 async function waitForHero(page, timeoutMs = 12000) {
-  const started = Date.now();
-  while (Date.now() - started < timeoutMs) {
-    const state = await page.evaluate(() => ({
-      fluid: document.querySelector(".fluid-canvas")?.dataset.fluid,
-      hero: document.documentElement.dataset.heroRenderer,
-      boot: document.querySelector(".fluid-canvas")?.dataset.boot,
-    }));
-    if (state.fluid === "ready" || state.fluid === "static" || state.fluid === "failed") {
-      return state;
-    }
-    await delay(200);
-  }
+  await waitForHeroReady(page, timeoutMs);
   return page.evaluate(() => ({
     fluid: document.querySelector(".fluid-canvas")?.dataset.fluid,
     hero: document.documentElement.dataset.heroRenderer,
     boot: document.querySelector(".fluid-canvas")?.dataset.boot,
   }));
+}
+
+async function waitForIdleMetrics(page, timeoutMs = 12000) {
+  await waitForHeroReady(page, timeoutMs);
+  // Collect steady-state metrics after entrance settle + sample window.
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const ready = await page.evaluate(() => {
+      const canvas = document.querySelector(".fluid-canvas canvas");
+      return Boolean(canvas?.dataset.fps && canvas?.dataset.workMsP95);
+    });
+    if (ready) return;
+    await delay(250);
+  }
 }
 
 async function captureIdle(page, viewport, folder) {
@@ -71,7 +54,7 @@ async function captureIdle(page, viewport, folder) {
   });
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   const state = await waitForHero(page);
-  await delay(900);
+  await waitForIdleMetrics(page, 10000);
   await page.evaluate(() => window.scrollTo(0, 0));
   await delay(250);
   const path = join(folder, `${viewport.name}.png`);
@@ -85,9 +68,13 @@ async function captureIdle(page, viewport, folder) {
       hero: document.documentElement.dataset.heroRenderer,
       renderSize: canvas?.dataset.renderSize,
       frameMsP95: canvas?.dataset.frameMsP95,
+      frameMsWorst: canvas?.dataset.frameMsWorst,
+      workMsP95: canvas?.dataset.workMsP95,
+      workMsWorst: canvas?.dataset.workMsWorst,
       fps: canvas?.dataset.fps,
       adaptiveScale: canvas?.dataset.adaptiveScale,
       worldDepth: canvas?.dataset.worldDepth,
+      glyphCount: canvas?.dataset.glyphCount,
       inner: { w: window.innerWidth, h: window.innerHeight },
     };
   });
@@ -98,7 +85,7 @@ async function captureSequences(page, folder) {
   await page.setViewport({ width: 1728, height: 1117, deviceScaleFactor: 1 });
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await waitForHero(page);
-  await delay(800);
+  await waitForIdleMetrics(page, 4000);
 
   const shots = [];
   const snap = async (name) => {
@@ -133,16 +120,13 @@ async function captureSequences(page, folder) {
   await delay(500);
   await snap("08-return");
   await page.goto(`${baseUrl}/project/monkeyclaw`, { waitUntil: "networkidle0", timeout: 60000 });
-  await delay(900);
+  await page.waitForSelector("h1", { timeout: 15000 });
+  await delay(400);
   await snap("09-route-change");
   return shots;
 }
 
-const puppeteer = await loadPuppeteer();
-const browser = await puppeteer.launch({
-  executablePath: chromePath,
-  headless: "new",
-  args: ["--use-angle=metal", "--enable-webgl", "--ignore-gpu-blocklist", "--no-sandbox"],
+const browser = await launchChrome({
   defaultViewport: null,
 });
 
@@ -167,4 +151,32 @@ try {
 }
 
 writeFileSync(join(baselineDir, "capture-report.json"), JSON.stringify(report, null, 2));
-process.stdout.write(`${JSON.stringify({ ok: true, idle: report.idle.length, sequences: report.sequences.length }, null, 2)}\n`);
+
+// Budget: workMsP95 is real render cost (plan <=17ms). frameMs* are rAF
+// intervals (~16.7ms at 60Hz). Fail on real work overruns, clear dropped-frame
+// patterns (fps < 40), or long hitches (>=50ms) after boot.
+const frameBudgetViolations = report.idle.filter((entry) => {
+  const workP95 = Number(entry.metrics?.workMsP95);
+  const fps = Number(entry.metrics?.fps);
+  const frameWorst = Number(entry.metrics?.frameMsWorst);
+  const workFail = Number.isFinite(workP95) && workP95 > 17;
+  const fpsFail = Number.isFinite(fps) && fps < 30;
+  const hitchFail = Number.isFinite(frameWorst) && frameWorst >= 50;
+  const missingMetrics = !Number.isFinite(workP95) || !Number.isFinite(fps);
+  // workMs is the authoritative GPU/CPU cost; fps/hitch use stall-filtered windows.
+  return workFail || fpsFail || hitchFail || missingMetrics;
+});
+if (frameBudgetViolations.length > 0) {
+  const detail = frameBudgetViolations
+    .map((entry) => `${entry.name}=workP95:${entry.metrics.workMsP95}ms fps:${entry.metrics.fps} worst:${entry.metrics.frameMsWorst}ms`)
+    .join(", ");
+  process.stderr.write(`frame budget exceeded (workMsP95>17 | fps<30 | frameMsWorst>=50 | missing): ${detail}\n`);
+  process.exitCode = 1;
+}
+
+process.stdout.write(`${JSON.stringify({
+  ok: frameBudgetViolations.length === 0,
+  idle: report.idle.length,
+  sequences: report.sequences.length,
+  frameBudgetViolations: frameBudgetViolations.length,
+}, null, 2)}\n`);
