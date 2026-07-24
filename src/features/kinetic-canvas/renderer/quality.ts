@@ -9,9 +9,6 @@ import {
   type KineticQualityTier,
 } from "./quality-policy";
 
-export const RIPPLE_COUNT = 8;
-export const FLUID_TEXTURE_SRC = "/assets/pearl-liquid-background.webp";
-export const FLUID_TEXTURE_FALLBACK_SRC = "/assets/pearl-liquid-background.png";
 export const [HERO_LINE_1, HERO_LINE_2] = portfolioIdentity.titleLines;
 
 export { TARGET_FPS } from "./quality-policy";
@@ -24,8 +21,6 @@ export type KineticQuality = {
   targetFps: number;
   simWidth: number;
   textMaxDim: number;
-  pressureIterations: number;
-  activeRipples: number;
   startDelayMs: number;
   coarsePointer: boolean;
   reducedMotion: boolean;
@@ -52,6 +47,7 @@ export function resolveKineticQuality(
   staticModeOverride?: boolean,
 ): KineticQuality {
   const coarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const anyFinePointer = window.matchMedia("(any-pointer: fine)").matches;
   const reducedMotion =
     Boolean(reducedMotionOverride) ||
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -61,6 +57,7 @@ export function resolveKineticQuality(
   const lowPower = saveData || memory <= 2;
   const tier = resolveQualityTier({
     coarsePointer,
+    anyFinePointer,
     saveData,
     deviceMemory: memory,
     hardwareConcurrency: cores,
@@ -75,10 +72,8 @@ export function resolveKineticQuality(
       dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 2, QUALITY_PIXEL_BUDGETS.high),
       maxDpr: 2,
       targetFps: TARGET_FPS_BY_TIER.high,
-      simWidth: 288,
+      simWidth: 256,
       textMaxDim: 1800,
-      pressureIterations: 8,
-      activeRipples: 8,
       startDelayMs: 45,
       // Full render scale on high; adaptive downgrade still owns recovery.
       renderScale: 1.0,
@@ -89,25 +84,23 @@ export function resolveKineticQuality(
       dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.5, QUALITY_PIXEL_BUDGETS.balanced),
       maxDpr: 1.5,
       targetFps: TARGET_FPS_BY_TIER.balanced,
-      simWidth: 224,
-      textMaxDim: 1536,
-      pressureIterations: 5,
-      activeRipples: 6,
+      simWidth: 160,
+      textMaxDim: 1400,
       startDelayMs: 70,
-      renderScale: 0.9,
+      // Half-res-ish presentation headroom; adaptive scale still recovers further.
+      renderScale: 0.85,
       pixelBudget: QUALITY_PIXEL_BUDGETS.balanced,
     },
     low: {
+      // Live phone water: readable heightfield at a 45fps target, not a poster.
       tier: "low",
-      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1, QUALITY_PIXEL_BUDGETS.low),
-      maxDpr: 1,
+      dpr: pixelBudgetedDpr(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1, 1.35, QUALITY_PIXEL_BUDGETS.low),
+      maxDpr: 1.35,
       targetFps: TARGET_FPS_BY_TIER.low,
-      simWidth: 128,
+      simWidth: 112,
       textMaxDim: 1024,
-      pressureIterations: 3,
-      activeRipples: 4,
-      startDelayMs: 110,
-      renderScale: 0.8,
+      startDelayMs: 70,
+      renderScale: 0.88,
       pixelBudget: QUALITY_PIXEL_BUDGETS.low,
     },
     static: {
@@ -117,8 +110,6 @@ export function resolveKineticQuality(
       targetFps: 0,
       simWidth: 0,
       textMaxDim: 0,
-      pressureIterations: 0,
-      activeRipples: 0,
       startDelayMs: 0,
       renderScale: 0,
       pixelBudget: 0,

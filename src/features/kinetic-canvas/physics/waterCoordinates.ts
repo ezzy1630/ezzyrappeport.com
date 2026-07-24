@@ -36,13 +36,24 @@ export function pointInRect(point: Point2, rect: RectLike) {
     && point.y >= rect.top && point.y <= rect.top + rect.height;
 }
 
-export function pointSegmentDistance(point: Point2, start: Point2, end: Point2) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
+export function pointSegmentDistanceXY(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+) {
+  const dx = bx - ax;
+  const dy = by - ay;
   const lengthSquared = dx * dx + dy * dy;
-  if (lengthSquared <= Number.EPSILON) return Math.hypot(point.x - start.x, point.y - start.y);
-  const t = Math.max(0, Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared));
-  return Math.hypot(point.x - (start.x + dx * t), point.y - (start.y + dy * t));
+  if (lengthSquared <= Number.EPSILON) return Math.hypot(px - ax, py - ay);
+  const t = Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSquared));
+  return Math.hypot(px - (ax + dx * t), py - (ay + dy * t));
+}
+
+export function pointSegmentDistance(point: Point2, start: Point2, end: Point2) {
+  return pointSegmentDistanceXY(point.x, point.y, start.x, start.y, end.x, end.y);
 }
 
 export function radialFalloff(distance: number, radius: number, exponent = 2) {

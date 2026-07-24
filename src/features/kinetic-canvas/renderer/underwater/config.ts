@@ -1,45 +1,36 @@
-import { ACESFilmicToneMapping, LinearToneMapping, ReinhardToneMapping } from "three";
+/**
+ * Look-dev material / lighting knobs for the underwater hero.
+ * Asset URLs and exposure helpers live in assetUrls.ts (no three.js).
+ */
+
+export {
+  EXPOSURE_BY_DEPTH,
+  HERO_GLB_URL,
+  HERO_MANIFEST_URL,
+  MAX_DESKTOP_RENDER_DPR,
+  WATER_PLATE_URLS,
+  exposureForDepth,
+} from "./assetUrls";
 
 export const UNDERWATER_DEBUG = {
-  exposure: 0.98,
-  toneMapper: ACESFilmicToneMapping,
+  // Surface stays bright and dimensional without blowing the glass name white.
+  exposure: 0.9,
   // Sun from the upper-left; bright key, cool transmitted fill.
-  // Raised key to push rim highlights toward nearly white.
-  keyIntensity: 8.1,
-  fillIntensity: 1.95,
-  environmentIntensity: 1.05,
-  // Canvas UI–derived crystalline glass: clean white core, water IOR,
+  keyIntensity: 7.4,
+  fillIntensity: 1.9,
+  environmentIntensity: 1.0,
+  // Canvas UI-derived crystalline glass: clean white core, water IOR,
   // very low roughness. Cerulean lives on shoulders, not milky faces.
   ior: 1.4,
   roughness: 0.009,
-  // Selective cerulean absorption — shorter distance keeps broad faces clear.
-  absorptionColor: 0xb8dff0,
-  absorptionDistance: 1.05,
-  // Visible water surface: readable refraction wobble without clouding copy.
-  surfaceDistortion: 0.28,
+  // Deeper cerulean absorption so glyph bodies carry readable mass
+  // against near-white shallow water.
+  absorptionColor: 0x7ec8e8,
+  absorptionDistance: 0.82,
+  // Soft optical wobble — enough to read as water, not jelly smear on glyphs.
+  surfaceDistortion: 0.095,
   // Animated caustic fire on the sand and through the glyphs.
-  causticStrength: 0.64,
+  causticStrength: 0.62,
   // Bright-shallows depth: deepens gradually, never muddy.
-  depthAttenuation: 0.13,
-} as const;
-
-export const TONE_MAPPER_NAMES = {
-  [ACESFilmicToneMapping]: "ACES filmic",
-  [LinearToneMapping]: "linear",
-  [ReinhardToneMapping]: "Reinhard",
-} as const;
-
-export const HERO_GLB_URL = "/assets/hero/ezzy-rappeport-glyphs.glb";
-export const HERO_MANIFEST_URL = "/assets/hero/ezzy-rappeport-glyphs.json";
-
-// Keep the high-tier desktop render target below the adaptive-scaling cliff,
-// but do not crush Retina below the quality profile's own maxDpr — that is
-// what made the submerged title look stair-stepped / low-res.
-export const MAX_DESKTOP_RENDER_DPR = 2;
-
-export const WATER_PLATE_URLS = {
-  shallowLandscape: "/assets/water/shallow-desktop-v1.webp",
-  shallowPortrait: "/assets/water/shallow-portrait-v1.webp",
-  midDepth: "/assets/water/mid-depth-v1.webp",
-  deepBasin: "/assets/water/deep-basin-v1.webp",
+  depthAttenuation: 0.14,
 } as const;

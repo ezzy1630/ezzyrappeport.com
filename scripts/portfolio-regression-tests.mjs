@@ -68,6 +68,14 @@ const projectDetailSource = readFileSync(
   new URL("../src/app/project/[slug]/ProjectDetail.tsx", import.meta.url),
   "utf8",
 );
+const caseEvidenceRailSource = readFileSync(
+  new URL("../src/components/portfolio/CaseEvidenceRail.tsx", import.meta.url),
+  "utf8",
+);
+const systemDiagramSource = readFileSync(
+  new URL("../src/components/portfolio/diagrams/SystemDiagram.tsx", import.meta.url),
+  "utf8",
+);
 const transitionLinkSource = readFileSync(
   new URL("../src/components/portfolio/ProjectTransitionLink.tsx", import.meta.url),
   "utf8",
@@ -255,10 +263,15 @@ const tests = [
     assert.match(underwaterRendererSource, /lostpointercapture/);
     assert.match(underwaterRendererSource, /pointercancel/);
     assert.match(underwaterRendererSource, /surface-breach/);
+    assert.match(underwaterRendererSource, /applyCameraRig/);
+    assert.match(underwaterRendererSource, /staggeredGlyphExit/);
+    assert.match(underwaterRendererSource, /breachExposureBoost/);
     assert.match(underwaterRendererSource, /scheduledWater/);
     assert.match(liquidInteractionSource, /addEventListener\("blur"/);
     assert.match(liquidInteractionSource, /present: boolean/);
     assert.match(kineticCanvasSource, /liquid-renderer-ready/);
+    assert.match(kineticCanvasSource, /hero-breach-complete/);
+    assert.match(kineticCanvasSource, /breachMsForVisit/);
     assert.match(underwaterRendererSource, /heightRead\.dispose\(\)/);
     assert.match(underwaterRendererSource, /glyphDebug\?\.remove\(\)/);
     assert.doesNotMatch(underwaterShaderSource, /smoothstep\(width,\s*0\.0/);
@@ -280,9 +293,12 @@ const tests = [
     assert.match(underwaterRendererSource, /authored-radiance-live-volume-v4/);
     assert.match(underwaterRendererSource, /authored-high-pass-v2/);
     assert.match(underwaterShaderSource, /Perspective floor projection/);
-    assert.match(underwaterShaderSource, /Volumetric shafts/);
+    assert.match(underwaterShaderSource, /Volumetric god rays/);
     assert.match(underwaterShaderSource, /marineSnowLayer/);
     assert.match(underwaterShaderSource, /uQualityTier/);
+    assert.match(underwaterShaderSource, /Bioluminescent abyss accents/);
+    assert.match(underwaterShaderSource, /shaftCount/);
+    assert.match(underwaterShaderSource, /calmRayBoost/);
     assert.match(underwaterShaderSource, /Beer-Lambert-style blue absorption/);
     assert.match(underwaterShaderSource, /high-pass recovery restores subpixel caustic filaments/);
     assert.match(underwaterShaderSource, /opticalCenter - opticalLow/);
@@ -307,6 +323,7 @@ const tests = [
     assert.doesNotMatch(underwaterRendererSource, /WATER_SECTION_THEME/);
     // The hero name exits by rising and dissolving, never by observer hide.
     assert.match(underwaterRendererSource, /glyphGroup\.visible = glyphsPresent/);
+    assert.match(underwaterRendererSource, /staggeredGlyphExit/);
     assert.match(underwaterShaderSource, /uExitFade/);
     assert.doesNotMatch(underwaterRendererSource, /IntersectionObserver/);
     // Calm pocket and continuous plates reach the shaders.
@@ -362,12 +379,97 @@ const tests = [
     // Suspended objects can displace and redirect the shared water.
     assert.match(liquidInteractionSource, /export function emitLiquidWake/);
     assert.match(liquidInteractionSource, /export function emitLiquidPress/);
+    assert.match(liquidInteractionSource, /export function emitLiquidShockwave/);
+    assert.match(liquidInteractionSource, /kind: "shockwave"/);
+    assert.match(liquidInteractionSource, /POINTER_ENERGY_TAU_DECAY/);
+    // Heightfield accepts anisotropic + annular ring splat modes.
+    assert.match(underwaterRendererSource, /eccentricity/);
+    assert.match(underwaterRendererSource, /uShockwave/);
+    const heightfieldShaders = readFileSync(
+      new URL("../src/features/kinetic-canvas/renderer/underwater/shaders.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(heightfieldShaders, /eccentricity < -0\.5/);
+    assert.match(heightfieldShaders, /uShockwave/);
+    assert.match(
+      readFileSync(new URL("../src/features/kinetic-canvas/physics/glyphRigidBodies.ts", import.meta.url), "utf8"),
+      /kind: "wake" \| "press" \| "release" \| "feedback" \| "shockwave"/,
+    );
   }],
   ["Reduced motion renders one frame and stops the loop", () => {
     assert.match(underwaterRendererSource, /motionLoop = "stopped"/);
     assert.match(underwaterRendererSource, /renderOneStaticFrame/);
-    assert.match(underwaterRendererSource, /addEventListener\("scroll", onStaticScroll/);
-    assert.match(underwaterRendererSource, /removeEventListener\("scroll", onStaticScroll/);
+    assert.match(underwaterRendererSource, /addEventListener\("scroll", onViewportMove/);
+    assert.match(underwaterRendererSource, /removeEventListener\("scroll", onViewportMove/);
+    assert.match(underwaterRendererSource, /reducedMotionRef\.current\) onStaticScroll/);
+  }],
+  ["Portfolio runtime shares one unified frame clock", () => {
+    const frameClockSource = readFileSync(
+      new URL("../src/lib/portfolio/frame-clock.ts", import.meta.url),
+      "utf8",
+    );
+    const smoothScrollSource = readFileSync(
+      new URL("../src/components/portfolio/SmoothScrollProvider.tsx", import.meta.url),
+      "utf8",
+    );
+    const scrollChoreographySource = readFileSync(
+      new URL("../src/lib/portfolio/scroll-choreography.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(frameClockSource, /export function subscribeFrameClock/);
+    assert.match(frameClockSource, /export function bindGsapToFrameClock/);
+    assert.match(frameClockSource, /export function unbindGsapFromFrameClock/);
+    assert.match(frameClockSource, /gsap\.ticker\.remove\(gsap\.updateRoot\)/);
+    // Continuous loops subscribe to the clock instead of owning requestAnimationFrame.
+    assert.match(liquidInteractionSource, /subscribeFrameClock\(LIQUID_CLOCK_ID/);
+    assert.doesNotMatch(liquidInteractionSource, /requestAnimationFrame/);
+    assert.match(underwaterRendererSource, /subscribeFrameClock\(renderClockId/);
+    assert.doesNotMatch(underwaterRendererSource, /requestAnimationFrame\(render/);
+    assert.match(smoothScrollSource, /new Lenis\(/);
+    assert.match(smoothScrollSource, /autoRaf:\s*false/);
+    assert.match(smoothScrollSource, /syncTouch:\s*false/);
+    assert.match(smoothScrollSource, /lenis\?\.raf\(timeMs\)/);
+    assert.match(scrollChoreographySource, /export function initScrollChoreography/);
+    assert.match(scrollChoreographySource, /export function createPinnedBeat/);
+    assert.match(scrollChoreographySource, /export function createScrubBeat/);
+    assert.match(scrollChoreographySource, /ScrollTrigger/);
+    // Phase 3 descent beats: shared projects scrub + section reveals (no long pins).
+    const descentBeatsSource = readFileSync(
+      new URL("../src/components/portfolio/DescentBeats.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(descentBeatsSource, /createScrubBeat/);
+    assert.match(descentBeatsSource, /data-section-reveal|sectionReveal/);
+    assert.match(descentBeatsSource, /abyssArrived|abyss-arrived/);
+    assert.doesNotMatch(descentBeatsSource, /pin:\s*true/);
+    assert.match(revampCssSource, /\[data-section-reveal="out"\]/);
+    assert.match(revampCssSource, /--abyss-biolum/);
+    assert.match(worldStateSource, /aboutCalm/);
+    // Authored camera rig lives outside the 2k-line renderer.
+    const cameraRigSource = readFileSync(
+      new URL("../src/features/kinetic-canvas/renderer/underwater/cameraRig.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(cameraRigSource, /export function applyCameraRig/);
+    assert.match(cameraRigSource, /introProgress/);
+    assert.match(cameraRigSource, /worldDepth/);
+    assert.match(cameraRigSource, /CAMERA_RIG/);
+    assert.match(cameraRigSource, /deviceTilt/);
+    assert.match(cameraRigSource, /tiltX/);
+    const deviceTiltSource = readFileSync(
+      new URL("../src/lib/portfolio/device-tilt.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(deviceTiltSource, /export async function enableDeviceTiltFromGesture/);
+    assert.match(deviceTiltSource, /requestPermission/);
+    assert.match(deviceTiltSource, /setDeviceTiltAllowed/);
+    assert.match(deviceTiltSource, /ensureLifecycleListeners/);
+    assert.match(deviceTiltSource, /tearDownLifecycleListeners/);
+    assert.match(deviceTiltSource, /const LIVE: DeviceTiltSample/);
+    assert.match(portfolioShellSource, /enableDeviceTiltFromGesture/);
+    assert.match(liquidInteractionSource, /TOUCH_PRESS_RADIUS|SHOCKWAVE_TOUCH_STRENGTH/);
+    assert.match(revampCssSource, /\(pointer: coarse\)/);
+    assert.match(revampCssSource, /--device-tilt-x/);
   }],
   ["Mobile contact slab stays inside the viewport bounds", () => {
     // The desktop composition offsets are explicitly reset on small screens.
@@ -428,9 +530,9 @@ const tests = [
     assert.ok(3840 * dpr * 2160 * dpr <= 6_000_000 + 1);
   }],
   ["Animated tiers stay inside their fill-rate budgets", () => {
-    assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 360_000_000);
-    assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 96_000_000);
-    assert.ok(QUALITY_PIXEL_BUDGETS.low * TARGET_FPS_BY_TIER.low <= 45_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.high * TARGET_FPS_BY_TIER.high <= 384_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.balanced * TARGET_FPS_BY_TIER.balanced <= 200_000_000);
+    assert.ok(QUALITY_PIXEL_BUDGETS.low * TARGET_FPS_BY_TIER.low <= 96_000_000);
   }],
 
 
@@ -443,16 +545,43 @@ const tests = [
     assert.doesNotMatch(kineticCanvasSource, /webglFluidRenderer/);
   }],
   ["Underwater glass and boot contracts stay locked", () => {
-    assert.match(underwaterConfigSource, /absorptionDistance: 1\.05/);
-    assert.match(underwaterConfigSource, /surfaceDistortion: 0\.28/);
+    const assetUrlsSource = readFileSync(
+      new URL("../src/features/kinetic-canvas/renderer/underwater/assetUrls.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(underwaterConfigSource, /absorptionDistance: 0\.82/);
+    assert.match(underwaterConfigSource, /surfaceDistortion: 0\.095/);
+    assert.match(assetUrlsSource, /MAX_DESKTOP_RENDER_DPR = 2/);
+    assert.match(assetUrlsSource, /export function exposureForDepth/);
+    assert.match(underwaterConfigSource, /exposureForDepth/);
+    assert.doesNotMatch(underwaterConfigSource, /from ["']three["']/);
+    assert.doesNotMatch(underwaterConfigSource, /TONE_MAPPER_NAMES/);
+    assert.doesNotMatch(assetUrlsSource, /from ["']three["']/);
     assert.match(underwaterShaderSource, /uLetterEnergy/);
-    assert.match(underwaterShaderSource, /Analytic capillary rings/);
+    assert.match(underwaterShaderSource, /rimBoost/);
+    assert.match(underwaterRendererSource, /dataset\.warmup/);
+    assert.match(underwaterRendererSource, /userData\.renderScale/);
+    assert.match(underwaterRendererSource, /source\.scale\.x/);
+    assert.match(underwaterRendererSource, /if \(glyphsPresent\)/);
+    assert.match(underwaterRendererSource, /offHero/);
+    assert.match(underwaterRendererSource, /envCopyMaterial/);
+    assert.match(underwaterRendererSource, /refreshCanvasRect/);
+    assert.match(underwaterRendererSource, /RELEASE_TEXTURE_UNITS/);
+    assert.match(underwaterRendererSource, /heroMetrics/);
     assert.match(bootStateSource, /poster/);
-    assert.match(bootStateSource, /crossfade/);
     assert.match(kineticCanvasSource, /shouldEarlyFetchGlb/);
     assert.match(kineticCanvasSource, /--boot-crossfade-ms/);
-    assert.match(projectDetailSource, /evidenceRail|railSticky|case-system/);
+    assert.match(kineticCanvasSource, /startInFlight/);
+    assert.match(kineticCanvasSource, /breachTimer/);
+    assert.match(kineticCanvasSource, /resolveEffectiveReducedMotion/);
+    assert.match(kineticCanvasSource, /from "\.\/renderer\/underwater\/assetUrls"/);
+    assert.match(projectDetailSource, /CaseEvidenceRail|evidenceRail|railSticky|case-system/);
+    assert.match(caseEvidenceRailSource, /evidenceRail|railSticky|case-system/);
+    assert.match(projectDetailSource, /SystemDiagram/);
+    assert.match(systemDiagramSource, /prefers-reduced-motion|useReducedMotion|data-drawn/);
+    assert.match(contentSource, /projectDiagrams/);
     assert.match(transitionLinkSource, /playWaterWipe|data-water-wipe|waterWipe/);
+    assert.match(transitionLinkSource, /navigateWithDive|startViewTransition|canStartViewTransition/);
     assert.match(contentSource, /system:/);
     assert.match(contentSource, /argyph-identity\.webp/);
     assert.match(contentSource, /flowe\/app-icon\.webp/);
@@ -474,8 +603,28 @@ const tests = [
     }), "balanced");
   }],
   ["Coarse and save-data signals use static/low paths", () => {
+    // Phone-class coarse stays on a *live* low tier — never static from coarse alone.
     assert.equal(resolveQualityTier({
       coarsePointer: true,
+      anyFinePointer: false,
+      saveData: false,
+      deviceMemory: 8,
+      hardwareConcurrency: 8,
+      viewportWidth: 390,
+    }), "low");
+    // Hybrid touch laptop with a fine pointer keeps the desktop ladder.
+    assert.equal(resolveQualityTier({
+      coarsePointer: true,
+      anyFinePointer: true,
+      saveData: false,
+      deviceMemory: 8,
+      hardwareConcurrency: 8,
+      viewportWidth: 1440,
+    }), "balanced");
+    // Narrow coarse viewport stays low even if any-pointer:fine is misreported.
+    assert.equal(resolveQualityTier({
+      coarsePointer: true,
+      anyFinePointer: true,
       saveData: false,
       deviceMemory: 8,
       hardwareConcurrency: 8,
@@ -508,6 +657,158 @@ const tests = [
     assert.equal(resolveMovementSplat({ distance: 180, now: 1030, lastAt: 1000 }), null);
     assert.ok(Math.abs(resolveMovementSplat({ distance: 20, now: 1200, lastAt: 1000 }) - 0.10846153846153847) < 1e-12);
   }],
+
+  ["General Sans is self-hosted and VeloxMark is retired into ProjectIdentity", () => {
+    assert.equal(existsSync(new URL("../public/fonts/general-sans/GeneralSans-Regular.woff2", import.meta.url)), true);
+    assert.equal(existsSync(new URL("../public/fonts/general-sans/GeneralSans-Medium.woff2", import.meta.url)), true);
+    assert.equal(existsSync(new URL("../public/fonts/general-sans/GeneralSans-Semibold.woff2", import.meta.url)), true);
+    assert.match(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8"), /next\/font\/local/);
+    assert.equal(existsSync(new URL("../src/components/portfolio/VeloxMark.tsx", import.meta.url)), false);
+    assert.match(readFileSync(new URL("../src/components/portfolio/ProjectIdentity.tsx", import.meta.url), "utf8"), /function VeloxMark/);
+    assert.match(underwaterRendererSource, /MeshoptDecoder/);
+    assert.ok(statSync(new URL("../public/assets/hero/ezzy-rappeport-glyphs.glb", import.meta.url)).size < 250_000);
+    assert.match(readFileSync(new URL("../src/components/portfolio/ProjectsSection.module.css", import.meta.url), "utf8"), /data-layout="immersive"[\s\S]*padding-left/);
+    assert.doesNotMatch(readFileSync(new URL("../src/components/portfolio/ProjectsSection.module.css", import.meta.url), "utf8"), /\.heading \{[\s\S]*filter: blur\(5px\)/);
+  }],
+
+  ["Meshopt glyph world extents stay within 15% of manifest physics extents", async () => {
+    const { pathToFileURL } = await import("node:url");
+    const path = await import("node:path");
+    const { readFile } = await import("node:fs/promises");
+    const { GLTFLoader } = await import("three/examples/jsm/loaders/GLTFLoader.js");
+    const { MeshoptDecoder } = await import("three/examples/jsm/libs/meshopt_decoder.module.js");
+    const { FileLoader } = await import("three");
+    const root = new URL("..", import.meta.url).pathname;
+    const previous = FileLoader.prototype.load;
+    FileLoader.prototype.load = function loadLocal(url, onLoad, onProgress, onError) {
+      const filePath = String(url).startsWith("file:")
+        ? new URL(url).pathname
+        : path.resolve(root, String(url).replace(/^\//, ""));
+      readFile(filePath).then((buf) => onLoad(buf.buffer)).catch(onError);
+    };
+    try {
+      await MeshoptDecoder.ready;
+      const loader = new GLTFLoader();
+      loader.setMeshoptDecoder(MeshoptDecoder);
+      const glbUrl = pathToFileURL(path.join(root, "public/assets/hero/ezzy-rappeport-glyphs.glb")).href;
+      const gltf = await loader.loadAsync(glbUrl);
+      const glyph = heroManifest.glyphs.find((entry) => entry.object_node_name === "line1_E_00");
+      assert.ok(glyph);
+      const mesh = gltf.scene.getObjectByName(glyph.object_node_name);
+      assert.ok(mesh);
+      mesh.geometry.computeBoundingBox();
+      const bb = mesh.geometry.boundingBox;
+      const geomSize = [bb.max.x - bb.min.x, bb.max.y - bb.min.y, bb.max.z - bb.min.z];
+      const worldGlb = geomSize.map((value, index) => value * mesh.scale.getComponent(index)).sort((a, b) => a - b);
+      const local = glyph.local_bounding_box;
+      const manifestSize = [
+        local.max[0] - local.min[0],
+        local.max[1] - local.min[1],
+        local.max[2] - local.min[2],
+      ];
+      const worldManifest = manifestSize
+        .map((value, index) => value * glyph.rest_transform.scale[index])
+        .sort((a, b) => a - b);
+      for (let index = 0; index < 3; index += 1) {
+        const ratio = worldGlb[index] / Math.max(worldManifest[index], 1e-6);
+        assert.ok(ratio > 0.85 && ratio < 1.15, `extent[${index}] ratio ${ratio}`);
+      }
+      // Guard the bug class: applying manifest scale to quantized local geom oversizes by ~3.6x.
+      const wrong = geomSize.map((value, index) => value * glyph.rest_transform.scale[index]);
+      assert.ok(Math.max(...wrong) > Math.max(...worldGlb) * 2);
+    } finally {
+      FileLoader.prototype.load = previous;
+    }
+  }],
+
+  ["Depth-band design system and Phase 5 extras stay wired", () => {
+    assert.match(revampCssSource, /\[data-depth-band="surface"\]/);
+    assert.match(revampCssSource, /\[data-depth-band="deep"\]/);
+    assert.match(revampCssSource, /--rv-ease|cubic-bezier\(0\.16, 1, 0\.3, 1\)/);
+    assert.doesNotMatch(readFileSync(new URL("../src/app/layout.tsx", import.meta.url), "utf8"), /Inter_Tight/);
+    assert.match(readFileSync(new URL("../src/lib/portfolio/sound.ts", import.meta.url), "utf8"), /setSoundEnabled/);
+    assert.equal(existsSync(new URL("../src/app/resume/page.tsx", import.meta.url)), true);
+    assert.equal(existsSync(new URL("../src/app/sitemap.ts", import.meta.url)), true);
+    assert.equal(existsSync(new URL("../src/components/portfolio/AbyssEasterEgg.tsx", import.meta.url)), true);
+    assert.doesNotMatch(contentSource, /\u2014|—/);
+    assert.doesNotMatch(contentSource, /\u2013|–/);
+    assert.doesNotMatch(contentSource, /claims_ledger\.json/);
+    assert.doesNotMatch(contentSource, /eleven-panel|eleven panels/i);
+    assert.doesNotMatch(contentSource, /1,?080\+?\s*(curated|problem)/i);
+    assert.match(contentSource, /613 curated problems/);
+    assert.match(contentSource, /~246 unit tests/);
+    assert.match(contentSource, /~26 end-to-end tests/);
+    assert.match(contentSource, /Live tab takeover is still listed as future work/);
+    assert.match(contentSource, /Yosys 0\.66/);
+  }],
+  ["Phase 5–6 mobile, tilt, and optimization invariants stay locked", () => {
+    // Coarse phone-class → live low, never static from coarse alone.
+    assert.equal(resolveQualityTier({
+      coarsePointer: true,
+      anyFinePointer: false,
+      saveData: false,
+      deviceMemory: 4,
+      hardwareConcurrency: 4,
+      viewportWidth: 390,
+    }), "low");
+    assert.notEqual(resolveQualityTier({
+      coarsePointer: true,
+      anyFinePointer: false,
+      saveData: false,
+      deviceMemory: 4,
+      hardwareConcurrency: 4,
+      viewportWidth: 390,
+    }), "static");
+    // Device tilt is gesture-gated (iOS requestPermission never on load).
+    const deviceTiltSource = readFileSync(
+      new URL("../src/lib/portfolio/device-tilt.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(deviceTiltSource, /enableDeviceTiltFromGesture/);
+    assert.match(deviceTiltSource, /requestPermission/);
+    assert.match(deviceTiltSource, /Call from a user gesture/);
+    assert.match(portfolioShellSource, /enableDeviceTiltFromGesture/);
+    assert.match(portfolioShellSource, /pointerdown/);
+    assert.match(portfolioShellSource, /setDeviceTiltAllowed\(motionEnabled && coarse\)/);
+    // Content stays free of em/en dashes (editorial voice).
+    assert.doesNotMatch(contentSource, /\u2014|\u2013|—|–/);
+    // Nav section ownership shares world geometry (contact anticipation).
+    assert.match(worldStateSource, /resolveDocumentWaterSection/);
+    assert.match(worldStateSource, /contact\.top <= scrollY \+ viewportHeight \* 0\.62/);
+    assert.match(worldStateSource, /portfolio-root\[data-route='case'\]/);
+    assert.match(portfolioShellSource, /resolveDocumentWaterSection/);
+    assert.match(liquidInteractionSource, /dataset\.waterSection/);
+    assert.match(liquidInteractionSource, /setAmbientDepth/);
+    // Half-res depth + tighter adaptive floor for large canvases.
+    assert.match(underwaterRendererSource, /depthScale/);
+    assert.match(underwaterRendererSource, /MIN_RUNTIME_SCALE = 0\.68/);
+    assert.match(underwaterShaderSource, /Click shockwave/);
+    assert.match(underwaterShaderSource, /uShockwave/);
+    // Frame clock still pauses when the tab is hidden.
+    assert.match(
+      readFileSync(new URL("../src/lib/portfolio/frame-clock.ts", import.meta.url), "utf8"),
+      /document\.hidden/,
+    );
+    assert.match(underwaterRendererSource, /offHero/);
+    assert.match(
+      readFileSync(new URL("../src/lib/portfolio/sound.ts", import.meta.url), "utf8"),
+      /export function setAmbientDepth/,
+    );
+    // Below-fold identity SVG <image> assets stay lazy (LCP was blaming nexarad).
+    const projectIdentitySource = readFileSync(
+      new URL("../src/components/portfolio/ProjectIdentity.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(projectIdentitySource, /function IdentityAssetImage/);
+    assert.match(projectIdentitySource, /loading:\s*"lazy"/);
+    assert.equal(
+      [...projectIdentitySource.matchAll(/<IdentityAssetImage\b/g)].length,
+      5,
+    );
+    // WebGL boot still yields to idle before the heavy chunk (TBT hygiene).
+    assert.match(kineticCanvasSource, /requestIdleCallback/);
+    assert.match(kineticCanvasSource, /timeout:\s*quality\.tier === "high" \? 900 : 1400/);
+  }],
   ["Every ordered project has one media presentation", () => {
     const presentationBlock = contentSource.match(/export const projectMediaPresentation = \{([\s\S]*?)\n\} satisfies Record/)?.[1] ?? "";
     const orderBlock = contentSource.match(/export const projectOrder: ProjectSlug\[\] = \[([^\]]+)\]/)?.[1] ?? "";
@@ -520,7 +821,7 @@ const tests = [
 ];
 
 for (const [name, run] of tests) {
-  run();
+  await run();
   console.log(`PASS ${name}`);
 }
 

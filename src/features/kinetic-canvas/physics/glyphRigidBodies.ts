@@ -1,9 +1,12 @@
 import { Euler, Quaternion, Vector2, Vector3, type PerspectiveCamera } from "three";
 import type { HeroGlyphRuntime } from "../renderer/underwater/underwaterHeroRenderer";
-import { pointSegmentDistance, radialFalloff, softLimitForce } from "./waterCoordinates.ts";
+import { pointSegmentDistanceXY, radialFalloff, softLimitForce } from "./waterCoordinates.ts";
+
+/** Shared corner scratch for first-time projected half-size computation. */
+const CORNER_SCRATCH = new Vector3();
 
 export type GlyphInteraction = Readonly<{
-  kind: "wake" | "press" | "release" | "feedback";
+  kind: "wake" | "press" | "release" | "feedback" | "shockwave";
   start: readonly [number, number];
   end: readonly [number, number];
   direction: readonly [number, number];
@@ -138,8 +141,9 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      maxTravel: 0.15 + (index % 3) * 0.01,
-      maxTilt: (9.0 + (index % 4) * 0.85) * Math.PI / 180,
+      // Buoyant travel: readable bob without jelly stretch across the name.
+      maxTravel: Math.max(0.036, derived.halfSize.x * 0.55),
+      maxTilt: (3.4 + (index % 4) * 0.12) * Math.PI / 180,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -148,10 +152,10 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       lastActiveAt: 0,
       ambientPhase: glyphPhaseForIdentity(index, glyph.manifest.object_node_name),
       ambientFrequency: index % 2 === 0 ? 0.46 : 0.71,
-      ambientAmplitude: 0.009 + (index % 3) * 0.0014,
-      ambientTiltAmplitude: (0.44 + (index % 4) * 0.14) * Math.PI / 180,
-      maxDepth: 0.14,
-      maxLinearSpeed: 1.05,
+      ambientAmplitude: 0.007 + (index % 3) * 0.0011,
+      ambientTiltAmplitude: (0.36 + (index % 4) * 0.1) * Math.PI / 180,
+      maxDepth: 0.11,
+      maxLinearSpeed: 0.82,
     };
   });
 }
@@ -174,13 +178,12 @@ export function projectGlyph(body: GlyphBody, camera: PerspectiveCamera, viewpor
     let maximumX = Number.NEGATIVE_INFINITY;
     let minimumY = Number.POSITIVE_INFINITY;
     let maximumY = Number.NEGATIVE_INFINITY;
-    const corner = new Vector3();
     for (const x of [bounds.min[0], bounds.max[0]]) {
       for (const y of [bounds.min[1], bounds.max[1]]) {
         for (const z of [bounds.min[2], bounds.max[2]]) {
-          corner.set(x, y, z).applyMatrix4(object.matrixWorld).project(camera);
-          const screenX = (corner.x * 0.5 + 0.5) * viewport[0];
-          const screenY = (1 - (corner.y * 0.5 + 0.5)) * viewport[1];
+          CORNER_SCRATCH.set(x, y, z).applyMatrix4(object.matrixWorld).project(camera);
+          const screenX = (CORNER_SCRATCH.x * 0.5 + 0.5) * viewport[0];
+          const screenY = (1 - (CORNER_SCRATCH.y * 0.5 + 0.5)) * viewport[1];
           minimumX = Math.min(minimumX, screenX);
           maximumX = Math.max(maximumX, screenX);
           minimumY = Math.min(minimumY, screenY);
@@ -271,12 +274,18 @@ export function glyphHoverStrength(body: GlyphBody, point: readonly [number, num
 }
 
 function isFiniteBody(body: GlyphBody) {
-  return [
-    body.position.x, body.position.y, body.position.z,
-    body.velocity.x, body.velocity.y, body.velocity.z,
-    body.orientation.x, body.orientation.y, body.orientation.z,
-    body.angularVelocity.x, body.angularVelocity.y, body.angularVelocity.z,
-  ].every(Number.isFinite);
+  return Number.isFinite(body.position.x)
+    && Number.isFinite(body.position.y)
+    && Number.isFinite(body.position.z)
+    && Number.isFinite(body.velocity.x)
+    && Number.isFinite(body.velocity.y)
+    && Number.isFinite(body.velocity.z)
+    && Number.isFinite(body.orientation.x)
+    && Number.isFinite(body.orientation.y)
+    && Number.isFinite(body.orientation.z)
+    && Number.isFinite(body.angularVelocity.x)
+    && Number.isFinite(body.angularVelocity.y)
+    && Number.isFinite(body.angularVelocity.z);
 }
 
 export function hasFiniteGlyphBodyState(body: GlyphBody) {
@@ -327,8 +336,8 @@ export function stepGlyphBodies(
     let targetZ = ambientBob;
     if (glyphIndex === control.hoverGlyphIndex && control.hoverStrength > 0) {
       const hoverStrength = clamp(control.hoverStrength, 0, 1);
-      // Hover rises and brightens — never a hover-only meaning on touch.
-      targetZ += 0.042 * hoverStrength;
+      // Hover rises and brightens -  never a hover-only meaning on touch.
+      targetZ += 0.058 * hoverStrength;
       const localX = clamp(
         (control.hoverPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
         -1.15,
@@ -339,9 +348,9 @@ export function stepGlyphBodies(
         -1.15,
         1.15,
       );
-      body.currentForce.x += localX * hoverStrength * 0.11;
-      body.currentTorque.x += -localY * hoverStrength * 0.52;
-      body.currentTorque.z += localX * hoverStrength * 0.52;
+      body.currentForce.x += localX * hoverStrength * 0.13;
+      body.currentTorque.x += -localY * hoverStrength * 0.58;
+      body.currentTorque.z += localX * hoverStrength * 0.58;
     }
     body.currentTorque.x += ambientRoll * 30;
     body.currentTorque.z += Math.sin(now * body.ambientFrequency * 0.87 * Math.PI * 2 + body.ambientPhase * 1.37)
@@ -349,14 +358,17 @@ export function stepGlyphBodies(
 
     for (const event of interactions) {
       const age = Math.max(0, now - event.time);
-      const distance = pointSegmentDistance(
-        screen.center,
-        { x: event.start[0], y: event.start[1] },
-        { x: event.end[0], y: event.end[1] },
+      const distance = pointSegmentDistanceXY(
+        screen.center.x,
+        screen.center.y,
+        event.start[0],
+        event.start[1],
+        event.end[0],
+        event.end[1],
       );
       const bodyRadius = Math.hypot(screen.halfSize.x, screen.halfSize.y);
-      const arrival = event.kind === "press"
-        ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.72), 280)
+      const arrival = event.kind === "press" || event.kind === "shockwave"
+        ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.72), event.kind === "shockwave" ? 420 : 280)
         : event.kind === "release"
           ? neighborArrivalDelay(Math.max(0, distance - bodyRadius * 0.55), 240)
           : 0;
@@ -364,72 +376,93 @@ export function stepGlyphBodies(
       body.nearestInteraction = Math.min(body.nearestInteraction, distance);
       const falloffDistance = Math.max(0, distance - bodyRadius * 0.55);
       const falloffRadius = event.radius + bodyRadius * 0.35;
-      const falloff = event.kind === "press"
+      const falloff = event.kind === "press" || event.kind === "shockwave"
         ? clickPressureFalloff(falloffDistance, falloffRadius)
         : wakeFalloff(falloffDistance, falloffRadius);
       const temporal = event.kind === "press"
         ? Math.exp(-(age - arrival) * 4.2)
+        : event.kind === "shockwave"
+          ? Math.exp(-(age - arrival) * 3.1)
         : event.kind === "release"
           ? Math.exp(-age * 5.2)
           : Math.exp(-age * 6.5);
       const strength = event.strength * falloff * temporal * motionScale
-        * (event.kind === "press" || event.kind === "release" ? 1.35 : 1);
+        * (event.kind === "press" || event.kind === "release" || event.kind === "shockwave" ? 1.25 : 0.92);
       if (strength < 0.0001) continue;
       const radialX = screen.center.x - event.end[0];
       const radialY = screen.center.y - event.end[1];
       const radialLength = Math.max(Math.hypot(radialX, radialY), 1);
-      const inheritedWeight = event.kind === "press" ? 0.34 : event.kind === "release" ? 0.52 : 1;
+      // Shockwave is purely radial scatter; press keeps some inherited momentum.
+      const inheritedWeight = event.kind === "shockwave"
+        ? 0
+        : event.kind === "press" ? 0.34 : event.kind === "release" ? 0.52 : 1;
       const directionX = event.direction[0] * inheritedWeight + radialX / radialLength * (1 - inheritedWeight);
       const directionY = event.direction[1] * inheritedWeight + radialY / radialLength * (1 - inheritedWeight);
       const directionLength = Math.max(Math.hypot(directionX, directionY), 0.001);
       const fx = directionX / directionLength * strength;
       const fy = directionY / directionLength * strength;
-      body.currentForce.x += fx * 2.8;
-      body.currentForce.z += fy * 2.8;
+      // Water pushes letters; letters stay readable.
+      const forceScale = event.kind === "shockwave" ? 2.85 : 2.05;
+      body.currentForce.x += fx * forceScale;
+      body.currentForce.z += fy * forceScale;
       body.currentForce.y += (
-        event.kind === "press" ? -1 : event.kind === "release" ? 1.15 : 0.18
-      ) * strength * 0.75;
+        event.kind === "press" ? -1
+          : event.kind === "shockwave" ? -0.55
+            : event.kind === "release" ? 1.1 : 0.2
+      ) * strength * 0.8;
       const localHitX = Math.max(-1.15, Math.min(1.15, (event.end[0] - screen.center.x) / Math.max(screen.halfSize.x, 8)));
       const localHitY = Math.max(-1.15, Math.min(1.15, (event.end[1] - screen.center.y) / Math.max(screen.halfSize.y, 8)));
       const torque = (localHitX * screen.halfSize.x * fy - localHitY * screen.halfSize.y * fx)
         / Math.max(bodyRadius, 20);
-      const torqueScale = event.kind === "wake" ? 2.8 : event.kind === "release" ? 1.45 : 1;
-      body.currentTorque.x += -fy * localHitY * 0.92 * torqueScale;
-      body.currentTorque.z += fx * localHitX * 0.92 * torqueScale;
-      body.currentTorque.y += torque * 1.82 * torqueScale;
+      // Shockwave: small randomized torque so letters jostle independently.
+      const shockTwist = event.kind === "shockwave"
+        ? (Math.sin(body.ambientPhase * 12.7 + event.time * 17.3) * 0.55
+          + Math.cos(body.ambientPhase * 5.1 - event.time * 9.1) * 0.35)
+        : 0;
+      const torqueScale = event.kind === "wake" ? 1.75
+        : event.kind === "release" ? 1.2
+          : event.kind === "shockwave" ? 1.55
+            : 0.9;
+      body.currentTorque.x += -fy * localHitY * 0.7 * torqueScale + shockTwist * strength * 0.4;
+      body.currentTorque.z += fx * localHitX * 0.7 * torqueScale - shockTwist * strength * 0.28;
+      body.currentTorque.y += torque * 1.25 * torqueScale + shockTwist * strength * 0.85;
       body.lastActiveAt = now;
     }
 
-    // Spring soft enough for one visible overshoot; drag low enough to show it.
-    const spring = 14;
-    const drag = 9.2;
-    body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 44);
+    // Responsive settle with buoyant give - not rubber, not dead.
+    const spring = 26;
+    const drag = 13.5;
+    body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 48);
     body.currentForce.z += -(body.position.z - targetZ) * spring
-      + softLimitForce(body.position.z, body.maxTravel, 44);
+      + softLimitForce(body.position.z, body.maxTravel, 48);
     const holding = glyphIndex === control.holdGlyphIndex;
     if (holding) {
-      const holdDepth = -Math.min(0.09, 0.055 + Math.max(0, control.holdAge) * 0.006);
-      // Bounded drag with spring lag — letter trails the fingertip.
-      body.currentForce.y += -(body.position.y - holdDepth) * 22 - body.velocity.y * 10;
+      const holdDepth = -Math.min(0.07, 0.04 + Math.max(0, control.holdAge) * 0.005);
+      // Hold dip with light follow - buoyancy, not smear trails.
+      body.currentForce.y += -(body.position.y - holdDepth) * 28 - body.velocity.y * 12;
       const localX = clamp(
         (control.holdPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
-        -1.15,
-        1.15,
+        -1.0,
+        1.0,
       );
       const localY = clamp(
         (control.holdPoint[1] - screen.center.y) / Math.max(screen.halfSize.y, 8),
-        -1.15,
-        1.15,
+        -1.0,
+        1.0,
       );
-      const strain = Math.min(1, Math.max(0, control.holdAge * 1.6));
-      body.currentForce.x += localX * (0.14 + strain * 0.12);
-      body.currentForce.z += -localY * (0.08 + strain * 0.06);
-      body.currentTorque.x += -localY * 0.42 + Math.sin(now * Math.PI * 2 * 6 + body.ambientPhase) * 0.08 * strain;
-      body.currentTorque.z += localX * 0.42;
+      const strain = Math.min(1, Math.max(0, control.holdAge * 1.4));
+      body.currentForce.x += localX * (0.1 + strain * 0.08);
+      body.currentForce.z += -localY * (0.06 + strain * 0.045);
+      body.currentTorque.x += -localY * 0.32 + Math.sin(now * Math.PI * 2 * 5 + body.ambientPhase) * 0.055 * strain;
+      body.currentTorque.z += localX * 0.32;
     } else if (entranceHolding) {
-      body.currentForce.y += -(body.position.y - control.entranceDepth) * 30 - body.velocity.y * 18;
+      body.currentForce.y += -(body.position.y - control.entranceDepth) * 32 - body.velocity.y * 18;
     } else {
-      body.currentForce.y += -body.position.y * 16 - body.velocity.y * 9.5;
+      // Heavier glassy settle after breach — slower return, less rubber.
+      const settling = entranceAge >= 0 && entranceAge < 1.6;
+      const settleSpring = settling ? 14 : 18;
+      const settleDrag = settling ? 14 : 10;
+      body.currentForce.y += -body.position.y * settleSpring - body.velocity.y * settleDrag;
     }
     body.velocity.x += (body.currentForce.x / body.mass - body.velocity.x * drag) * dt;
     body.velocity.z += (body.currentForce.z / body.mass - body.velocity.z * drag) * dt;
@@ -440,8 +473,8 @@ export function stepGlyphBodies(
     body.position.z = clamp(body.position.z, -body.maxTravel, body.maxTravel);
     body.position.y = clamp(body.position.y, -body.maxDepth, body.maxDepth * 0.55);
 
-    const angularSpring = 11;
-    const angularDrag = 9.5;
+    const angularSpring = 18;
+    const angularDrag = 12;
     for (const axis of ["x", "y", "z"] as const) {
       const limitForce = softLimitForce(body.orientation[axis], body.maxTilt, 38);
       const acceleration = (body.currentTorque[axis] - body.orientation[axis] * angularSpring + limitForce)
@@ -480,15 +513,14 @@ export function stepGlyphBodies(
     if (!isFiniteBody(body)) recoverInvalidBody(body);
   }
 
-  // Soft screen-plane separation. It only activates near overlap and keeps line identity intact.
+  // Soft screen-plane separation. Rest centers are projected once per body.
+  for (const body of bodies) projectGlyphRestCenter(body, camera, viewport);
   for (let first = 0; first < bodies.length; first += 1) {
     for (let second = first + 1; second < bodies.length; second += 1) {
       if (bodies[first].glyph.manifest.line_index !== bodies[second].glyph.manifest.line_index) continue;
       const a = bodies[first].projectedState;
       const b = bodies[second].projectedState;
-      const restA = projectGlyphRestCenter(bodies[first], camera, viewport);
-      const restB = projectGlyphRestCenter(bodies[second], camera, viewport);
-      const authoredGap = Math.abs(restB.x - restA.x);
+      const authoredGap = Math.abs(bodies[second].restScreenCenter.x - bodies[first].restScreenCenter.x);
       const minX = Math.min((a.halfSize.x + b.halfSize.x) * 0.82, authoredGap * 0.84);
       const minY = (a.halfSize.y + b.halfSize.y) * 0.72;
       const dx = b.center.x - a.center.x;
@@ -511,9 +543,14 @@ export function stepGlyphBodies(
     body.eulerScratch.set(body.orientation.x, body.orientation.y, body.orientation.z, "XYZ");
     body.rotationScratch.setFromEuler(body.eulerScratch);
     body.glyph.object.quaternion.copy(body.restQuaternion).multiply(body.rotationScratch);
-    body.glyph.object.updateMatrixWorld(true);
+    // projectGlyph updates matrixWorld once; reuse the rest center from above.
     const screen = projectGlyph(body, camera, viewport);
-    body.peakPixels = Math.max(body.peakPixels, screen.center.distanceTo(projectGlyphRestCenter(body, camera, viewport)));
-    body.peakDegrees = Math.max(body.peakDegrees, Math.max(Math.abs(body.orientation.x), Math.abs(body.orientation.y), Math.abs(body.orientation.z)) * 180 / Math.PI);
+    const dx = screen.center.x - body.restScreenCenter.x;
+    const dy = screen.center.y - body.restScreenCenter.y;
+    body.peakPixels = Math.max(body.peakPixels, Math.hypot(dx, dy));
+    body.peakDegrees = Math.max(
+      body.peakDegrees,
+      Math.max(Math.abs(body.orientation.x), Math.abs(body.orientation.y), Math.abs(body.orientation.z)) * 180 / Math.PI,
+    );
   }
 }
