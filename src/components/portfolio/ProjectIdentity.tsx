@@ -125,10 +125,10 @@ function MonkeyClawMark({ media, className }: MarkProps & { media: ProjectMediaA
           <feColorMatrix
             result="monkey-alpha"
             type="matrix"
-            values="0 0 0 0 0.018  0 0 0 0 0.19  0 0 0 0 0.22  -3.6 3 3 0 -0.08"
+            values="0 0 0 0 0.08  0 0 0 0 0.78  0 0 0 0 0.74  -2.2 2.4 2.4 0 0.05"
           />
-          <feMorphology in="monkey-alpha" operator="dilate" radius="1.05" result="monkey-weight" />
-          <feDropShadow dx="0" dy="12" stdDeviation="9" floodColor="#087A80" floodOpacity="0.2" />
+          <feMorphology in="monkey-alpha" operator="dilate" radius="1.55" result="monkey-weight" />
+          <feDropShadow dx="0" dy="10" stdDeviation="8" floodColor="#14C8C0" floodOpacity="0.45" />
         </filter>
         <filter id="monkey-echo" x="-35%" y="-35%" width="170%" height="190%" colorInterpolationFilters="sRGB">
           <feColorMatrix

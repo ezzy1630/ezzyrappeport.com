@@ -9,9 +9,9 @@
   position: relative;
   width: var(--rv-page, min(90rem, calc(100% - clamp(2rem, 7vw, 8rem))));
   margin: 0 auto;
-  padding: clamp(7rem, 10vw, 9rem) 0 2.5rem;
+  padding: calc(var(--nav-clearance, 4.25rem) + clamp(2.75rem, 5vw, 4.75rem)) 0 2.5rem;
   color: var(--ink);
-  scroll-margin-top: 6rem;
+  scroll-margin-top: calc(var(--nav-clearance, 4.25rem) + 1.5rem);
 }
 
 .page[data-accent="blue-strong"] {
@@ -157,18 +157,98 @@
   margin-top: clamp(0.5rem, 2vw, 1.5rem) !important;
   padding: clamp(1.5rem, 4vw, 3.5rem);
   overflow: visible;
-  border: 1px solid color-mix(in oklch, white 55%, var(--case-accent));
+  border: 1px solid color-mix(in oklch, var(--case-accent) 28%, var(--ink) 12%);
   border-radius: 1.25rem;
+  /* Darker local well so pale marks stay readable on mobile. */
   background:
-    radial-gradient(ellipse at 50% 42%, color-mix(in oklch, white 55%, transparent), transparent 62%),
-    linear-gradient(180deg, color-mix(in oklch, var(--case-band) 70%, white), color-mix(in oklch, var(--case-band) 40%, transparent));
-  box-shadow: inset 0 1px 0 white, 0 2.5rem 5rem -3.5rem color-mix(in oklch, var(--case-accent) 45%, transparent);
+    radial-gradient(
+      ellipse at 50% 42%,
+      color-mix(in oklch, white 28%, transparent),
+      transparent 62%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--case-band) 42%, oklch(0.72 0.03 230)),
+      color-mix(in oklch, var(--case-band) 28%, oklch(0.58 0.04 235))
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 35%, transparent),
+    inset 0 -1.5rem 2.5rem -1.5rem color-mix(in oklch, var(--case-accent) 18%, transparent),
+    0 2.5rem 5rem -3.5rem color-mix(in oklch, var(--case-accent) 45%, transparent);
+  transition:
+    transform 420ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow 420ms ease,
+    border-color 320ms ease,
+    filter 420ms ease;
+}
+
+.heroMark:hover,
+.heroMark:focus-within {
+  transform: translateY(-3px);
+  border-color: color-mix(in oklch, var(--case-accent) 42%, var(--ink) 10%);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklch, white 40%, transparent),
+    inset 0 -1.5rem 2.5rem -1.5rem color-mix(in oklch, var(--case-accent) 24%, transparent),
+    0 3rem 5.5rem -3.2rem color-mix(in oklch, var(--case-accent) 52%, transparent);
 }
 
 .heroIdentity {
   display: block;
   width: min(100%, 38rem);
   height: auto;
+  filter: saturate(1.12) contrast(1.08);
+  opacity: 1;
+  transition:
+    transform 520ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter 420ms ease;
+}
+
+.heroMark:hover .heroIdentity,
+.heroMark:focus-within .heroIdentity {
+  transform: translateY(-4px) scale(1.015);
+  filter: saturate(1.18) contrast(1.1) brightness(1.02);
+}
+
+.page[data-project="monkeyclaw"] .heroMark {
+  background:
+    radial-gradient(
+      ellipse at 50% 38%,
+      color-mix(in oklch, oklch(0.42 0.05 210) 55%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      oklch(0.38 0.035 220),
+      oklch(0.28 0.04 230)
+    );
+}
+
+.page[data-project="monkeyclaw"] .heroIdentity {
+  filter: saturate(1.45) contrast(1.35) brightness(1.12);
+}
+
+.page[data-project="monkeyclaw"] .heroMark:hover .heroIdentity,
+.page[data-project="monkeyclaw"] .heroMark:focus-within .heroIdentity {
+  filter: saturate(1.55) contrast(1.4) brightness(1.16);
+}
+
+.page[data-project="etch"] .heroMark,
+.page[data-project="flowe"] .heroMark,
+.page[data-project="argyph"] .heroMark,
+.page[data-project="nexarad"] .heroMark,
+.page[data-project="mathpilot"] .heroMark,
+.page[data-project="velox"] .heroMark {
+  background:
+    radial-gradient(
+      ellipse at 50% 40%,
+      color-mix(in oklch, white 22%, transparent),
+      transparent 60%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in oklch, var(--case-band) 34%, oklch(0.62 0.04 235)),
+      color-mix(in oklch, var(--case-band) 22%, oklch(0.48 0.045 240))
+    );
 }
 
 .proofBand {
@@ -223,6 +303,16 @@
   padding-left: 1.15rem;
   --rail-indicator-y: 0px;
   --rail-indicator-h: 1.75rem;
+}
+
+.railStickyShell {
+  display: contents;
+}
+
+.railEdgeFade,
+.railEdgeFadeStart,
+.railChevron {
+  display: none;
 }
 
 .railTrack {
@@ -534,7 +624,7 @@
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 0.55rem;
+  gap: 0;
   min-height: 14rem;
   padding: clamp(1.8rem, 3.5vw, 2.8rem);
   overflow: hidden;
@@ -569,7 +659,17 @@
   position: relative;
   z-index: 1;
   display: grid;
-  gap: inherit;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: auto;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 42rem;
+  align-content: end;
+}
+
+.nextBleedLabel > * {
+  display: block;
+  min-width: 0;
 }
 
 .nextBleedLink:hover,
@@ -593,35 +693,80 @@
   transform: translateY(1px) scale(0.985);
 }
 
-.nextBleedLink small {
+.nextBleedLabel small {
   color: color-mix(in oklch, white 70%, var(--case-accent));
   font-family: var(--type-mono);
   font-size: 0.68rem;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+  transition: color 280ms ease, letter-spacing 320ms ease;
 }
 
-.nextBleedLink strong {
+.nextBleedLink:hover .nextBleedLabel small,
+.nextBleedLink:focus-visible .nextBleedLabel small {
+  color: color-mix(in oklch, white 88%, var(--case-accent));
+  letter-spacing: 0.07em;
+}
+
+.nextBleedLabel strong {
   font-family: var(--type-display);
   font-size: clamp(2rem, 5vw, 3.6rem);
   font-weight: 590;
   letter-spacing: -0.045em;
+  line-height: 0.95;
+  transition: transform 360ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
-.nextBleedLink span {
+.nextBleedLink:hover .nextBleedLabel strong,
+.nextBleedLink:focus-visible .nextBleedLabel strong {
+  transform: translateX(0.15rem);
+}
+
+.nextBleedLabel > span {
   max-width: 40rem;
   color: color-mix(in oklch, white 72%, transparent);
   font-family: var(--type-display);
+  font-size: clamp(1rem, 1.35vw, 1.2rem);
+  line-height: 1.45;
+  transition: color 280ms ease;
+}
+
+.nextBleedLink:hover .nextBleedLabel > span,
+.nextBleedLink:focus-visible .nextBleedLabel > span {
+  color: color-mix(in oklch, white 86%, transparent);
 }
 
 .nextBleedHint {
-  margin-top: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.55rem;
   color: color-mix(in oklch, white 55%, var(--case-accent));
   font-family: var(--type-mono);
   font-size: 0.68rem;
   font-style: normal;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  transition: color 280ms ease;
+}
+
+.nextBleedLabel > .nextBleedHint {
+  display: inline-flex;
+}
+
+.nextBleedArrow {
+  display: inline-block;
+  transition: transform 360ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.nextBleedLink:hover .nextBleedHint,
+.nextBleedLink:focus-visible .nextBleedHint {
+  color: color-mix(in oklch, white 78%, var(--case-accent));
+}
+
+.nextBleedLink:hover .nextBleedArrow,
+.nextBleedLink:focus-visible .nextBleedArrow {
+  transform: translateX(0.35rem);
 }
 
 .pagination {
@@ -674,36 +819,145 @@
   .caseBody { grid-template-columns: 1fr; }
   .overview { position: relative; top: auto; }
   .evidenceRail { grid-template-columns: 1fr; }
+  .railStickyShell {
+    position: relative;
+    display: block;
+    margin: 0 -0.15rem;
+  }
   .railSticky {
     position: relative;
     top: auto;
     grid-auto-flow: column;
     justify-content: start;
-    gap: 0.65rem;
-    padding-left: 0;
+    gap: 0.35rem;
+    padding: 0.15rem 2rem 0.15rem 0.1rem;
     overflow-x: auto;
     scroll-snap-type: x proximity;
+    scroll-padding-inline: 0.1rem 2rem;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
   }
+  .railSticky::-webkit-scrollbar { display: none; }
   .railTrack { display: none; }
+  .railEdgeFade,
+  .railEdgeFadeStart {
+    display: block;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2.1rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 220ms ease;
+    z-index: 1;
+  }
+  .railEdgeFade {
+    right: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in oklch, var(--case-band) 92%, white)
+    );
+  }
+  .railEdgeFadeStart {
+    left: 0;
+    background: linear-gradient(
+      270deg,
+      transparent,
+      color-mix(in oklch, var(--case-band) 92%, white)
+    );
+  }
+  .railChevron {
+    display: grid;
+    place-items: center;
+    position: absolute;
+    top: 50%;
+    right: 0.05rem;
+    z-index: 2;
+    width: 1.45rem;
+    height: 1.45rem;
+    margin: 0;
+    padding: 0;
+    border: 1px solid color-mix(in oklch, var(--case-accent) 22%, var(--line));
+    border-radius: 999px;
+    color: var(--case-accent);
+    background: color-mix(in oklch, white 82%, var(--case-band));
+    box-shadow: 0 0.35rem 0.9rem -0.55rem color-mix(in oklch, var(--ink) 35%, transparent);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+    transform: translateY(-50%);
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      opacity 220ms ease,
+      transform 280ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1)),
+      background-color 220ms ease,
+      border-color 220ms ease;
+  }
+  .railChevron span {
+    display: block;
+    transform: translateX(0.5px);
+  }
+  .railStickyShell[data-can-scroll-end="true"] .railEdgeFade,
+  .railStickyShell[data-can-scroll-end="true"] .railChevron {
+    opacity: 1;
+  }
+  .railStickyShell[data-can-scroll-end="true"] .railChevron {
+    pointer-events: auto;
+    animation: railChevronPulse 2.4s ease-in-out infinite;
+  }
+  .railStickyShell[data-can-scroll-start="true"] .railEdgeFadeStart {
+    opacity: 1;
+  }
+  .railChevron:hover,
+  .railChevron:focus-visible {
+    background: color-mix(in oklch, white 92%, var(--case-accent));
+    border-color: color-mix(in oklch, var(--case-accent) 45%, var(--line));
+    transform: translateY(-50%) scale(1.06);
+    animation: none;
+  }
+  .railChevron:active {
+    transform: translateY(-50%) scale(0.96);
+  }
   .railLink {
     scroll-snap-align: start;
     flex: 0 0 auto;
-    padding-inline: 0.75rem;
+    padding-inline: 0.65rem;
     border: 1px solid var(--line);
     border-radius: 999px;
     background: color-mix(in oklch, var(--case-band) 32%, transparent);
+    transition:
+      color 220ms ease,
+      background-color 220ms ease,
+      border-color 220ms ease,
+      transform 220ms var(--ease-water, cubic-bezier(0.22, 1, 0.36, 1)),
+      box-shadow 220ms ease;
+  }
+  .railLink:active {
+    transform: scale(0.97);
   }
   .railLink[data-active="true"] {
     border-color: color-mix(in oklch, var(--case-accent) 35%, var(--line));
     background: color-mix(in oklch, var(--case-accent) 10%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--case-accent) 12%, transparent);
   }
 }
 
+@keyframes railChevronPulse {
+  0%,
+  100% { transform: translateY(-50%) translateX(0); }
+  50% { transform: translateY(-50%) translateX(2px); }
+}
+
 @media (max-width: 640px) {
-  .page { width: calc(100% - 2rem); padding-top: 6.5rem; }
+  .page { width: calc(100% - 2rem); padding-top: calc(var(--nav-clearance, 4.25rem) + 2.25rem); }
   .hero h1 { font-size: clamp(2.6rem, 12vw, 3.6rem); }
-  .heroMark { min-height: 14rem; border-radius: 0.85rem; }
+  .heroMark {
+    min-height: 14rem;
+    border-radius: 0.85rem;
+    padding: clamp(1.15rem, 5vw, 1.75rem);
+  }
   .meta { grid-template-columns: 1fr; }
   .proofBand { grid-template-columns: 1fr; }
   .proofBand p { padding-inline: 0; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -726,7 +980,7 @@
   .railLink {
     min-height: 2.75rem;
     padding-block: 0.45rem;
-    padding-inline: 0.75rem;
+    padding-inline: 0.65rem;
   }
 
   .pagination a {
@@ -735,7 +989,8 @@
   }
 
   .nextBleedLink {
-    min-height: 2.75rem;
+    min-height: 12rem;
+    padding: 1.5rem 1.25rem;
   }
 
   .links a {
@@ -748,9 +1003,26 @@
   .back,
   .pagination a,
   .nextBleedLink,
+  .nextBleedLabel small,
+  .nextBleedLabel strong,
+  .nextBleedLabel > span,
+  .nextBleedHint,
+  .nextBleedArrow,
   .railLink,
   .railDot,
   .railIndicator,
-  .railPanel { transition: none; }
+  .railPanel,
+  .railChevron,
+  .heroMark,
+  .heroIdentity { transition: none; animation: none; }
   .railPanel[data-active="true"] { transform: none; }
+  .heroMark:hover,
+  .heroMark:focus-within,
+  .heroMark:hover .heroIdentity,
+  .heroMark:focus-within .heroIdentity,
+  .nextBleedLink:hover .nextBleedLabel strong,
+  .nextBleedLink:focus-visible .nextBleedLabel strong,
+  .nextBleedLink:hover .nextBleedArrow,
+  .nextBleedLink:focus-visible .nextBleedArrow { transform: none; }
+  .railStickyShell[data-can-scroll-end="true"] .railChevron { animation: none; }
 }

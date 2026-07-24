@@ -946,6 +946,23 @@ const tests = [
 
     assert.equal(existsSync(new URL("../scripts/lib/chrome.mjs", import.meta.url)), true);
     assert.equal(existsSync(new URL("../public/fonts/geist-mono/GeistMono-Latin.woff2", import.meta.url)), true);
+
+    const {
+      isCasePathname,
+      isNavTheme,
+      navThemeFromSection,
+    } = await import("../src/lib/portfolio/nav-theme.ts");
+    assert.equal(navThemeFromSection("about"), "white-on-deep");
+    assert.equal(navThemeFromSection("contact"), "white-on-deep");
+    assert.equal(navThemeFromSection("hero"), "ink-on-light");
+    assert.equal(navThemeFromSection("projects"), "ink-on-light");
+    assert.equal(navThemeFromSection("case"), "ink-on-light");
+    assert.equal(navThemeFromSection("unknown", 0.7), "white-on-deep");
+    assert.equal(navThemeFromSection("unknown", 0.2), "ink-on-light");
+    assert.equal(isCasePathname("/project/monkeyclaw"), true);
+    assert.equal(isCasePathname("/"), false);
+    assert.equal(isNavTheme("white-on-deep"), true);
+    assert.equal(isNavTheme("nope"), false);
   }],
 ];
 

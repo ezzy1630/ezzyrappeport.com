@@ -2,10 +2,10 @@
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  justify-self: end;
   margin: 0;
-  padding: 0.2rem 0.15rem;
+  padding: 0.35rem 0.25rem;
   border: 0;
+  border-radius: 0.35rem;
   background: transparent;
   color: color-mix(in oklch, white 28%, transparent);
   font-family: var(--font-geist-mono), ui-monospace, monospace;
@@ -14,13 +14,22 @@
   text-transform: uppercase;
   cursor: pointer;
   opacity: 0.55;
-  transition: color 220ms ease, opacity 220ms ease;
+  outline: 2px solid transparent;
+  outline-offset: 0.15rem;
+  transition:
+    color 220ms ease,
+    opacity 220ms ease,
+    outline-color 180ms ease;
 }
 
 .dive:hover,
 .dive:focus-visible {
   color: color-mix(in oklch, white 62%, transparent);
   opacity: 0.9;
+}
+
+.dive:focus-visible {
+  outline-color: color-mix(in oklch, white 28%, transparent);
 }
 
 .diveLabel {

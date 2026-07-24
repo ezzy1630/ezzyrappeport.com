@@ -3,9 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { Menu, Volume2, VolumeX, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
 import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/frame-clock";
+import {
+  isCasePathname,
+  isNavTheme,
+  navThemeFromSection,
+  type NavTheme,
+} from "@/lib/portfolio/nav-theme";
 import {
   initSoundFromStorage,
   isSoundEnabled,
@@ -18,26 +25,22 @@ type Props = {
   onToggleMotion: () => void;
 };
 
-type NavTheme = "ink-on-light" | "white-on-deep";
-
 const RIPPLE_CLOCK_ID = "portfolio.nav-ripple";
 const RIPPLE_STIFFNESS = 280;
 const RIPPLE_DAMPING = 22;
-
-function themeFromDepth(depth: number): NavTheme {
-  return depth >= 0.62 ? "white-on-deep" : "ink-on-light";
-}
 
 /**
  * Continuous depth/ripple metrics write directly to the DOM.
  * React state updates only for discrete chrome changes (menu, sound, active link, theme band).
  */
 export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
+  const pathname = usePathname() ?? "/";
+  const caseOnLoad = isCasePathname(pathname);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState("hero");
+  const [activeSection, setActiveSection] = useState(caseOnLoad ? "case" : "hero");
   const [navTheme, setNavTheme] = useState<NavTheme>("ink-on-light");
-  const [isCaseRoute, setIsCaseRoute] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
+  const [isCaseRoute, setIsCaseRoute] = useState(caseOnLoad);
+  const [scrolled, setScrolled] = useState(caseOnLoad);
   const [rippleVisible, setRippleVisible] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -46,10 +49,10 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const linksRef = useRef<HTMLElement>(null);
   const rippleRef = useRef<HTMLSpanElement>(null);
   const depthMarkRef = useRef<HTMLSpanElement>(null);
-  const activeSectionRef = useRef("hero");
+  const activeSectionRef = useRef(caseOnLoad ? "case" : "hero");
   const navThemeRef = useRef<NavTheme>("ink-on-light");
-  const scrolledRef = useRef(false);
-  const isCaseRef = useRef(false);
+  const scrolledRef = useRef(caseOnLoad);
+  const isCaseRef = useRef(caseOnLoad);
   const rippleVisibleRef = useRef(false);
   const rippleSpringRef = useRef({
     left: 0,
@@ -132,14 +135,9 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
     let frame = 0;
     const update = () => {
       frame = 0;
-      const nextScrolled = window.scrollY > Math.min(72, window.innerHeight * 0.08);
-      if (nextScrolled !== scrolledRef.current) {
-        scrolledRef.current = nextScrolled;
-        setScrolled(nextScrolled);
-      }
-
       const html = document.documentElement;
-      const section = html.dataset.waterSection ?? "hero";
+      const section = html.dataset.waterSection
+        ?? (isCasePathname(window.location.pathname) ? "case" : "hero");
       if (section !== activeSectionRef.current) {
         activeSectionRef.current = section;
         setActiveSection(section);
@@ -159,20 +157,29 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         depthMarkRef.current.title = `Depth ${Math.round(nextDepth * 100)}%`;
       }
 
-      const publishedTheme = html.dataset.navTheme as NavTheme | undefined;
-      const nextTheme = publishedTheme === "white-on-deep" || publishedTheme === "ink-on-light"
+      const publishedTheme = html.dataset.navTheme;
+      const nextTheme = isNavTheme(publishedTheme)
         ? publishedTheme
-        : themeFromDepth(nextDepth);
+        : navThemeFromSection(section, nextDepth);
       if (nextTheme !== navThemeRef.current) {
         navThemeRef.current = nextTheme;
         setNavTheme(nextTheme);
       }
 
       const nextCase = section === "case"
-        || portfolioRoot?.getAttribute("data-route") === "case";
+        || portfolioRoot?.getAttribute("data-route") === "case"
+        || isCasePathname(window.location.pathname);
       if (nextCase !== isCaseRef.current) {
         isCaseRef.current = nextCase;
         setIsCaseRoute(nextCase);
+      }
+
+      // Case routes always carry the frosted slab — never wait for scrollY.
+      const nextScrolled = nextCase
+        || window.scrollY > Math.min(72, window.innerHeight * 0.08);
+      if (nextScrolled !== scrolledRef.current) {
+        scrolledRef.current = nextScrolled;
+        setScrolled(nextScrolled);
       }
 
       syncRipple(section);

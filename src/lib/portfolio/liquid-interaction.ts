@@ -2,6 +2,7 @@
 
 import { subscribeFrameClock, unsubscribeFrameClock } from "./frame-clock.ts";
 import { resolveMovementSplat } from "./interaction-policy.ts";
+import { navThemeFromSection } from "./nav-theme.ts";
 import { setAmbientDepth } from "./sound.ts";
 import {
   computeWorldState,
@@ -243,9 +244,10 @@ function setRootVars() {
     + Math.pow(1 - state.world.light, 1.55) * 0.74
   ).toFixed(3);
   root.style.setProperty("--nav-l", navLightness);
-  root.dataset.navTheme = state.world.depth >= 0.62 ? "white-on-deep" : "ink-on-light";
+  const section = state.world.moored ? "case" : state.world.section;
+  root.dataset.navTheme = navThemeFromSection(section, state.world.depth);
   // One owner for active section: world geometry (with contact anticipation).
-  root.dataset.waterSection = state.world.moored ? "case" : state.world.section;
+  root.dataset.waterSection = section;
   // Depth-band ambient bed (no-op when sound is off / unavailable).
   setAmbientDepth(state.world.depth);
 }

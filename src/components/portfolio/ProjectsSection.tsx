@@ -9,7 +9,22 @@ import ProjectTransitionLink from "./ProjectTransitionLink";
 import ProjectsInteraction from "./ProjectsInteraction";
 import styles from "./ProjectsSection.module.css";
 
+/** First N entries carry full editorial weight; the rest scan as a compact index. */
+const DOMINANT_COUNT = 3;
+
+type ProjectWeight = "dominant" | "compact";
+
+function padIndex(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function projectWeight(order: number): ProjectWeight {
+  return order < DOMINANT_COUNT ? "dominant" : "compact";
+}
+
 export default function ProjectsSection() {
+  const totalLabel = padIndex(projects.length);
+
   return (
     <section
       id="projects"
@@ -27,25 +42,40 @@ export default function ProjectsSection() {
       </header>
 
       <ol className={styles.index}>
-        {projects.map((project) => {
+        {projects.map((project, order) => {
           const layout = projectLayoutFamily[project.slug];
           const band = projectDepthBand(project.slug);
+          const weight = projectWeight(order);
+          const progress = padIndex(order + 1);
+
           return (
-            <li key={project.slug}>
+            <li key={project.slug} data-weight={weight}>
               <article
                 id={`project-${project.slug}`}
                 className={styles.row}
                 data-project-row
                 data-layout={layout}
+                data-weight={weight}
                 data-depth-band={band}
-                data-split={layout === "split" && Number(project.index) % 2 === 0 ? "end" : "start"}
+                data-split={
+                  layout === "split" && Number(project.index) % 2 === 0
+                    ? "end"
+                    : "start"
+                }
               >
                 <div
                   className={styles.rail}
-                  aria-label={`Project depth mark, ${project.year}`}
+                  aria-label={`Project ${progress} of ${totalLabel}, ${project.year}`}
                 >
                   <span className={styles.railTick} aria-hidden="true" />
-                  <span>{project.year}</span>
+                  <span className={styles.railProgress} aria-hidden="true">
+                    <span className={styles.railCurrent}>{progress}</span>
+                    <span className={styles.railSep}> / </span>
+                    <span className={styles.railTotal}>{totalLabel}</span>
+                  </span>
+                  <span className={styles.railYear} aria-hidden="true">
+                    {project.year}
+                  </span>
                 </div>
 
                 <figure
@@ -92,8 +122,14 @@ export default function ProjectsSection() {
                   </div>
                   <p className={styles.tagline}>{project.tagline}</p>
                   <div className={styles.details}>
-                    <p><span>Role</span>{project.role}</p>
-                    <p><span>Proof</span>{project.proof}</p>
+                    <p>
+                      <span>Role</span>
+                      {project.role}
+                    </p>
+                    <p>
+                      <span>Proof</span>
+                      {project.proof}
+                    </p>
                   </div>
                 </div>
 

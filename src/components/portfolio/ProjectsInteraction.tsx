@@ -223,12 +223,16 @@ export default function ProjectsInteraction() {
       const entry = floats.get(media);
       if (!entry) return;
       entry.hovering = true;
+      const row = media.closest<HTMLElement>("[data-project-row]");
+      const compact = row?.dataset.weight === "compact";
+      const tiltScale = compact ? 0.55 : 1;
+      const liftScale = compact ? 0.65 : 1;
       const rect = media.getBoundingClientRect();
       const nx = ((event.clientX - rect.left) / Math.max(rect.width, 1) - 0.5) * 2;
       const ny = ((event.clientY - rect.top) / Math.max(rect.height, 1) - 0.5) * 2;
-      entry.targetTiltY = nx * MAX_TILT;
-      entry.targetTiltX = -ny * MAX_TILT * 0.72;
-      entry.targetLift = MAX_LIFT;
+      entry.targetTiltY = nx * MAX_TILT * tiltScale;
+      entry.targetTiltX = -ny * MAX_TILT * 0.72 * tiltScale;
+      entry.targetLift = MAX_LIFT * liftScale;
       const now = performance.now();
       if (readMotionPolicy().liquidAllowed && now - entry.lastWakeAt > WAKE_INTERVAL_MS) {
         entry.lastWakeAt = now;
@@ -237,8 +241,8 @@ export default function ProjectsInteraction() {
           startY: event.clientY - ny * 12,
           endX: event.clientX,
           endY: event.clientY,
-          strength: 0.18 + Math.abs(nx) * 0.06,
-          radius: 36,
+          strength: (0.18 + Math.abs(nx) * 0.06) * (compact ? 0.7 : 1),
+          radius: compact ? 28 : 36,
         });
       }
     };

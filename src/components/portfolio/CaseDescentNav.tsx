@@ -63,11 +63,14 @@ export default function CaseDescentNav({ previous, next }: Props) {
           onPointerEnter={() => prefetchNeighbor(next.slug)}
           onFocus={() => prefetchNeighbor(next.slug)}
         >
-          <span className={styles.nextBleedLabel} data-magnetic-label>
+          <span className={styles.nextBleedLabel} data-magnetic-stack>
             <small>Continue the dive</small>
-            <strong>{next.title}</strong>
+            <strong data-magnetic-label>{next.title}</strong>
             <span>{next.tagline}</span>
-            <em className={styles.nextBleedHint}>Next project · →</em>
+            <em className={styles.nextBleedHint}>
+              Next project
+              <span className={styles.nextBleedArrow} aria-hidden="true">→</span>
+            </em>
           </span>
         </ProjectTransitionLink>
       </nav>
