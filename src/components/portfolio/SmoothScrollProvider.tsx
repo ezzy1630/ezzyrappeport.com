@@ -8,6 +8,7 @@ import {
   initScrollChoreography,
 } from "@/lib/portfolio/scroll-choreography";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
+import { getActiveScrollDirector } from "@/features/ocean-experience/OceanExperienceBridge";
 
 const SCROLL_CLOCK_ID = "smooth-scroll-lenis";
 
@@ -48,15 +49,31 @@ function bindNativeScrollFallback(options: {
   } = options;
   root.style.scrollBehavior = "auto";
   const last = { y: window.scrollY, time: performance.now(), velocity: 0 };
-  let frame = 0;
 
-  const onScroll = () => {
-    if (frame) return;
-    frame = window.requestAnimationFrame(() => {
-      frame = 0;
+  // Prefer ScrollDirector samples so this path never attaches a second window
+  // scroll listener. Fall back to a short poll only if the director is not yet up.
+  let unsubscribeDirector: (() => void) | null = null;
+  let pollId = 0;
+
+  const bindDirector = () => {
+    const director = getActiveScrollDirector();
+    if (!director) return false;
+    unsubscribeDirector = director.subscribeSample(() => {
       emitFromNativeScroll(last);
     });
+    emitFromNativeScroll(last);
+    return true;
   };
+
+  if (!bindDirector()) {
+    pollId = window.setInterval(() => {
+      if (cancelled()) return;
+      if (bindDirector()) {
+        window.clearInterval(pollId);
+        pollId = 0;
+      }
+    }, 50);
+  }
 
   const afterStableLayout = () => {
     if (cancelled()) return;
@@ -65,8 +82,6 @@ function bindNativeScrollFallback(options: {
     alignmentTimers.push(window.setTimeout(() => alignHashBelowNavigation(), 700));
   };
 
-  emitFromNativeScroll(last);
-  window.addEventListener("scroll", onScroll, { passive: true });
   if (window.location.hash) {
     void document.fonts.ready.then(afterStableLayout);
     if (document.readyState !== "complete") {
@@ -75,9 +90,9 @@ function bindNativeScrollFallback(options: {
   }
 
   return () => {
-    if (frame) window.cancelAnimationFrame(frame);
+    if (pollId) window.clearInterval(pollId);
+    unsubscribeDirector?.();
     window.removeEventListener("load", afterStableLayout);
-    window.removeEventListener("scroll", onScroll);
     if (previousInlineScrollBehavior) {
       root.style.scrollBehavior = previousInlineScrollBehavior;
     } else {

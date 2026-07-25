@@ -184,19 +184,14 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
 
       syncRipple(section);
     };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
+    // ScrollDirector owns window scroll/resize. Nav reads published chrome
+    // from the unified frame clock so it never attaches a competing listener.
     update();
     subscribeFrameClock("portfolio.nav-section", () => {
       if (!frame) frame = window.requestAnimationFrame(update);
     }, { cadenceMs: 80 });
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
     return () => {
       unsubscribeFrameClock("portfolio.nav-section");
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
       window.cancelAnimationFrame(frame);
     };
   }, [syncRipple]);

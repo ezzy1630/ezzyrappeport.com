@@ -8,9 +8,19 @@
  * while the WebGL renderer can run every display frame. The loop auto-stops
  * when no subscribers remain and pauses while the document is hidden.
  *
+ * Subscriber callbacks are isolated: one throw cannot freeze the clock.
+ * The next frame is always scheduled in `finally`. Repeated failures disable
+ * only the offending subscriber after a bounded fault policy.
+ *
  * GSAP binding is explicit and reference-counted: call bindGsapToFrameClock
  * from a client effect, and unbindGsapFromFrameClock on teardown.
  */
+
+import {
+  createFrameFaultPolicy,
+  type FrameFaultPolicy,
+  type FrameFaultRecord,
+} from "../../features/ocean-experience/runtime/frame-fault-policy.ts";
 
 export type FrameClockCallback = (timeMs: number, deltaMs: number) => void;
 
@@ -27,6 +37,7 @@ type Subscriber = {
 };
 
 const subscribers = new Map<string, Subscriber>();
+const faultPolicy: FrameFaultPolicy = createFrameFaultPolicy();
 
 let rafId = 0;
 let lastNow = 0;
@@ -36,38 +47,57 @@ let gsapBindPromise: Promise<void> | null = null;
 let gsapBindCount = 0;
 let gsapUpdateRoot: ((timeSeconds: number) => void) | null = null;
 
+function scheduleNextFrame() {
+  if (rafId || typeof window === "undefined") return;
+  if (subscribers.size === 0) return;
+  if (typeof document !== "undefined" && document.hidden) return;
+  rafId = requestAnimationFrame(pump);
+}
+
 function pump(now: number) {
   rafId = 0;
-  if (subscribers.size === 0) {
-    lastNow = 0;
-    return;
-  }
-  if (typeof document !== "undefined" && document.hidden) {
-    // Stay subscribed; visibilitychange restarts the loop.
-    return;
-  }
-
-  const deltaMs = lastNow > 0 ? Math.min(100, now - lastNow) : 1000 / 60;
-  lastNow = now;
-
-  gsapDriver?.(now);
-
-  for (const subscriber of subscribers.values()) {
-    if (
-      subscriber.cadenceMs > 0
-      && subscriber.lastFiredAt > 0
-      && now - subscriber.lastFiredAt < subscriber.cadenceMs
-    ) {
-      continue;
+  try {
+    if (subscribers.size === 0) {
+      lastNow = 0;
+      return;
     }
-    subscriber.lastFiredAt = now;
-    subscriber.callback(now, deltaMs);
-  }
+    if (typeof document !== "undefined" && document.hidden) {
+      // Stay subscribed; visibilitychange restarts the loop.
+      return;
+    }
 
-  if (subscribers.size > 0) {
-    rafId = requestAnimationFrame(pump);
-  } else {
-    lastNow = 0;
+    const deltaMs = lastNow > 0 ? Math.min(100, now - lastNow) : 1000 / 60;
+    lastNow = now;
+
+    try {
+      gsapDriver?.(now);
+    } catch (error) {
+      faultPolicy.noteFailure("gsap.driver", error, now);
+    }
+
+    for (const subscriber of subscribers.values()) {
+      if (faultPolicy.isDisabled(subscriber.id)) continue;
+      if (
+        subscriber.cadenceMs > 0
+        && subscriber.lastFiredAt > 0
+        && now - subscriber.lastFiredAt < subscriber.cadenceMs
+      ) {
+        continue;
+      }
+      subscriber.lastFiredAt = now;
+      try {
+        subscriber.callback(now, deltaMs);
+        faultPolicy.noteSuccess(subscriber.id);
+      } catch (error) {
+        faultPolicy.noteFailure(subscriber.id, error, now);
+      }
+    }
+  } finally {
+    if (subscribers.size > 0) {
+      scheduleNextFrame();
+    } else {
+      lastNow = 0;
+    }
   }
 }
 
@@ -92,7 +122,7 @@ function ensureRunning() {
   if (rafId || typeof window === "undefined") return;
   if (typeof document !== "undefined" && document.hidden) return;
   lastNow = 0;
-  rafId = requestAnimationFrame(pump);
+  scheduleNextFrame();
 }
 
 export function subscribeFrameClock(
@@ -101,6 +131,8 @@ export function subscribeFrameClock(
   options: FrameClockSubscribeOptions = {},
 ): () => void {
   bindVisibility();
+  // Re-subscribe clears a prior disable so recovery remains possible.
+  faultPolicy.clear(id);
   subscribers.set(id, {
     id,
     callback,
@@ -127,6 +159,20 @@ export function isFrameClockRunning() {
 
 export function frameClockSubscriberCount() {
   return subscribers.size;
+}
+
+/** Development / tests: fault records for disabled or failing subscribers. */
+export function frameClockFaults(): FrameFaultRecord[] {
+  return faultPolicy.listFaults();
+}
+
+export function frameClockIsSubscriberDisabled(id: string): boolean {
+  return faultPolicy.isDisabled(id);
+}
+
+/** Test helper: wipe fault state without touching live subscribers. */
+export function resetFrameClockFaults(): void {
+  faultPolicy.reset();
 }
 
 /**

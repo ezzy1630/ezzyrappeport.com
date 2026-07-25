@@ -418,6 +418,18 @@ const tests = [
     assert.match(frameClockSource, /export function bindGsapToFrameClock/);
     assert.match(frameClockSource, /export function unbindGsapFromFrameClock/);
     assert.match(frameClockSource, /gsap\.ticker\.remove\(gsap\.updateRoot\)/);
+    // Milestone 0: subscriber isolation + finally-scheduled next frame.
+    assert.match(frameClockSource, /faultPolicy\.noteFailure/);
+    assert.match(frameClockSource, /finally\s*\{/);
+    assert.match(frameClockSource, /scheduleNextFrame/);
+    assert.match(frameClockSource, /export function frameClockFaults/);
+    assert.match(
+      readFileSync(
+        new URL("../src/features/ocean-experience/runtime/frame-fault-policy.ts", import.meta.url),
+        "utf8",
+      ),
+      /export class FrameFaultPolicy/,
+    );
     // Continuous loops subscribe to the clock instead of owning requestAnimationFrame.
     assert.match(liquidInteractionSource, /subscribeFrameClock\(LIQUID_CLOCK_ID/);
     assert.doesNotMatch(liquidInteractionSource, /requestAnimationFrame/);
@@ -784,10 +796,18 @@ const tests = [
     // Content stays free of em/en dashes (editorial voice).
     assert.doesNotMatch(contentSource, /\u2014|\u2013|—|–/);
     // Nav section ownership shares world geometry (contact anticipation).
+    // Milestone 0: ScrollDirector publishes water-section; shell mounts the bridge.
     assert.match(worldStateSource, /resolveDocumentWaterSection/);
     assert.match(worldStateSource, /contact\.top <= scrollY \+ viewportHeight \* 0\.62/);
     assert.match(worldStateSource, /portfolio-root\[data-route='case'\]/);
-    assert.match(portfolioShellSource, /resolveDocumentWaterSection/);
+    assert.match(portfolioShellSource, /OceanExperienceBridge/);
+    assert.match(
+      readFileSync(
+        new URL("../src/features/ocean-experience/scroll/ScrollDirector.ts", import.meta.url),
+        "utf8",
+      ),
+      /resolveDocumentWaterSection/,
+    );
     assert.match(liquidInteractionSource, /dataset\.waterSection/);
     assert.match(liquidInteractionSource, /setAmbientDepth/);
     // Half-res depth + tighter adaptive floor for large canvases.
@@ -963,6 +983,336 @@ const tests = [
     assert.equal(isCasePathname("/"), false);
     assert.equal(isNavTheme("white-on-deep"), true);
     assert.equal(isNavTheme("nope"), false);
+  }],
+  ["Ocean experience Milestone 0: chapter schema, mappings, and ownership", async () => {
+    const {
+      CHAPTER_ORDER,
+      DESKTOP_CHAPTER_RANGES,
+      MOBILE_CHAPTER_RANGES,
+      isChapterId,
+      waterSectionForChapter,
+      chapterIdFromHash,
+    } = await import("../src/features/ocean-experience/contracts/chapter.ts");
+    const {
+      mapProgressToChapter,
+      progressForChapterStart,
+      progressForChapterMid,
+      scrollYForRootProgress,
+      progressFromRootScroll,
+      validateChapterRanges,
+      clamp01,
+    } = await import("../src/features/ocean-experience/scroll/scroll-mapping.ts");
+    const {
+      createScrollDirector,
+    } = await import("../src/features/ocean-experience/scroll/ScrollDirector.ts");
+    const {
+      applyScrollSample,
+      getExperienceSnapshot,
+      resetExperienceStore,
+      subscribeExperience,
+      setSceneStatus,
+    } = await import("../src/features/ocean-experience/state/experience-store.ts");
+    const {
+      createFrameFaultPolicy,
+    } = await import("../src/features/ocean-experience/runtime/frame-fault-policy.ts");
+    const {
+      createResourceRegistry,
+    } = await import("../src/features/ocean-experience/runtime/resource-registry.ts");
+    const {
+      createExperienceRuntime,
+    } = await import("../src/features/ocean-experience/runtime/ExperienceRuntime.ts");
+    const {
+      createNullSceneDirector,
+    } = await import("../src/features/ocean-experience/runtime/NullSceneDirector.ts");
+    const {
+      shouldInterceptChapterHashClick,
+    } = await import("../src/features/ocean-experience/navigation/chapter-hash-click.ts");
+    const {
+      resolveInputShaping,
+      shapeScrollDelta,
+    } = await import("../src/features/ocean-experience/scroll/input-shaping-policy.ts");
+    const {
+      FrameMsRingBuffer,
+    } = await import("../src/features/ocean-experience/diagnostics/frame-stats.ts");
+    const {
+      resolveInitialPreferences,
+      applyOsReducedMotionCeiling,
+      sanitizePreferences,
+      shouldUseSimpleStory,
+      DEFAULT_PREFERENCES,
+    } = await import("../src/features/ocean-experience/state/preferences-store.ts");
+
+    assert.deepEqual(CHAPTER_ORDER, [
+      "surface",
+      "descent",
+      "monkeyclaw",
+      "etch",
+      "flowe",
+      "argyph",
+      "charted-work",
+      "about",
+      "contact",
+    ]);
+    assert.equal(isChapterId("method"), false);
+    assert.equal(isChapterId("observatory"), false);
+    assert.equal(isChapterId("monkeyclaw"), true);
+    validateChapterRanges(DESKTOP_CHAPTER_RANGES);
+    validateChapterRanges(MOBILE_CHAPTER_RANGES);
+    assert.equal(waterSectionForChapter("surface"), "hero");
+    assert.equal(waterSectionForChapter("etch"), "projects");
+    assert.equal(waterSectionForChapter("about"), "about");
+    assert.equal(chapterIdFromHash("#contact"), "contact");
+    assert.equal(chapterIdFromHash("#project-argyph"), "argyph");
+
+    const midEtch = progressForChapterMid("etch", DESKTOP_CHAPTER_RANGES);
+    const mapped = mapProgressToChapter(midEtch, DESKTOP_CHAPTER_RANGES);
+    assert.equal(mapped.activeChapter, "etch");
+    assert.ok(mapped.chapterProgress > 0.4 && mapped.chapterProgress < 0.6);
+
+    // Inverse seek: progress → scrollY → progress reconstructs.
+    const travel = 2000;
+    const y = scrollYForRootProgress(0.57, 10, travel);
+    const reconstructed = progressFromRootScroll({
+      scrollY: y,
+      rootOffsetTop: 10,
+      authoredTravelPx: travel,
+    });
+    assert.ok(Math.abs(reconstructed - 0.57) < 1e-9);
+    assert.equal(clamp01(2), 1);
+    assert.equal(progressForChapterStart("surface", DESKTOP_CHAPTER_RANGES), 0);
+
+    // Experience store notifies only on discrete fields.
+    resetExperienceStore();
+    let notifications = 0;
+    const unsubscribe = subscribeExperience(() => {
+      notifications += 1;
+    });
+    applyScrollSample({
+      progress: 0.1,
+      activeChapter: "surface",
+      chapterProgress: 0.5,
+      direction: 0,
+      velocity: 12,
+    });
+    assert.equal(notifications, 0);
+    applyScrollSample({
+      progress: 0.25,
+      activeChapter: "monkeyclaw",
+      chapterProgress: 0.1,
+      direction: 1,
+      velocity: 20,
+    });
+    assert.equal(notifications, 1);
+    setSceneStatus("ready");
+    assert.equal(notifications, 2);
+    assert.equal(getExperienceSnapshot().activeChapter, "monkeyclaw");
+    unsubscribe();
+    resetExperienceStore();
+
+    // ScrollDirector: one listener, coalesced sample, exact seek.
+    const cssRoot = {
+      style: new Map(),
+      dataset: {},
+      offsetTop: 0,
+      offsetParent: null,
+      setProperty(key, value) {
+        this.style.set(key, value);
+      },
+    };
+    // Minimal HTMLElement-like root for CSS writes.
+    const root = {
+      style: {
+        setProperty(key, value) {
+          cssRoot.style.set(key, value);
+        },
+      },
+      dataset: cssRoot.dataset,
+      offsetTop: 0,
+      offsetParent: null,
+    };
+    let scrollY = 0;
+    const listeners = new Map();
+    const fakeWindow = {
+      innerWidth: 1440,
+      innerHeight: 900,
+      devicePixelRatio: 1,
+      get scrollY() {
+        return scrollY;
+      },
+      addEventListener(type, handler) {
+        const list = listeners.get(type) ?? [];
+        list.push(handler);
+        listeners.set(type, list);
+      },
+      removeEventListener(type, handler) {
+        const list = listeners.get(type) ?? [];
+        listeners.set(type, list.filter((entry) => entry !== handler));
+      },
+      requestAnimationFrame(cb) {
+        return setTimeout(() => cb(performance.now()), 0);
+      },
+      cancelAnimationFrame(id) {
+        clearTimeout(id);
+      },
+      scrollTo({ top }) {
+        scrollY = top;
+      },
+    };
+    const previousWindow = globalThis.window;
+    globalThis.window = fakeWindow;
+    try {
+      const director = createScrollDirector({
+        root,
+        publishWaterSection: false,
+        getLayout: () => "desktop",
+        getViewport: () => ({ width: 1440, height: 900, dpr: 1 }),
+        getScrollMetrics: () => ({
+          scrollY,
+          rootOffsetTop: 0,
+          authoredTravelPx: 1000,
+        }),
+        setScrollY: (yValue) => {
+          scrollY = yValue;
+        },
+      });
+      director.attach();
+      assert.equal((listeners.get("scroll") ?? []).length, 1);
+      assert.equal((listeners.get("resize") ?? []).length, 1);
+      director.seekChapter("about");
+      assert.equal(getExperienceSnapshot().activeChapter, "about");
+      assert.ok(Math.abs(getExperienceSnapshot().progress - progressForChapterStart("about", DESKTOP_CHAPTER_RANGES)) < 1e-9);
+      director.dispose();
+      assert.equal((listeners.get("scroll") ?? []).length, 0);
+    } finally {
+      globalThis.window = previousWindow;
+      resetExperienceStore();
+    }
+
+    // Frame fault policy disables after bounded failures.
+    const policy = createFrameFaultPolicy({ disableAfter: 2 });
+    policy.noteFailure("a", new Error("boom"), 1);
+    assert.equal(policy.isDisabled("a"), false);
+    policy.noteFailure("a", new Error("boom"), 2);
+    assert.equal(policy.isDisabled("a"), true);
+    policy.clear("a");
+    assert.equal(policy.isDisabled("a"), false);
+
+    // Resource registry retain/release + abortable load.
+    const registry = createResourceRegistry();
+    let disposed = 0;
+    const releaseA = registry.acquire("mesh-a", () => ({
+      dispose: () => {
+        disposed += 1;
+      },
+    }));
+    const releaseA2 = registry.acquire("mesh-a", () => ({
+      dispose: () => {
+        disposed += 1;
+      },
+    }));
+    assert.equal(registry.retainCount("mesh-a"), 2);
+    releaseA();
+    assert.equal(disposed, 0);
+    releaseA2();
+    assert.equal(disposed, 1);
+    const load = registry.beginLoad();
+    assert.equal(load.isCurrent(), true);
+    const stale = registry.beginLoad();
+    assert.equal(load.isCurrent(), false);
+    assert.equal(stale.isCurrent(), true);
+    stale.abort();
+    assert.equal(stale.signal.aborted, true);
+
+    // ExperienceRuntime load/start/stop/dispose lifecycle.
+    let clockCallbacks = 0;
+    const runtime = createExperienceRuntime({
+      createDirector: () => createNullSceneDirector(),
+      mode: "animated",
+      clock: {
+        subscribe(_id, callback) {
+          clockCallbacks += 1;
+          callback(16, 16);
+          return () => {
+            clockCallbacks -= 1;
+          };
+        },
+      },
+      registry,
+    });
+    await runtime.load();
+    assert.equal(runtime.getStatus(), "ready");
+    runtime.start();
+    assert.equal(clockCallbacks, 1);
+    runtime.seek(0.4, 0);
+    assert.ok(Math.abs(runtime.getDirector().getState().progress - 0.4) < 1e-9);
+    runtime.dispose();
+    assert.equal(runtime.getStatus(), "disposed");
+    assert.equal(clockCallbacks, 0);
+
+    // Preferences: OS reduced motion is a hard ceiling; sound independent.
+    assert.equal(applyOsReducedMotionCeiling("full", true), "reduced");
+    assert.equal(applyOsReducedMotionCeiling("full", false), "full");
+    const resolved = resolveInitialPreferences({
+      stored: { version: 1, motion: "full", sound: true },
+      osReducedMotion: true,
+    });
+    assert.equal(resolved.motion, "reduced");
+    assert.equal(resolved.sound, true);
+    assert.equal(shouldUseSimpleStory({ ...DEFAULT_PREFERENCES, motion: "off" }), true);
+    assert.equal(sanitizePreferences({ motion: "nope" }).motion, "full");
+
+    // Input shaping default identity; hash click guard.
+    assert.equal(resolveInputShaping(0.5).allowShaping, false);
+    assert.equal(shapeScrollDelta(12), 12);
+    assert.equal(
+      shouldInterceptChapterHashClick(
+        { button: 0, metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false },
+        { target: "", download: "" },
+      ),
+      true,
+    );
+    assert.equal(
+      shouldInterceptChapterHashClick(
+        { button: 0, metaKey: true, ctrlKey: false, shiftKey: false, altKey: false, defaultPrevented: false },
+        { target: "", download: "" },
+      ),
+      false,
+    );
+
+    const ring = new FrameMsRingBuffer(8);
+    for (let i = 0; i < 12; i += 1) ring.push(16 + (i % 3));
+    assert.ok(ring.sampleCount <= 8);
+
+    // Ownership: shell/nav/native smooth-scroll no longer attach window scroll.
+    const shellSource = readFileSync(
+      new URL("../src/components/portfolio/PortfolioShell.tsx", import.meta.url),
+      "utf8",
+    );
+    const navSource = readFileSync(
+      new URL("../src/components/portfolio/Navigation.tsx", import.meta.url),
+      "utf8",
+    );
+    const smoothSource = readFileSync(
+      new URL("../src/components/portfolio/SmoothScrollProvider.tsx", import.meta.url),
+      "utf8",
+    );
+    const directorSource = readFileSync(
+      new URL("../src/features/ocean-experience/scroll/ScrollDirector.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(shellSource, /OceanExperienceBridge/);
+    assert.doesNotMatch(shellSource, /useWaterSection/);
+    assert.doesNotMatch(shellSource, /addEventListener\("scroll"/);
+    assert.doesNotMatch(navSource, /addEventListener\("scroll"/);
+    assert.match(smoothSource, /getActiveScrollDirector|subscribeSample/);
+    assert.doesNotMatch(smoothSource, /addEventListener\("scroll"/);
+    assert.match(directorSource, /addEventListener\("scroll"/);
+    assert.match(directorSource, /sole window scroll\/resize listener/);
+    assert.equal(existsSync(new URL("../docs/design/SALVAGE_MANIFEST.md", import.meta.url)), true);
+    assert.doesNotMatch(
+      readFileSync(new URL("../src/features/ocean-experience/index.ts", import.meta.url), "utf8"),
+      /cinematic-home|experience-lab|UnderwaterObservatory/,
+    );
   }],
 ];
 

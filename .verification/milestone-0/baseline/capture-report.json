@@ -1,0 +1,406 @@
+{
+  "milestone": 0,
+  "baseUrl": "http://127.0.0.1:3000",
+  "capturedAt": "2026-07-25T03:25:05.956Z",
+  "commit": "d274e76",
+  "idle": [
+    {
+      "name": "desktop-1728x1117",
+      "w": 1728,
+      "h": 1117,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1728x1117.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1728x1117",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "310.60",
+        "fps": "60.2",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 124421,
+            "encodedBodySize": 124121,
+            "duration": 19.099999994039536
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 85
+          }
+        ],
+        "inner": {
+          "w": 1728,
+          "h": 1117
+        }
+      }
+    },
+    {
+      "name": "desktop-1440x900",
+      "w": 1440,
+      "h": 900,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1440x900.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1440x900",
+        "frameMsP95": "17.50",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.60",
+        "workMsWorst": "1.20",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.7999999821186066
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 3.399999976158142
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    {
+      "name": "desktop-1280x720",
+      "w": 1280,
+      "h": 720,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1280x720.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1280x720",
+        "frameMsP95": "17.40",
+        "frameMsWorst": "17.60",
+        "workMsP95": "0.60",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 2.7999999821186066
+          }
+        ],
+        "inner": {
+          "w": 1280,
+          "h": 720
+        }
+      }
+    },
+    {
+      "name": "tablet-1024x768",
+      "w": 1024,
+      "h": 768,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/tablet-1024x768.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1024x768",
+        "frameMsP95": "17.50",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.60",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.2000000178813934
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 2.600000023841858
+          }
+        ],
+        "inner": {
+          "w": 1024,
+          "h": 768
+        }
+      }
+    },
+    {
+      "name": "mobile-390x844",
+      "w": 390,
+      "h": 844,
+      "mobile": true,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/mobile-390x844.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "343x742",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.80",
+        "workMsP95": "0.70",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "0.88",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 10.800000011920929
+          }
+        ],
+        "inner": {
+          "w": 390,
+          "h": 844
+        }
+      }
+    },
+    {
+      "name": "mobile-375x812",
+      "w": 375,
+      "h": 812,
+      "mobile": true,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/mobile-375x812.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "330x714",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.80",
+        "workMsWorst": "1.10",
+        "fps": "60.0",
+        "adaptiveScale": "0.88",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 2.5999999940395355
+          }
+        ],
+        "inner": {
+          "w": 375,
+          "h": 812
+        }
+      }
+    }
+  ],
+  "sections": [
+    {
+      "name": "hero",
+      "y": 0,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-hero.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1440x900",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.4000000059604645
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 4
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    {
+      "name": "projects",
+      "selector": "#projects",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-projects.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "projects",
+        "experienceChapter": "descent",
+        "oceanBridge": true,
+        "renderSize": "1440x900",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.092",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.4000000059604645
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 4
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    {
+      "name": "about",
+      "selector": "#about",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-about.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "about",
+        "experienceChapter": "argyph",
+        "oceanBridge": true,
+        "renderSize": "1440x900",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.376",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.4000000059604645
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 4
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      }
+    },
+    {
+      "name": "contact",
+      "selector": "#contact",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-contact.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "contact",
+        "experienceChapter": "contact",
+        "oceanBridge": true,
+        "renderSize": "1440x900",
+        "frameMsP95": "17.60",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "1.00",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.969",
+        "glyphCount": "13",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.4000000059604645
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 4
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      }
+    }
+  ]
+}

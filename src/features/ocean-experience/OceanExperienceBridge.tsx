@@ -1,0 +1,70 @@
+"use client";
+
+/**
+ * OceanExperienceBridge
+ * ---------------------
+ * Milestone 0 runtime owner mount: attaches the sole ScrollDirector for journey
+ * geometry + water-section chrome, without changing visible homepage layout.
+ * KineticCanvas remains the live renderer until later milestones migrate it.
+ */
+
+import { useEffect, useRef } from "react";
+import { createScrollDirector, type ScrollDirector } from "./scroll/ScrollDirector.ts";
+import { installExperienceDebugApi } from "./diagnostics/experience-debug.ts";
+import { hydratePreferencesStore } from "./state/preferences-store.ts";
+import { resetExperienceStore } from "./state/experience-store.ts";
+import { invalidateWorldMeasurement } from "../../lib/portfolio/world-state.ts";
+
+let activeDirector: ScrollDirector | null = null;
+
+/** Test / SmoothScrollProvider access to the live director. */
+export function getActiveScrollDirector(): ScrollDirector | null {
+  return activeDirector;
+}
+
+export default function OceanExperienceBridge() {
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const root =
+      document.querySelector<HTMLElement>(".portfolio-root")
+      ?? rootRef.current
+      ?? document.documentElement;
+
+    hydratePreferencesStore();
+    const director = createScrollDirector({ root });
+    activeDirector = director;
+    director.attach();
+    const uninstallDebug = installExperienceDebugApi(director);
+
+    // Content reflows (fonts, images) must invalidate measured world knots.
+    // Owned here so PortfolioShell does not add a competing scroll listener.
+    const layoutRoot = document.querySelector<HTMLElement>(".content-layer");
+    const layoutObserver =
+      typeof ResizeObserver === "undefined" || !layoutRoot
+        ? null
+        : new ResizeObserver(() => {
+            invalidateWorldMeasurement();
+            director.requestSample();
+          });
+    if (layoutObserver && layoutRoot) layoutObserver.observe(layoutRoot);
+
+    return () => {
+      layoutObserver?.disconnect();
+      uninstallDebug();
+      director.dispose();
+      if (activeDirector === director) activeDirector = null;
+      resetExperienceStore();
+    };
+  }, []);
+
+  return (
+    <div
+      ref={rootRef}
+      className="ocean-experience-bridge"
+      hidden
+      aria-hidden="true"
+      data-ocean-bridge="attached"
+    />
+  );
+}
