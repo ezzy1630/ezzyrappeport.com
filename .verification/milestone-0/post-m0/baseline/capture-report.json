@@ -2,8 +2,8 @@
   "milestone": 0,
   "label": "post-m0",
   "baseUrl": "http://127.0.0.1:3000",
-  "capturedAt": "2026-07-25T03:49:47.201Z",
-  "commit": "27af503",
+  "capturedAt": "2026-07-25T03:51:09.000Z",
+  "commit": "cd24fd6",
   "idle": [
     {
       "name": "desktop-1728x1117",
@@ -21,8 +21,8 @@
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
         "workMsP95": "0.80",
-        "workMsWorst": "20.40",
-        "fps": "60.2",
+        "workMsWorst": "25.00",
+        "fps": "60.1",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
@@ -36,13 +36,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 124421,
             "encodedBodySize": 124121,
-            "duration": 10.699999988079071
+            "duration": 12.699999988079071
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 103.5
+            "duration": 9
           }
         ],
         "inner": {
@@ -66,9 +66,9 @@
         "oceanBridge": true,
         "renderSize": "1440x900",
         "frameMsP95": "17.60",
-        "frameMsWorst": "17.80",
+        "frameMsWorst": "17.70",
         "workMsP95": "0.70",
-        "workMsWorst": "1.00",
+        "workMsWorst": "1.10",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
@@ -83,13 +83,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.399999976158142
+            "duration": 1.199999988079071
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 4.0999999940395355
+            "duration": 1.800000011920929
           }
         ],
         "inner": {
@@ -119,8 +119,8 @@
         "renderSize": "1280x720",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.60",
-        "workMsWorst": "0.70",
+        "workMsP95": "0.70",
+        "workMsWorst": "0.80",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
@@ -135,13 +135,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.300000011920929
+            "duration": 1.199999988079071
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.5999999940395355
+            "duration": 2.0999999940395355
           }
         ],
         "inner": {
@@ -166,14 +166,14 @@
         "renderSize": "1024x768",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.80",
-        "workMsP95": "0.60",
-        "workMsWorst": "0.90",
+        "workMsP95": "0.70",
+        "workMsWorst": "0.80",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
-        "drawCalls": "43",
-        "triangles": "165308",
+        "drawCalls": "44",
+        "triangles": "165310",
         "textureMemoryEstimateMb": "24.4",
         "gpuVendor": "Google Inc. (Apple)",
         "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -182,13 +182,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.0999999940395355
+            "duration": 1.2000000178813934
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 1.199999988079071
+            "duration": 3.199999988079071
           }
         ],
         "inner": {
@@ -214,14 +214,14 @@
         "renderSize": "343x742",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
-        "workMsWorst": "1.00",
+        "workMsP95": "0.60",
+        "workMsWorst": "0.80",
         "fps": "60.0",
         "adaptiveScale": "0.88",
         "worldDepth": "0.000",
         "glyphCount": "13",
-        "drawCalls": "44",
-        "triangles": "165310",
+        "drawCalls": "45",
+        "triangles": "165312",
         "textureMemoryEstimateMb": "8.2",
         "gpuVendor": "Google Inc. (Apple)",
         "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -230,7 +230,7 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.5999999940395355
+            "duration": 2.9000000059604645
           }
         ],
         "inner": {
@@ -272,7 +272,7 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.699999988079071
+            "duration": 1.9000000059604645
           }
         ],
         "inner": {
@@ -298,14 +298,14 @@
         "renderSize": "1440x900",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.80",
         "workMsWorst": "0.90",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
-        "drawCalls": "45",
-        "triangles": "165312",
+        "drawCalls": "43",
+        "triangles": "165308",
         "textureMemoryEstimateMb": "40.2",
         "gpuVendor": "Google Inc. (Apple)",
         "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
@@ -314,13 +314,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.5
+            "duration": 1.7000000178813934
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 3
+            "duration": 5.9000000059604645
           }
         ],
         "inner": {
@@ -343,11 +343,11 @@
         "renderSize": "1440x900",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.80",
         "workMsWorst": "0.90",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.096",
+        "worldDepth": "0.097",
         "glyphCount": "13",
         "drawCalls": "5",
         "triangles": "10",
@@ -359,13 +359,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.5
+            "duration": 1.7000000178813934
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 3
+            "duration": 5.9000000059604645
           }
         ],
         "inner": {
@@ -388,11 +388,11 @@
         "renderSize": "1440x900",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.80",
         "workMsWorst": "0.90",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.373",
+        "worldDepth": "0.372",
         "glyphCount": "13",
         "drawCalls": "6",
         "triangles": "12",
@@ -404,13 +404,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.5
+            "duration": 1.7000000178813934
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 3
+            "duration": 5.9000000059604645
           }
         ],
         "inner": {
@@ -433,11 +433,11 @@
         "renderSize": "1440x900",
         "frameMsP95": "17.60",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.80",
         "workMsWorst": "0.90",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.964",
+        "worldDepth": "0.969",
         "glyphCount": "13",
         "drawCalls": "6",
         "triangles": "12",
@@ -449,13 +449,13 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.5
+            "duration": 1.7000000178813934
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 3
+            "duration": 5.9000000059604645
           }
         ],
         "inner": {
