@@ -10,6 +10,8 @@ import {
   stillWorld,
   type WorldState,
 } from "./world-state.ts";
+import { getActiveScrollDirector } from "../../features/ocean-experience/scroll/active-scroll-director.ts";
+import { subscribeJourneyResize } from "../../features/ocean-experience/scroll/journey-scroll-bus.ts";
 
 export type LiquidPointerState = {
   x: number;
@@ -606,6 +608,25 @@ function onResize() {
   invalidateWorldMeasurement();
 }
 
+let unsubscribeJourneyResize: (() => void) | null = null;
+let temporaryResizeBound = false;
+let temporaryResizePollId = 0;
+
+function detachTemporaryResize() {
+  if (!temporaryResizeBound) return;
+  temporaryResizeBound = false;
+  window.removeEventListener("resize", onTemporaryResize);
+  if (temporaryResizePollId) {
+    window.clearInterval(temporaryResizePollId);
+    temporaryResizePollId = 0;
+  }
+}
+
+function onTemporaryResize() {
+  onResize();
+  if (getActiveScrollDirector()) detachTemporaryResize();
+}
+
 function start() {
   if (started || typeof window === "undefined") return;
   started = true;
@@ -626,7 +647,16 @@ function start() {
   window.addEventListener("pointercancel", onPointerEnd, { passive: true });
   window.addEventListener("pointerleave", onPointerLeave);
   window.addEventListener("blur", onWindowBlur);
-  window.addEventListener("resize", onResize, { passive: true });
+  // Journey geometry resize is owned by ScrollDirector → journey-scroll-bus.
+  unsubscribeJourneyResize = subscribeJourneyResize(onResize);
+  if (!getActiveScrollDirector()) {
+    // Temporary until the sole ScrollDirector attaches, then detach.
+    temporaryResizeBound = true;
+    window.addEventListener("resize", onTemporaryResize, { passive: true });
+    temporaryResizePollId = window.setInterval(() => {
+      if (getActiveScrollDirector()) detachTemporaryResize();
+    }, 50);
+  }
   document.addEventListener("visibilitychange", onVisibilityChange);
 
   // The world persists for the whole session: the loop suspends only for a
@@ -644,7 +674,9 @@ function stop() {
   window.removeEventListener("pointercancel", onPointerEnd);
   window.removeEventListener("pointerleave", onPointerLeave);
   window.removeEventListener("blur", onWindowBlur);
-  window.removeEventListener("resize", onResize);
+  detachTemporaryResize();
+  unsubscribeJourneyResize?.();
+  unsubscribeJourneyResize = null;
   document.removeEventListener("visibilitychange", onVisibilityChange);
   unsubscribeFrameClock(LIQUID_CLOCK_ID);
   pendingPointer = null;

@@ -9,18 +9,14 @@
  */
 
 import { useEffect, useRef } from "react";
-import { createScrollDirector, type ScrollDirector } from "./scroll/ScrollDirector.ts";
+import { createScrollDirector } from "./scroll/ScrollDirector.ts";
+import { setActiveScrollDirector, getActiveScrollDirector } from "./scroll/active-scroll-director.ts";
 import { installExperienceDebugApi } from "./diagnostics/experience-debug.ts";
 import { hydratePreferencesStore, setPreferences } from "./state/preferences-store.ts";
 import { resetExperienceStore } from "./state/experience-store.ts";
 import { invalidateWorldMeasurement } from "../../lib/portfolio/world-state.ts";
 
-let activeDirector: ScrollDirector | null = null;
-
-/** Test / SmoothScrollProvider access to the live director. */
-export function getActiveScrollDirector(): ScrollDirector | null {
-  return activeDirector;
-}
+export { getActiveScrollDirector } from "./scroll/active-scroll-director.ts";
 
 export default function OceanExperienceBridge() {
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -42,7 +38,7 @@ export default function OceanExperienceBridge() {
       /* ignore */
     }
     const director = createScrollDirector({ root });
-    activeDirector = director;
+    setActiveScrollDirector(director);
     director.attach();
     const uninstallDebug = installExperienceDebugApi(director);
 
@@ -62,7 +58,7 @@ export default function OceanExperienceBridge() {
       layoutObserver?.disconnect();
       uninstallDebug();
       director.dispose();
-      if (activeDirector === director) activeDirector = null;
+      if (getActiveScrollDirector() === director) setActiveScrollDirector(null);
       resetExperienceStore();
     };
   }, []);

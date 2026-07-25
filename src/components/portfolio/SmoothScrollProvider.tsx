@@ -8,7 +8,7 @@ import {
   initScrollChoreography,
 } from "@/lib/portfolio/scroll-choreography";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
-import { getActiveScrollDirector } from "@/features/ocean-experience/OceanExperienceBridge";
+import { getActiveScrollDirector } from "@/features/ocean-experience/scroll/active-scroll-director";
 
 const SCROLL_CLOCK_ID = "smooth-scroll-lenis";
 

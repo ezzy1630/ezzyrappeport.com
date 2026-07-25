@@ -16,6 +16,7 @@ import {
 } from "@/lib/portfolio/device-tilt";
 import LoadingVeil from "./LoadingVeil";
 import OceanExperienceBridge from "@/features/ocean-experience/OceanExperienceBridge";
+import { setPreferences } from "@/features/ocean-experience/state/preferences-store";
 
 const FluidScene = dynamic(() => import("./FluidScene"), {
   ssr: false,
@@ -112,6 +113,8 @@ export default function PortfolioShell({
     setMotionPreference((current) => {
       const next = !(current ?? true);
       window.localStorage.setItem("portfolio-motion", next ? "on" : "off");
+      // Keep ocean-experience prefs in lockstep so M0 does not leave a dual source.
+      setPreferences({ motion: next ? "full" : "off" });
       return next;
     });
   };

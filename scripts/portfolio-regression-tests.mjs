@@ -1388,7 +1388,15 @@ const tests = [
     assert.doesNotMatch(underwaterRendererSource, /window\.addEventListener\(\s*"scroll"/);
     assert.match(underwaterRendererSource, /visualViewport\?\.addEventListener\("scroll"/);
     assert.doesNotMatch(liquidSource, /dataset\.waterSection\s*=/);
+    assert.match(liquidSource, /subscribeJourneyResize/);
+    assert.match(liquidSource, /detachTemporaryResize|getActiveScrollDirector/);
     assert.match(directorSource, /dataset\.waterSection/);
+    assert.match(shellSource, /setPreferences\(\{\s*motion:/);
+    // Force sample notifies only after committed sample fields update.
+    assert.match(
+      directorSource,
+      /this\.lastProgress = progress;\s*[\s\S]*?if \(force\) \{\s*notifyJourneyScroll\(\);/,
+    );
 
     // Repo inventory: only ScrollDirector + SmoothScroll temporary boot may
     // attach window document scroll listeners in src/.
@@ -1471,6 +1479,7 @@ const tests = [
         new URL("../.verification/milestone-0/post-m0/baseline/capture-report.json", import.meta.url),
         "utf8",
       ));
+      assert.equal(mainReport.commit, "216e38d", "main baseline must be clean main tip");
       assert.equal(mainReport.idle[0].metrics.oceanBridge, false);
       assert.equal(postReport.idle[0].metrics.oceanBridge, true);
       for (const report of [mainReport, postReport]) {
@@ -1481,6 +1490,33 @@ const tests = [
         assert.ok(m.workMsP95, "workMsP95 required");
         assert.ok(m.fps, "fps required");
         assert.ok(Array.isArray(report.frameTraces) && report.frameTraces.length > 0, "frame trace required");
+      }
+
+      // Visually-unchanged gate: idle envelopes must stay within tight tolerance.
+      const envelopeKeys = ["desktop-1728x1117", "desktop-1440x900", "mobile-390x844"];
+      for (const name of envelopeKeys) {
+        const mainIdle = mainReport.idle.find((entry) => entry.name === name);
+        const postIdle = postReport.idle.find((entry) => entry.name === name);
+        assert.ok(mainIdle, `main idle missing ${name}`);
+        assert.ok(postIdle, `post-m0 idle missing ${name}`);
+        const mainDraw = Number(mainIdle.metrics.drawCalls);
+        const postDraw = Number(postIdle.metrics.drawCalls);
+        const mainTris = Number(mainIdle.metrics.triangles);
+        const postTris = Number(postIdle.metrics.triangles);
+        const mainRt = Number(mainIdle.metrics.textureMemoryEstimateMb);
+        const postRt = Number(postIdle.metrics.textureMemoryEstimateMb);
+        assert.ok(
+          Math.abs(postDraw - mainDraw) <= 2,
+          `${name} drawCalls drifted beyond ±2 (${mainDraw} → ${postDraw})`,
+        );
+        assert.ok(
+          Math.abs(postTris - mainTris) <= 16,
+          `${name} triangles drifted beyond ±16 (${mainTris} → ${postTris})`,
+        );
+        assert.ok(
+          Math.abs(postRt - mainRt) <= 0.5,
+          `${name} RT memory drifted beyond ±0.5MB (${mainRt} → ${postRt})`,
+        );
       }
     }
     assert.doesNotMatch(

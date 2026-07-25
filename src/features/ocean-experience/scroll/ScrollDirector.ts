@@ -167,6 +167,7 @@ export class ScrollDirector {
   private lastViewport: ViewportSize | null = null;
   private cachedRanges: readonly ChapterRange[] | null = null;
   private cachedLayout: LayoutMode | null = null;
+  private pendingResizeNotify = false;
   private readonly sampleListeners = new Set<ScrollSampleListener>();
 
   constructor(options: ScrollDirectorOptions) {
@@ -307,21 +308,25 @@ export class ScrollDirector {
   private readonly onResize = (): void => {
     if (!this.attached) return;
     this.syncSceneResize(false);
-    notifyJourneyResize();
-    this.schedule();
+    // Coalesce sample first so consumers observe committed journey state.
+    this.schedule({ alsoNotifyResize: true });
   };
 
-  private schedule(): void {
+  private schedule(options: { alsoNotifyResize?: boolean } = {}): void {
     const win = runtimeWindow();
     if (!win) return;
     this.dirty = true;
+    if (options.alsoNotifyResize) this.pendingResizeNotify = true;
     if (this.rafId !== null) return;
     this.rafId = win.requestAnimationFrame((time) => {
       this.rafId = null;
       if (!this.dirty) return;
       this.dirty = false;
+      const notifyResize = this.pendingResizeNotify;
+      this.pendingResizeNotify = false;
       this.sample(false, time);
       notifyJourneyScroll();
+      if (notifyResize) notifyJourneyResize();
     });
   }
 
@@ -367,11 +372,6 @@ export class ScrollDirector {
     const deltaSeconds = force ? 0 : dtSeconds;
     this.scene?.seek(progress, deltaSeconds);
 
-    // Force path (attach/seek) must also wake secondary consumers.
-    if (force) {
-      notifyJourneyScroll();
-    }
-
     if (this.sampleListeners.size > 0) {
       const payload = {
         progress,
@@ -390,6 +390,11 @@ export class ScrollDirector {
     this.lastScrollY = metrics.scrollY;
     this.lastTimestamp = timestamp;
     this.lastProgress = progress;
+
+    // Force path (attach/seek): notify only after sample state is fully committed.
+    if (force) {
+      notifyJourneyScroll();
+    }
   }
 
   private writeCss(
