@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "capture:master": "node scripts/capture-master-revamp.mjs",
-    "capture:m0": "node scripts/capture-milestone-0-baseline.mjs",
+    "capture:m0": "node scripts/capture-milestone-0-baseline.mjs --label post-m0",
+    "capture:m0:main": "node scripts/capture-milestone-0-baseline.mjs --label main",
     "resume:pdf": "node scripts/print-resume-pdf.mjs"
   },
   "dependencies": {

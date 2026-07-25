@@ -1,14 +1,15 @@
 {
   "milestone": 0,
+  "label": "post-m0",
   "baseUrl": "http://127.0.0.1:3000",
-  "capturedAt": "2026-07-25T03:25:05.956Z",
-  "commit": "d274e76",
+  "capturedAt": "2026-07-25T03:39:09.274Z",
+  "commit": "6c4a692",
   "idle": [
     {
       "name": "desktop-1728x1117",
       "w": 1728,
       "h": 1117,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1728x1117.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/desktop-1728x1117.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -17,39 +18,45 @@
         "experienceChapter": "surface",
         "oceanBridge": true,
         "renderSize": "1728x1117",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
-        "workMsWorst": "310.60",
+        "workMsP95": "0.60",
+        "workMsWorst": "19.90",
         "fps": "60.2",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
+        "drawCalls": "45",
+        "triangles": "165312",
+        "textureMemoryEstimateMb": "59.5",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 124421,
             "encodedBodySize": 124121,
-            "duration": 19.099999994039536
+            "duration": 20.5
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 85
+            "duration": 48.30000001192093
           }
         ],
         "inner": {
           "w": 1728,
           "h": 1117
         }
-      }
+      },
+      "frameTrace": null
     },
     {
       "name": "desktop-1440x900",
       "w": 1440,
       "h": 900,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1440x900.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/desktop-1440x900.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -58,55 +65,19 @@
         "experienceChapter": "surface",
         "oceanBridge": true,
         "renderSize": "1440x900",
-        "frameMsP95": "17.50",
-        "frameMsWorst": "17.70",
-        "workMsP95": "0.60",
-        "workMsWorst": "1.20",
+        "frameMsP95": "17.70",
+        "frameMsWorst": "17.80",
+        "workMsP95": "0.50",
+        "workMsWorst": "0.60",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
-        "transferHint": [
-          {
-            "name": "ezzy-rappeport-glyphs.glb",
-            "transferSize": 0,
-            "encodedBodySize": 124121,
-            "duration": 1.7999999821186066
-          },
-          {
-            "name": "ezzy-rappeport-glyphs.glb",
-            "transferSize": 300,
-            "encodedBodySize": 124121,
-            "duration": 3.399999976158142
-          }
-        ],
-        "inner": {
-          "w": 1440,
-          "h": 900
-        }
-      }
-    },
-    {
-      "name": "desktop-1280x720",
-      "w": 1280,
-      "h": 720,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/desktop-1280x720.png",
-      "metrics": {
-        "fluid": "ready",
-        "boot": "live",
-        "hero": "ready",
-        "waterSection": "hero",
-        "experienceChapter": "surface",
-        "oceanBridge": true,
-        "renderSize": "1280x720",
-        "frameMsP95": "17.40",
-        "frameMsWorst": "17.60",
-        "workMsP95": "0.60",
-        "workMsWorst": "1.00",
-        "fps": "60.0",
-        "adaptiveScale": "1.00",
-        "worldDepth": "0.000",
-        "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "40.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
@@ -118,20 +89,73 @@
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.7999999821186066
+            "duration": 11.5
+          }
+        ],
+        "inner": {
+          "w": 1440,
+          "h": 900
+        }
+      },
+      "frameTrace": {
+        "sampleCount": 121,
+        "p50": 16.7,
+        "p95": 17.7,
+        "worst": 17.8
+      }
+    },
+    {
+      "name": "desktop-1280x720",
+      "w": 1280,
+      "h": 720,
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/desktop-1280x720.png",
+      "metrics": {
+        "fluid": "ready",
+        "boot": "live",
+        "hero": "ready",
+        "waterSection": "hero",
+        "experienceChapter": "surface",
+        "oceanBridge": true,
+        "renderSize": "1280x720",
+        "frameMsP95": "17.70",
+        "frameMsWorst": "17.70",
+        "workMsP95": "0.50",
+        "workMsWorst": "0.60",
+        "fps": "60.0",
+        "adaptiveScale": "1.00",
+        "worldDepth": "0.000",
+        "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "28.7",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
+        "transferHint": [
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 0,
+            "encodedBodySize": 124121,
+            "duration": 1.0999999940395355
+          },
+          {
+            "name": "ezzy-rappeport-glyphs.glb",
+            "transferSize": 300,
+            "encodedBodySize": 124121,
+            "duration": 7.5999999940395355
           }
         ],
         "inner": {
           "w": 1280,
           "h": 720
         }
-      }
+      },
+      "frameTrace": null
     },
     {
       "name": "tablet-1024x768",
       "w": 1024,
       "h": 768,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/tablet-1024x768.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/tablet-1024x768.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -140,40 +164,46 @@
         "experienceChapter": "surface",
         "oceanBridge": true,
         "renderSize": "1024x768",
-        "frameMsP95": "17.50",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.60",
-        "workMsWorst": "1.00",
+        "workMsP95": "0.50",
+        "workMsWorst": "0.60",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "24.4",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.2000000178813934
+            "duration": 1
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.600000023841858
+            "duration": 1.2999999821186066
           }
         ],
         "inner": {
           "w": 1024,
           "h": 768
         }
-      }
+      },
+      "frameTrace": null
     },
     {
       "name": "mobile-390x844",
       "w": 390,
       "h": 844,
       "mobile": true,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/mobile-390x844.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/mobile-390x844.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -182,34 +212,40 @@
         "experienceChapter": "surface",
         "oceanBridge": true,
         "renderSize": "343x742",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.80",
-        "workMsP95": "0.70",
-        "workMsWorst": "1.00",
+        "workMsP95": "0.50",
+        "workMsWorst": "0.60",
         "fps": "60.0",
         "adaptiveScale": "0.88",
         "worldDepth": "0.000",
         "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "8.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 10.800000011920929
+            "duration": 2.4000000059604645
           }
         ],
         "inner": {
           "w": 390,
           "h": 844
         }
-      }
+      },
+      "frameTrace": null
     },
     {
       "name": "mobile-375x812",
       "w": 375,
       "h": 812,
       "mobile": true,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/baseline/mobile-375x812.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/baseline/mobile-375x812.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -219,33 +255,39 @@
         "oceanBridge": true,
         "renderSize": "330x714",
         "frameMsP95": "17.60",
-        "frameMsWorst": "17.70",
-        "workMsP95": "0.80",
-        "workMsWorst": "1.10",
+        "frameMsWorst": "17.80",
+        "workMsP95": "0.60",
+        "workMsWorst": "0.80",
         "fps": "60.0",
         "adaptiveScale": "0.88",
         "worldDepth": "0.000",
         "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "7.6",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 2.5999999940395355
+            "duration": 2
           }
         ],
         "inner": {
           "w": 375,
           "h": 812
         }
-      }
+      },
+      "frameTrace": null
     }
   ],
   "sections": [
     {
       "name": "hero",
       "y": 0,
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-hero.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/sections/1440x900-hero.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -254,26 +296,31 @@
         "experienceChapter": "surface",
         "oceanBridge": true,
         "renderSize": "1440x900",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.50",
         "workMsWorst": "1.00",
         "fps": "60.0",
         "adaptiveScale": "1.00",
         "worldDepth": "0.000",
         "glyphCount": "13",
+        "drawCalls": "44",
+        "triangles": "165310",
+        "textureMemoryEstimateMb": "40.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.4000000059604645
+            "duration": 2
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 4
+            "duration": 2
           }
         ],
         "inner": {
@@ -285,7 +332,7 @@
     {
       "name": "projects",
       "selector": "#projects",
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-projects.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/sections/1440x900-projects.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -294,26 +341,31 @@
         "experienceChapter": "descent",
         "oceanBridge": true,
         "renderSize": "1440x900",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.50",
         "workMsWorst": "1.00",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.092",
+        "worldDepth": "0.096",
         "glyphCount": "13",
+        "drawCalls": "5",
+        "triangles": "10",
+        "textureMemoryEstimateMb": "40.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.4000000059604645
+            "duration": 2
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 4
+            "duration": 2
           }
         ],
         "inner": {
@@ -325,7 +377,7 @@
     {
       "name": "about",
       "selector": "#about",
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-about.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/sections/1440x900-about.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -334,26 +386,31 @@
         "experienceChapter": "argyph",
         "oceanBridge": true,
         "renderSize": "1440x900",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.50",
         "workMsWorst": "1.00",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.376",
+        "worldDepth": "0.371",
         "glyphCount": "13",
+        "drawCalls": "6",
+        "triangles": "12",
+        "textureMemoryEstimateMb": "40.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.4000000059604645
+            "duration": 2
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 4
+            "duration": 2
           }
         ],
         "inner": {
@@ -365,7 +422,7 @@
     {
       "name": "contact",
       "selector": "#contact",
-      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/sections/1440x900-contact.png",
+      "path": "/Volumes/Neural/portfolioV2-cinematic-home-v2/.verification/milestone-0/post-m0/sections/1440x900-contact.png",
       "metrics": {
         "fluid": "ready",
         "boot": "live",
@@ -374,26 +431,31 @@
         "experienceChapter": "contact",
         "oceanBridge": true,
         "renderSize": "1440x900",
-        "frameMsP95": "17.60",
+        "frameMsP95": "17.70",
         "frameMsWorst": "17.70",
-        "workMsP95": "0.70",
+        "workMsP95": "0.50",
         "workMsWorst": "1.00",
         "fps": "60.0",
         "adaptiveScale": "1.00",
-        "worldDepth": "0.969",
+        "worldDepth": "0.961",
         "glyphCount": "13",
+        "drawCalls": "6",
+        "triangles": "12",
+        "textureMemoryEstimateMb": "40.2",
+        "gpuVendor": "Google Inc. (Apple)",
+        "gpuRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M4, Unspecified Version)",
         "transferHint": [
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 0,
             "encodedBodySize": 124121,
-            "duration": 1.4000000059604645
+            "duration": 2
           },
           {
             "name": "ezzy-rappeport-glyphs.glb",
             "transferSize": 300,
             "encodedBodySize": 124121,
-            "duration": 4
+            "duration": 2
           }
         ],
         "inner": {
@@ -401,6 +463,15 @@
           "h": 900
         }
       }
+    }
+  ],
+  "frameTraces": [
+    {
+      "viewport": "desktop-1440x900",
+      "sampleCount": 121,
+      "p50": 16.7,
+      "p95": 17.7,
+      "worst": 17.8
     }
   ]
 }

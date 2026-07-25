@@ -11,7 +11,7 @@
 import { useEffect, useRef } from "react";
 import { createScrollDirector, type ScrollDirector } from "./scroll/ScrollDirector.ts";
 import { installExperienceDebugApi } from "./diagnostics/experience-debug.ts";
-import { hydratePreferencesStore } from "./state/preferences-store.ts";
+import { hydratePreferencesStore, setPreferences } from "./state/preferences-store.ts";
 import { resetExperienceStore } from "./state/experience-store.ts";
 import { invalidateWorldMeasurement } from "../../lib/portfolio/world-state.ts";
 
@@ -32,6 +32,15 @@ export default function OceanExperienceBridge() {
       ?? document.documentElement;
 
     hydratePreferencesStore();
+    // Bridge legacy portfolio-motion toggle into ocean prefs so M0 does not
+    // introduce a conflicting motion source of truth.
+    try {
+      const legacyMotion = window.localStorage.getItem("portfolio-motion");
+      if (legacyMotion === "off") setPreferences({ motion: "off" });
+      else if (legacyMotion === "on") setPreferences({ motion: "full" });
+    } catch {
+      /* ignore */
+    }
     const director = createScrollDirector({ root });
     activeDirector = director;
     director.attach();

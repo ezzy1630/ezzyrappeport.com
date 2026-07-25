@@ -35,6 +35,10 @@ import {
   invalidateWorldMeasurement,
   resolveDocumentWaterSection,
 } from "../../../lib/portfolio/world-state.ts";
+import {
+  notifyJourneyResize,
+  notifyJourneyScroll,
+} from "./journey-scroll-bus.ts";
 
 export type ScrollSampleListener = (sample: {
   progress: number;
@@ -303,6 +307,7 @@ export class ScrollDirector {
   private readonly onResize = (): void => {
     if (!this.attached) return;
     this.syncSceneResize(false);
+    notifyJourneyResize();
     this.schedule();
   };
 
@@ -316,6 +321,7 @@ export class ScrollDirector {
       if (!this.dirty) return;
       this.dirty = false;
       this.sample(false, time);
+      notifyJourneyScroll();
     });
   }
 
@@ -360,6 +366,11 @@ export class ScrollDirector {
 
     const deltaSeconds = force ? 0 : dtSeconds;
     this.scene?.seek(progress, deltaSeconds);
+
+    // Force path (attach/seek) must also wake secondary consumers.
+    if (force) {
+      notifyJourneyScroll();
+    }
 
     if (this.sampleListeners.size > 0) {
       const payload = {

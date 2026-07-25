@@ -1,7 +1,6 @@
-# Milestone 0 baseline evidence
+# Milestone 0 verification root
 
-Captured at: 2026-07-25T03:25:05.956Z
+- [`main/`](./main/) — clean `main` @ `216e38d` baselines (no ocean bridge)
+- [`post-m0/`](./post-m0/) — foundation branch after Milestone 0
 
-Homepage must remain visually unchanged through Milestone 0.
-Idle screenshots live in `baseline/`; section frames in `sections/`.
-Metrics include fps, workMsP95, worldDepth, experienceChapter, and GLB transfer hints.
+See [`docs/design/milestone-0/README.md`](../../docs/design/milestone-0/README.md).

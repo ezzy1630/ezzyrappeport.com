@@ -39,6 +39,7 @@ import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.j
 import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/frame-clock";
 import { getDeviceTilt } from "@/lib/portfolio/device-tilt";
 import { scrollWakeStrength } from "@/lib/portfolio/liquid-interaction";
+import { subscribeJourneyScroll } from "@/features/ocean-experience/scroll/journey-scroll-bus";
 import type {
   LiquidInteractionEvent,
   LiquidPhysics,
@@ -1919,9 +1920,9 @@ export function startUnderwaterHeroRenderer({
     refreshCanvasRect();
     if (reducedMotionRef.current) onStaticScroll();
   };
-  // Invalidate cached canvas geometry on scroll / visualViewport; reduced-motion
-  // also wakes exactly one composed frame from the same listener.
-  window.addEventListener("scroll", onViewportMove, { passive: true });
+  // Document scroll is owned by ScrollDirector; visualViewport stays local
+  // (mobile chrome / URL-bar geometry is not journey travel).
+  const unsubscribeJourneyScroll = subscribeJourneyScroll(onViewportMove);
   window.visualViewport?.addEventListener("resize", onViewportMove);
   window.visualViewport?.addEventListener("scroll", onViewportMove);
   canvas.addEventListener("webglcontextlost", onContextLost);
@@ -2156,7 +2157,7 @@ export function startUnderwaterHeroRenderer({
     cancelAnimationFrame(resizeFrame);
     resizeObserver.disconnect();
     document.removeEventListener("visibilitychange", onVisibilityChange);
-    window.removeEventListener("scroll", onViewportMove);
+    unsubscribeJourneyScroll();
     window.visualViewport?.removeEventListener("resize", onViewportMove);
     window.visualViewport?.removeEventListener("scroll", onViewportMove);
     window.removeEventListener("pointerdown", onGlyphPointerDown, { capture: true });

@@ -246,8 +246,8 @@ function setRootVars() {
   root.style.setProperty("--nav-l", navLightness);
   const section = state.world.moored ? "case" : state.world.section;
   root.dataset.navTheme = navThemeFromSection(section, state.world.depth);
-  // One owner for active section: world geometry (with contact anticipation).
-  root.dataset.waterSection = section;
+  // ScrollDirector is the sole publisher of `data-water-section`.
+  // Liquid still owns continuous depth/light/calm CSS vars from the same world curve.
   // Depth-band ambient bed (no-op when sound is off / unavailable).
   setAmbientDepth(state.world.depth);
 }

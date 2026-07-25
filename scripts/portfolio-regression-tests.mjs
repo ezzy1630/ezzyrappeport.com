@@ -397,11 +397,11 @@ const tests = [
   ["Reduced motion renders one frame and stops the loop", () => {
     assert.match(underwaterRendererSource, /motionLoop = "stopped"/);
     assert.match(underwaterRendererSource, /renderOneStaticFrame/);
-    assert.match(underwaterRendererSource, /addEventListener\("scroll", onViewportMove/);
-    assert.match(underwaterRendererSource, /removeEventListener\("scroll", onViewportMove/);
+    assert.match(underwaterRendererSource, /subscribeJourneyScroll\(onViewportMove\)/);
+    assert.match(underwaterRendererSource, /unsubscribeJourneyScroll/);
     assert.match(underwaterRendererSource, /reducedMotionRef\.current\) onStaticScroll/);
   }],
-  ["Portfolio runtime shares one unified frame clock", () => {
+  ["Portfolio runtime shares one unified frame clock", async () => {
     const frameClockSource = readFileSync(
       new URL("../src/lib/portfolio/frame-clock.ts", import.meta.url),
       "utf8",
@@ -430,6 +430,60 @@ const tests = [
       ),
       /export class FrameFaultPolicy/,
     );
+
+    // Behavioral pump isolation: one throwing subscriber cannot freeze others.
+    const {
+      subscribeFrameClock,
+      unsubscribeFrameClock,
+      frameClockIsSubscriberDisabled,
+      resetFrameClockFaults,
+      frameClockSubscriberCount,
+    } = await import("../src/lib/portfolio/frame-clock.ts");
+    resetFrameClockFaults();
+    const previousRaf = globalThis.requestAnimationFrame;
+    const previousCancel = globalThis.cancelAnimationFrame;
+    const previousDocument = globalThis.document;
+    const previousWindow = globalThis.window;
+    let rafCb = null;
+    const fakeWindow = {
+      requestAnimationFrame: (cb) => {
+        rafCb = cb;
+        return 1;
+      },
+      cancelAnimationFrame: () => {
+        rafCb = null;
+      },
+    };
+    globalThis.window = fakeWindow;
+    globalThis.document = { hidden: false, addEventListener() {}, removeEventListener() {} };
+    globalThis.requestAnimationFrame = fakeWindow.requestAnimationFrame;
+    globalThis.cancelAnimationFrame = fakeWindow.cancelAnimationFrame;
+    let healthy = 0;
+    try {
+      subscribeFrameClock("test.healthy", () => {
+        healthy += 1;
+      });
+      subscribeFrameClock("test.boom", () => {
+        throw new Error("boom");
+      });
+      for (let i = 0; i < 4; i += 1) {
+        const cb = rafCb;
+        assert.ok(cb, "clock must schedule next frame");
+        rafCb = null;
+        cb(16 * (i + 1));
+      }
+      assert.equal(frameClockIsSubscriberDisabled("test.boom"), true);
+      assert.ok(healthy >= 3, "healthy subscriber must keep receiving frames");
+      assert.ok(frameClockSubscriberCount() >= 2);
+    } finally {
+      unsubscribeFrameClock("test.healthy");
+      unsubscribeFrameClock("test.boom");
+      resetFrameClockFaults();
+      globalThis.requestAnimationFrame = previousRaf;
+      globalThis.cancelAnimationFrame = previousCancel;
+      globalThis.document = previousDocument;
+      globalThis.window = previousWindow;
+    }
     // Continuous loops subscribe to the clock instead of owning requestAnimationFrame.
     assert.match(liquidInteractionSource, /subscribeFrameClock\(LIQUID_CLOCK_ID/);
     assert.doesNotMatch(liquidInteractionSource, /requestAnimationFrame/);
@@ -808,7 +862,14 @@ const tests = [
       ),
       /resolveDocumentWaterSection/,
     );
-    assert.match(liquidInteractionSource, /dataset\.waterSection/);
+    assert.match(
+      readFileSync(
+        new URL("../src/features/ocean-experience/scroll/ScrollDirector.ts", import.meta.url),
+        "utf8",
+      ),
+      /dataset\.waterSection/,
+    );
+    assert.doesNotMatch(liquidInteractionSource, /dataset\.waterSection\s*=/);
     assert.match(liquidInteractionSource, /setAmbientDepth/);
     // Half-res depth + tighter adaptive floor for large canvases.
     assert.match(underwaterRendererSource, /depthScale/);
@@ -1283,7 +1344,8 @@ const tests = [
     for (let i = 0; i < 12; i += 1) ring.push(16 + (i % 3));
     assert.ok(ring.sampleCount <= 8);
 
-    // Ownership: shell/nav/native smooth-scroll no longer attach window scroll.
+    // Ownership: repo-wide sole document scroll owner is ScrollDirector.
+    // SmoothScrollProvider may attach a temporary boot listener that detaches.
     const shellSource = readFileSync(
       new URL("../src/components/portfolio/PortfolioShell.tsx", import.meta.url),
       "utf8",
@@ -1300,15 +1362,127 @@ const tests = [
       new URL("../src/features/ocean-experience/scroll/ScrollDirector.ts", import.meta.url),
       "utf8",
     );
+    const geometryCacheSource = readFileSync(
+      new URL("../src/lib/portfolio/geometry-cache.ts", import.meta.url),
+      "utf8",
+    );
+    const dialogueSource = readFileSync(
+      new URL("../src/hooks/portfolio/use-liquid-dialogue.ts", import.meta.url),
+      "utf8",
+    );
+    const liquidSource = readFileSync(
+      new URL("../src/lib/portfolio/liquid-interaction.ts", import.meta.url),
+      "utf8",
+    );
     assert.match(shellSource, /OceanExperienceBridge/);
     assert.doesNotMatch(shellSource, /useWaterSection/);
     assert.doesNotMatch(shellSource, /addEventListener\("scroll"/);
     assert.doesNotMatch(navSource, /addEventListener\("scroll"/);
-    assert.match(smoothSource, /getActiveScrollDirector|subscribeSample/);
-    assert.doesNotMatch(smoothSource, /addEventListener\("scroll"/);
+    assert.match(smoothSource, /detachTemporaryScroll|getActiveScrollDirector/);
     assert.match(directorSource, /addEventListener\("scroll"/);
-    assert.match(directorSource, /sole window scroll\/resize listener/);
+    assert.match(directorSource, /notifyJourneyScroll/);
+    assert.match(geometryCacheSource, /subscribeJourneyScroll/);
+    assert.doesNotMatch(geometryCacheSource, /addEventListener\("scroll"/);
+    assert.match(dialogueSource, /subscribeJourneyScroll/);
+    assert.doesNotMatch(dialogueSource, /addEventListener\("scroll"/);
+    assert.doesNotMatch(underwaterRendererSource, /window\.addEventListener\(\s*"scroll"/);
+    assert.match(underwaterRendererSource, /visualViewport\?\.addEventListener\("scroll"/);
+    assert.doesNotMatch(liquidSource, /dataset\.waterSection\s*=/);
+    assert.match(directorSource, /dataset\.waterSection/);
+
+    // Repo inventory: only ScrollDirector + SmoothScroll temporary boot may
+    // attach window document scroll listeners in src/.
+    const { readdirSync, statSync: fsStat } = await import("node:fs");
+    const { join } = await import("node:path");
+    const scrollOwners = [];
+    const walk = (dir) => {
+      for (const name of readdirSync(dir)) {
+        const full = join(dir, name);
+        const st = fsStat(full);
+        if (st.isDirectory()) {
+          if (name === "node_modules" || name === ".next") continue;
+          walk(full);
+          continue;
+        }
+        if (!/\.(ts|tsx|mjs|js)$/.test(name)) continue;
+        const text = readFileSync(full, "utf8");
+        // Document journey scroll attachment: window.* or runtimeWindow alias.
+        if (
+          /window\.addEventListener\(\s*["']scroll["']/.test(text)
+          || /\bwin\.addEventListener\(\s*["']scroll["']/.test(text)
+        ) {
+          scrollOwners.push(full.replace(/\\/g, "/"));
+        }
+      }
+    };
+    walk(new URL("../src", import.meta.url).pathname);
+    const relativeOwners = [...new Set(scrollOwners.map((path) => path.split("/src/").pop()))];
+    assert.deepEqual(
+      relativeOwners.sort(),
+      [
+        "components/portfolio/SmoothScrollProvider.tsx",
+        "features/ocean-experience/scroll/ScrollDirector.ts",
+      ].sort(),
+    );
+
+    // ExperienceRuntime must not double-dispose after dispose-during-load.
+    {
+      let disposeCount = 0;
+      const slowDirector = {
+        async load() {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+        },
+        resize() {},
+        seek() {},
+        render() {},
+        setPreferences() {},
+        dispose() {
+          disposeCount += 1;
+        },
+      };
+      const runtime = createExperienceRuntime({
+        createDirector: () => slowDirector,
+        mode: "static",
+        clock: { subscribe: () => () => undefined },
+        registry: createResourceRegistry(),
+      });
+      const loadPromise = runtime.load();
+      runtime.dispose();
+      await loadPromise;
+      assert.equal(disposeCount, 1);
+      assert.equal(runtime.getStatus(), "disposed");
+    }
+
     assert.equal(existsSync(new URL("../docs/design/SALVAGE_MANIFEST.md", import.meta.url)), true);
+    assert.equal(
+      existsSync(new URL("../.verification/milestone-0/main/baseline/capture-report.json", import.meta.url)),
+      true,
+    );
+    assert.equal(
+      existsSync(new URL("../.verification/milestone-0/post-m0/baseline/capture-report.json", import.meta.url)),
+      true,
+    );
+    {
+      const mainReport = JSON.parse(readFileSync(
+        new URL("../.verification/milestone-0/main/baseline/capture-report.json", import.meta.url),
+        "utf8",
+      ));
+      const postReport = JSON.parse(readFileSync(
+        new URL("../.verification/milestone-0/post-m0/baseline/capture-report.json", import.meta.url),
+        "utf8",
+      ));
+      assert.equal(mainReport.idle[0].metrics.oceanBridge, false);
+      assert.equal(postReport.idle[0].metrics.oceanBridge, true);
+      for (const report of [mainReport, postReport]) {
+        const m = report.idle[0].metrics;
+        assert.ok(m.drawCalls, "drawCalls required");
+        assert.ok(m.triangles, "triangles required");
+        assert.ok(m.textureMemoryEstimateMb, "RT memory required");
+        assert.ok(m.workMsP95, "workMsP95 required");
+        assert.ok(m.fps, "fps required");
+        assert.ok(Array.isArray(report.frameTraces) && report.frameTraces.length > 0, "frame trace required");
+      }
+    }
     assert.doesNotMatch(
       readFileSync(new URL("../src/features/ocean-experience/index.ts", import.meta.url), "utf8"),
       /cinematic-home|experience-lab|UnderwaterObservatory/,

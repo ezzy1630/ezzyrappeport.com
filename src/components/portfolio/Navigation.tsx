@@ -132,9 +132,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   }, []);
 
   useEffect(() => {
-    let frame = 0;
     const update = () => {
-      frame = 0;
       const html = document.documentElement;
       const section = html.dataset.waterSection
         ?? (isCasePathname(window.location.pathname) ? "case" : "hero");
@@ -185,14 +183,13 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       syncRipple(section);
     };
     // ScrollDirector owns window scroll/resize. Nav reads published chrome
-    // from the unified frame clock so it never attaches a competing listener.
+    // directly from the unified frame clock (no nested private rAF).
     update();
     subscribeFrameClock("portfolio.nav-section", () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
+      update();
     }, { cadenceMs: 80 });
     return () => {
       unsubscribeFrameClock("portfolio.nav-section");
-      window.cancelAnimationFrame(frame);
     };
   }, [syncRipple]);
 

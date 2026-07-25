@@ -46,8 +46,13 @@ This manifest records what was extracted, rewritten, or discarded. Do not cherry
 | --- | --- |
 | `PortfolioShell.useWaterSection` window scroll/resize | Removed; `ScrollDirector` publishes `data-water-section` |
 | `Navigation` window scroll/resize | Removed; frame-clock cadence only |
-| `SmoothScrollProvider` native scroll listener | Removed; subscribes to `ScrollDirector` samples |
-| Lenis scroll callback | Retained (Lenis owns inertial scroll position; director samples journey) |
+| `SmoothScrollProvider` native scroll listener | Temporary boot listener only; detaches once `ScrollDirector` attaches |
+| `geometry-cache` / liquid-dialogue / underwater renderer window scroll | Subscribe to `journey-scroll-bus` (fanned out by ScrollDirector) |
+| `liquid-interaction` writing `data-water-section` | Removed; ScrollDirector is sole publisher |
+| Lenis scroll callback | Retained for liquid progress emit (not a window journey listener) |
+
+Steady-state document scroll owners under `src/`: `ScrollDirector` (permanent) and `SmoothScrollProvider` (temporary boot only).
+`visualViewport` scroll remains allowed for mobile chrome geometry.
 
 ## Explicitly rejected (do not import)
 

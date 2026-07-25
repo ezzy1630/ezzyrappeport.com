@@ -67,6 +67,7 @@ export class ExperienceRuntime {
   private unsubscribe: (() => void) | null = null;
   private started = false;
   private loadGeneration = 0;
+  private disposed = false;
 
   constructor(options: ExperienceRuntimeOptions) {
     this.createDirector = options.createDirector;
@@ -90,7 +91,7 @@ export class ExperienceRuntime {
   }
 
   async load(): Promise<void> {
-    if (this.status === "disposed") {
+    if (this.disposed || this.status === "disposed") {
       throw new Error("ExperienceRuntime.load called after dispose");
     }
     if (this.director) {
@@ -108,13 +109,20 @@ export class ExperienceRuntime {
     };
     try {
       await director.load(context);
-      if (this.director !== director || !handle.isCurrent()) {
-        director.dispose();
+      // dispose() may have already freed and nulled this.director during await.
+      if (this.director !== director || !handle.isCurrent() || this.disposed) {
+        if (this.director === director) {
+          director.dispose();
+          this.director = null;
+        }
         return;
       }
       this.setStatus("ready");
       setSceneStatus("ready");
     } catch (error) {
+      if (this.disposed) {
+        return;
+      }
       if (isAbortError(error) || !handle.isCurrent() || this.director !== director) {
         if (this.director === director) {
           director.dispose();
@@ -169,6 +177,7 @@ export class ExperienceRuntime {
 
   dispose(): void {
     this.stop();
+    this.disposed = true;
     this.registry.beginLoad().abort();
     this.loadGeneration += 1;
     if (this.director) {

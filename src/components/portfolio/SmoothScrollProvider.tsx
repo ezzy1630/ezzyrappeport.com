@@ -49,31 +49,9 @@ function bindNativeScrollFallback(options: {
   } = options;
   root.style.scrollBehavior = "auto";
   const last = { y: window.scrollY, time: performance.now(), velocity: 0 };
-
-  // Prefer ScrollDirector samples so this path never attaches a second window
-  // scroll listener. Fall back to a short poll only if the director is not yet up.
   let unsubscribeDirector: (() => void) | null = null;
   let pollId = 0;
-
-  const bindDirector = () => {
-    const director = getActiveScrollDirector();
-    if (!director) return false;
-    unsubscribeDirector = director.subscribeSample(() => {
-      emitFromNativeScroll(last);
-    });
-    emitFromNativeScroll(last);
-    return true;
-  };
-
-  if (!bindDirector()) {
-    pollId = window.setInterval(() => {
-      if (cancelled()) return;
-      if (bindDirector()) {
-        window.clearInterval(pollId);
-        pollId = 0;
-      }
-    }, 50);
-  }
+  let temporaryScrollBound = false;
 
   const afterStableLayout = () => {
     if (cancelled()) return;
@@ -81,6 +59,43 @@ function bindNativeScrollFallback(options: {
     alignmentTimers.push(window.setTimeout(() => alignHashBelowNavigation(), 250));
     alignmentTimers.push(window.setTimeout(() => alignHashBelowNavigation(), 700));
   };
+
+  const bindDirector = (): boolean => {
+    const director = getActiveScrollDirector();
+    if (!director || unsubscribeDirector) return Boolean(unsubscribeDirector);
+    unsubscribeDirector = director.subscribeSample(() => {
+      emitFromNativeScroll(last);
+    });
+    return true;
+  };
+
+  const detachTemporaryScroll = () => {
+    if (!temporaryScrollBound) return;
+    temporaryScrollBound = false;
+    window.removeEventListener("scroll", onTemporaryScroll);
+    if (pollId) {
+      window.clearInterval(pollId);
+      pollId = 0;
+    }
+  };
+
+  function onTemporaryScroll() {
+    emitFromNativeScroll(last);
+    if (bindDirector()) detachTemporaryScroll();
+  }
+
+  // Always emit immediately so liquid never starves before ScrollDirector mounts.
+  emitFromNativeScroll(last);
+
+  if (!bindDirector()) {
+    // Temporary window listener until the sole ScrollDirector attaches, then detach.
+    temporaryScrollBound = true;
+    window.addEventListener("scroll", onTemporaryScroll, { passive: true });
+    pollId = window.setInterval(() => {
+      if (cancelled()) return;
+      if (bindDirector()) detachTemporaryScroll();
+    }, 50);
+  }
 
   if (window.location.hash) {
     void document.fonts.ready.then(afterStableLayout);
@@ -90,7 +105,7 @@ function bindNativeScrollFallback(options: {
   }
 
   return () => {
-    if (pollId) window.clearInterval(pollId);
+    detachTemporaryScroll();
     unsubscribeDirector?.();
     window.removeEventListener("load", afterStableLayout);
     if (previousInlineScrollBehavior) {

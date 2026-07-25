@@ -29,6 +29,10 @@ export {
 } from "./scroll/scroll-mapping.ts";
 export { createScrollDirector, ScrollDirector } from "./scroll/ScrollDirector.ts";
 export { resolveInputShaping, shapeScrollDelta } from "./scroll/input-shaping-policy.ts";
+export {
+  subscribeJourneyScroll,
+  subscribeJourneyResize,
+} from "./scroll/journey-scroll-bus.ts";
 
 export {
   getExperienceSnapshot,

@@ -70,7 +70,10 @@ function pump(now: number) {
     lastNow = now;
 
     try {
-      gsapDriver?.(now);
+      if (!faultPolicy.isDisabled("gsap.driver")) {
+        gsapDriver?.(now);
+        faultPolicy.noteSuccess("gsap.driver");
+      }
     } catch (error) {
       faultPolicy.noteFailure("gsap.driver", error, now);
     }

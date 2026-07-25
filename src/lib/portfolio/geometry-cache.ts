@@ -1,7 +1,12 @@
 /**
  * Cached element geometry for high-cadence pointer subscribers.
- * Invalidate via ResizeObserver / visibility — never measure every tick.
+ * Invalidate via ResizeObserver / journey scroll bus — never measure every tick.
  */
+
+import {
+  subscribeJourneyResize,
+  subscribeJourneyScroll,
+} from "../../features/ocean-experience/scroll/journey-scroll-bus.ts";
 
 export type CachedRect = {
   left: number;
@@ -88,8 +93,9 @@ export function createGeometryCache(
   const onScrollOrResize = () => {
     if (nearViewport) scheduleMeasure();
   };
-  window.addEventListener("scroll", onScrollOrResize, { passive: true });
-  window.addEventListener("resize", onScrollOrResize, { passive: true });
+  // ScrollDirector owns the sole window scroll/resize listeners.
+  const unsubscribeScroll = subscribeJourneyScroll(onScrollOrResize);
+  const unsubscribeResize = subscribeJourneyResize(onScrollOrResize);
 
   // Seed: if IO is missing, treat as near and measure once.
   if (!visibilityObserver) {
@@ -110,8 +116,8 @@ export function createGeometryCache(
       if (measureFrame) window.cancelAnimationFrame(measureFrame);
       visibilityObserver?.disconnect();
       resizeObserver?.disconnect();
-      window.removeEventListener("scroll", onScrollOrResize);
-      window.removeEventListener("resize", onScrollOrResize);
+      unsubscribeScroll();
+      unsubscribeResize();
       cached = null;
     },
   };
