@@ -1,6 +1,6 @@
 {
   "asset": "EZZY RAPPEPORT independently addressable inflated glyphs",
-  "version": 1,
+  "version": 2,
   "font": {
     "family": "Inter Tight",
     "weight": 900,
@@ -43,14 +43,14 @@
       "rest_transform": {
         "translation": [
           -0.981417,
-          0.0,
+          0,
           -0.58
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -62,13 +62,13 @@
         "translation": [
           -0.981417,
           0.58,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -91,13 +91,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 3200,
-      "shared_geometry_identifier": "custom-rounded-E-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-E-inflated-v2",
+      "physics": {
+        "density": 1.066,
+        "mass": 1.247,
+        "inertia": [
+          0.0716,
+          0.0458,
+          0.0885
+        ],
+        "buoyancy": 0.897,
+        "drag": 12.464,
+        "angular_drag": 11.295,
+        "flex_limit": 0.012,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.394,
+        "max_depth": 0.1066,
+        "max_linear_speed": 0.854,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0051
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.255,
+            0.3441,
+            0.1727
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4886,
+        "absorption_tint": [
+          0.4855,
+          0.7776,
+          0.9057
+        ],
+        "absorption_distance": 0.8114,
+        "roughness": 0.0084,
+        "dispersion_scale": 0.949,
+        "bubble_density": 0.787,
+        "bubble_seed": 7.2567,
+        "thickness_bias": -0.0043,
+        "caustic_response": 0.966
+      }
     },
     {
       "glyph_index": 1,
@@ -108,14 +152,14 @@
       "rest_transform": {
         "translation": [
           -0.333086,
-          0.0,
+          0,
           -0.58
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -127,13 +171,13 @@
         "translation": [
           -0.333086,
           0.58,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -156,13 +200,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 2800,
-      "shared_geometry_identifier": "custom-rounded-Z-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-Z-inflated-v2",
+      "physics": {
+        "density": 1.018,
+        "mass": 1.2582,
+        "inertia": [
+          0.0744,
+          0.0537,
+          0.0985
+        ],
+        "buoyancy": 0.977,
+        "drag": 12.108,
+        "angular_drag": 10.917,
+        "flex_limit": 0.014,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.687,
+        "max_depth": 0.1054,
+        "max_linear_speed": 0.858,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0006
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2805,
+            0.3473,
+            0.1727
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4856,
+        "absorption_tint": [
+          0.509,
+          0.7952,
+          0.9175
+        ],
+        "absorption_distance": 0.8764,
+        "roughness": 0.0084,
+        "dispersion_scale": 1.044,
+        "bubble_density": 0.772,
+        "bubble_seed": 46.772,
+        "thickness_bias": -0.0105,
+        "caustic_response": 1.036
+      }
     },
     {
       "glyph_index": 2,
@@ -173,14 +261,14 @@
       "rest_transform": {
         "translation": [
           0.310671,
-          0.0,
+          0,
           -0.58
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -192,13 +280,13 @@
         "translation": [
           0.310671,
           0.58,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -221,13 +309,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 2800,
-      "shared_geometry_identifier": "custom-rounded-Z-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-Z-inflated-v2",
+      "physics": {
+        "density": 1.032,
+        "mass": 1.2839,
+        "inertia": [
+          0.0772,
+          0.0557,
+          0.1023
+        ],
+        "buoyancy": 1.003,
+        "drag": 12.375,
+        "angular_drag": 11.158,
+        "flex_limit": 0.014,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.797,
+        "max_depth": 0.1054,
+        "max_linear_speed": 0.858,
+        "center_of_mass": [
+          0,
+          0,
+          0.0046
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2805,
+            0.3473,
+            0.1727
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4891,
+        "absorption_tint": [
+          0.5177,
+          0.8018,
+          0.9219
+        ],
+        "absorption_distance": 0.9073,
+        "roughness": 0.0091,
+        "dispersion_scale": 1.099,
+        "bubble_density": 0.84,
+        "bubble_seed": 92.5057,
+        "thickness_bias": -0.0061,
+        "caustic_response": 1.072
+      }
     },
     {
       "glyph_index": 3,
@@ -238,14 +370,14 @@
       "rest_transform": {
         "translation": [
           0.937899,
-          0.0,
+          0,
           -0.58
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -257,13 +389,13 @@
         "translation": [
           0.937899,
           0.58,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
           1.36,
@@ -286,13 +418,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 3800,
-      "shared_geometry_identifier": "custom-rounded-Y-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-Y-inflated-v2",
+      "physics": {
+        "density": 1.063,
+        "mass": 1.3757,
+        "inertia": [
+          0.0955,
+          0.0552,
+          0.1178
+        ],
+        "buoyancy": 0.973,
+        "drag": 13.197,
+        "angular_drag": 12.385,
+        "flex_limit": 0.013,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.901,
+        "max_depth": 0.106,
+        "max_linear_speed": 0.856,
+        "center_of_mass": [
+          0,
+          0,
+          0.0048
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2652,
+            0.3789,
+            0.1727
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4982,
+        "absorption_tint": [
+          0.4861,
+          0.778,
+          0.906
+        ],
+        "absorption_distance": 0.8258,
+        "roughness": 0.0101,
+        "dispersion_scale": 1.132,
+        "bubble_density": 0.972,
+        "bubble_seed": 97.1761,
+        "thickness_bias": 0.019,
+        "caustic_response": 1.094
+      }
     },
     {
       "glyph_index": 4,
@@ -303,37 +479,37 @@
       "rest_transform": {
         "translation": [
           -1.966761,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           -1.966761,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -351,13 +527,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5000,
-      "shared_geometry_identifier": "inter-tight-900-R-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-R-inflated-v2",
+      "physics": {
+        "density": 1.096,
+        "mass": 1.0552,
+        "inertia": [
+          0.034,
+          0.0272,
+          0.0448
+        ],
+        "buoyancy": 0.894,
+        "drag": 13.254,
+        "angular_drag": 11.869,
+        "flex_limit": 0.011,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.32,
+        "max_depth": 0.107,
+        "max_linear_speed": 0.852,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0014
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2142,
+            0.2498,
+            0.141
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4971,
+        "absorption_tint": [
+          0.4836,
+          0.7742,
+          0.9038
+        ],
+        "absorption_distance": 0.7825,
+        "roughness": 0.009,
+        "dispersion_scale": 0.946,
+        "bubble_density": 0.859,
+        "bubble_seed": 49.7715,
+        "thickness_bias": 0.0088,
+        "caustic_response": 0.971
+      }
     },
     {
       "glyph_index": 5,
@@ -368,37 +588,37 @@
       "rest_transform": {
         "translation": [
           -1.410076,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           -1.410076,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -416,13 +636,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 6000,
-      "shared_geometry_identifier": "custom-rounded-A-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-A-inflated-v2",
+      "physics": {
+        "density": 1.148,
+        "mass": 1.2659,
+        "inertia": [
+          0.047,
+          0.0404,
+          0.0712
+        ],
+        "buoyancy": 0.872,
+        "drag": 14.088,
+        "angular_drag": 12.881,
+        "flex_limit": 0.01,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.207,
+        "max_depth": 0.1078,
+        "max_linear_speed": 0.849,
+        "center_of_mass": [
+          0,
+          0,
+          0.0027
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2533,
+            0.2781,
+            0.127
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.5068,
+        "absorption_tint": [
+          0.4745,
+          0.7634,
+          0.8973
+        ],
+        "absorption_distance": 0.7534,
+        "roughness": 0.0103,
+        "dispersion_scale": 0.945,
+        "bubble_density": 0.983,
+        "bubble_seed": 86.4027,
+        "thickness_bias": 0.0223,
+        "caustic_response": 0.967
+      }
     },
     {
       "glyph_index": 6,
@@ -433,37 +697,37 @@
       "rest_transform": {
         "translation": [
           -0.922495,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           -0.922495,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -481,13 +745,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5000,
-      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2",
+      "physics": {
+        "density": 1.085,
+        "mass": 1.0351,
+        "inertia": [
+          0.0342,
+          0.0256,
+          0.0433
+        ],
+        "buoyancy": 0.956,
+        "drag": 13.341,
+        "angular_drag": 12.017,
+        "flex_limit": 0.012,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.567,
+        "max_depth": 0.1064,
+        "max_linear_speed": 0.854,
+        "center_of_mass": [
+          0,
+          0,
+          0.0056
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2045,
+            0.2498,
+            0.1412
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4937,
+        "absorption_tint": [
+          0.5094,
+          0.795,
+          0.9167
+        ],
+        "absorption_distance": 0.8611,
+        "roughness": 0.0095,
+        "dispersion_scale": 1.077,
+        "bubble_density": 0.919,
+        "bubble_seed": 113.1021,
+        "thickness_bias": 0.0097,
+        "caustic_response": 1.058
+      }
     },
     {
       "glyph_index": 7,
@@ -498,37 +806,37 @@
       "rest_transform": {
         "translation": [
           -0.452971,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           -0.452971,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -546,13 +854,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5000,
-      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2",
+      "physics": {
+        "density": 1.077,
+        "mass": 1.041,
+        "inertia": [
+          0.034,
+          0.0255,
+          0.0431
+        ],
+        "buoyancy": 0.942,
+        "drag": 13.173,
+        "angular_drag": 11.866,
+        "flex_limit": 0.012,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.503,
+        "max_depth": 0.1064,
+        "max_linear_speed": 0.854,
+        "center_of_mass": [
+          0,
+          0,
+          0.0025
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2045,
+            0.2498,
+            0.1412
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4917,
+        "absorption_tint": [
+          0.5042,
+          0.7912,
+          0.9141
+        ],
+        "absorption_distance": 0.844,
+        "roughness": 0.0091,
+        "dispersion_scale": 1.046,
+        "bubble_density": 0.876,
+        "bubble_seed": 91.3067,
+        "thickness_bias": 0.0071,
+        "caustic_response": 1.037
+      }
     },
     {
       "glyph_index": 8,
@@ -563,37 +915,37 @@
       "rest_transform": {
         "translation": [
           0.009313,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           0.009313,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -611,13 +963,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 3200,
-      "shared_geometry_identifier": "custom-rounded-E-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-E-inflated-v2",
+      "physics": {
+        "density": 1.089,
+        "mass": 0.9803,
+        "inertia": [
+          0.0313,
+          0.02,
+          0.0387
+        ],
+        "buoyancy": 0.935,
+        "drag": 12.906,
+        "angular_drag": 11.696,
+        "flex_limit": 0.012,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.566,
+        "max_depth": 0.1066,
+        "max_linear_speed": 0.854,
+        "center_of_mass": [
+          0,
+          0,
+          0.0032
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.1875,
+            0.253,
+            0.127
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4941,
+        "absorption_tint": [
+          0.4993,
+          0.788,
+          0.9126
+        ],
+        "absorption_distance": 0.8578,
+        "roughness": 0.0094,
+        "dispersion_scale": 1.032,
+        "bubble_density": 0.906,
+        "bubble_seed": 99.6583,
+        "thickness_bias": 0.0026,
+        "caustic_response": 1.021
+      }
     },
     {
       "glyph_index": 9,
@@ -628,37 +1024,37 @@
       "rest_transform": {
         "translation": [
           0.449118,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           0.449118,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -676,13 +1072,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5000,
-      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-P-inflated-v2",
+      "physics": {
+        "density": 1.059,
+        "mass": 0.9527,
+        "inertia": [
+          0.0305,
+          0.0228,
+          0.0385
+        ],
+        "buoyancy": 0.91,
+        "drag": 12.802,
+        "angular_drag": 11.531,
+        "flex_limit": 0.012,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.361,
+        "max_depth": 0.1064,
+        "max_linear_speed": 0.854,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0043
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2045,
+            0.2498,
+            0.1412
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4872,
+        "absorption_tint": [
+          0.4929,
+          0.7827,
+          0.9084
+        ],
+        "absorption_distance": 0.8064,
+        "roughness": 0.0083,
+        "dispersion_scale": 0.977,
+        "bubble_density": 0.78,
+        "bubble_seed": 42.5903,
+        "thickness_bias": 0.0014,
+        "caustic_response": 0.991
+      }
     },
     {
       "glyph_index": 10,
@@ -693,37 +1133,37 @@
       "rest_transform": {
         "translation": [
           0.995856,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           0.995856,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -741,13 +1181,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5500,
-      "shared_geometry_identifier": "inter-tight-900-O-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-O-inflated-v2",
+      "physics": {
+        "density": 1.118,
+        "mass": 1.1544,
+        "inertia": [
+          0.0387,
+          0.0358,
+          0.0566
+        ],
+        "buoyancy": 0.877,
+        "drag": 13.688,
+        "angular_drag": 13.291,
+        "flex_limit": 0.009,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.034,
+        "max_depth": 0.1074,
+        "max_linear_speed": 0.85,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0008
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2433,
+            0.256,
+            0.1405
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.5015,
+        "absorption_tint": [
+          0.4607,
+          0.7511,
+          0.8874
+        ],
+        "absorption_distance": 0.7164,
+        "roughness": 0.0097,
+        "dispersion_scale": 0.893,
+        "bubble_density": 0.987,
+        "bubble_seed": 74.1593,
+        "thickness_bias": 0.0244,
+        "caustic_response": 0.925
+      }
     },
     {
       "glyph_index": 11,
@@ -758,37 +1242,37 @@
       "rest_transform": {
         "translation": [
           1.494609,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           1.494609,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -806,13 +1290,57 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 5000,
-      "shared_geometry_identifier": "inter-tight-900-R-inflated-v2"
+      "shared_geometry_identifier": "inter-tight-900-R-inflated-v2",
+      "physics": {
+        "density": 1.085,
+        "mass": 1.0249,
+        "inertia": [
+          0.0326,
+          0.0261,
+          0.0429
+        ],
+        "buoyancy": 0.875,
+        "drag": 13.028,
+        "angular_drag": 11.667,
+        "flex_limit": 0.011,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.236,
+        "max_depth": 0.107,
+        "max_linear_speed": 0.852,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0055
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.2142,
+            0.2498,
+            0.141
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4944,
+        "absorption_tint": [
+          0.4769,
+          0.7692,
+          0.9004
+        ],
+        "absorption_distance": 0.7612,
+        "roughness": 0.0085,
+        "dispersion_scale": 0.908,
+        "bubble_density": 0.8,
+        "bubble_seed": 39.2278,
+        "thickness_bias": 0.0054,
+        "caustic_response": 0.944
+      }
     },
     {
       "glyph_index": 12,
@@ -823,37 +1351,37 @@
       "rest_transform": {
         "translation": [
           1.975981,
-          0.0,
+          0,
           0.55
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "rest_transform_blender": {
         "translation": [
           1.975981,
           -0.55,
-          0.0
+          0
         ],
         "rotation_xyzw": [
-          0.0,
-          0.0,
-          0.0,
-          1.0
+          0,
+          0,
+          0,
+          1
         ],
         "scale": [
-          1.0,
-          1.0,
-          1.0
+          1,
+          1,
+          1
         ]
       },
       "local_bounding_box": {
@@ -871,13 +1399,65 @@
       "pivot": {
         "type": "projected-area-centroid_mid-depth",
         "local": [
-          0.0,
-          0.0,
-          0.0
+          0,
+          0,
+          0
         ]
       },
       "triangle_count": 2800,
-      "shared_geometry_identifier": "custom-rounded-T-inflated-v2"
+      "shared_geometry_identifier": "custom-rounded-T-inflated-v2",
+      "physics": {
+        "density": 1.02,
+        "mass": 0.8952,
+        "inertia": [
+          0.0315,
+          0.0174,
+          0.0377
+        ],
+        "buoyancy": 0.952,
+        "drag": 12.241,
+        "angular_drag": 10.968,
+        "flex_limit": 0.013,
+        "max_travel": 0.085,
+        "max_tilt_deg": 3.521,
+        "max_depth": 0.1056,
+        "max_linear_speed": 0.858,
+        "center_of_mass": [
+          0,
+          0,
+          -0.0038
+        ],
+        "collision_proxy": {
+          "half_extents": [
+            0.184,
+            0.2726,
+            0.127
+          ]
+        }
+      },
+      "optics": {
+        "ior": 1.4855,
+        "absorption_tint": [
+          0.5017,
+          0.7893,
+          0.9128
+        ],
+        "absorption_distance": 0.8383,
+        "roughness": 0.0081,
+        "dispersion_scale": 1.02,
+        "bubble_density": 0.75,
+        "bubble_seed": 55.9976,
+        "thickness_bias": -0.0082,
+        "caustic_response": 1.024
+      }
     }
-  ]
+  ],
+  "medium": {
+    "name": "water",
+    "ior": 1.333
+  },
+  "authorship": {
+    "milestone": 1,
+    "note": "Per-letter physics and optical variation; geometry unchanged from inflated Inter Tight v2."
+  }
 }

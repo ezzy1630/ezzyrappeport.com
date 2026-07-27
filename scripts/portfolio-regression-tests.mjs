@@ -43,12 +43,26 @@ import {
   wakeFalloff,
 } from "../src/features/kinetic-canvas/physics/glyphRigidBodies.ts";
 import {
+  createGlyphImpulseBudget,
+  holdPressureResponse,
+  pressureProbeApproach,
+  rechargeGlyphImpulseBudget,
+  tryConsumeGlyphImpulse,
+} from "../src/features/kinetic-canvas/physics/glyphImpulseBudget.ts";
+import {
   createGlyphInteractionState,
   scheduleGlyphReleaseDroplets,
   settleCancelledGlyph,
   transitionGlyphInteraction,
 } from "../src/features/kinetic-canvas/interaction/glyphInteractionState.ts";
 import { validateHeroManifest } from "../src/features/kinetic-canvas/renderer/underwater/heroManifest.ts";
+import {
+  opticalTierPolicy,
+  relativeRefractionEta,
+  resolveGlyphAuthorship,
+  schlickF0,
+  WATER_IOR,
+} from "../src/features/kinetic-canvas/renderer/underwater/glyphAuthorship.ts";
 
 const contentSource = readFileSync(new URL("../src/lib/portfolio/content.ts", import.meta.url), "utf8");
 const underwaterRendererSource = readFileSync(
@@ -943,8 +957,12 @@ const tests = [
     assert.match(projectDetailSource, /<article>/);
 
     const heroIntroSource = readFileSync(new URL("../src/components/portfolio/HeroIntro.tsx", import.meta.url), "utf8");
-    assert.match(heroIntroSource, /tabIndex=\{revealed \? undefined : -1\}|tabIndex=\{revealStep >= 3/);
-    assert.match(heroIntroSource, /setAttribute\("inert"/);
+    // §8.9 / §19: CTA and copy must never be inert or focus-blocked waiting on WebGL.
+    assert.doesNotMatch(heroIntroSource, /liquid-renderer-ready/);
+    assert.doesNotMatch(heroIntroSource, /setAttribute\("inert"/);
+    assert.doesNotMatch(heroIntroSource, /tabIndex=\{revealed/);
+    assert.doesNotMatch(heroIntroSource, /aria-hidden=\{.*revealed/);
+    assert.match(heroIntroSource, /setRevealStep\(1\)/);
 
     const aboutDepthSource = readFileSync(new URL("../src/components/portfolio/AboutDepthPlanes.tsx", import.meta.url), "utf8");
     assert.match(aboutDepthSource, /createGeometryCache/);
@@ -1523,6 +1541,153 @@ const tests = [
       readFileSync(new URL("../src/features/ocean-experience/index.ts", import.meta.url), "utf8"),
       /cinematic-home|experience-lab|UnderwaterObservatory/,
     );
+  }],
+  ["Milestone 1: hero glyph authorship, submerged optics, and pressure probe", () => {
+    const rawManifest = JSON.parse(readFileSync(
+      new URL("../public/assets/hero/ezzy-rappeport-glyphs.json", import.meta.url),
+      "utf8",
+    ));
+    assert.equal(rawManifest.version, 2, "on-disk manifest must be version 2");
+    assert.equal(rawManifest.medium?.ior, 1.333);
+    assert.ok(rawManifest.glyphs.every((glyph) => glyph.physics && glyph.optics),
+      "on-disk glyphs must include physics and optics blocks");
+
+    assert.equal(heroManifest.version, 2);
+    assert.equal(heroManifest.glyphs.length, 13);
+    const masses = new Set();
+    const iors = new Set();
+    for (const glyph of heroManifest.glyphs) {
+      assert.ok(glyph.physics, `${glyph.object_node_name} missing physics`);
+      assert.ok(glyph.optics, `${glyph.object_node_name} missing optics`);
+      assert.ok(glyph.physics.mass > 0.5 && glyph.physics.mass < 1.8);
+      assert.ok(glyph.physics.drag > 10 && glyph.physics.angular_drag > 8);
+      assert.ok(glyph.physics.buoyancy > 0.7 && glyph.physics.buoyancy < 1.15);
+      assert.ok(glyph.optics.ior > WATER_IOR);
+      assert.ok(glyph.optics.ior < 1.55);
+      // Ix∝(h²+d²), Iy∝(w²+d²), Iz∝(w²+h²) — Y/Z must not be swapped.
+      const { width, height, depth } = (() => {
+        const b = glyph.local_bounding_box;
+        const s = glyph.rest_transform.scale;
+        return {
+          width: (b.max[0] - b.min[0]) * s[0],
+          height: (b.max[1] - b.min[1]) * s[1],
+          depth: (b.max[2] - b.min[2]) * s[2],
+        };
+      })();
+      const ix = glyph.physics.mass * (height * height + depth * depth) / 12;
+      const iy = glyph.physics.mass * (width * width + depth * depth) / 12;
+      const iz = glyph.physics.mass * (width * width + height * height) / 12;
+      assert.ok(Math.abs(glyph.physics.inertia[0] - ix) / ix < 0.08);
+      assert.ok(Math.abs(glyph.physics.inertia[1] - iy) / iy < 0.08);
+      assert.ok(Math.abs(glyph.physics.inertia[2] - iz) / iz < 0.08);
+      masses.add(glyph.physics.mass);
+      iors.add(glyph.optics.ior);
+      const authored = resolveGlyphAuthorship({
+        glyphIndex: glyph.glyph_index,
+        character: glyph.character,
+        objectNodeName: glyph.object_node_name,
+        localBoundingBox: glyph.local_bounding_box,
+        scale: glyph.rest_transform.scale,
+      });
+      assert.equal(glyph.physics.mass, authored.physics.mass);
+      assert.equal(glyph.optics.ior, authored.optics.ior);
+    }
+    assert.ok(masses.size >= 8, "per-letter masses must vary across the name");
+    assert.ok(iors.size >= 8, "per-letter IORs must vary across the name");
+
+    const etaAirStyle = (1.492 - 1) / 1.492;
+    const etaWater = relativeRefractionEta(1.492, WATER_IOR);
+    assert.ok(etaWater < etaAirStyle * 0.5, "water/glyph bending must be subtler than air/glass");
+    assert.ok(schlickF0(1.492, WATER_IOR) < schlickF0(1.492, 1.0));
+
+    const high = opticalTierPolicy("high");
+    const balanced = opticalTierPolicy("balanced");
+    const low = opticalTierPolicy("low");
+    assert.equal(high.refractionTaps, 3);
+    assert.equal(balanced.refractionTaps, 2);
+    assert.equal(low.refractionTaps, 1);
+    assert.equal(high.dispersionStrength, 1);
+    assert.ok(balanced.dispersionStrength > 0 && balanced.dispersionStrength < 1);
+    assert.equal(low.dispersionStrength, 0);
+    assert.match(underwaterShaderSource, /uRefractionTaps <= 2/);
+    assert.match(underwaterShaderSource, /uDispersionStrength > 0\.75/);
+
+    assert.match(underwaterShaderSource, /uMediumIor/);
+    assert.match(underwaterShaderSource, /uDispersionStrength/);
+    assert.match(underwaterShaderSource, /uBubbleSeed/);
+    assert.match(underwaterShaderSource, /Beer-Lambert/);
+    assert.match(underwaterShaderSource, /safeGlyphIor - uMediumIor/);
+    assert.match(underwaterShaderSource, /surfaceCoupling/);
+    assert.match(underwaterConfigSource, /mediumIor:\s*1\.333/);
+    assert.match(underwaterRendererSource, /opticalTierPolicy/);
+    assert.match(underwaterRendererSource, /applyGlyphOptics/);
+    assert.match(underwaterRendererSource, /SRGBColorSpace/);
+    assert.match(underwaterRendererSource, /pressureProbeApproach/);
+    assert.match(underwaterRendererSource, /stormScale/);
+    assert.match(underwaterRendererSource, /pressStrength/);
+    assert.match(underwaterRendererSource, /tryConsumeGlyphImpulse\(impulseBudget/);
+    assert.match(underwaterRendererSource, /holdPressureResponse/);
+    assert.match(underwaterRendererSource, /glyphInstanceMaterials/);
+
+    const heroIntroSource = readFileSync(
+      new URL("../src/components/portfolio/HeroIntro.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.doesNotMatch(heroIntroSource, /liquid-renderer-ready/);
+    assert.doesNotMatch(heroIntroSource, /\binert\b/);
+    assert.doesNotMatch(heroIntroSource, /tabIndex=\{revealed/);
+    assert.doesNotMatch(heroIntroSource, /aria-hidden=\{revealed/);
+
+    const material = new MeshBasicMaterial();
+    const bodies = createGlyphBodies(heroManifest.glyphs.map((manifest) => ({
+      manifest,
+      object: new Mesh(new BufferGeometry(), material),
+    })));
+    assert.equal(bodies.length, 13);
+    assert.ok(bodies.every((body) => body.drag === body.glyph.manifest.physics.drag));
+    const derived = deriveMassAndInertia(bodies[0].glyph, 1);
+    assert.equal(derived.mass, heroManifest.glyphs[0].physics.mass);
+
+    const budget = createGlyphImpulseBudget(1, 0.5);
+    const first = tryConsumeGlyphImpulse(budget, 1, 0.4);
+    tryConsumeGlyphImpulse(budget, 1.05, 0.4);
+    tryConsumeGlyphImpulse(budget, 1.1, 0.4);
+    const drained = tryConsumeGlyphImpulse(budget, 1.15, 0.4);
+    assert.equal(first.allowed, true);
+    assert.equal(drained.allowed, true);
+    assert.ok(drained.scale < first.scale, "exhausted budget must scale down, not drop");
+    assert.ok(drained.scale >= 0.08, "scaled presses remain allowed at floor");
+    rechargeGlyphImpulseBudget(budget, 5);
+    assert.ok(budget.energy > 0.9);
+    assert.ok(holdPressureResponse(0.1) < holdPressureResponse(0.8));
+    assert.ok(holdPressureResponse(10) > 0.999);
+    assert.ok(pressureProbeApproach(0, 20, 40) === 1);
+    assert.ok(pressureProbeApproach(30, 20, 40) > 0);
+    assert.equal(pressureProbeApproach(50, 20, 40), 0);
+
+    // Pointer cancel leaves no held glyph.
+    let transition = createGlyphInteractionState();
+    transition = transitionGlyphInteraction(transition, {
+      type: "pointer-down",
+      glyphIndex: 3,
+      pointerId: 7,
+      pressPoint: [10, 10],
+      now: 1,
+    });
+    assert.equal(transition.state.kind, "holding");
+    transition = transitionGlyphInteraction(transition, {
+      type: "cancel",
+      pointerId: 7,
+      now: 1.2,
+      reason: "pointer-cancel",
+    });
+    assert.equal(transition.state.kind, "cancelled");
+    assert.equal(settleCancelledGlyph(transition, null).state.kind, "idle");
+
+    // Below-fold DOM sections must remain present — M1 is hero-only.
+    assert.match(readFileSync(new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url), "utf8"), /id=["']projects["']/);
+    assert.match(readFileSync(new URL("../src/components/portfolio/AboutSection.tsx", import.meta.url), "utf8"), /id=["']about["']/);
+    assert.match(readFileSync(new URL("../src/components/portfolio/ContactSection.tsx", import.meta.url), "utf8"), /id=["']contact["']/);
   }],
 ];
 

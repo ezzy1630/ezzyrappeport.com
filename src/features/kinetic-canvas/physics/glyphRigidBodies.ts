@@ -35,6 +35,10 @@ export type GlyphBody = {
   eulerScratch: Euler;
   maxTravel: number;
   maxTilt: number;
+  buoyancy: number;
+  drag: number;
+  angularDrag: number;
+  flexLimit: number;
   currentForce: Vector3;
   currentTorque: Vector3;
   nearestInteraction: number;
@@ -54,12 +58,16 @@ export type GlyphStepControl = {
   hoverGlyphIndex: number;
   hoverStrength: number;
   hoverPoint: readonly [number, number];
+  approachGlyphIndex: number;
+  approachStrength: number;
   holdGlyphIndex: number;
   holdPoint: readonly [number, number];
   holdAge: number;
+  holdPressure: number;
   entranceStart: number;
   entranceDepth: number;
   entranceStagger: number;
+  depthDragScale: number;
 };
 
 export const DEFAULT_GLYPH_STEP_CONTROL: GlyphStepControl = {
@@ -67,12 +75,16 @@ export const DEFAULT_GLYPH_STEP_CONTROL: GlyphStepControl = {
   hoverGlyphIndex: -1,
   hoverStrength: 0,
   hoverPoint: [0, 0],
+  approachGlyphIndex: -1,
+  approachStrength: 0,
   holdGlyphIndex: -1,
   holdPoint: [0, 0],
   holdAge: 0,
+  holdPressure: 0,
   entranceStart: Number.POSITIVE_INFINITY,
   entranceDepth: -0.045,
   entranceStagger: 0.04,
+  depthDragScale: 1,
 };
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -93,6 +105,21 @@ export type ProjectedGlyph = {
 };
 
 export function deriveMassAndInertia(glyph: HeroGlyphRuntime, variation = 1) {
+  const authored = glyph.manifest.physics;
+  if (authored) {
+    return {
+      mass: Math.max(0.4, authored.mass * variation),
+      inertia: new Vector3(
+        authored.inertia[0] * variation,
+        authored.inertia[1] * variation,
+        authored.inertia[2] * variation,
+      ),
+      halfSize: new Vector2(
+        authored.collision_proxy.half_extents[0],
+        authored.collision_proxy.half_extents[1],
+      ),
+    };
+  }
   glyph.object.geometry.computeBoundingBox();
   const geometryBounds = glyph.object.geometry.boundingBox;
   const bounds = geometryBounds
@@ -120,9 +147,11 @@ export function deriveMassAndInertia(glyph: HeroGlyphRuntime, variation = 1) {
 
 export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
   return glyphs.map((glyph, index): GlyphBody => {
-    const derived = deriveMassAndInertia(glyph, 0.96 + ((index * 37) % 9) * 0.011);
+    const physics = glyph.manifest.physics;
+    const derived = deriveMassAndInertia(glyph, 1);
     const projectedHalfSize = new Vector2();
     const projectedCenter = new Vector2();
+    const density = physics?.density ?? 1.08;
     return {
       glyph,
       position: new Vector3(),
@@ -141,9 +170,13 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       projectedState: { center: projectedCenter, halfSize: projectedHalfSize, depth: 0 },
       rotationScratch: new Quaternion(),
       eulerScratch: new Euler(0, 0, 0, "XYZ"),
-      // Buoyant travel: readable bob without jelly stretch across the name.
-      maxTravel: Math.max(0.036, derived.halfSize.x * 0.55),
-      maxTilt: (3.4 + (index % 4) * 0.12) * Math.PI / 180,
+      maxTravel: physics?.max_travel ?? Math.max(0.036, derived.halfSize.x * 0.55),
+      maxTilt: ((physics?.max_tilt_deg ?? (3.4 + (index % 4) * 0.12)) * Math.PI) / 180,
+      // Density scales how strongly buoyancy fights mass.
+      buoyancy: (physics?.buoyancy ?? 0.92) / Math.max(density, 0.8),
+      drag: physics?.drag ?? 13.5,
+      angularDrag: physics?.angular_drag ?? 12,
+      flexLimit: physics?.flex_limit ?? 0.012,
       currentForce: new Vector3(),
       currentTorque: new Vector3(),
       nearestInteraction: Number.POSITIVE_INFINITY,
@@ -152,10 +185,10 @@ export function createGlyphBodies(glyphs: HeroGlyphRuntime[]) {
       lastActiveAt: 0,
       ambientPhase: glyphPhaseForIdentity(index, glyph.manifest.object_node_name),
       ambientFrequency: index % 2 === 0 ? 0.46 : 0.71,
-      ambientAmplitude: 0.007 + (index % 3) * 0.0011,
-      ambientTiltAmplitude: (0.36 + (index % 4) * 0.1) * Math.PI / 180,
-      maxDepth: 0.11,
-      maxLinearSpeed: 0.82,
+      ambientAmplitude: (0.007 + (index % 3) * 0.0011) * (physics?.buoyancy ?? 1),
+      ambientTiltAmplitude: ((0.36 + (index % 4) * 0.1) * Math.PI) / 180,
+      maxDepth: physics?.max_depth ?? 0.11,
+      maxLinearSpeed: physics?.max_linear_speed ?? 0.82,
     };
   });
 }
@@ -328,29 +361,40 @@ export function stepGlyphBodies(
 
     const glyphIndex = body.glyph.manifest.glyph_index;
     const ambientBob = Math.sin(now * body.ambientFrequency * Math.PI * 2 + body.ambientPhase)
-      * body.ambientAmplitude * ambientScale;
+      * body.ambientAmplitude * ambientScale * body.buoyancy;
     const ambientRoll = Math.sin(now * body.ambientFrequency * 1.31 * Math.PI * 2 + body.ambientPhase * 0.71)
       * body.ambientTiltAmplitude * ambientScale;
     const entranceAge = now - (control.entranceStart + glyphIndex * control.entranceStagger);
     const entranceHolding = control.entranceStart < Number.POSITIVE_INFINITY && entranceAge < 0;
     let targetZ = ambientBob;
+    if (glyphIndex === control.approachGlyphIndex && control.approachStrength > 0
+      && glyphIndex !== control.hoverGlyphIndex
+      && glyphIndex !== control.holdGlyphIndex
+    ) {
+      // Pressure-probe onset: local caustic lift before contact.
+      targetZ += 0.018 * control.approachStrength * body.buoyancy;
+      body.currentTorque.z += Math.sin(now * 3.1 + body.ambientPhase)
+        * control.approachStrength * 0.08;
+    }
     if (glyphIndex === control.hoverGlyphIndex && control.hoverStrength > 0) {
       const hoverStrength = clamp(control.hoverStrength, 0, 1);
       // Hover rises and brightens -  never a hover-only meaning on touch.
-      targetZ += 0.058 * hoverStrength;
+      targetZ += 0.058 * hoverStrength * body.buoyancy;
+      const com = body.glyph.manifest.physics?.center_of_mass ?? [0, 0, 0];
       const localX = clamp(
-        (control.hoverPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
+        (control.hoverPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8) - com[0] * 4,
         -1.15,
         1.15,
       );
       const localY = clamp(
-        (control.hoverPoint[1] - screen.center.y) / Math.max(screen.halfSize.y, 8),
+        (control.hoverPoint[1] - screen.center.y) / Math.max(screen.halfSize.y, 8) - com[1] * 4,
         -1.15,
         1.15,
       );
       body.currentForce.x += localX * hoverStrength * 0.13;
       body.currentTorque.x += -localY * hoverStrength * 0.58;
       body.currentTorque.z += localX * hoverStrength * 0.58;
+      body.currentTorque.y += com[2] * hoverStrength * 0.2;
     }
     body.currentTorque.x += ambientRoll * 30;
     body.currentTorque.z += Math.sin(now * body.ambientFrequency * 0.87 * Math.PI * 2 + body.ambientPhase * 1.37)
@@ -431,15 +475,17 @@ export function stepGlyphBodies(
 
     // Responsive settle with buoyant give - not rubber, not dead.
     const spring = 26;
-    const drag = 13.5;
+    const drag = body.drag * clamp(control.depthDragScale, 0.85, 1.35);
     body.currentForce.x += -body.position.x * spring + softLimitForce(body.position.x, body.maxTravel, 48);
     body.currentForce.z += -(body.position.z - targetZ) * spring
       + softLimitForce(body.position.z, body.maxTravel, 48);
     const holding = glyphIndex === control.holdGlyphIndex;
     if (holding) {
-      const holdDepth = -Math.min(0.07, 0.04 + Math.max(0, control.holdAge) * 0.005);
-      // Hold dip with light follow - buoyancy, not smear trails.
-      body.currentForce.y += -(body.position.y - holdDepth) * 28 - body.velocity.y * 12;
+      const pressure = clamp(control.holdPressure, 0, 1);
+      const holdDepth = -Math.min(body.maxDepth * 0.72, (0.034 + pressure * 0.038) / body.buoyancy);
+      // Hold dip with light follow - buoyancy, not smear trails. Pressure caps.
+      body.currentForce.y += -(body.position.y - holdDepth) * (24 + pressure * 10)
+        - body.velocity.y * (10 + pressure * 6);
       const localX = clamp(
         (control.holdPoint[0] - screen.center.x) / Math.max(screen.halfSize.x, 8),
         -1.0,
@@ -450,11 +496,12 @@ export function stepGlyphBodies(
         -1.0,
         1.0,
       );
-      const strain = Math.min(1, Math.max(0, control.holdAge * 1.4));
-      body.currentForce.x += localX * (0.1 + strain * 0.08);
-      body.currentForce.z += -localY * (0.06 + strain * 0.045);
-      body.currentTorque.x += -localY * 0.32 + Math.sin(now * Math.PI * 2 * 5 + body.ambientPhase) * 0.055 * strain;
-      body.currentTorque.z += localX * 0.32;
+      // Drag follows the probe within authored travel; cannot fling out of frame.
+      body.currentForce.x += localX * (0.1 + pressure * 0.12);
+      body.currentForce.z += -localY * (0.06 + pressure * 0.07);
+      body.currentTorque.x += -localY * (0.28 + pressure * 0.18)
+        + Math.sin(now * Math.PI * 2 * 5 + body.ambientPhase) * 0.04 * pressure * body.flexLimit * 40;
+      body.currentTorque.z += localX * (0.28 + pressure * 0.18);
     } else if (entranceHolding) {
       body.currentForce.y += -(body.position.y - control.entranceDepth) * 32 - body.velocity.y * 18;
     } else {
@@ -462,7 +509,8 @@ export function stepGlyphBodies(
       const settling = entranceAge >= 0 && entranceAge < 1.6;
       const settleSpring = settling ? 14 : 18;
       const settleDrag = settling ? 14 : 10;
-      body.currentForce.y += -body.position.y * settleSpring - body.velocity.y * settleDrag;
+      const buoyancyLift = (body.buoyancy - 1) * 0.012 * ambientScale;
+      body.currentForce.y += -body.position.y * settleSpring - body.velocity.y * settleDrag + buoyancyLift;
     }
     body.velocity.x += (body.currentForce.x / body.mass - body.velocity.x * drag) * dt;
     body.velocity.z += (body.currentForce.z / body.mass - body.velocity.z * drag) * dt;
@@ -474,7 +522,7 @@ export function stepGlyphBodies(
     body.position.y = clamp(body.position.y, -body.maxDepth, body.maxDepth * 0.55);
 
     const angularSpring = 18;
-    const angularDrag = 12;
+    const angularDrag = body.angularDrag * clamp(control.depthDragScale, 0.85, 1.35);
     for (const axis of ["x", "y", "z"] as const) {
       const limitForce = softLimitForce(body.orientation[axis], body.maxTilt, 38);
       const acceleration = (body.currentTorque[axis] - body.orientation[axis] * angularSpring + limitForce)

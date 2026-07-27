@@ -453,6 +453,7 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   uniform sampler2D uFrontDepth;
   uniform sampler2D uBackDepth;
   uniform float uIor;
+  uniform float uMediumIor;
   uniform float uRoughness;
   uniform vec3 uAttenuationColor;
   uniform float uAbsorptionDistance;
@@ -467,7 +468,12 @@ export const GLYPH_FRAGMENT = /* glsl */ `
   uniform vec3 uFillColor;
   uniform float uFillIntensity;
   uniform int uRefractionTaps;
+  uniform float uDispersionStrength;
   uniform float uCausticStrength;
+  uniform float uBubbleDensity;
+  uniform float uBubbleSeed;
+  uniform float uThicknessBias;
+  uniform float uCausticResponse;
   /* 0 = fully present glass, 1 = dissolved into the water behind. Drives the
      hero→projects descent: the name rises, thins, and becomes water again. */
   uniform float uExitFade;
@@ -481,10 +487,12 @@ export const GLYPH_FRAGMENT = /* glsl */ `
 
   vec3 sampleEnvironment(vec2 uv, vec2 direction, float radius) {
     vec3 color = texture2D(uEnvironment, uv).rgb;
+    /* Tiered refraction taps must actually diverge:
+       high (5), balanced (3), low (1). The uniform is the tap count. */
     if (uRefractionTaps <= 1) return color;
     color += texture2D(uEnvironment, clamp(uv + direction * radius, 0.002, 0.998)).rgb;
     color += texture2D(uEnvironment, clamp(uv - direction * radius, 0.002, 0.998)).rgb;
-    if (uRefractionTaps <= 3) return color / 3.0;
+    if (uRefractionTaps <= 2) return color / 3.0;
     vec2 perpendicular = vec2(-direction.y, direction.x);
     color += texture2D(uEnvironment, clamp(uv + perpendicular * radius * 0.72, 0.002, 0.998)).rgb;
     color += texture2D(uEnvironment, clamp(uv - perpendicular * radius * 0.72, 0.002, 0.998)).rgb;
@@ -525,19 +533,28 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     float backDepth = linearViewDepth(texture2D(uBackDepth, vScreenUv).r);
     float geometricThickness = clamp(backDepth - frontDepth, 0.008, 0.60);
     float shoulder = 1.0 - abs(vViewNormal.z);
-    float opticalThickness = geometricThickness * (1.0 + shoulder * 1.65) + shoulder * 0.05;
-    float eta = (uIor - 1.0) / uIor;
+    float opticalThickness = geometricThickness * (1.0 + shoulder * 1.65)
+      + shoulder * 0.05
+      + uThicknessBias;
+    opticalThickness = clamp(opticalThickness, 0.006, 0.72);
+    /* Water outside, glyph inside: bending is subtler than air/glass. */
+    float safeGlyphIor = max(uIor, uMediumIor + 0.01);
+    float eta = (safeGlyphIor - uMediumIor) / safeGlyphIor;
 
-    /* --- 1. Restrained internal micro-bubble field (Canvas UI glass) --- */
-    float microBubble = vnoiseg(vWorldPosition.xz * 38.0 + vWorldPosition.yy * 24.0);
-    float microBubbleMask = smoothstep(0.84, 0.98, microBubble);
+    /* --- 1. Restrained internal micro-bubble field (authored density/seed) --- */
+    vec3 bubbleOrigin = vWorldPosition + vec3(uBubbleSeed * 0.13, uBubbleSeed * -0.07, uBubbleSeed * 0.09);
+    float microBubble = vnoiseg(bubbleOrigin.xz * 38.0 + bubbleOrigin.yy * 24.0);
+    float microThreshold = mix(0.9, 0.82, clamp(uBubbleDensity, 0.0, 1.2));
+    float microBubbleMask = smoothstep(microThreshold, 0.98, microBubble);
     float internalRough = uRoughness + microBubbleMask * 0.035;
 
     /* --- 2. Sparse larger bubbles with dark center and bright rim --- */
-    float largeBubbleField = vnoise3(vWorldPosition * 14.0 + vec3(uTime * 0.02, 0.0, -uTime * 0.015));
-    float largeBubbleMask = smoothstep(0.91, 0.97, largeBubbleField);
+    float largeBubbleField = vnoise3(bubbleOrigin * 14.0 + vec3(uTime * 0.02, 0.0, -uTime * 0.015));
+    float largeThreshold = mix(0.94, 0.9, clamp(uBubbleDensity, 0.0, 1.2));
+    float largeBubbleMask = smoothstep(largeThreshold, 0.97, largeBubbleField);
     /* The bright edge simulates a convex meniscus catching light. */
-    float largeBubbleRim = smoothstep(0.88, 0.91, largeBubbleField) * (1.0 - largeBubbleMask);
+    float largeBubbleRim = smoothstep(largeThreshold - 0.03, largeThreshold, largeBubbleField)
+      * (1.0 - largeBubbleMask);
     /* Gate both bubble types by optical thickness so they occupy the volume. */
     float volumeGate = smoothstep(0.05, 0.20, opticalThickness);
 
@@ -559,19 +576,33 @@ export const GLYPH_FRAGMENT = /* glsl */ `
       sin(vWorldPosition.x * 7.2 - sin(vWorldPosition.z * 2.8) - uTime * 0.08)
     ) * (0.0018 + opticalThickness * 0.0016);
     vec2 refractionDirection = normalize(vViewNormal.xy + vec2(0.0001));
+    /* Guard screen edges so refraction never smears outside the frame. */
     vec2 refractedUv = clamp(
-      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.28 + internalWarp,
+      vScreenUv + vViewNormal.xy * eta * opticalThickness * 0.42 + internalWarp,
       vec2(0.002), vec2(0.998)
     );
     float samplingRadius = 0.00008 + internalRough * 0.0012 + shoulder * 0.00032;
     vec3 environment = sampleEnvironment(refractedUv, refractionDirection, samplingRadius);
 
-    /* --- 4. Thin spectral edge split (grazing only) --- */
+    /* --- 4. Tiered spectral edge split ---
+       high: full RGB edge split; balanced: cheaper luminance chroma shift;
+       low: omitted via uDispersionStrength = 0. */
     float dispersionScale = (0.00035 + opticalThickness * 0.0009 + shoulder * 0.0012)
-      * smoothstep(0.22, 0.78, shoulder);
-    vec2 dispersion = refractionDirection * dispersionScale;
-    environment.r = texture2D(uEnvironment, clamp(refractedUv + dispersion, 0.002, 0.998)).r;
-    environment.b = texture2D(uEnvironment, clamp(refractedUv - dispersion, 0.002, 0.998)).b;
+      * smoothstep(0.22, 0.78, shoulder)
+      * uDispersionStrength;
+    if (dispersionScale > 0.00001) {
+      vec2 dispersion = refractionDirection * dispersionScale;
+      if (uDispersionStrength > 0.75) {
+        environment.r = texture2D(uEnvironment, clamp(refractedUv + dispersion, 0.002, 0.998)).r;
+        environment.b = texture2D(uEnvironment, clamp(refractedUv - dispersion, 0.002, 0.998)).b;
+      } else {
+        /* Cheaper balanced approx: single offset sample + chroma pull. */
+        vec3 dispersed = texture2D(uEnvironment, clamp(refractedUv + dispersion * 0.65, 0.002, 0.998)).rgb;
+        float chroma = dispersed.r - dispersed.b;
+        environment.r += chroma * 0.35;
+        environment.b -= chroma * 0.35;
+      }
+    }
     vec3 directEnvironment = texture2D(uEnvironment, vScreenUv).rgb;
 
     /* Screen-space optical boundary ring - soft falloff avoids stair-stepped silhouettes. */
@@ -592,7 +623,8 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     /* --- 5. Selective cerulean absorption (shoulders, not milky faces) --- */
     vec3 safeAttenuation = max(uAttenuationColor, vec3(0.05));
     vec3 absorption = -log(safeAttenuation) / max(uAbsorptionDistance, 0.01);
-    vec3 transmittance = exp(-absorption * opticalThickness * (0.08 + shoulder * 0.72));
+    /* Beer-Lambert from optical path length through the submerged volume. */
+    vec3 transmittance = exp(-absorption * opticalThickness * (0.1 + shoulder * 0.78));
 
     /* Clean white core on broad faces; cerulean only on convex shoulders. */
     float faceClarity = 1.0 - shoulder * shoulder;
@@ -601,8 +633,8 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     body += (environment - directEnvironment) * (0.14 + shoulder * 0.82);
     body = mix(body, vec3(0.97, 0.99, 1.0), faceClarity * 0.08 * transmittance);
 
-    /* Internal caustic fire -  concentrates under active letters */
-    float letterGate = 0.55 + uLetterEnergy * 0.85;
+    /* Internal caustic fire - concentrates under active letters */
+    float letterGate = (0.55 + uLetterEnergy * 0.85) * uCausticResponse;
     float innerFoldA = pow(0.5 + 0.5 * sin(
       vWorldPosition.x * 8.6 + sin(vWorldPosition.z * 6.2) * 1.5 - uTime * 0.11
     ), 10.0);
@@ -621,14 +653,14 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     body *= mix(1.0, 0.78, shoulder * shoulder);
 
     /* Embedded micro-bubbles: restrained sparkle */
-    body += vec3(0.88, 0.96, 1.0) * microBubbleMask * transmittance * 0.028 * volumeGate;
+    body += vec3(0.88, 0.96, 1.0) * microBubbleMask * transmittance * 0.028 * volumeGate * uBubbleDensity;
     /* Larger bubbles: dark center with bright meniscus rim */
-    body -= vec3(0.04, 0.06, 0.08) * largeBubbleMask * volumeGate * 0.22;
-    body += vec3(0.82, 0.94, 1.0) * largeBubbleRim * volumeGate * 0.055;
+    body -= vec3(0.04, 0.06, 0.08) * largeBubbleMask * volumeGate * 0.22 * uBubbleDensity;
+    body += vec3(0.82, 0.94, 1.0) * largeBubbleRim * volumeGate * 0.055 * uBubbleDensity;
 
-    /* --- 6. Fresnel rim boost: near-white edge catch against bright water --- */
+    /* --- 6. Fresnel rim boost from water/glyph media, not air default --- */
     vec3 viewDirection = normalize(uCameraPosition - vWorldPosition);
-    float fresnelBase = pow((uIor - 1.0) / (uIor + 1.0), 2.0);
+    float fresnelBase = pow((uMediumIor - safeGlyphIor) / (uMediumIor + safeGlyphIor), 2.0);
     float fresnel = fresnelBase + (1.0 - fresnelBase)
       * pow(1.0 - clamp(dot(vWorldNormal, viewDirection), 0.0, 1.0), 3.6);
     float rimBoost = pow(1.0 - clamp(dot(vWorldNormal, viewDirection), 0.0, 1.0), 2.4);
@@ -683,7 +715,8 @@ export const GLYPH_FRAGMENT = /* glsl */ `
     reflected += uKeyColor * keySpec * uKeyIntensity * 0.11;
     reflected += uFillColor * fillSpec * uFillIntensity * 0.038;
     reflected += vec3(0.55, 0.70, 0.78) * lowerBounce * 0.05;
-    reflected += vec3(0.80, 0.92, 0.96) * causticFold * uCausticStrength * (0.32 + uLetterEnergy * 0.28);
+    reflected += vec3(0.80, 0.92, 0.96) * causticFold * uCausticStrength * uCausticResponse
+      * (0.32 + uLetterEnergy * 0.28);
     vec3 glyphColor = max(body + reflected, vec3(0.0));
 
     /* Descent fade: the letter dissolves into the exact water refracted
@@ -895,6 +928,10 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
       * (0.20 + depthTravel * 0.34) * (0.45 + upperIdentity * 0.55)
       * washoutGate
       * mix(1.0, 0.55, copyBand);
+    /* Couple caustic fire to live surface curvature so letter light and floor
+       caustics share one coherent field instead of drifting independently. */
+    float surfaceCoupling = clamp(slopeIntensity * 18.0, 0.0, 1.0);
+    caustic *= 0.78 + surfaceCoupling * 0.34;
     scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85 * uGlyphPresence);
     float simulatedWake = smoothstep(0.002, 0.015, length(slope))
       * smoothstep(0.001, 0.01, abs(h));

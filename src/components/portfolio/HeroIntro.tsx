@@ -13,35 +13,19 @@ import styles from "./HeroIntro.module.css";
 export default function HeroIntro() {
   const ctaRef = useRef<HTMLAnchorElement>(null);
   const [revealStep, setRevealStep] = useState(0);
-  const revealed = revealStep >= 3;
   useLiquidPersistentSurface(ctaRef, { phaseOffsetMs: 320, strength: 0.18, radius: 46 });
 
   useEffect(() => {
+    // Semantic copy and CTA must never wait on WebGL readiness (§8.9 / §19).
+    // Reveal is a visual stagger only; focusability is immediate.
     const timers: number[] = [];
-    const begin = () => {
-      setRevealStep(1);
-      timers.push(window.setTimeout(() => setRevealStep(2), BOOT_COPY_STAGGER_MS));
-      timers.push(window.setTimeout(() => setRevealStep(3), BOOT_COPY_STAGGER_MS * 2));
-    };
-    if (document.documentElement.dataset.heroRenderer === "ready") begin();
-    else window.addEventListener("liquid-renderer-ready", begin, { once: true });
-    timers.push(window.setTimeout(() => {
-      setRevealStep((current) => (current === 0 ? 1 : current));
-      timers.push(window.setTimeout(() => setRevealStep((current) => Math.max(current, 2)), BOOT_COPY_STAGGER_MS));
-      timers.push(window.setTimeout(() => setRevealStep(3), BOOT_COPY_STAGGER_MS * 2));
-    }, 900));
+    setRevealStep(1);
+    timers.push(window.setTimeout(() => setRevealStep(2), BOOT_COPY_STAGGER_MS));
+    timers.push(window.setTimeout(() => setRevealStep(3), BOOT_COPY_STAGGER_MS * 2));
     return () => {
-      window.removeEventListener("liquid-renderer-ready", begin);
       for (const timer of timers) window.clearTimeout(timer);
     };
   }, []);
-
-  const setCtaNode = (node: HTMLAnchorElement | null) => {
-    ctaRef.current = node;
-    if (!node) return;
-    if (revealed) node.removeAttribute("inert");
-    else node.setAttribute("inert", "");
-  };
 
   const beginDescent = (event: React.MouseEvent<HTMLAnchorElement>) => {
     if (!readMotionPolicy().liquidAllowed) return;
@@ -72,15 +56,13 @@ export default function HeroIntro() {
         {bio.heroSentence}
       </p>
       <Link
-        ref={setCtaNode}
+        ref={ctaRef}
         href="/#projects"
         className={`${styles.cta} liquid-dialogue rv-pill-fill`}
         data-liquid-hover
         data-magnetic="cta"
         data-sound-hover
-        data-visible={revealed ? "true" : "false"}
-        tabIndex={revealed ? undefined : -1}
-        aria-hidden={revealed ? undefined : true}
+        data-visible={revealStep >= 3 ? "true" : "false"}
         onClick={beginDescent}
       >
         <span data-magnetic-label>Explore work</span>

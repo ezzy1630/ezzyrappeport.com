@@ -53,11 +53,18 @@ import {
   nearestGlyphIndex,
   projectGlyph,
   projectGlyphRestCenter,
+  projectedGlyphRadius,
   stepGlyphBodies,
   type GlyphStepControl,
   type GlyphBody,
   type GlyphInteraction,
 } from "../../physics/glyphRigidBodies";
+import {
+  createGlyphImpulseBudget,
+  holdPressureResponse,
+  pressureProbeApproach,
+  tryConsumeGlyphImpulse,
+} from "../../physics/glyphImpulseBudget";
 import {
   createGlyphInteractionState,
   scheduleGlyphReleaseDroplets,
@@ -86,6 +93,10 @@ import {
   type CameraRestPose,
 } from "./cameraRig";
 import { validateHeroManifest, type HeroGlyphManifestEntry } from "./heroManifest";
+import {
+  opticalTierPolicy,
+  WATER_IOR,
+} from "./glyphAuthorship";
 import {
   BACKDROP_FRAGMENT,
   BACKDROP_VERTEX,
@@ -263,6 +274,7 @@ function makeThicknessGlyphMaterial(
   frontDepth: Texture,
   backDepth: Texture,
 ) {
+  const opticalTier = opticalTierPolicy("high");
   return new ShaderMaterial({
     vertexShader: GLYPH_VERTEX,
     fragmentShader: GLYPH_FRAGMENT,
@@ -271,6 +283,7 @@ function makeThicknessGlyphMaterial(
       uFrontDepth: { value: frontDepth },
       uBackDepth: { value: backDepth },
       uIor: { value: UNDERWATER_DEBUG.ior },
+      uMediumIor: { value: UNDERWATER_DEBUG.mediumIor ?? WATER_IOR },
       uRoughness: { value: UNDERWATER_DEBUG.roughness },
       uAttenuationColor: { value: new Color(UNDERWATER_DEBUG.absorptionColor) },
       uAbsorptionDistance: { value: UNDERWATER_DEBUG.absorptionDistance },
@@ -284,8 +297,13 @@ function makeThicknessGlyphMaterial(
       uFillPosition: { value: new Vector3(2.5, 1.8, 2.4) },
       uFillColor: { value: new Color(0xc9dce7) },
       uFillIntensity: { value: UNDERWATER_DEBUG.fillIntensity },
-      uRefractionTaps: { value: 5 },
+      uRefractionTaps: { value: opticalTier.refractionTaps },
+      uDispersionStrength: { value: opticalTier.dispersionStrength },
       uCausticStrength: { value: UNDERWATER_DEBUG.causticStrength },
+      uBubbleDensity: { value: 0.88 },
+      uBubbleSeed: { value: 0 },
+      uThicknessBias: { value: 0 },
+      uCausticResponse: { value: 1 },
       uExitFade: { value: 0 },
       uLetterEnergy: { value: 0 },
     },
@@ -293,6 +311,32 @@ function makeThicknessGlyphMaterial(
     depthWrite: true,
     depthTest: true,
   });
+}
+
+function applyGlyphOptics(
+  material: ShaderMaterial,
+  optics: HeroGlyphManifestEntry["optics"],
+  tier: KineticQuality["tier"],
+) {
+  const policy = opticalTierPolicy(tier);
+  material.uniforms.uIor.value = optics.ior;
+  material.uniforms.uMediumIor.value = WATER_IOR;
+  material.uniforms.uRoughness.value = optics.roughness;
+  material.uniforms.uAttenuationColor.value.setRGB(
+    optics.absorption_tint[0],
+    optics.absorption_tint[1],
+    optics.absorption_tint[2],
+    SRGBColorSpace,
+  );
+  material.uniforms.uAbsorptionDistance.value = optics.absorption_distance;
+  material.uniforms.uBubbleDensity.value = optics.bubble_density;
+  material.uniforms.uBubbleSeed.value = optics.bubble_seed;
+  material.uniforms.uThicknessBias.value = optics.thickness_bias;
+  material.uniforms.uCausticResponse.value = optics.caustic_response;
+  material.uniforms.uRefractionTaps.value = policy.refractionTaps;
+  material.uniforms.uDispersionStrength.value =
+    policy.dispersionStrength * optics.dispersion_scale;
+  material.userData.opticsDispersionScale = optics.dispersion_scale;
 }
 
 function applyManifestTransform(
@@ -320,7 +364,12 @@ function applyManifestTransform(
   object.userData.renderScale = [scale[0], scale[1], scale[2]] as [number, number, number];
 }
 
-async function loadGlyphs(parent: Object3D, material: Material, glbUrl: string) {
+async function loadGlyphs(
+  parent: Object3D,
+  material: Material,
+  glbUrl: string,
+  qualityTier: KineticQuality["tier"],
+) {
   const loader = new GLTFLoader();
   await MeshoptDecoder.ready;
   loader.setMeshoptDecoder(MeshoptDecoder);
@@ -332,6 +381,7 @@ async function loadGlyphs(parent: Object3D, material: Material, glbUrl: string) 
   const manifest = validateHeroManifest(await manifestResponse.json());
   const glyphs: HeroGlyphRuntime[] = [];
   const glyphGeometries = new Map<string, BufferGeometry>();
+  const glyphMaterials: Material[] = [];
 
   for (const glyph of manifest.glyphs) {
     const source = gltf.scene.getObjectByName(glyph.object_node_name);
@@ -353,7 +403,15 @@ async function loadGlyphs(parent: Object3D, material: Material, glbUrl: string) 
       glyphGeometries.set(geometryKey, authoredGeometry);
       glyphGeometry = authoredGeometry;
     }
-    const object = new Mesh(glyphGeometry, material);
+    // Optical instances remain independent even when mesh data is shared.
+    const instanceMaterial = material instanceof ShaderMaterial
+      ? material.clone()
+      : material;
+    if (instanceMaterial instanceof ShaderMaterial) {
+      applyGlyphOptics(instanceMaterial, glyph.optics, qualityTier);
+    }
+    if (instanceMaterial !== material) glyphMaterials.push(instanceMaterial);
+    const object = new Mesh(glyphGeometry, instanceMaterial);
     object.name = glyph.object_node_name;
     const renderScale: [number, number, number] = [
       source.scale.x,
@@ -371,7 +429,7 @@ async function loadGlyphs(parent: Object3D, material: Material, glbUrl: string) 
 
   // The runtime meshes own cloned geometry; the loader scene is no longer used.
   disposeObject(gltf.scene);
-  return glyphs;
+  return { glyphs, glyphMaterials };
 }
 
 function configureCamera(camera: PerspectiveCamera, width: number, height: number, debug = false) {
@@ -543,15 +601,20 @@ export function startUnderwaterHeroRenderer({
         backDepthTarget.texture,
       );
   if (glyphMaterial instanceof ShaderMaterial) {
+    const opticalTier = opticalTierPolicy(quality.tier);
     glyphMaterial.uniforms.uKeyPosition.value.copy(keyPosition);
     glyphMaterial.uniforms.uKeyColor.value.set(0xf5fbff);
     glyphMaterial.uniforms.uKeyIntensity.value = UNDERWATER_DEBUG.keyIntensity;
     glyphMaterial.uniforms.uFillPosition.value.copy(fillPosition);
     glyphMaterial.uniforms.uFillColor.value.set(0xc9dce7);
     glyphMaterial.uniforms.uFillIntensity.value = UNDERWATER_DEBUG.fillIntensity;
-    glyphMaterial.uniforms.uRefractionTaps.value = quality.tier === "high" ? 3 : quality.tier === "balanced" ? 2 : 1;
+    glyphMaterial.uniforms.uMediumIor.value = WATER_IOR;
+    glyphMaterial.uniforms.uRefractionTaps.value = opticalTier.refractionTaps;
+    glyphMaterial.uniforms.uDispersionStrength.value = opticalTier.dispersionStrength;
   }
-  canvas.dataset.glyphMaterial = usePhysicalMaterial ? "physical-baseline" : "thickness-refraction";
+  canvas.dataset.glyphMaterial = usePhysicalMaterial ? "physical-baseline" : "thickness-refraction-submerged";
+  canvas.dataset.opticalMedium = "water";
+  canvas.dataset.opticalTier = quality.tier;
   const tierSimulationWidth = quality.simWidth > 0
     ? quality.simWidth
     : quality.tier === "high"
@@ -654,7 +717,13 @@ export function startUnderwaterHeroRenderer({
   let lastFrameAt = performance.now();
   const startedAt = lastFrameAt;
   let glyphs: HeroGlyphRuntime[] = [];
+  let glyphInstanceMaterials: ShaderMaterial[] = [];
   let bodies: GlyphBody[] = [];
+  const impulseBudget = createGlyphImpulseBudget();
+  const syncGlyphMaterials = (mutate: (material: ShaderMaterial) => void) => {
+    if (glyphMaterial instanceof ShaderMaterial) mutate(glyphMaterial);
+    for (const material of glyphInstanceMaterials) mutate(material);
+  };
   let opticalMicrostructure: Texture[] = [];
   let lastInteractionId = 0;
   const pendingWater: WaterInjection[] = [];
@@ -721,12 +790,16 @@ export function startUnderwaterHeroRenderer({
     hoverGlyphIndex: -1,
     hoverStrength: 0,
     hoverPoint: pointerPoint,
+    approachGlyphIndex: -1,
+    approachStrength: 0,
     holdGlyphIndex: -1,
     holdPoint,
     holdAge: 0,
+    holdPressure: 0,
     entranceStart: Number.POSITIVE_INFINITY,
     entranceDepth: -0.055,
     entranceStagger: 0.032,
+    depthDragScale: 1,
   };
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
@@ -899,6 +972,9 @@ export function startUnderwaterHeroRenderer({
       holdPoint[0] = pointerPoint[0];
       holdPoint[1] = pointerPoint[1];
       stepControl.holdAge = Math.max(0, physics.time - interactionTransition.state.startedAt);
+      stepControl.holdPressure = holdPressureResponse(stepControl.holdAge, 1, 1.55);
+    } else {
+      stepControl.holdPressure = 0;
     }
     stepControl.hoverGlyphIndex = interactionTransition.state.kind === "hovering"
       ? interactionTransition.state.glyphIndex
@@ -908,6 +984,28 @@ export function startUnderwaterHeroRenderer({
     stepControl.holdGlyphIndex = interactionTransition.state.kind === "holding"
       ? interactionTransition.state.glyphIndex
       : -1;
+
+    // Pressure-probe approach: caustic onset before contact.
+    let approachIndex = -1;
+    let approachStrength = 0;
+    if (eligible && interactionTransition.state.kind !== "holding") {
+      let nearestDistance = Number.POSITIVE_INFINITY;
+      for (const body of bodies) {
+        const contactRadius = projectedGlyphRadius(body);
+        const approachRadius = contactRadius * 1.85;
+        const distance = Math.hypot(
+          pointerPoint[0] - body.projectedState.center.x,
+          pointerPoint[1] - body.projectedState.center.y,
+        );
+        if (distance >= approachRadius || distance >= nearestDistance) continue;
+        nearestDistance = distance;
+        approachIndex = body.glyph.manifest.glyph_index;
+        approachStrength = pressureProbeApproach(distance, contactRadius, approachRadius);
+      }
+    }
+    stepControl.approachGlyphIndex = approachIndex;
+    stepControl.approachStrength = approachStrength;
+    stepControl.depthDragScale = 1 + Math.min(0.28, (physics.world?.depth ?? 0) * 0.35);
     stepControl.ambientScale = 1 - Math.min(0.42, Math.abs(physics.scroll.velocity) * 0.25);
     syncInteractionDataset();
   };
@@ -918,17 +1016,37 @@ export function startUnderwaterHeroRenderer({
     pointerPoint[1] = event.clientY - canvasRect.top;
     const glyphIndex = nearestGlyphIndex(bodies, pointerPoint);
     if (glyphIndex < 0) return;
+    const now = performance.now() / 1000;
+    const impulse = tryConsumeGlyphImpulse(impulseBudget, now, 0.28);
     // Press into water -  not a browser drag. Kill default drag ghost / text select.
     event.preventDefault();
     holdPoint[0] = pointerPoint[0];
     holdPoint[1] = pointerPoint[1];
+    if (heroMetricsEnabled) {
+      canvas.dataset.impulseBudget = impulse.remaining.toFixed(3);
+      canvas.dataset.impulseScale = impulse.scale.toFixed(3);
+    }
     dispatchGlyphInteraction({
       type: "pointer-down",
       glyphIndex,
       pointerId: event.pointerId,
       pressPoint: holdPoint,
-      now: performance.now() / 1000,
+      now,
     });
+    // Budget also scales the glyph's immediate punch via a soft press event.
+    const body = bodyForIndex(glyphIndex);
+    if (body) {
+      const screen = projectGlyph(body, camera, [canvasRect.width, canvasRect.height]);
+      activeGlyphInteractions.push({
+        kind: "press",
+        start: [pointerPoint[0], pointerPoint[1]],
+        end: [pointerPoint[0], pointerPoint[1]],
+        direction: [0, -1],
+        strength: 1.6 * impulse.scale,
+        radius: Math.max(72, Math.hypot(screen.halfSize.x, screen.halfSize.y) * 1.15),
+        time: now,
+      });
+    }
   };
 
   const onCanvasDragStart = (event: DragEvent) => {
@@ -1044,9 +1162,11 @@ export function startUnderwaterHeroRenderer({
       body.restScreenCenter.set(Number.NaN, Number.NaN);
     });
     if (glyphMaterial instanceof ShaderMaterial) {
-      glyphMaterial.uniforms.uCameraNear.value = camera.near;
-      glyphMaterial.uniforms.uCameraFar.value = camera.far;
-      glyphMaterial.uniforms.uCameraPosition.value.copy(camera.position);
+      syncGlyphMaterials((material) => {
+        material.uniforms.uCameraNear.value = camera.near;
+        material.uniforms.uCameraFar.value = camera.far;
+        material.uniforms.uCameraPosition.value.copy(camera.position);
+      });
     }
     const nextSimulationWidth = Math.min(tierSimulationWidth, width < 640 ? 128 : width < 1200 ? 192 : 256);
     const nextSimulationHeight = Math.max(72, Math.round(nextSimulationWidth * height / Math.max(width, 1)));
@@ -1100,9 +1220,17 @@ export function startUnderwaterHeroRenderer({
     const dirY = -event.vy / directionLength;
     const lowTier = quality.tier === "low";
     const nowSeconds = performance.now() / 1000;
+    // Click-storm budget scales press/shockwave energy into water + glyphs.
+    const stormScale = (event.kind === "press" || event.kind === "shockwave")
+      ? tryConsumeGlyphImpulse(impulseBudget, nowSeconds, event.kind === "shockwave" ? 0.22 : 0.18).scale
+      : 1;
+    if ((event.kind === "press" || event.kind === "shockwave") && heroMetricsEnabled) {
+      canvas.dataset.impulseBudget = impulseBudget.energy.toFixed(3);
+      canvas.dataset.impulseScale = stormScale.toFixed(3);
+    }
 
     if (event.kind === "shockwave") {
-      const strength = event.strength;
+      const strength = event.strength * stormScale;
       shockwaveCenter = [endUv.x, endUv.y];
       shockwaveBornAt = nowSeconds;
       shockwaveStrength = strength;
@@ -1255,18 +1383,19 @@ export function startUnderwaterHeroRenderer({
       ]
       : [endUv.x, endUv.y];
     const wakeImpulseScale = event.kind === "wake" ? calmAttenuate : 1;
+    const pressStrength = event.strength * (event.kind === "press" ? stormScale : 1);
     pendingWater.push({
       position: extendedEnd,
       start: [startUv.x, startUv.y],
       end: extendedEnd,
       radius: pressRadius,
       impulse: event.kind === "press"
-        ? -event.strength * 1.45
+        ? -pressStrength * 1.45
         : -(event.strength * (0.34 + speedFactor * 0.42 + eccentricity * 0.28)) * wakeImpulseScale,
       direction: [dirX, dirY],
       wake: event.kind === "wake"
         ? event.strength * (0.42 + speedFactor * 0.32 + eccentricity * 0.24) * wakeImpulseScale
-        : event.strength * 0.28,
+        : pressStrength * 0.28,
       eccentricity,
     });
     if (event.kind === "wake" && eccentricity > 0.16 && !lowTier) {
@@ -1294,7 +1423,7 @@ export function startUnderwaterHeroRenderer({
         start: [endUv.x, endUv.y],
         end: [endUv.x + 0.016, endUv.y - 0.01],
         radius: pressRadius * 0.3,
-        impulse: -event.strength * 0.35,
+        impulse: -pressStrength * 0.35,
         direction: [0.4, -0.9],
         wake: 0.04,
         eccentricity: 0,
@@ -1307,7 +1436,7 @@ export function startUnderwaterHeroRenderer({
         end: [event.endX - rect.left, event.endY - rect.top],
         direction: speed > 8 ? [event.vx / directionLength, event.vy / directionLength] : [0, -1],
         // Press glyph punch is softer — shockwave owns the click scatter.
-        strength: event.kind === "press" ? event.strength * 2.2 : event.strength * 4.2,
+        strength: event.kind === "press" ? pressStrength * 2.2 : event.strength * 4.2,
         radius: event.kind === "press" ? Math.max(84, event.radius) : Math.max(34, event.radius),
         time: event.time,
       });
@@ -1543,10 +1672,18 @@ export function startUnderwaterHeroRenderer({
     if (offHero !== lastOffHero) {
       lastOffHero = offHero;
       if (glyphMaterial instanceof ShaderMaterial) {
-        const heroTaps = quality.tier === "high" ? 3 : quality.tier === "balanced" ? 2 : 1;
-        glyphMaterial.uniforms.uRefractionTaps.value = offHero ? Math.min(heroTaps, 1) : heroTaps;
+        const opticalTier = opticalTierPolicy(quality.tier);
+        const heroTaps = opticalTier.refractionTaps;
+        const taps = offHero ? Math.min(heroTaps, 1) : heroTaps;
+        const dispersion = offHero ? 0 : opticalTier.dispersionStrength;
+        syncGlyphMaterials((material) => {
+          const optics = (material.userData.opticsDispersionScale as number | undefined) ?? 1;
+          material.uniforms.uRefractionTaps.value = taps;
+          material.uniforms.uDispersionStrength.value = dispersion * optics;
+        });
         if (heroMetricsEnabled) {
-          canvas.dataset.refractionTaps = String(glyphMaterial.uniforms.uRefractionTaps.value);
+          canvas.dataset.refractionTaps = String(taps);
+          canvas.dataset.dispersionStrength = String(dispersion);
         }
       }
       canvas.dataset.offHero = offHero ? "true" : "false";
@@ -1574,7 +1711,18 @@ export function startUnderwaterHeroRenderer({
     }
     backdropMaterial.uniforms.uTime.value = staticFrame ? 0.8 : time;
     backdropMaterial.uniforms.uMotion.value = staticFrame ? 0 : 1;
-    if (glyphMaterial instanceof ShaderMaterial) glyphMaterial.uniforms.uTime.value = time;
+    syncGlyphMaterials((material) => {
+      material.uniforms.uTime.value = time;
+    });
+    // Always stamp optical tier metrics from the LIVE uniform state so off-hero
+    // clamped taps/dispersion are not overwritten by the ceiling policy.
+    if (glyphMaterial instanceof ShaderMaterial && heroMetricsEnabled) {
+      const sample = glyphInstanceMaterials[0] ?? glyphMaterial;
+      canvas.dataset.refractionTaps = String(sample.uniforms.uRefractionTaps.value);
+      canvas.dataset.dispersionStrength = String(sample.uniforms.uDispersionStrength.value);
+      canvas.dataset.opticalTier = quality.tier;
+      canvas.dataset.impulseBudget = impulseBudget.energy.toFixed(3);
+    }
     finalMaterial.uniforms.uTime.value = staticFrame ? 0.8 : time;
     // Authored camera: intro dolly + depth tip + secondary ≤2° pointer/device tilt.
     cameraPointerX += (cameraPointerXT - cameraPointerX) * 0.045;
@@ -1673,13 +1821,27 @@ export function startUnderwaterHeroRenderer({
     glyphGroup.visible = glyphsPresent;
     glyphGroup.position.set(0, 0, 0);
     if (glyphMaterial instanceof ShaderMaterial) {
-      glyphMaterial.uniforms.uExitFade.value = glyphFadeForExit(glyphExit);
-      const letterEnergy =
+      const exitFade = glyphFadeForExit(glyphExit);
+      const activeIndex =
+        interactionTransition.state.kind === "holding"
+        || interactionTransition.state.kind === "hovering"
+        || interactionTransition.state.kind === "releasing"
+          ? interactionTransition.state.glyphIndex
+          : stepControl.approachGlyphIndex;
+      const baseEnergy =
         interactionTransition.state.kind === "holding" ? 1
           : interactionTransition.state.kind === "hovering" ? 0.78
             : interactionTransition.state.kind === "releasing" ? 0.85
-              : 0;
-      glyphMaterial.uniforms.uLetterEnergy.value = letterEnergy;
+              : stepControl.approachStrength * 0.42;
+      for (const glyph of glyphs) {
+        const material = glyph.object.material;
+        if (!(material instanceof ShaderMaterial)) continue;
+        material.uniforms.uExitFade.value = exitFade;
+        const isActive = glyph.manifest.glyph_index === activeIndex;
+        material.uniforms.uLetterEnergy.value = isActive
+          ? baseEnergy
+          : Math.max(0, baseEnergy * 0.18);
+      }
     }
     finalMaterial.uniforms.uGlyphPresence.value = renderHeroGlyphs
       ? 1 - glyphFadeForExit(glyphExit)
@@ -1931,14 +2093,17 @@ export function startUnderwaterHeroRenderer({
 
   void Promise.all([
     loadOpticalMicrostructure(),
-    renderHeroGlyphs ? loadGlyphs(glyphGroup, glyphMaterial, glbUrl) : Promise.resolve([]),
+    renderHeroGlyphs
+      ? loadGlyphs(glyphGroup, glyphMaterial, glbUrl, quality.tier)
+      : Promise.resolve({ glyphs: [] as HeroGlyphRuntime[], glyphMaterials: [] as Material[] }),
   ])
-    .then(([loadedOptics, loadedGlyphs]) => {
+    .then(([loadedOptics, loaded]) => {
       if (disposed) {
         loadedOptics.forEach((texture) => texture.dispose());
-        const geometries = new Set(loadedGlyphs.map(({ object }) => object.geometry));
-        loadedGlyphs.forEach(({ object }) => scene.remove(object));
+        const geometries = new Set(loaded.glyphs.map(({ object }) => object.geometry));
+        loaded.glyphs.forEach(({ object }) => scene.remove(object));
         geometries.forEach((geometry) => geometry.dispose());
+        loaded.glyphMaterials.forEach((material) => material.dispose());
         return;
       }
       opticalMicrostructure = loadedOptics;
@@ -1948,7 +2113,10 @@ export function startUnderwaterHeroRenderer({
       backdropMaterial.uniforms.uOpticalDeepBasin.value = opticalMicrostructure[3];
   canvas.dataset.opticalSource = "authored-radiance-live-volume-v4";
       canvas.dataset.opticalMicrostructure = "authored-high-pass-v2";
-      glyphs = loadedGlyphs;
+      glyphs = loaded.glyphs;
+      glyphInstanceMaterials = loaded.glyphMaterials.filter(
+        (material): material is ShaderMaterial => material instanceof ShaderMaterial,
+      );
       if (usePhysicalMaterial) {
         for (const glyph of glyphs) {
           glyph.object.castShadow = true;
@@ -2177,6 +2345,8 @@ export function startUnderwaterHeroRenderer({
     const glyphGeometries = new Set(glyphs.map(({ object }) => object.geometry));
     glyphs.forEach(({ object }) => scene.remove(object));
     glyphGeometries.forEach((geometry) => geometry.dispose());
+    glyphInstanceMaterials.forEach((material) => material.dispose());
+    glyphInstanceMaterials = [];
     glyphMaterial.dispose();
     opticalMicrostructure.forEach((texture) => texture.dispose());
     disposeObject(scene);
