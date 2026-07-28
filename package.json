@@ -14,7 +14,7 @@
     "capture:master": "node scripts/capture-master-revamp.mjs",
     "capture:m0": "node scripts/capture-milestone-0-baseline.mjs --label post-m0",
     "capture:m0:main": "node scripts/capture-milestone-0-baseline.mjs --label main",
-    "capture:m1": "node scripts/capture-milestone-1-hero.mjs",
+    "capture:m1": "node scripts/capture-milestone-1-hero.mjs","capture:m2": "node scripts/capture-milestone-2-descent.mjs",
     "assets:hero-manifest": "node --experimental-strip-types scripts/enrich-hero-manifest.mjs",
     "resume:pdf": "node scripts/print-resume-pdf.mjs"
   },

@@ -23,6 +23,10 @@ export type CameraRigInput = {
   introProgress: number;
   /** World depth 0..1 (surface → floor). */
   worldDepth: number;
+  /** Hero release master 0..1 — camera begins its descent (plan §8.7 phase 3). */
+  heroRelease?: number;
+  /** Hero pass-under master 0..1 — camera travels beneath the rising name. */
+  heroPassUnder?: number;
   /** Smoothed pointer in −1..1 (screen NDC-ish). */
   pointerX: number;
   pointerY: number;
@@ -58,6 +62,16 @@ export const CAMERA_RIG = {
   /** Pitch toward looking down into the basin, radians. */
   depthPitch: (3.4 * Math.PI) / 180,
   depthFovTighten: 2.0,
+  /** Hero release: the descent begins — modest drop + dolly (§8.7 phase 3). */
+  heroReleaseDropZ: 0.34,
+  heroReleaseDollyY: 0.1,
+  heroReleasePitch: (2.2 * Math.PI) / 180,
+  heroReleaseFovTighten: 0.8,
+  /** Hero pass-under: camera travels beneath/between the rising letters. */
+  heroPassDropZ: 1.65,
+  heroPassDollyY: 0.5,
+  heroPassPitch: (8.5 * Math.PI) / 180,
+  heroPassFovTighten: 3.6,
   /** Pointer parallax ceiling — secondary to the authored dolly. */
   parallaxTilt: (1.1 * Math.PI) / 180,
   /** Device-orientation contribution (phones) — kept ≤ ~1.6°. */
@@ -124,15 +138,6 @@ export function breachExposureBoost(ageSeconds: number, shortened: boolean) {
 }
 
 /**
- * Per-letter exit progress: optical dissolve still uses the shared exit, but
- * physical rise staggers ~28ms of curve per glyph index.
- */
-export function staggeredGlyphExit(exit: number, glyphIndex: number) {
-  const delay = glyphIndex * 0.028;
-  return smoothstep01((exit - delay) / Math.max(0.55, 1 - delay));
-}
-
-/**
  * Apply the authored camera pose into `out` (and optionally write FOV onto
  * the live PerspectiveCamera). Does not mutate `rest`.
  */
@@ -146,11 +151,19 @@ export function applyCameraRig(
   const depthT = input.reducedMotion
     ? 0
     : smoothstep01(input.worldDepth / CAMERA_RIG.depthInfluenceEnd);
+  const heroRelease = input.reducedMotion ? 0 : clamp01(input.heroRelease ?? 0);
+  const heroPass = input.reducedMotion ? 0 : clamp01(input.heroPassUnder ?? 0);
 
   _pos.copy(rest.position);
   // Intro: start farther (+Y) and deeper (+Z), settle to rest.
-  _pos.y += CAMERA_RIG.introOffsetY * introRemain - CAMERA_RIG.depthPullY * depthT;
-  _pos.z += CAMERA_RIG.introOffsetZ * introRemain + CAMERA_RIG.depthDropZ * depthT;
+  _pos.y += CAMERA_RIG.introOffsetY * introRemain
+    - CAMERA_RIG.depthPullY * depthT
+    - CAMERA_RIG.heroReleaseDollyY * heroRelease
+    - CAMERA_RIG.heroPassDollyY * heroPass;
+  _pos.z += CAMERA_RIG.introOffsetZ * introRemain
+    + CAMERA_RIG.depthDropZ * depthT
+    + CAMERA_RIG.heroReleaseDropZ * heroRelease
+    + CAMERA_RIG.heroPassDropZ * heroPass;
 
   const breathe = input.reducedMotion
     ? 0
@@ -170,7 +183,9 @@ export function applyCameraRig(
     clampMagnitude(pointerPitch + devicePitch, CAMERA_RIG.maxCombinedTilt)
     + breathe * 0.4
     + CAMERA_RIG.introPitch * introRemain
-    - CAMERA_RIG.depthPitch * depthT;
+    - CAMERA_RIG.depthPitch * depthT
+    - CAMERA_RIG.heroReleasePitch * heroRelease
+    - CAMERA_RIG.heroPassPitch * heroPass;
 
   _pos.x += (input.pointerX + tiltX * 0.35) * CAMERA_RIG.parallaxLateral + drift;
   _pos.z += breathe;
@@ -184,7 +199,9 @@ export function applyCameraRig(
     const fov =
       rest.fov
       + CAMERA_RIG.introFovWiden * introRemain
-      - CAMERA_RIG.depthFovTighten * depthT;
+      - CAMERA_RIG.depthFovTighten * depthT
+      - CAMERA_RIG.heroReleaseFovTighten * heroRelease
+      - CAMERA_RIG.heroPassFovTighten * heroPass;
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();

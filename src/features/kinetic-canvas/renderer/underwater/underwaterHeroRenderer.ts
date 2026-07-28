@@ -40,6 +40,13 @@ import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/fram
 import { getDeviceTilt } from "@/lib/portfolio/device-tilt";
 import { scrollWakeStrength } from "@/lib/portfolio/liquid-interaction";
 import { subscribeJourneyScroll } from "@/features/ocean-experience/scroll/journey-scroll-bus";
+import { getExperienceSnapshot } from "@/features/ocean-experience/state/experience-store";
+import {
+  glyphFadeForRelease,
+  heroPhaseState,
+  heroProgressForJourney,
+  staggeredGlyphRelease,
+} from "@/features/ocean-experience/scroll/hero-journey";
 import type {
   LiquidInteractionEvent,
   LiquidPhysics,
@@ -89,7 +96,6 @@ import {
   applyCameraRig,
   introDurationForVisit,
   introProgressAt,
-  staggeredGlyphExit,
   type CameraRestPose,
 } from "./cameraRig";
 import { validateHeroManifest, type HeroGlyphManifestEntry } from "./heroManifest";
@@ -155,11 +161,6 @@ type StartOptions = {
 
 type WaterSection = "hero" | "projects" | "about" | "contact" | "case";
 
-function smoothstep01(value: number) {
-  const t = Math.max(0, Math.min(1, value));
-  return t * t * (3 - 2 * t);
-}
-
 /**
  * Continuous authored-plate coordinate for the backdrop: 0 = shallow plate,
  * 1 = mid-depth plate, 2 = deep-basin plate. Crossfade windows sit around
@@ -173,20 +174,9 @@ function plateForDepth(depth: number) {
   return 2;
 }
 
-/** Hero glyphs become a memory during early descent -  not a watermark
-    behind projects. Exit starts near the surface and completes by the
-    shallow projects band (~depth 0.08). */
-const GLYPH_EXIT_START_DEPTH = 0.018;
-const GLYPH_EXIT_SPAN = 0.062;
-
-function glyphExitForDepth(depth: number) {
-  return smoothstep01((depth - GLYPH_EXIT_START_DEPTH) / GLYPH_EXIT_SPAN);
-}
-
-/** Optical dissolve leads the rise: letters thin into water early. */
-function glyphFadeForExit(exit: number) {
-  return smoothstep01(exit / 0.62);
-}
+/** Hero glyph release is owned by the approved hero journey (plan §8.7):
+    local hero progress spans surface + descent; letters lag, rise, and
+    dissolve as pure functions of that progress. See hero-journey.ts. */
 
 async function loadOpticalMicrostructure() {
   const loader = new TextureLoader();
@@ -682,6 +672,7 @@ export function startUnderwaterHeroRenderer({
       uTheme: { value: 0 },
       uCalm: { value: 0 },
       uGlyphPresence: { value: 1 },
+      uDescentBeam: { value: 0 },
       uPointer: { value: new Vector2(0.62, 0.46) },
       uPointerVelocity: { value: new Vector2() },
       uPointerEnergy: { value: 0 },
@@ -800,6 +791,8 @@ export function startUnderwaterHeroRenderer({
     entranceDepth: -0.055,
     entranceStagger: 0.032,
     depthDragScale: 1,
+    releaseLift: 0,
+    releaseTorque: 0,
   };
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
@@ -808,9 +801,14 @@ export function startUnderwaterHeroRenderer({
   let frameCount = 0;
   // The one world: continuous depth/calm sampled from the shared physics
   // state and exponentially smoothed per frame for a lag-free but weighty
-  // descent. Glyph exit rides the same curve.
+  // descent. Plates, fog, and exposure ride this curve.
   let worldDepth = 0;
   let worldCalm = 0;
+  // Hero release rides the approved hero journey (surface + descent chapters)
+  // published by the sole ScrollDirector — never a second DOM-derived mapping.
+  // <0 marks “unset” so the first frame snaps to the authored state (deep
+  // links and browser restoration must never pop the name into frame).
+  let heroProgressSmoothed = -1;
   let glyphExit = 0;
   const frameSamples: number[] = [];
   const workSamples: number[] = [];
@@ -1657,8 +1655,30 @@ export function startUnderwaterHeroRenderer({
     const calmEase = staticFrame ? 1 : 1 - Math.exp(-deltaSeconds * 4.2);
     worldDepth += (depthTarget - worldDepth) * depthEase;
     worldCalm += (calmTarget - worldCalm) * calmEase;
-    const glyphExitTarget = renderHeroGlyphs ? glyphExitForDepth(worldDepth) : 1;
-    glyphExit += (glyphExitTarget - glyphExit) * (staticFrame ? 1 : 1 - Math.exp(-deltaSeconds * 6.5));
+    // Approved hero choreography (§8.7): arrival → living → release →
+    // pass-under, a pure function of the ScrollDirector's journey progress.
+    // Critically damped smoothing settles exactly on the authored state, so
+    // reverse scroll reconstructs the same composition within tolerance.
+    const experience = getExperienceSnapshot();
+    const heroTarget = renderHeroGlyphs
+      ? heroProgressForJourney(experience.progress, experience.layout)
+      : 1;
+    const heroSnap = heroProgressSmoothed < 0;
+    if (heroSnap || staticFrame) {
+      heroProgressSmoothed = heroTarget;
+    } else {
+      heroProgressSmoothed += (heroTarget - heroProgressSmoothed)
+        * (1 - Math.exp(-deltaSeconds * 8));
+    }
+    const heroState = heroPhaseState(heroProgressSmoothed);
+    const glyphExitTarget = renderHeroGlyphs ? heroState.gone : 1;
+    if (heroSnap) {
+      // Deep link / restoration / late renderer start: land on the authored
+      // departure state directly — never a catch-up rise through the frame.
+      glyphExit = glyphExitTarget;
+    } else {
+      glyphExit += (glyphExitTarget - glyphExit) * (staticFrame ? 1 : 1 - Math.exp(-deltaSeconds * 6.5));
+    }
     const offHero = glyphExit >= 0.995;
     // Couple off-hero presentation + simulation to the same cadence. Bank
     // wall-clock time on skipped frames and catch up (bounded) when presenting
@@ -1693,6 +1713,21 @@ export function startUnderwaterHeroRenderer({
     backdropMaterial.uniforms.uPlate.value = plateForDepth(worldDepth);
     finalMaterial.uniforms.uTheme.value = worldDepth;
     finalMaterial.uniforms.uCalm.value = worldCalm;
+    const glyphPresence = renderHeroGlyphs ? 1 - glyphFadeForRelease(glyphExit) : 0;
+    // Living-phase tension: scroll stirs the surface before anything departs.
+    finalMaterial.uniforms.uSurfaceDistortion.value = UNDERWATER_DEBUG.surfaceDistortion
+      * (1 + heroState.tension * 0.22);
+    finalMaterial.uniforms.uCausticStrength.value = UNDERWATER_DEBUG.causticStrength
+      * (1 + heroState.tension * 0.16);
+    // Pass-under: the name's caustic energy stretches into the descent path.
+    // The beam outlives the dissolving letters — it is the light path into
+    // the first project waters, not a glyph-only effect.
+    finalMaterial.uniforms.uDescentBeam.value = heroState.descentBeam * (0.6 + 0.4 * glyphPresence);
+    // Release current: letters physically lag and rotate while the
+    // deterministic primary rise (below) stays exactly reversible.
+    stepControl.releaseLift = heroState.release * (1 - heroState.passUnder * 0.55);
+    stepControl.releaseTorque = Math.min(1, Math.abs(experience.velocity) / 2600)
+      * heroState.release * (1 - heroState.passUnder * 0.4);
     const introProgress = introProgressAt(
       absoluteTime,
       entranceStart,
@@ -1708,6 +1743,10 @@ export function startUnderwaterHeroRenderer({
     if (heroMetricsEnabled) {
       canvas.dataset.worldDepth = worldDepth.toFixed(3);
       canvas.dataset.introProgress = introProgress.toFixed(3);
+      canvas.dataset.heroPhase = heroState.phase;
+      canvas.dataset.heroProgress = heroProgressSmoothed.toFixed(3);
+      canvas.dataset.glyphRelease = glyphExit.toFixed(3);
+      canvas.dataset.descentBeam = finalMaterial.uniforms.uDescentBeam.value.toFixed(3);
     }
     backdropMaterial.uniforms.uTime.value = staticFrame ? 0.8 : time;
     backdropMaterial.uniforms.uMotion.value = staticFrame ? 0 : 1;
@@ -1734,6 +1773,8 @@ export function startUnderwaterHeroRenderer({
         {
           introProgress,
           worldDepth,
+          heroRelease: heroState.release,
+          heroPassUnder: heroState.passUnder,
           pointerX: cameraPointerX,
           pointerY: cameraPointerY,
           tiltX: deviceTilt.active ? deviceTilt.x : 0,
@@ -1821,7 +1862,6 @@ export function startUnderwaterHeroRenderer({
     glyphGroup.visible = glyphsPresent;
     glyphGroup.position.set(0, 0, 0);
     if (glyphMaterial instanceof ShaderMaterial) {
-      const exitFade = glyphFadeForExit(glyphExit);
       const activeIndex =
         interactionTransition.state.kind === "holding"
         || interactionTransition.state.kind === "hovering"
@@ -1836,16 +1876,18 @@ export function startUnderwaterHeroRenderer({
       for (const glyph of glyphs) {
         const material = glyph.object.material;
         if (!(material instanceof ShaderMaterial)) continue;
-        material.uniforms.uExitFade.value = exitFade;
+        // Per-letter dissolve trails its own staggered rise — the name thins
+        // letter by letter through the waterline, never all at once.
+        material.uniforms.uExitFade.value = glyphFadeForRelease(
+          staggeredGlyphRelease(glyphExit, glyph.manifest.glyph_index),
+        );
         const isActive = glyph.manifest.glyph_index === activeIndex;
         material.uniforms.uLetterEnergy.value = isActive
           ? baseEnergy
           : Math.max(0, baseEnergy * 0.18);
       }
     }
-    finalMaterial.uniforms.uGlyphPresence.value = renderHeroGlyphs
-      ? 1 - glyphFadeForExit(glyphExit)
-      : 0;
+    finalMaterial.uniforms.uGlyphPresence.value = glyphPresence;
     const bodiesLive = glyphsPresent && glyphExit < 0.9;
     const interactionState = interactionTransition.state;
     if (
@@ -1893,12 +1935,28 @@ export function startUnderwaterHeroRenderer({
         if (glyphExit < 0.25) injectGlyphFeedback(viewport);
       }
     }
-    // Staggered cinematic exit: each letter rises/fades with a slight delay.
-    if (glyphsPresent && bodies.length > 0 && glyphExit > 0.001) {
+    // Approved buoyant pass-under (§8.7): during release the letters lag
+    // through inertia (secondary physics above), then rise toward the
+    // surface with a per-glyph stagger; through the pass-under they part
+    // laterally so the camera travels beneath/between them. Every term is a
+    // pure function of hero progress — reverse scroll reconstructs the exact
+    // authored composition and the damped solver re-seats manifest rest.
+    if (glyphsPresent && bodies.length > 0 && (glyphExit > 0.001 || heroState.release > 0.001)) {
+      const passUnder = heroState.passUnder;
+      const releaseLag = heroState.release * (1 - passUnder);
       for (const body of bodies) {
-        const letterExit = staggeredGlyphExit(glyphExit, body.glyph.manifest.glyph_index);
-        body.glyph.object.position.y += letterExit * 0.55;
-        body.glyph.object.position.z += -letterExit * 3.35;
+        const letterExit = staggeredGlyphRelease(glyphExit, body.glyph.manifest.glyph_index);
+        if (letterExit <= 0 && releaseLag <= 0) continue;
+        const driftSign = body.restPosition.x !== 0
+          ? Math.sign(body.restPosition.x)
+          : (body.glyph.manifest.glyph_index % 2 === 0 ? -1 : 1);
+        // Rise is back-loaded: letters hold their composition through the
+        // release, then surge through the waterline as the camera passes
+        // beneath — the pass-under keeps them in frame while they refract.
+        const rise = letterExit * (1.9 + passUnder * 1.7);
+        body.glyph.object.position.x += driftSign * passUnder * letterExit * 0.3;
+        body.glyph.object.position.y += letterExit * 0.5;
+        body.glyph.object.position.z += -rise + releaseLag * 0.22;
         body.glyph.object.updateMatrixWorld(true);
       }
     }

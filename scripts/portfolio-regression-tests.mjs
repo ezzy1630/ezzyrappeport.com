@@ -277,7 +277,7 @@ const tests = [
     assert.match(underwaterRendererSource, /pointercancel/);
     assert.match(underwaterRendererSource, /surface-breach/);
     assert.match(underwaterRendererSource, /applyCameraRig/);
-    assert.match(underwaterRendererSource, /staggeredGlyphExit/);
+    assert.match(underwaterRendererSource, /staggeredGlyphRelease/);
     assert.match(underwaterRendererSource, /breachExposureBoost/);
     assert.match(underwaterRendererSource, /scheduledWater/);
     assert.match(liquidInteractionSource, /addEventListener\("blur"/);
@@ -324,18 +324,22 @@ const tests = [
     assert.match(kineticCanvasSource, /renderHeroGlyphs: heroNameRef\.current/);
     assert.doesNotMatch(kineticCanvasSource, /webglFluidRenderer/);
   }],
-  ["One continuous world drives depth, glyph exit, plates, and calm", () => {
+  ["One continuous world drives depth, plates, calm; hero journey owns glyph release", () => {
     // The renderer consumes the shared world curve, not section presets.
     assert.match(underwaterRendererSource, /getPhysics\(\)\.world/);
     assert.match(underwaterRendererSource, /world\?\.depth \?\? 0/);
     assert.match(underwaterRendererSource, /world\?\.calm \?\? 0/);
-    assert.match(underwaterRendererSource, /glyphExitForDepth/);
     assert.match(underwaterRendererSource, /plateForDepth/);
     assert.match(underwaterRendererSource, /canvas\.dataset\.worldDepth/);
     assert.doesNotMatch(underwaterRendererSource, /WATER_SECTION_THEME/);
+    // Milestone 2: glyph release rides the approved hero journey from the
+    // sole ScrollDirector — never a second DOM-derived depth mapping.
+    assert.doesNotMatch(underwaterRendererSource, /glyphExitForDepth/);
+    assert.match(underwaterRendererSource, /heroProgressForJourney/);
+    assert.match(underwaterRendererSource, /heroPhaseState/);
     // The hero name exits by rising and dissolving, never by observer hide.
     assert.match(underwaterRendererSource, /glyphGroup\.visible = glyphsPresent/);
-    assert.match(underwaterRendererSource, /staggeredGlyphExit/);
+    assert.match(underwaterRendererSource, /staggeredGlyphRelease/);
     assert.match(underwaterShaderSource, /uExitFade/);
     assert.doesNotMatch(underwaterRendererSource, /IntersectionObserver/);
     // Calm pocket and continuous plates reach the shaders.
@@ -572,8 +576,10 @@ const tests = [
     assert.doesNotMatch(identitySource, /gmaill\.com/);
   }],
   ["Hero glyph memory exits before the projects band", () => {
-    assert.match(underwaterRendererSource, /GLYPH_EXIT_START_DEPTH = 0\.018/);
-    assert.match(underwaterRendererSource, /GLYPH_EXIT_SPAN = 0\.062/);
+    // Milestone 2: release completes with the descent chapter (journey 0.22
+    // desktop / 0.24 mobile), never lingering as a watermark behind projects.
+    assert.match(underwaterRendererSource, /heroProgressForJourney/);
+    assert.match(underwaterRendererSource, /glyphGroup\.visible = glyphsPresent/);
     assert.match(worldStateSource, /projectsCalm/);
     assert.match(underwaterShaderSource, /Reading pockets/);
   }],
@@ -1688,6 +1694,115 @@ const tests = [
     assert.match(readFileSync(new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url), "utf8"), /id=["']projects["']/);
     assert.match(readFileSync(new URL("../src/components/portfolio/AboutSection.tsx", import.meta.url), "utf8"), /id=["']about["']/);
     assert.match(readFileSync(new URL("../src/components/portfolio/ContactSection.tsx", import.meta.url), "utf8"), /id=["']contact["']/);
+  }],
+  ["Milestone 2: hero release phases, deterministic descent, and reversal", async () => {
+    const {
+      HERO_PHASE_ARRIVAL_END,
+      HERO_PHASE_LIVING_END,
+      HERO_PHASE_RELEASE_END,
+      heroJourneyEndForLayout,
+      heroProgressForJourney,
+      heroPhaseState,
+      staggeredGlyphRelease,
+      glyphFadeForRelease,
+    } = await import("../src/features/ocean-experience/scroll/hero-journey.ts");
+
+    // Hero journey spans surface + descent chapters exactly.
+    assert.equal(heroJourneyEndForLayout("desktop"), 0.22);
+    assert.equal(heroJourneyEndForLayout("mobile"), 0.24);
+    assert.equal(heroProgressForJourney(0, "desktop"), 0);
+    assert.equal(heroProgressForJourney(0.11, "desktop"), 0.5);
+    assert.equal(heroProgressForJourney(0.22, "desktop"), 1);
+    assert.equal(heroProgressForJourney(0.57, "desktop"), 1, "clamps past descent");
+    assert.equal(heroProgressForJourney(-0.4, "desktop"), 0);
+
+    // Phase edges match the approved §8.7 contract.
+    assert.equal(HERO_PHASE_ARRIVAL_END, 0.18);
+    assert.equal(HERO_PHASE_LIVING_END, 0.52);
+    assert.equal(HERO_PHASE_RELEASE_END, 0.82);
+    assert.equal(heroPhaseState(0).phase, "arrival");
+    assert.equal(heroPhaseState(0.3).phase, "living");
+    assert.equal(heroPhaseState(0.6).phase, "release");
+    assert.equal(heroPhaseState(0.9).phase, "pass-under");
+    assert.equal(heroPhaseState(1).phase, "pass-under");
+
+    // Living phase adds tension without departure; release commits it away.
+    assert.equal(heroPhaseState(0).tension, 0);
+    assert.ok(heroPhaseState(0.4).tension > 0.5, "living tension builds");
+    assert.equal(heroPhaseState(1).tension, 0, "tension resolves after release");
+    assert.equal(heroPhaseState(0.4).release, 0, "no departure during living");
+    assert.equal(heroPhaseState(0.4).gone, 0);
+
+    // Masters are monotonic and exact at both ends (reversible contract).
+    let previousGone = -1;
+    for (let step = 0; step <= 100; step += 1) {
+      const state = heroPhaseState(step / 100);
+      assert.ok(state.gone >= previousGone, "gone must be monotonic");
+      previousGone = state.gone;
+      assert.ok(state.release >= 0 && state.release <= 1);
+      assert.ok(state.passUnder >= 0 && state.passUnder <= 1);
+    }
+    assert.equal(heroPhaseState(HERO_PHASE_LIVING_END).release, 0);
+    assert.equal(heroPhaseState(HERO_PHASE_RELEASE_END).release, 1);
+    assert.equal(heroPhaseState(1).passUnder, 1);
+    assert.equal(heroPhaseState(1).gone, 1);
+    assert.equal(heroPhaseState(0.52).gone, 0);
+    // Pass-under never leads the release.
+    assert.ok(heroPhaseState(0.7).passUnder === 0);
+    assert.ok(heroPhaseState(0.9).passUnder > 0);
+    // Descent beam only turns on near the pass-under handoff.
+    assert.equal(heroPhaseState(0.5).descentBeam, 0);
+    assert.ok(heroPhaseState(0.95).descentBeam > 0.9);
+
+    // Pure mapping: identical progress yields identical state (reversal).
+    assert.deepEqual(heroPhaseState(0.68), heroPhaseState(0.68));
+
+    // Per-glyph stagger: later indices trail, all complete exactly at 1.
+    assert.ok(staggeredGlyphRelease(0.5, 0) > staggeredGlyphRelease(0.5, 12));
+    for (let index = 0; index < 13; index += 1) {
+      assert.equal(staggeredGlyphRelease(1, index), 1);
+      assert.equal(staggeredGlyphRelease(0, index), 0);
+    }
+    // Dissolve trails the rise so letters keep refracting in the pass-under.
+    assert.equal(glyphFadeForRelease(0), 0);
+    assert.ok(glyphFadeForRelease(0.5) < 0.65, "dissolve must lag the rise");
+    assert.equal(glyphFadeForRelease(1), 1);
+
+    // Renderer wiring: journey-driven release, camera inputs, beam, snap.
+    assert.match(underwaterRendererSource, /getExperienceSnapshot\(\)/);
+    assert.match(underwaterRendererSource, /heroProgressForJourney\(experience\.progress, experience\.layout\)/);
+    assert.match(underwaterRendererSource, /heroRelease: heroState\.release/);
+    assert.match(underwaterRendererSource, /heroPassUnder: heroState\.passUnder/);
+    assert.match(underwaterRendererSource, /uDescentBeam/);
+    assert.match(underwaterRendererSource, /heroSnap/);
+    assert.match(underwaterRendererSource, /dataset\.heroPhase/);
+    assert.match(underwaterRendererSource, /releaseLift/);
+    assert.match(underwaterRendererSource, /releaseTorque/);
+    assert.match(underwaterRendererSource, /glyphFadeForRelease/);
+    assert.doesNotMatch(underwaterRendererSource, /staggeredGlyphExit/);
+
+    // Camera rig owns the authored descent path parameters.
+    const cameraRigSource = readFileSync(
+      new URL("../src/features/kinetic-canvas/renderer/underwater/cameraRig.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(cameraRigSource, /heroReleaseDropZ/);
+    assert.match(cameraRigSource, /heroPassDropZ/);
+    assert.match(cameraRigSource, /heroPassPitch/);
+    assert.match(cameraRigSource, /heroPassFovTighten/);
+    assert.doesNotMatch(cameraRigSource, /staggeredGlyphExit/);
+
+    // Physics exposes the bounded scroll-current release response.
+    const glyphPhysicsSource = readFileSync(
+      new URL("../src/features/kinetic-canvas/physics/glyphRigidBodies.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(glyphPhysicsSource, /releaseLift: number/);
+    assert.match(glyphPhysicsSource, /releaseTorque: number/);
+
+    // Shader owns the descent beam light path.
+    assert.match(underwaterShaderSource, /uniform float uDescentBeam/);
+    assert.match(underwaterShaderSource, /beamZone/);
   }],
 ];
 

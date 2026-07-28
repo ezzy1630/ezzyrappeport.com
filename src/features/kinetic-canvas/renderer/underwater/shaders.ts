@@ -750,6 +750,9 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
   /* 1 = letters fully present, 0 = dissolved. Their caustic imprint and
      contact shadow leave with them -  no ghosts beneath the water. */
   uniform float uGlyphPresence;
+  /* Hero pass-under: focused caustic energy stretched downward from the
+     glyph waterline -  the light path into the first project waters. */
+  uniform float uDescentBeam;
   uniform vec2 uPointer;
   uniform vec2 uPointerVelocity;
   uniform float uPointerEnergy;
@@ -933,6 +936,17 @@ export const FINAL_COMPOSITE_FRAGMENT = /* glsl */ `
     float surfaceCoupling = clamp(slopeIntensity * 18.0, 0.0, 1.0);
     caustic *= 0.78 + surfaceCoupling * 0.34;
     scene += vec3(0.72, 0.88, 0.92) * caustic * (1.0 + glyphThickness * 0.85 * uGlyphPresence);
+
+    /* Descent beam: as the name releases, its caustic energy stretches into
+       downward light shafts -  caused by the hero, aimed at MonkeyClaw. */
+    if (uDescentBeam > 0.004) {
+      float beamZone = smoothstep(0.28, 0.94, 1.0 - vUv.y);
+      float shaftPhase = vUv.x * 24.0 + sin(vUv.y * 4.4 - uTime * 0.32) * 1.8;
+      float shafts = pow(0.5 + 0.5 * sin(shaftPhase), 4.0);
+      float shaftFine = pow(0.5 + 0.5 * sin(shaftPhase * 2.6 + 1.3), 6.0);
+      float beam = (shafts * 0.68 + shaftFine * 0.32) * beamZone * uDescentBeam * washoutGate;
+      scene += vec3(0.60, 0.80, 0.90) * beam * 0.15 * (0.4 + 0.6 * upperIdentity);
+    }
     float simulatedWake = smoothstep(0.002, 0.015, length(slope))
       * smoothstep(0.001, 0.01, abs(h));
     scene += vec3(0.70, 0.87, 0.98) * simulatedWake * 0.035 * washoutGate;

@@ -68,6 +68,15 @@ export type GlyphStepControl = {
   entranceDepth: number;
   entranceStagger: number;
   depthDragScale: number;
+  /**
+   * Hero release buoyant surge 0..1 (plan §8.7 phase 3): letters lag through
+   * inertia as the camera descends. Secondary response only — the primary
+   * rise is a deterministic function of hero progress applied by the
+   * renderer, so reverse scroll reconstructs the exact composition.
+   */
+  releaseLift: number;
+  /** Scroll-velocity-keyed independent rotation during release, 0..1. */
+  releaseTorque: number;
 };
 
 export const DEFAULT_GLYPH_STEP_CONTROL: GlyphStepControl = {
@@ -85,6 +94,8 @@ export const DEFAULT_GLYPH_STEP_CONTROL: GlyphStepControl = {
   entranceDepth: -0.045,
   entranceStagger: 0.04,
   depthDragScale: 1,
+  releaseLift: 0,
+  releaseTorque: 0,
 };
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -399,6 +410,24 @@ export function stepGlyphBodies(
     body.currentTorque.x += ambientRoll * 30;
     body.currentTorque.z += Math.sin(now * body.ambientFrequency * 0.87 * Math.PI * 2 + body.ambientPhase * 1.37)
       * body.ambientTiltAmplitude * 0.72 * ambientScale * 25;
+
+    // Scroll-induced current during the hero release (§8.5): a bounded
+    // buoyant surge and per-glyph torque so letters physically lag, rotate
+    // independently, and jostle while the deterministic rise carries them.
+    // Forces vanish on reverse; the critically damped settle re-seats rest.
+    const releaseLift = clamp(control.releaseLift, 0, 1);
+    const releaseHeld = glyphIndex === control.holdGlyphIndex;
+    if (releaseLift > 0 && !releaseHeld) {
+      const lagPhase = Math.sin(body.ambientPhase * 2.3 + 1.1);
+      body.currentForce.z -= releaseLift * (0.05 + lagPhase * 0.02) * body.buoyancy;
+      body.currentForce.x += releaseLift * Math.cos(body.ambientPhase * 1.7) * 0.016;
+    }
+    const releaseTorque = clamp(control.releaseTorque, 0, 1);
+    if (releaseTorque > 0 && !releaseHeld) {
+      body.currentTorque.x += Math.sin(body.ambientPhase * 3.7 + 0.6) * releaseTorque * 0.42;
+      body.currentTorque.y += Math.cos(body.ambientPhase * 2.9 + 1.9) * releaseTorque * 0.36;
+      body.currentTorque.z += Math.sin(body.ambientPhase * 4.3 + 3.1) * releaseTorque * 0.3;
+    }
 
     for (const event of interactions) {
       const age = Math.max(0, now - event.time);
