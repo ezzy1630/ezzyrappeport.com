@@ -9,6 +9,7 @@ import {
   type ChapterId,
   type ChapterRange,
   type LayoutMode,
+  CHAPTER_ORDER,
   chapterRangesForLayout,
 } from "../contracts/chapter.ts";
 import {
@@ -17,6 +18,7 @@ import {
   type ViewportSize,
 } from "../contracts/scene.ts";
 import {
+  chapterRangesFromKnots,
   ensureChapterRangesValidated,
   mapProgressToChapter,
   progressForChapterStart,
@@ -29,6 +31,7 @@ import {
   getExperienceSnapshot,
   setExperienceLayout,
   setExperienceLocked,
+  setExperienceRanges,
   type ScrollDirection,
 } from "../state/experience-store.ts";
 import {
@@ -130,6 +133,76 @@ function documentAuthoredTravelPx(): number {
   return Math.max(doc.documentElement.scrollHeight - win.innerHeight, 0);
 }
 
+/**
+ * Measured chapter anchors (§7.2): the director owns the sole mapping, and
+ * knots anchor it to physical layout so copy and scene stay in the same
+ * water. Missing anchors fall back to the authored normalized ranges.
+ */
+export const CHAPTER_ANCHOR_SELECTORS: Readonly<Record<string, string>> = {
+  surface: ".hero-shell",
+  descent: "#projects",
+  monkeyclaw: "#project-monkeyclaw",
+  etch: "#project-etch",
+  flowe: "#project-flowe",
+  argyph: "#project-argyph",
+  // Until Milestone 5 builds the Charted Work map, the remaining catalog
+  // rows (Velox, NexaRad, MathPilot) mark the charted-work region.
+  "charted-work": "#project-velox",
+  about: "#about",
+  contact: "#contact",
+};
+
+const CHAPTER_ANCHOR_HASHES: readonly string[] = [
+  "#top",
+  "#projects",
+  "#project-monkeyclaw",
+  "#project-etch",
+  "#project-flowe",
+  "#project-argyph",
+  "#projects",
+  "#about",
+  "#contact",
+];
+
+/**
+ * Per-chapter knot offsets (in viewport heights). Sticky encounter stages
+ * release one viewport before the next article's top, so handoff chapters
+ * flip mid-handoff. Structural chapters anchor where their content becomes
+ * dominant. Offsets must keep knots strictly monotonic.
+ */
+const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
+  surface: 0,
+  descent: 0,
+  monkeyclaw: 0,
+  etch: -0.5,
+  flowe: -0.5,
+  argyph: -0.35,
+  "charted-work": -0.35,
+  about: -0.5,
+  contact: -1,
+};
+
+function measureChapterKnots(
+  metrics: RootScrollMetrics,
+  viewportHeight: number,
+): readonly ChapterRange[] | null {
+  const doc = (globalThis as { document?: Document }).document;
+  if (!doc || metrics.authoredTravelPx <= 0) return null;
+  const knots: number[] = [];
+  for (const id of CHAPTER_ORDER) {
+    const selector = CHAPTER_ANCHOR_SELECTORS[id];
+    const element = selector ? doc.querySelector<HTMLElement>(selector) : null;
+    if (!element) return null;
+    const rect = element.getBoundingClientRect();
+    const offset = (ENCOUNTER_KNOT_OFFSET_VIEWPORTS[id] ?? 0) * viewportHeight;
+    const y = rect.top + metrics.scrollY + offset;
+    knots.push((y - metrics.rootOffsetTop) / metrics.authoredTravelPx);
+  }
+  const docEnd = metrics.rootOffsetTop + metrics.authoredTravelPx;
+  knots.push((docEnd - metrics.rootOffsetTop) / metrics.authoredTravelPx);
+  return chapterRangesFromKnots(knots, CHAPTER_ANCHOR_HASHES);
+}
+
 function defaultRootMetrics(root: HTMLElement): RootScrollMetrics {
   const win = runtimeWindow();
   const doc = (globalThis as { document?: Document }).document;
@@ -167,6 +240,9 @@ export class ScrollDirector {
   private lastViewport: ViewportSize | null = null;
   private cachedRanges: readonly ChapterRange[] | null = null;
   private cachedLayout: LayoutMode | null = null;
+  private knotCacheKey = "";
+  private knotRanges: readonly ChapterRange[] | null = null;
+  private publishedRanges: readonly ChapterRange[] | null = null;
   private pendingResizeNotify = false;
   private readonly sampleListeners = new Set<ScrollSampleListener>();
 
@@ -269,12 +345,12 @@ export class ScrollDirector {
 
   seekChapter(id: ChapterId): void {
     const layout = this.getLayoutFn();
-    const ranges = this.rangesForLayout(layout);
+    const ranges = this.rangesForLayout(layout, this.getScrollMetricsFn());
     const progress = progressForChapterStart(id, ranges);
     this.seek(progress);
   }
 
-  private rangesForLayout(layout: LayoutMode): readonly ChapterRange[] {
+  private authoredRangesForLayout(layout: LayoutMode): readonly ChapterRange[] {
     if (this.cachedLayout === layout && this.cachedRanges) {
       return this.cachedRanges;
     }
@@ -282,6 +358,30 @@ export class ScrollDirector {
     ensureChapterRangesValidated(ranges);
     this.cachedRanges = ranges;
     this.cachedLayout = layout;
+    return ranges;
+  }
+
+  /**
+   * Active ranges: measured DOM knots when the homepage anchors exist,
+   * authored normalized ranges otherwise (case routes, missing content).
+   */
+  private rangesForLayout(layout: LayoutMode, metrics?: RootScrollMetrics): readonly ChapterRange[] {
+    const authored = this.authoredRangesForLayout(layout);
+    const sample = metrics ?? this.getScrollMetricsFn();
+    const doc = (globalThis as { document?: Document }).document;
+    const viewportHeight = this.getViewportFn().height;
+    const cacheKey = doc
+      ? `${layout}:${doc.documentElement.scrollHeight}:${Math.round(sample.authoredTravelPx)}:${Math.round(viewportHeight)}`
+      : "";
+    if (cacheKey && this.knotCacheKey !== cacheKey) {
+      this.knotCacheKey = cacheKey;
+      this.knotRanges = measureChapterKnots(sample, viewportHeight);
+    }
+    const ranges = this.knotRanges ?? authored;
+    if (this.publishedRanges !== ranges) {
+      this.publishedRanges = ranges;
+      setExperienceRanges(ranges);
+    }
     return ranges;
   }
 
@@ -336,7 +436,7 @@ export class ScrollDirector {
 
     const metrics = this.getScrollMetricsFn();
     const progress = progressFromRootScroll(metrics);
-    const mapped = mapProgressToChapter(progress, this.rangesForLayout(layout));
+    const mapped = mapProgressToChapter(progress, this.rangesForLayout(layout, metrics));
 
     const dtSeconds = Math.max((timestamp - this.lastTimestamp) / 1000, 1 / 240);
     const dy = metrics.scrollY - this.lastScrollY;

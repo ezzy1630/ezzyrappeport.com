@@ -208,6 +208,42 @@ export function mapProgressForLayout(
   return mapProgressToChapter(progress, chapterRangesForLayout(layout));
 }
 
+/**
+ * Build validated chapter ranges from measured DOM knot positions (progress
+ * space, one boundary per chapter edge — 9 chapters need 10 knots).
+ * Returns null when any knot is missing, non-finite, non-monotonic, or the
+ * coverage escapes [0, 1] — callers fall back to the authored ranges.
+ */
+export function chapterRangesFromKnots(
+  knots: readonly number[],
+  hashes: readonly string[],
+): readonly ChapterRange[] | null {
+  if (knots.length !== CHAPTER_ORDER.length + 1) return null;
+  if (hashes.length !== CHAPTER_ORDER.length) return null;
+  const clamped = knots.map((knot) => clamp01(knot));
+  const ranges: ChapterRange[] = [];
+  for (let index = 0; index < CHAPTER_ORDER.length; index += 1) {
+    ranges.push({
+      id: CHAPTER_ORDER[index],
+      start: clamped[index],
+      end: clamped[index + 1],
+      label: CHAPTER_ORDER[index],
+      hash: hashes[index],
+    });
+  }
+  // Measured layout can collapse a chapter to zero span (missing content);
+  // reject and fall back rather than divide by zero downstream.
+  try {
+    validateChapterRanges(ranges);
+  } catch {
+    return null;
+  }
+  for (const range of ranges) {
+    if (range.end - range.start < 0.01) return null;
+  }
+  return ranges;
+}
+
 /** Canonical progress for entering a chapter (start edge). */
 export function progressForChapterStart(
   id: ChapterId,

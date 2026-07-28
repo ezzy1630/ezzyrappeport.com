@@ -49,7 +49,10 @@ export type EncounterAudioEvent =
   | "probe-pulse"
   | "judge-hit"
   | "deflect"
-  | "telemetry-return";
+  | "telemetry-return"
+  | "gate-pass"
+  | "gate-fail"
+  | "current-rebalance";
 
 export type EncounterFrameResult = {
   /** Draw calls attributable to this encounter (diagnostics). */

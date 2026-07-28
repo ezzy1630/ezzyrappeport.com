@@ -810,8 +810,14 @@ export function startUnderwaterHeroRenderer({
       monkeyclaw: () => import(
         "@/features/ocean-experience/render/projects/monkeyclaw/MonkeyClawScene"
       ),
+      etch: () => import(
+        "@/features/ocean-experience/render/projects/etch/EtchScene"
+      ),
+      flowe: () => import(
+        "@/features/ocean-experience/render/projects/flowe/FloweScene"
+      ),
     },
-    stageDistance: { monkeyclaw: 4.35 },
+    stageDistance: { monkeyclaw: 4.35, etch: 4.35, flowe: 4.4 },
   });
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
@@ -1699,7 +1705,7 @@ export function startUnderwaterHeroRenderer({
     // reverse scroll reconstructs the same composition within tolerance.
     const experience = getExperienceSnapshot();
     const heroTarget = renderHeroGlyphs
-      ? heroProgressForJourney(experience.progress, experience.layout)
+      ? heroProgressForJourney(experience.progress, experience.layout, experience.ranges)
       : 1;
     const heroSnap = heroProgressSmoothed < 0;
     if (heroSnap || staticFrame) {

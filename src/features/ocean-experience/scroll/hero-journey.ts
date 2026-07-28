@@ -15,6 +15,7 @@
  */
 
 import {
+  type ChapterRange,
   type LayoutMode,
   chapterRangesForLayout,
 } from "../contracts/chapter.ts";
@@ -52,14 +53,26 @@ function smoothstep01(value: number): number {
   return t * t * (3 - 2 * t);
 }
 
-/** Journey progress at which the hero journey completes (descent chapter end). */
-export function heroJourneyEndForLayout(layout: LayoutMode): number {
-  const ranges = chapterRangesForLayout(layout);
-  const descent = ranges.find((range) => range.id === "descent");
+/**
+ * Journey progress at which the hero journey completes (descent chapter
+ * end). Accepts the director's active ranges (measured DOM knots) so the
+ * pass-under hands off exactly where the descent physically ends; falls
+ * back to the authored layout ranges.
+ */
+export function heroJourneyEndForRanges(
+  ranges: readonly ChapterRange[] | null,
+  layout: LayoutMode,
+): number {
+  const active = ranges ?? chapterRangesForLayout(layout);
+  const descent = active.find((range) => range.id === "descent");
   if (!descent) {
     throw new Error("Chapter ranges missing descent chapter");
   }
   return descent.end;
+}
+
+export function heroJourneyEndForLayout(layout: LayoutMode): number {
+  return heroJourneyEndForRanges(null, layout);
 }
 
 /**
@@ -69,8 +82,9 @@ export function heroJourneyEndForLayout(layout: LayoutMode): number {
 export function heroProgressForJourney(
   journeyProgress: number,
   layout: LayoutMode,
+  ranges?: readonly ChapterRange[] | null,
 ): number {
-  const end = heroJourneyEndForLayout(layout);
+  const end = heroJourneyEndForRanges(ranges ?? null, layout);
   if (end <= 0) return 1;
   return clamp01(journeyProgress / end);
 }

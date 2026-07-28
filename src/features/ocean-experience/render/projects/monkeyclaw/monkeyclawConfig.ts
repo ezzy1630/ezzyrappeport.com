@@ -85,11 +85,7 @@ export function vectorSpawnDirection(
 }
 
 /** Per-vector loop timing: staggered approach inside the red window. */
-export function vectorTiming(vectorIndex: number): {
-  startT: number;
-  arriveT: number;
-  judgeT: number;
-} {
+const VECTOR_TIMINGS = Array.from({ length: MONKEYCLAW_COUNTS.vectors }, (_, vectorIndex) => {
   const rank = vectorIndex / MONKEYCLAW_COUNTS.vectors;
   const judged = vectorReachesJudge(vectorIndex);
   const startT = MONKEYCLAW_LOOP.redStart + rank * 0.16;
@@ -99,4 +95,13 @@ export function vectorTiming(vectorIndex: number): {
     judgeT: judged ? MONKEYCLAW_LOOP.judgeStart + 0.05
       + telemetryRankForVector(vectorIndex) * 0.028 : 1,
   };
+});
+
+/** Hot-path safe: precomputed timing table, no per-frame allocation. */
+export function vectorTiming(vectorIndex: number): {
+  startT: number;
+  arriveT: number;
+  judgeT: number;
+} {
+  return VECTOR_TIMINGS[vectorIndex];
 }

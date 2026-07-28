@@ -12,7 +12,19 @@ import styles from "./ProjectsSection.module.css";
 
 /** Anchor projects rendered as spatial encounters (plan §10); the rest keep
     the editorial row until their milestone lands. */
-const ENCOUNTER_SLUGS = new Set(["monkeyclaw"]);
+const ENCOUNTER_SLUGS = new Set(["monkeyclaw", "etch", "flowe"]);
+
+/**
+ * Homepage journey order (plan §4): the four anchors first, then the
+ * Charted Work catalog region. Facts and project identity still come from
+ * `content.ts`; this only re-orders the homepage list.
+ */
+const HOMEPAGE_ROW_ORDER = ["monkeyclaw", "etch", "flowe", "argyph", "velox", "nexarad", "mathpilot"];
+const homepageProjects = HOMEPAGE_ROW_ORDER.map((slug) => {
+  const project = projects.find((candidate) => candidate.slug === slug);
+  if (!project) throw new Error(`Missing portfolio project: ${slug}`);
+  return project;
+});
 
 /** First N entries carry full editorial weight; the rest scan as a compact index. */
 const DOMINANT_COUNT = 3;
@@ -47,7 +59,7 @@ export default function ProjectsSection() {
       </header>
 
       <ol className={styles.index}>
-        {projects.map((project, order) => {
+        {homepageProjects.map((project, order) => {
           const layout = projectLayoutFamily[project.slug];
           const band = projectDepthBand(project.slug);
           const weight = projectWeight(order);

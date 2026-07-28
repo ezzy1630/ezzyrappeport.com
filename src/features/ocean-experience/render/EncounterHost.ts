@@ -8,7 +8,7 @@
  */
 
 import { Group, PerspectiveCamera, Plane, Raycaster, Vector2, Vector3, type Scene } from "three";
-import type { ChapterId, LayoutMode } from "../contracts/chapter.ts";
+import { chapterRangesForLayout, type ChapterId, type LayoutMode } from "../contracts/chapter.ts";
 import type { ExperienceSnapshot } from "../state/experience-store.ts";
 import type {
   EncounterFrame,
@@ -17,7 +17,8 @@ import type {
   ProjectEncounter,
 } from "./encounter-contract.ts";
 import {
-  encounterWindowsForLayout,
+  encounterWindowFor,
+  ENCOUNTER_CHAPTERS,
   visibilityTable,
   type EncounterVisibility,
   type EncounterWindow,
@@ -66,7 +67,7 @@ export class EncounterHost {
   private readonly stageDistance: Partial<Record<ChapterId, number>>;
   private readonly states = new Map<ChapterId, ModuleState>();
   private windows: readonly EncounterWindow[] = [];
-  private windowLayout: LayoutMode | null = null;
+  private windowLayout: LayoutMode | ExperienceSnapshot["ranges"] = null;
   private readonly visibility: EncounterVisibility[] = [];
   private disposed = false;
   private audioSink: ((events: readonly string[]) => void) | null = null;
@@ -85,10 +86,19 @@ export class EncounterHost {
     this.audioSink = sink;
   }
 
-  private windowsFor(layout: LayoutMode): readonly EncounterWindow[] {
-    if (this.windowLayout !== layout) {
-      this.windowLayout = layout;
-      this.windows = encounterWindowsForLayout(layout);
+  /**
+   * Windows track the director's active ranges (measured DOM knots when
+   * available) so the 3D scene and the DOM copy stay in the same water.
+   */
+  private windowsFor(
+    layout: LayoutMode,
+    ranges: ExperienceSnapshot["ranges"],
+  ): readonly EncounterWindow[] {
+    const key = ranges ?? layout;
+    if (this.windowLayout !== key) {
+      this.windowLayout = key;
+      const active = ranges ?? chapterRangesForLayout(layout);
+      this.windows = ENCOUNTER_CHAPTERS.map((id) => encounterWindowFor(id, active));
     }
     return this.windows;
   }
@@ -185,7 +195,7 @@ export class EncounterHost {
   ): number {
     if (this.disposed) return 0;
     const layout = snapshot.layout;
-    const windows = this.windowsFor(layout);
+    const windows = this.windowsFor(layout, snapshot.ranges);
     visibilityTable(windows, snapshot.progress, this.visibility);
 
     let activeId: ChapterId | null = null;

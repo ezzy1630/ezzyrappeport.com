@@ -1770,7 +1770,7 @@ const tests = [
 
     // Renderer wiring: journey-driven release, camera inputs, beam, snap.
     assert.match(underwaterRendererSource, /getExperienceSnapshot\(\)/);
-    assert.match(underwaterRendererSource, /heroProgressForJourney\(experience\.progress, experience\.layout\)/);
+    assert.match(underwaterRendererSource, /heroProgressForJourney\(experience\.progress, experience\.layout, experience\.ranges\)/);
     assert.match(underwaterRendererSource, /heroRelease: heroState\.release/);
     assert.match(underwaterRendererSource, /heroPassUnder: heroState\.passUnder/);
     assert.match(underwaterRendererSource, /uDescentBeam/);
@@ -1941,6 +1941,149 @@ const tests = [
     // Sticky staging depends on the global overflow-x: clip (not hidden).
     assert.match(globalsCssSource, /overflow-x: clip;/);
     assert.doesNotMatch(globalsCssSource, /overflow-x: hidden;/);
+  }],
+  ["Milestone 4: Etch + FlowE encounters and measured chapter knots", async () => {
+    const {
+      ETCH_COUNTS,
+      ETCH_GATES,
+      ETCH_LOOP,
+      candidateClearance,
+      gateStationX,
+    } = await import("../src/features/ocean-experience/render/projects/etch/etchConfig.ts");
+    const {
+      FLOWE_COUNTS,
+      FLOWE_LOOP,
+      clusterForFragment,
+      fragmentDriftAnchor,
+      moteSeed,
+    } = await import("../src/features/ocean-experience/render/projects/flowe/floweConfig.ts");
+    const {
+      chapterRangesFromKnots,
+    } = await import("../src/features/ocean-experience/scroll/scroll-mapping.ts");
+    const {
+      CHAPTER_ANCHOR_SELECTORS,
+    } = await import("../src/features/ocean-experience/scroll/ScrollDirector.ts");
+    const {
+      CHAPTER_ORDER,
+      DESKTOP_CHAPTER_RANGES,
+    } = await import("../src/features/ocean-experience/contracts/chapter.ts");
+    const {
+      getExperienceSnapshot,
+      resetExperienceStore,
+      setExperienceRanges,
+      subscribeExperience,
+    } = await import("../src/features/ocean-experience/state/experience-store.ts");
+
+    // Etch: the verification ladder keeps signoff visibly pending.
+    assert.equal(ETCH_COUNTS.gates, 4);
+    assert.equal(ETCH_GATES.length, 4);
+    assert.equal(ETCH_GATES[3].id, "signoff");
+    assert.equal(ETCH_GATES[3].passed, false, "no false completion");
+    assert.ok(ETCH_GATES.slice(0, 3).every((gate) => gate.passed));
+    assert.equal(candidateClearance(0), 1);
+    assert.equal(candidateClearance(1), 2);
+    assert.equal(candidateClearance(2), 3);
+    assert.ok(gateStationX(1, -1.75, 0.46) > gateStationX(0, -1.75, 0.46));
+    assert.ok(ETCH_LOOP.gatesStart < ETCH_LOOP.gatesFull);
+    assert.ok(ETCH_LOOP.relaxStart >= ETCH_LOOP.gatesStart);
+
+    // FlowE: stable plan structure and deterministic anchors.
+    assert.equal(FLOWE_COUNTS.fragments, 26);
+    assert.equal(FLOWE_COUNTS.clusters, 4);
+    const anchorA = [0, 0, 0];
+    const anchorB = [0, 0, 0];
+    fragmentDriftAnchor(7, anchorA);
+    fragmentDriftAnchor(7, anchorB);
+    assert.deepEqual(anchorA, anchorB);
+    moteSeed(4, anchorA);
+    moteSeed(4, anchorB);
+    const fragmentClusters = new Set();
+    for (let index = 0; index < FLOWE_COUNTS.fragments; index += 1) {
+      fragmentClusters.add(clusterForFragment(index));
+    }
+    assert.equal(fragmentClusters.size, FLOWE_COUNTS.clusters);
+    assert.ok(FLOWE_LOOP.groupStart < FLOWE_LOOP.focusStart);
+    assert.ok(FLOWE_LOOP.contractStart >= FLOWE_LOOP.focusStart);
+
+    // Measured knots: valid physical ranges accepted, broken ones rejected.
+    const hashes = DESKTOP_CHAPTER_RANGES.map((range) => range.hash);
+    const good = chapterRangesFromKnots(
+      [0, 0.08, 0.14, 0.3, 0.46, 0.62, 0.7, 0.78, 0.9, 1],
+      hashes,
+    );
+    assert.ok(good !== null);
+    assert.equal(good[0].id, "surface");
+    assert.equal(good[2].id, "monkeyclaw");
+    assert.equal(good[8].end, 1);
+    assert.equal(chapterRangesFromKnots([0, 0.3, 0.2, 0.4, 0.46, 0.62, 0.7, 0.78, 0.9, 1], hashes), null,
+      "non-monotonic knots rejected");
+    assert.equal(chapterRangesFromKnots([0, 0.08, 0.14, 0.3, 0.46, 0.62, 0.7, 0.78, 0.9, 0.9], hashes), null,
+      "terminal coverage enforced");
+    assert.equal(chapterRangesFromKnots([0, 0.08], hashes), null);
+    // Every chapter has a DOM anchor and offsets keep the table complete.
+    for (const id of CHAPTER_ORDER) {
+      assert.ok(CHAPTER_ANCHOR_SELECTORS[id], `anchor for ${id}`);
+    }
+
+    // Experience store publishes ranges discretely (identity-compared).
+    resetExperienceStore();
+    let rangeNotifications = 0;
+    const unsubscribeRanges = subscribeExperience(() => {
+      rangeNotifications += 1;
+    });
+    setExperienceRanges(DESKTOP_CHAPTER_RANGES);
+    assert.equal(rangeNotifications, 1);
+    setExperienceRanges(DESKTOP_CHAPTER_RANGES);
+    assert.equal(rangeNotifications, 1, "same identity does not re-notify");
+    assert.equal(getExperienceSnapshot().ranges, DESKTOP_CHAPTER_RANGES);
+    unsubscribeRanges();
+    resetExperienceStore();
+
+    // Renderer registers all anchor factories.
+    assert.match(underwaterRendererSource, /monkeyclaw: \(\) => import/);
+    assert.match(underwaterRendererSource, /etch: \(\) => import/);
+    assert.match(underwaterRendererSource, /flowe: \(\) => import/);
+
+    // ScrollDirector owns measured knots with authored fallback.
+    const directorSource = readFileSync(
+      new URL("../src/features/ocean-experience/scroll/ScrollDirector.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(directorSource, /CHAPTER_ANCHOR_SELECTORS/);
+    assert.match(directorSource, /chapterRangesFromKnots/);
+    assert.match(directorSource, /measureChapterKnots/);
+    assert.match(directorSource, /setExperienceRanges/);
+
+    // Scenes stay pure-mapping owners: no listeners, no randomness.
+    for (const scenePath of [
+      "../src/features/ocean-experience/render/projects/etch/EtchScene.ts",
+      "../src/features/ocean-experience/render/projects/flowe/FloweScene.ts",
+    ]) {
+      const sceneSource = readFileSync(new URL(scenePath, import.meta.url), "utf8");
+      assert.doesNotMatch(sceneSource, /addEventListener/);
+      assert.doesNotMatch(sceneSource, /Math\.random\(/);
+      assert.match(sceneSource, /chapterProgress/);
+      assert.match(sceneSource, /dispose\(\)/);
+    }
+    // No per-frame allocation regressions in configs.
+    const etchConfigSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/etch/etchConfig.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(etchConfigSource, /CANDIDATE_CLEARANCE: readonly number\[\]/);
+    const monkeyclawConfigSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/monkeyclaw/monkeyclawConfig.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(monkeyclawConfigSource, /VECTOR_TIMINGS/);
+
+    // Homepage order: anchors first, then the Charted Work catalog region.
+    const projectsSectionSource = readFileSync(
+      new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(projectsSectionSource, /HOMEPAGE_ROW_ORDER = \["monkeyclaw", "etch", "flowe", "argyph", "velox", "nexarad", "mathpilot"\]/);
+    assert.match(projectsSectionSource, /"monkeyclaw", "etch", "flowe"/);
   }],
 ];
 

@@ -6,6 +6,7 @@
 
 import {
   type ChapterId,
+  type ChapterRange,
   type LayoutMode,
   CHAPTER_ORDER,
 } from "../contracts/chapter.ts";
@@ -20,6 +21,9 @@ export type ExperienceSnapshot = {
   velocity: number;
   locked: boolean;
   layout: LayoutMode;
+  /** Active chapter ranges: measured DOM knots when available, authored
+      normalized ranges otherwise. Discrete (identity-compared). */
+  ranges: readonly ChapterRange[] | null;
   /** Scene lifecycle - decorative; never gates content. */
   sceneStatus: "idle" | "loading" | "ready" | "failed";
 };
@@ -34,6 +38,7 @@ const INITIAL: ExperienceSnapshot = {
   velocity: 0,
   locked: false,
   layout: "desktop",
+  ranges: null,
   sceneStatus: "idle",
 };
 
@@ -46,6 +51,7 @@ function discreteEqual(a: ExperienceSnapshot, b: ExperienceSnapshot): boolean {
     a.locked === b.locked &&
     a.layout === b.layout &&
     a.sceneStatus === b.sceneStatus &&
+    a.ranges === b.ranges &&
     a.direction === b.direction
   );
 }
@@ -106,6 +112,14 @@ export function setExperienceLayout(layout: LayoutMode): void {
   if (snapshot.layout === layout) return;
   const previous = snapshot;
   snapshot = { ...snapshot, layout };
+  emitIfDiscreteChanged(previous);
+}
+
+/** Publish the director's active chapter ranges (measured knots or authored). */
+export function setExperienceRanges(ranges: readonly ChapterRange[]): void {
+  if (snapshot.ranges === ranges) return;
+  const previous = snapshot;
+  snapshot = { ...snapshot, ranges };
   emitIfDiscreteChanged(previous);
 }
 
