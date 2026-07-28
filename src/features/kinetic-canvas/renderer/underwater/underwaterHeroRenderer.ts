@@ -47,6 +47,10 @@ import {
   heroProgressForJourney,
   staggeredGlyphRelease,
 } from "@/features/ocean-experience/scroll/hero-journey";
+import {
+  ENCOUNTER_LAYER,
+  EncounterHost,
+} from "@/features/ocean-experience/render/EncounterHost";
 import type {
   LiquidInteractionEvent,
   LiquidPhysics,
@@ -507,6 +511,7 @@ export function startUnderwaterHeroRenderer({
   scene.background = null;
   const camera = new PerspectiveCamera(42, 1, 0.1, 30);
   camera.layers.enable(GLYPH_LAYER);
+  camera.layers.enable(ENCOUNTER_LAYER);
   const debugCamera = process.env.NODE_ENV !== "production"
     && new URLSearchParams(window.location.search).get("heroCamera") === "depth";
   const debugSearch = new URLSearchParams(window.location.search);
@@ -794,6 +799,20 @@ export function startUnderwaterHeroRenderer({
     releaseLift: 0,
     releaseTorque: 0,
   };
+  // Lazy project encounters (plan §10): one camera-locked stage per chapter,
+  // swept visibility, abortable preload, eviction two chapters behind.
+  const encounterHost = new EncounterHost({
+    scene,
+    camera,
+    reducedMotionRef,
+    getQualityTier: () => (quality.tier === "static" ? "low" : quality.tier),
+    factories: {
+      monkeyclaw: () => import(
+        "@/features/ocean-experience/render/projects/monkeyclaw/MonkeyClawScene"
+      ),
+    },
+    stageDistance: { monkeyclaw: 4.35 },
+  });
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
   let slowFrameWindows = 0;
@@ -1047,6 +1066,24 @@ export function startUnderwaterHeroRenderer({
     }
   };
 
+  // Encounter probe (§10.2): pointer down in open water during an active
+  // encounter introduces a bounded adversarial pulse. Decorative only —
+  // links, glyphs, and foreground targets keep native behavior untouched.
+  const onEncounterPointerDown = (event: PointerEvent) => {
+    if (event.button !== 0) return;
+    if (reducedMotionRef.current || staticModeRef.current) return;
+    if (document.hidden) return;
+    if (isForegroundTarget(event.target)) return;
+    if (!encounterHost.hasActiveEncounter()) return;
+    encounterHost.probeFromViewport(
+      event.clientX,
+      event.clientY,
+      canvasRect,
+      "down",
+      performance.now() / 1000,
+    );
+  };
+
   const onCanvasDragStart = (event: DragEvent) => {
     event.preventDefault();
   };
@@ -1100,6 +1137,7 @@ export function startUnderwaterHeroRenderer({
 
   // passive:false so glyph presses can cancel the browser drag affordance.
   window.addEventListener("pointerdown", onGlyphPointerDown, { capture: true, passive: false });
+  window.addEventListener("pointerdown", onEncounterPointerDown, { passive: true });
   window.addEventListener("pointermove", onGlyphPointerMove, { capture: true, passive: true });
   window.addEventListener("pointerup", onGlyphPointerUp, { capture: true, passive: true });
   window.addEventListener("pointercancel", onGlyphPointerCancel, { capture: true, passive: true });
@@ -1795,6 +1833,14 @@ export function startUnderwaterHeroRenderer({
           : "off";
       }
     }
+    // Project encounters ride the same committed snapshot and camera pose —
+    // no competing scroll owner, no forward-only timelines.
+    const encounterMetrics: { encounter?: string; fade?: number } = {};
+    encounterHost.frame(experience, deltaSeconds, time, encounterMetrics);
+    if (heroMetricsEnabled && encounterMetrics.encounter) {
+      canvas.dataset.encounterScene = encounterMetrics.encounter;
+      canvas.dataset.encounterSceneFade = (encounterMetrics.fade ?? 0).toFixed(3);
+    }
     const rect = canvasRect;
     ingestPhysics();
     if (skipPresent) {
@@ -1986,6 +2032,16 @@ export function startUnderwaterHeroRenderer({
     renderer.setClearColor(0xdceef4, 1);
     renderer.clear(true, true, true);
     renderer.render(backdropScene, fullscreenCamera);
+    // Lazy project encounters composite into the same water: they write
+    // depth into the plate so absorption/fog treat them as world geometry.
+    if (encounterHost.hasActiveEncounter()) {
+      const encounterAutoClear = renderer.autoClear;
+      renderer.autoClear = false;
+      renderer.clearDepth();
+      camera.layers.set(ENCOUNTER_LAYER);
+      renderer.render(scene, camera);
+      renderer.autoClear = encounterAutoClear;
+    }
     if (glyphsPresent) {
       const previousAutoClear = renderer.autoClear;
       renderer.autoClear = false;
@@ -2387,6 +2443,7 @@ export function startUnderwaterHeroRenderer({
     window.visualViewport?.removeEventListener("resize", onViewportMove);
     window.visualViewport?.removeEventListener("scroll", onViewportMove);
     window.removeEventListener("pointerdown", onGlyphPointerDown, { capture: true });
+    window.removeEventListener("pointerdown", onEncounterPointerDown);
     window.removeEventListener("pointermove", onGlyphPointerMove, { capture: true });
     window.removeEventListener("pointerup", onGlyphPointerUp, { capture: true });
     window.removeEventListener("pointercancel", onGlyphPointerCancel, { capture: true });
@@ -2400,6 +2457,7 @@ export function startUnderwaterHeroRenderer({
     delete (canvas as HTMLCanvasElement & { heroHeightfield?: unknown }).heroHeightfield;
     if (window.__underwaterDebug) delete window.__underwaterDebug;
     glyphDebug?.remove();
+    encounterHost.dispose();
     const glyphGeometries = new Set(glyphs.map(({ object }) => object.geometry));
     glyphs.forEach(({ object }) => scene.remove(object));
     glyphGeometries.forEach((geometry) => geometry.dispose());

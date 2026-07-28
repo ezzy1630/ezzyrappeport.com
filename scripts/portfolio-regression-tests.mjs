@@ -1804,6 +1804,145 @@ const tests = [
     assert.match(underwaterShaderSource, /uniform float uDescentBeam/);
     assert.match(underwaterShaderSource, /beamZone/);
   }],
+  ["Milestone 3: MonkeyClaw encounter contract, lifecycle, and DOM surface", async () => {
+    const {
+      ENCOUNTER_CHAPTERS,
+      encounterWindowFor,
+      encounterWindowsForLayout,
+      visibilityForWindow,
+      visibilityTable,
+    } = await import("../src/features/ocean-experience/render/encounter-visibility.ts");
+    const {
+      DESKTOP_CHAPTER_RANGES,
+      MOBILE_CHAPTER_RANGES,
+    } = await import("../src/features/ocean-experience/contracts/chapter.ts");
+    const {
+      MONKEYCLAW_COUNTS,
+      MONKEYCLAW_LOOP,
+      telemetryRankForVector,
+      vectorReachesJudge,
+      vectorSpawnDirection,
+      vectorTiming,
+    } = await import("../src/features/ocean-experience/render/projects/monkeyclaw/monkeyclawConfig.ts");
+
+    // Encounter chapters match the approved anchor set.
+    assert.deepEqual(ENCOUNTER_CHAPTERS, ["monkeyclaw", "etch", "flowe", "argyph"]);
+
+    // Window geometry: fade wraps the chapter, preload leads, eviction trails.
+    const window = encounterWindowFor("monkeyclaw", DESKTOP_CHAPTER_RANGES);
+    assert.equal(window.rangeStart, 0.22);
+    assert.equal(window.rangeEnd, 0.39);
+    assert.ok(window.fadeInStart < window.rangeStart);
+    assert.ok(window.fadeInEnd > window.rangeStart);
+    assert.ok(window.fadeOutEnd > window.rangeEnd);
+    assert.ok(window.preloadStart < window.fadeInStart);
+    assert.ok(window.evictAfter >= 0.56, "evicts after two chapter boundaries");
+
+    // Swept visibility is exact at every sample and reversible.
+    assert.equal(visibilityForWindow(window, 0).fade, 0);
+    assert.equal(visibilityForWindow(window, 0.3).fade, 1);
+    assert.equal(visibilityForWindow(window, 0.3).chapterProgress,
+      Math.abs((0.3 - 0.22) / 0.17 - (0.3 - 0.22) / 0.17) < 1e-9 ? (0.3 - 0.22) / 0.17 : 0);
+    assert.ok(visibilityForWindow(window, 0.21).fade > 0, "fades in during descent");
+    assert.ok(visibilityForWindow(window, 0.41).fade < 1, "fades out toward etch");
+    assert.equal(visibilityForWindow(window, 0.6).fade, 0);
+    assert.equal(visibilityForWindow(window, 0.6).shouldEvict, false,
+      "still resident one chapter behind");
+    assert.equal(visibilityForWindow(window, 0.75).shouldEvict, true,
+      "evicts two chapters behind");
+    assert.equal(visibilityForWindow(window, 0.1).shouldEvict, true);
+    assert.equal(visibilityForWindow(window, 0.3).shouldPreload, true);
+    // chapterProgress sweeps the full range monotonically.
+    let lastCp = -1;
+    for (let step = 0; step <= 50; step += 1) {
+      const cp = visibilityForWindow(window, 0.22 + (step / 50) * 0.17).chapterProgress;
+      assert.ok(cp >= lastCp && cp >= 0 && cp <= 1);
+      lastCp = cp;
+    }
+    // Table reuse is allocation-free and complete for both layouts.
+    const desktopTable = visibilityTable(encounterWindowsForLayout("desktop"), 0.3);
+    const mobileTable = visibilityTable(encounterWindowsForLayout("mobile"), 0.3);
+    assert.equal(desktopTable.length, 4);
+    assert.equal(mobileTable.length, 4);
+    const reused = [];
+    visibilityTable(encounterWindowsForLayout("desktop"), 0.31, reused);
+    assert.equal(reused.length, 4);
+
+    // Facts from content.ts are structurally encoded in the scene.
+    assert.equal(MONKEYCLAW_COUNTS.vectors, 18);
+    assert.equal(MONKEYCLAW_COUNTS.judged, 8);
+    let judgedCount = 0;
+    for (let index = 0; index < 18; index += 1) {
+      if (vectorReachesJudge(index)) judgedCount += 1;
+    }
+    assert.equal(judgedCount, 8);
+    for (let index = 0; index < 18; index += 1) {
+      const rank = telemetryRankForVector(index);
+      if (index < 10) assert.equal(rank, -1);
+      else assert.equal(rank, index - 10);
+    }
+    // Deterministic spawn paths and monotonic per-vector timing.
+    const first = [0, 0, 0];
+    const second = [0, 0, 0];
+    vectorSpawnDirection(3, first);
+    vectorSpawnDirection(3, second);
+    assert.deepEqual(first, second);
+    for (let index = 0; index < 18; index += 1) {
+      const timing = vectorTiming(index);
+      assert.ok(timing.startT < timing.arriveT);
+      assert.ok(timing.startT >= MONKEYCLAW_LOOP.redStart - 1e-9);
+      if (vectorReachesJudge(index)) assert.ok(timing.judgeT > timing.arriveT);
+    }
+
+    // Renderer integration: one host, encounter layer pass, probe, disposal.
+    assert.match(underwaterRendererSource, /EncounterHost/);
+    assert.match(underwaterRendererSource, /ENCOUNTER_LAYER/);
+    assert.match(underwaterRendererSource, /encounterHost\.frame\(experience, deltaSeconds, time/);
+    assert.match(underwaterRendererSource, /encounterHost\.probeFromViewport/);
+    assert.match(underwaterRendererSource, /encounterHost\.dispose\(\)/);
+    assert.match(underwaterRendererSource, /dataset\.encounterScene/);
+
+    const hostSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/EncounterHost.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(hostSource, /AbortController/);
+    assert.match(hostSource, /shouldPreload/);
+    assert.match(hostSource, /shouldEvict/);
+    assert.match(hostSource, /visibilityTable/);
+    // No competing scroll owner: the host only reads the director snapshot.
+    assert.doesNotMatch(hostSource, /addEventListener\("scroll"/);
+
+    const sceneSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/monkeyclaw/MonkeyClawScene.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(sceneSource, /chapterProgress/);
+    assert.match(sceneSource, /dispose\(\)/);
+    assert.match(sceneSource, /probe/);
+    assert.doesNotMatch(sceneSource, /addEventListener/);
+    assert.doesNotMatch(sceneSource, /Math\.random\(/);
+
+    // DOM surface: semantic encounter wired into the projects list.
+    const projectsSectionSource = readFileSync(
+      new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(projectsSectionSource, /ProjectEncounter/);
+    const encounterSource = readFileSync(
+      new URL("../src/components/portfolio/ProjectEncounter.tsx", import.meta.url),
+      "utf8",
+    );
+    assert.match(encounterSource, /data-encounter=\{project\.slug\}/);
+    assert.match(encounterSource, /project\.proof/);
+    assert.match(encounterSource, /<dl className=\{styles\.facts\}>/);
+    assert.match(encounterSource, /ProjectTransitionLink/);
+    assert.doesNotMatch(encounterSource, /IntersectionObserver/);
+
+    // Sticky staging depends on the global overflow-x: clip (not hidden).
+    assert.match(globalsCssSource, /overflow-x: clip;/);
+    assert.doesNotMatch(globalsCssSource, /overflow-x: hidden;/);
+  }],
 ];
 
 for (const [name, run] of tests) {

@@ -5,9 +5,14 @@ import {
   projects,
 } from "@/lib/portfolio/content";
 import LazyProjectIdentity from "./LazyProjectIdentity";
+import ProjectEncounter from "./ProjectEncounter";
 import ProjectTransitionLink from "./ProjectTransitionLink";
 import ProjectsInteraction from "./ProjectsInteraction";
 import styles from "./ProjectsSection.module.css";
+
+/** Anchor projects rendered as spatial encounters (plan §10); the rest keep
+    the editorial row until their milestone lands. */
+const ENCOUNTER_SLUGS = new Set(["monkeyclaw"]);
 
 /** First N entries carry full editorial weight; the rest scan as a compact index. */
 const DOMINANT_COUNT = 3;
@@ -47,6 +52,18 @@ export default function ProjectsSection() {
           const band = projectDepthBand(project.slug);
           const weight = projectWeight(order);
           const progress = padIndex(order + 1);
+
+          if (ENCOUNTER_SLUGS.has(project.slug)) {
+            return (
+              <li key={project.slug} data-weight={weight}>
+                <ProjectEncounter
+                  project={project}
+                  progress={progress}
+                  total={totalLabel}
+                />
+              </li>
+            );
+          }
 
           return (
             <li key={project.slug} data-weight={weight}>
