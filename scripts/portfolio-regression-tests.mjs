@@ -1814,7 +1814,6 @@ const tests = [
     } = await import("../src/features/ocean-experience/render/encounter-visibility.ts");
     const {
       DESKTOP_CHAPTER_RANGES,
-      MOBILE_CHAPTER_RANGES,
     } = await import("../src/features/ocean-experience/contracts/chapter.ts");
     const {
       MONKEYCLAW_COUNTS,
