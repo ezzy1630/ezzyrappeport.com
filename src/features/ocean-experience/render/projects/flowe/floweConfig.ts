@@ -37,7 +37,7 @@ export const FLOWE_STAGE = {
   distance: 4.4,
   /** Current band center: left field, generous negative space. */
   currentDesktop: [-0.85, 0.02, 0] as const,
-  currentMobile: [0, 0.6, 0] as const,
+  currentMobile: [0, 0.78, 0] as const,
   driftRadiusX: 1.35,
   driftRadiusY: 0.75,
   clusterSpacing: 0.3,
@@ -46,7 +46,7 @@ export const FLOWE_STAGE = {
 } as const;
 
 export const FLOWE_COLORS = {
-  body: 0x102d38,
+  body: 0x101318,
   fragment: 0xaee6f0,
   fragmentWarm: 0xf2e2b8,
   current: 0x8fd4e2,

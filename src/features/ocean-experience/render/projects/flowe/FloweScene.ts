@@ -14,11 +14,14 @@
 
 import {
   AdditiveBlending,
-  BoxGeometry,
   CatmullRomCurve3,
   Color,
+  DirectionalLight,
+  DoubleSide,
   DynamicDrawUsage,
   EdgesGeometry,
+  Group,
+  HemisphereLight,
   InstancedBufferAttribute,
   InstancedMesh,
   LineBasicMaterial,
@@ -26,13 +29,17 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
+  MeshPhysicalMaterial,
   OctahedronGeometry,
+  PointLight,
+  PlaneGeometry,
   Quaternion,
   RingGeometry,
   SphereGeometry,
+  SRGBColorSpace,
+  TextureLoader,
   TubeGeometry,
   Vector3,
-  type Group,
 } from "three";
 import type {
   EncounterAudioEvent,
@@ -49,6 +56,7 @@ import {
   fragmentDriftAnchor,
   moteSeed,
 } from "./floweConfig.ts";
+import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -71,7 +79,7 @@ const _quat = new Quaternion();
 const _scale = new Vector3();
 const _matrix = new Matrix4();
 const _color = new Color();
-const _cardAxis = new Vector3(0, 1, 0);
+const _cardAxis = new Vector3(0, 0, 1);
 const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
 
@@ -89,7 +97,9 @@ export function createFloweEncounter(): ProjectEncounter {
   };
 
   let fragments: InstancedMesh | null = null;
-  let fragmentMaterial: MeshBasicMaterial | null = null;
+  let fragmentMaterial: MeshPhysicalMaterial | null = null;
+  let fragmentAccents: InstancedMesh | null = null;
+  let fragmentAccentMaterial: MeshBasicMaterial | null = null;
   let motes: InstancedMesh | null = null;
   let moteMaterial: MeshBasicMaterial | null = null;
   const currentLines: Mesh[] = [];
@@ -99,11 +109,11 @@ export function createFloweEncounter(): ProjectEncounter {
   let indexField: InstancedMesh | null = null;
   let indexMaterial: MeshBasicMaterial | null = null;
   let plannerBody: Mesh | null = null;
-  let plannerBodyMaterial: MeshBasicMaterial | null = null;
+  let plannerBodyMaterial: MeshPhysicalMaterial | null = null;
   let plannerFrame: LineSegments | null = null;
   let plannerFrameMaterial: LineBasicMaterial | null = null;
   let flowMark: Mesh | null = null;
-  let flowMarkMaterial: MeshBasicMaterial | null = null;
+  let flowMarkMaterial: MeshPhysicalMaterial | null = null;
   let flowMarkGeometry: TubeGeometry | null = null;
   let flowMarkGlow: Mesh | null = null;
   let flowMarkGlowMaterial: MeshBasicMaterial | null = null;
@@ -111,11 +121,15 @@ export function createFloweEncounter(): ProjectEncounter {
   let flowMarkHead: Mesh | null = null;
   let flowMarkHeadMaterial: MeshBasicMaterial | null = null;
   let flowMarkCurve: CatmullRomCurve3 | null = null;
+  let flowIdentityPlate: Mesh | null = null;
+  let flowIdentityMaterial: MeshBasicMaterial | null = null;
+  let lightingRig: Group | null = null;
   const nudges: ProbeNudge[] = [];
 
   // Deterministic per-fragment state.
   const driftAnchors: Vector3[] = [];
   const clusterTargets: Vector3[] = [];
+  const clusterAngles: number[] = [];
   const streamTargets: Vector3[] = [];
   const indexTargets: Vector3[] = [];
   const fragmentPhase: number[] = [];
@@ -130,7 +144,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
   return {
     id: "flowe",
-    estimatedGpuMb: 2,
+    estimatedGpuMb: 4,
 
     async load(context: EncounterLoadContext) {
       if (loaded || disposed || context.signal.aborted) return;
@@ -142,12 +156,15 @@ export function createFloweEncounter(): ProjectEncounter {
         fragmentDriftAnchor(index, _anchor);
         driftAnchors.push(new Vector3(_anchor[0], _anchor[1], _anchor[2]));
         const cluster = clusterForFragment(index);
-        const rank = Math.floor(index / FLOWE_COUNTS.clusters);
+        const orbitT = index / Math.max(FLOWE_COUNTS.fragments - 1, 1);
+        const angle = -Math.PI * 0.86 + orbitT * Math.PI * 1.72;
+        const radius = 0.48 + (cluster % 2) * 0.18;
         clusterTargets.push(new Vector3(
-          center.x - 0.42 + cluster * FLOWE_STAGE.clusterSpacing,
-          center.y + 0.34 - rank * 0.095,
-          ((index % 3) - 1) * 0.045,
+          center.x + Math.cos(angle) * radius,
+          center.y + 0.12 + Math.sin(angle) * radius * 0.78,
+          0.1 + Math.sin(angle * 2 + cluster) * 0.055,
         ));
+        clusterAngles.push(angle);
         const streamT = index / Math.max(FLOWE_COUNTS.fragments - 1, 1);
         streamTargets.push(new Vector3(
           center.x - 0.55 + streamT * FLOWE_STAGE.streamLength,
@@ -164,17 +181,20 @@ export function createFloweEncounter(): ProjectEncounter {
         fragmentPhase.push((index * 0.37) % 1);
       }
 
-      fragmentMaterial = track(new MeshBasicMaterial({
-        color: 0xffffff,
+      fragmentMaterial = track(new MeshPhysicalMaterial({
+        color: FLOWE_COLORS.fragment,
+        emissive: 0x173f49,
+        emissiveIntensity: 0.42,
+        roughness: 0.2,
+        metalness: 0.12,
+        clearcoat: 1,
+        clearcoatRoughness: 0.14,
         transparent: true,
         opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
+        depthWrite: true,
       }));
       fragments = new InstancedMesh(
-        // Each obligation is a real task card. The cards enter loose, align
-        // into the daily plan, then narrow into one focus stream.
-        track(new BoxGeometry(0.17, 0.075, 0.022)),
+        track(createRoundedPanelGeometry(0.145, 0.06, 0.026, 0.022, 0.004)),
         fragmentMaterial,
         FLOWE_COUNTS.fragments,
       );
@@ -184,6 +204,19 @@ export function createFloweEncounter(): ProjectEncounter {
         3,
       );
       fragments.instanceColor.setUsage(DynamicDrawUsage);
+      fragmentAccentMaterial = track(new MeshBasicMaterial({
+        color: FLOWE_COLORS.focus,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      fragmentAccents = new InstancedMesh(
+        track(createRoundedPanelGeometry(0.078, 0.009, 0.008, 0.004, 0.001)),
+        fragmentAccentMaterial,
+        FLOWE_COUNTS.fragments,
+      );
+      fragmentAccents.instanceMatrix.setUsage(DynamicDrawUsage);
 
       // Ambient motes — fine volume that settles as the plan organizes.
       moteMaterial = track(new MeshBasicMaterial({
@@ -256,14 +289,22 @@ export function createFloweEncounter(): ProjectEncounter {
       // Product silhouette: the FlowE mobile planner frame and its authored
       // continuous-loop mark. The task-card system now visibly belongs to the
       // app instead of floating as unrelated crystals.
-      plannerBodyMaterial = track(new MeshBasicMaterial({
+      const plannerGeometry = track(createRoundedPanelGeometry(1.13, 1.33, 0.09, 0.105, 0.012));
+      plannerBodyMaterial = track(new MeshPhysicalMaterial({
         color: FLOWE_COLORS.body,
+        emissive: 0x06151d,
+        emissiveIntensity: 0.22,
+        roughness: 0.16,
+        metalness: 0.38,
+        clearcoat: 1,
+        clearcoatRoughness: 0.1,
         transparent: true,
         opacity: 0,
-        depthWrite: false,
+        depthWrite: true,
+        side: DoubleSide,
       }));
       plannerBody = new Mesh(
-        track(new BoxGeometry(1.13, 1.33, 0.055)),
+        plannerGeometry,
         plannerBodyMaterial,
       );
       plannerBody.position.copy(center);
@@ -275,10 +316,33 @@ export function createFloweEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       plannerFrame = new LineSegments(
-        track(new EdgesGeometry(new BoxGeometry(1.15, 1.35, 0.07))),
+        track(new EdgesGeometry(plannerGeometry, 34)),
         plannerFrameMaterial,
       );
       plannerFrame.position.copy(center);
+
+      const identityTexture = await new TextureLoader().loadAsync("/projects/flowe/app-icon.webp");
+      if (context.signal.aborted || disposed) {
+        identityTexture.dispose();
+        return;
+      }
+      identityTexture.colorSpace = SRGBColorSpace;
+      identityTexture.anisotropy = context.qualityTier === "high" ? 8 : 4;
+      track(identityTexture);
+      flowIdentityMaterial = track(new MeshBasicMaterial({
+        color: 0xffffff,
+        map: identityTexture,
+        alphaMap: identityTexture,
+        alphaTest: 0.035,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      flowIdentityPlate = new Mesh(
+        track(new PlaneGeometry(0.88, 0.88)),
+        flowIdentityMaterial,
+      );
+      flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.062);
 
       // Traced from the real FlowE icon: one continuous brain/e ribbon. The
       // centerline draws on with scroll before the tasks organize through it.
@@ -317,18 +381,24 @@ export function createFloweEncounter(): ProjectEncounter {
       }));
       flowMarkGlowGeometry = track(new TubeGeometry(flowMarkCurve, 120, 0.045, 8, false));
       flowMarkGlow = new Mesh(flowMarkGlowGeometry, flowMarkGlowMaterial);
-      flowMarkGlow.position.set(center.x, center.y + 0.3, 0.075);
-      flowMarkGlow.scale.setScalar(0.52);
-      flowMarkMaterial = track(new MeshBasicMaterial({
+      flowMarkGlow.position.set(center.x, center.y + 0.24, 0.075);
+      flowMarkGlow.scale.setScalar(0.62);
+      flowMarkMaterial = track(new MeshPhysicalMaterial({
         color: FLOWE_COLORS.focus,
+        emissive: 0x2b6874,
+        emissiveIntensity: 0.62,
+        roughness: 0.12,
+        metalness: 0.08,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
         transparent: true,
         opacity: 0,
-        depthWrite: false,
+        depthWrite: true,
       }));
       flowMarkGeometry = track(new TubeGeometry(flowMarkCurve, 120, 0.027, 8, false));
       flowMark = new Mesh(flowMarkGeometry, flowMarkMaterial);
-      flowMark.position.set(center.x, center.y + 0.3, 0.08);
-      flowMark.scale.setScalar(0.52);
+      flowMark.position.set(center.x, center.y + 0.24, 0.08);
+      flowMark.scale.setScalar(0.62);
       flowMarkHeadMaterial = track(new MeshBasicMaterial({
         color: FLOWE_COLORS.focus,
         transparent: true,
@@ -337,6 +407,15 @@ export function createFloweEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       flowMarkHead = new Mesh(track(new SphereGeometry(0.028, 8, 6)), flowMarkHeadMaterial);
+
+      lightingRig = new Group();
+      lightingRig.name = "flowe-product-lighting";
+      const ambient = new HemisphereLight(0xe9fbff, 0x071923, 1.45);
+      const key = new DirectionalLight(0xf4fdff, 2.3);
+      key.position.set(-1.5, 2.2, 2.8);
+      const rim = new PointLight(FLOWE_COLORS.current, 3.2, 5.5, 1.4);
+      rim.position.set(0.85, -0.2, 1.35);
+      lightingRig.add(ambient, key, rim);
 
       for (let nudge = 0; nudge < FLOWE_COUNTS.probePool; nudge += 1) {
         nudges.push({
@@ -353,7 +432,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [plannerBody, plannerFrame, flowMarkGlow, flowMark, flowMarkHead, fragments, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -373,19 +452,29 @@ export function createFloweEncounter(): ProjectEncounter {
       const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.04) / 0.38);
       const identityReady = smoothstep01((logoDrawT - 0.68) / 0.32);
       const organizedGroupT = groupT * identityReady;
+      const taskAssemblyT = smoothstep01(identityReady * 0.7 + groupT * 0.4);
+      const visualScale = layoutMode === "mobile" ? 0.58 : 1;
       // Organization: motes settle, the water calms as the plan forms.
-      const organization = smoothstep01(organizedGroupT * 0.6 + focusT * 0.4);
+      const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
       if (plannerBody && plannerBodyMaterial) {
-        plannerBodyMaterial.opacity = (0.04 + identityReady * 0.12 - contractT * 0.04) * fade;
+        plannerBodyMaterial.opacity = (0.14 + identityReady * 0.62 - contractT * 0.18) * fade;
         plannerBody.rotation.y = plannerFrame?.rotation.y ?? -0.12;
         plannerBody.rotation.x = -0.08;
+        plannerBody.scale.setScalar(visualScale);
       }
       if (plannerFrame && plannerFrameMaterial) {
         plannerFrameMaterial.opacity = (0.08 + identityReady * 0.32 + organizedGroupT * 0.12 - contractT * 0.14) * fade;
         plannerFrame.rotation.y = frame.reducedMotion ? -0.12 : -0.12 + Math.sin(frame.time * 0.24) * 0.035;
         plannerFrame.rotation.x = -0.08;
+        plannerFrame.scale.setScalar(visualScale);
+      }
+      if (flowIdentityPlate && flowIdentityMaterial) {
+        flowIdentityMaterial.opacity = identityReady * (0.96 - contractT * 0.24) * fade;
+        flowIdentityPlate.rotation.y = plannerFrame?.rotation.y ?? -0.12;
+        flowIdentityPlate.rotation.x = -0.08;
+        flowIdentityPlate.scale.setScalar(visualScale);
       }
       if (flowMark && flowMarkMaterial && flowMarkGeometry && flowMarkCurve) {
         const rotation = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.32) * 0.04;
@@ -395,20 +484,22 @@ export function createFloweEncounter(): ProjectEncounter {
         };
         setDrawProgress(flowMarkGeometry);
         if (flowMarkGlowGeometry) setDrawProgress(flowMarkGlowGeometry);
-        flowMarkMaterial.opacity = (0.45 + identityReady * 0.45 - contractT * 0.18) * fade;
+        flowMarkMaterial.opacity = (0.025 + (1 - identityReady) * 0.82 + focusT * 0.035 - contractT * 0.04) * fade;
         flowMark.rotation.z = rotation;
+        flowMark.scale.setScalar(0.62 * visualScale);
         if (flowMarkGlow && flowMarkGlowMaterial) {
           flowMarkGlow.rotation.z = rotation;
-          flowMarkGlowMaterial.opacity = (0.08 + logoDrawT * 0.18 + focusT * 0.08) * fade;
+          flowMarkGlow.scale.setScalar(0.62 * visualScale);
+          flowMarkGlowMaterial.opacity = (0.012 + (1 - identityReady) * 0.22 + focusT * 0.018) * fade;
         }
         if (flowMarkHead && flowMarkHeadMaterial) {
           const point = flowMarkCurve.getPointAt(Math.min(logoDrawT, 0.999));
           const cos = Math.cos(rotation);
           const sin = Math.sin(rotation);
           flowMarkHead.position.set(
-            center.x + (point.x * cos - point.y * sin) * 0.52,
-            center.y + 0.3 + (point.x * sin + point.y * cos) * 0.52,
-            0.09 + point.z * 0.52,
+            center.x + (point.x * cos - point.y * sin) * 0.62,
+            center.y + 0.24 + (point.x * sin + point.y * cos) * 0.62,
+            0.09 + point.z * 0.62,
           );
           flowMarkHeadMaterial.opacity = logoDrawT > 0.01 && logoDrawT < 0.995 ? fade * 0.95 : 0;
           flowMarkHead.scale.setScalar(0.72 + Math.sin(frame.time * 4) * 0.12);
@@ -417,7 +508,10 @@ export function createFloweEncounter(): ProjectEncounter {
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
       if (fragments && fragmentMaterial) {
-        fragmentMaterial.opacity = fade * (0.55 + organization * 0.3);
+        fragmentMaterial.opacity = fade * (0.62 + organization * 0.34);
+        if (fragmentAccentMaterial) {
+          fragmentAccentMaterial.opacity = fade * (0.18 + organization * 0.68);
+        }
         for (let index = 0; index < FLOWE_COUNTS.fragments; index += 1) {
           const phase = fragmentPhase[index];
           const wobble = Math.sin(frame.time * 0.5 + phase * Math.PI * 2) * 0.05 * idleAmp;
@@ -425,7 +519,7 @@ export function createFloweEncounter(): ProjectEncounter {
           _pos.x += center.x + wobble;
           _pos.y += center.y * 0 + Math.cos(frame.time * 0.4 + phase * 5.1) * 0.04 * idleAmp;
           // Group into the cluster column with per-fragment stagger.
-          const clusterT = smoothstep01((organizedGroupT - phase * 0.2) / 0.8);
+          const clusterT = smoothstep01((taskAssemblyT - phase * 0.1) / 0.9);
           _pos.lerp(clusterTargets[index], clusterT);
           // Narrow into the focus stream.
           const streamT = smoothstep01((focusT - phase * 0.15) / 0.85);
@@ -436,13 +530,24 @@ export function createFloweEncounter(): ProjectEncounter {
           // Probe nudges offset the fragment; the current reabsorbs it.
           const nudge = nudges.find((candidate) => candidate.active && candidate.fragmentIndex === index);
           if (nudge) _pos.add(nudge.offset);
+          if (visualScale < 1) {
+            _pos.sub(center).multiplyScalar(visualScale).add(center);
+          }
+          const tangentAngle = clusterAngles[index] + Math.PI * 0.5;
           const cardTurn = (1 - organization) * Math.sin(phase * Math.PI * 2) * 0.9
-            + organization * ((index % 3) - 1) * 0.08;
+            + organization * tangentAngle;
           _quat.setFromAxisAngle(_cardAxis, cardTurn);
-          const scalePulse = 0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp + organization * 0.25;
+          const scalePulse = (0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp + organization * 0.25)
+            * visualScale;
           _scale.setScalar(scalePulse);
           _matrix.compose(_pos, _quat, _scale);
           fragments.setMatrixAt(index, _matrix);
+          if (fragmentAccents) {
+            _pos.z += 0.022;
+            _scale.set(scalePulse * 0.72, scalePulse * 0.78, scalePulse);
+            _matrix.compose(_pos, _quat, _scale);
+            fragmentAccents.setMatrixAt(index, _matrix);
+          }
           // Warm loose obligations cool into the planned stream.
           const warmth = 1 - organization;
           _color.setHex(FLOWE_COLORS.fragmentWarm);
@@ -452,6 +557,7 @@ export function createFloweEncounter(): ProjectEncounter {
         }
         fragments.instanceMatrix.needsUpdate = true;
         if (fragments.instanceColor) fragments.instanceColor.needsUpdate = true;
+        if (fragmentAccents) fragmentAccents.instanceMatrix.needsUpdate = true;
       }
 
       // Current lines breathe in as grouping begins.
@@ -551,7 +657,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [plannerBody, plannerFrame, flowMarkGlow, flowMark, flowMarkHead, fragments, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -562,7 +668,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [plannerBody, plannerFrame, flowMarkGlow, flowMark, flowMarkHead, fragments, motes, focusLens, indexField, ...currentLines];
+        const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -574,6 +680,7 @@ export function createFloweEncounter(): ProjectEncounter {
       currentMaterials.length = 0;
       driftAnchors.length = 0;
       clusterTargets.length = 0;
+      clusterAngles.length = 0;
       streamTargets.length = 0;
       indexTargets.length = 0;
       fragmentPhase.length = 0;

@@ -40,7 +40,7 @@ export const ARGYPH_STAGE = {
   reefMobile: [0, 0.5, 0] as const,
   reefRadiusX: 1.15,
   reefRadiusY: 0.62,
-  sweepRadiusMax: 1.45,
+  sweepRadiusMax: 1.18,
   queryRadius: 0.42,
 } as const;
 

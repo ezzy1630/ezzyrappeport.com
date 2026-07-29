@@ -14,10 +14,15 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  ClampToEdgeWrapping,
   Color,
+  DirectionalLight,
+  DoubleSide,
   DynamicDrawUsage,
   EdgesGeometry,
   Group,
+  HemisphereLight,
+  IcosahedronGeometry,
   InstancedBufferAttribute,
   InstancedMesh,
   LineBasicMaterial,
@@ -25,9 +30,13 @@ import {
   Matrix4,
   Mesh,
   MeshBasicMaterial,
-  OctahedronGeometry,
+  MeshPhysicalMaterial,
+  PointLight,
+  PlaneGeometry,
   Quaternion,
   RingGeometry,
+  SRGBColorSpace,
+  TextureLoader,
   Vector3,
 } from "three";
 import type {
@@ -45,6 +54,7 @@ import {
   reefPoint,
   symbolPoint,
 } from "./argyphConfig.ts";
+import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -68,6 +78,7 @@ const _scale = new Vector3();
 const _matrix = new Matrix4();
 const _color = new Color();
 const _linkAxis = new Vector3(0, 0, 1);
+const _slabAxis = new Vector3(1, 0, 0);
 const _reefCool = new Color(ARGYPH_COLORS.reef);
 const _queryWarm = new Color(ARGYPH_COLORS.query);
 const _anchor: [number, number, number] = [0, 0, 0];
@@ -88,19 +99,23 @@ export function createArgyphEncounter(): ProjectEncounter {
   let reef: InstancedMesh | null = null;
   let reefMaterial: MeshBasicMaterial | null = null;
   let symbols: InstancedMesh | null = null;
-  let symbolMaterial: MeshBasicMaterial | null = null;
+  let symbolMaterial: MeshPhysicalMaterial | null = null;
   let links: InstancedMesh | null = null;
   let linkMaterial: MeshBasicMaterial | null = null;
   let sweepRing: Mesh | null = null;
   let sweepMaterial: MeshBasicMaterial | null = null;
   let indexStack: Group | null = null;
   let brandMark: Group | null = null;
+  let lightingRig: Group | null = null;
+  let brandMedallionMaterial: MeshPhysicalMaterial | null = null;
+  let brandLogo: Mesh | null = null;
+  let brandLogoMaterial: MeshBasicMaterial | null = null;
   const stackSlabs: Mesh[] = [];
-  const stackSlabMaterials: MeshBasicMaterial[] = [];
+  const stackSlabMaterials: MeshPhysicalMaterial[] = [];
   const stackEdges: LineSegments[] = [];
   const stackEdgeMaterials: LineBasicMaterial[] = [];
-  const brandBars: Mesh[] = [];
-  const brandMaterials: MeshBasicMaterial[] = [];
+  let stackRails: InstancedMesh | null = null;
+  let stackRailMaterial: MeshBasicMaterial | null = null;
   const pulseMeshes: Mesh[] = [];
   const pulseMaterials: MeshBasicMaterial[] = [];
   const pulses: QueryPulse[] = [];
@@ -132,14 +147,22 @@ export function createArgyphEncounter(): ProjectEncounter {
       indexStack = new Group();
       indexStack.name = "argyph-local-index-stack";
       indexStack.position.copy(center);
-      const slabGeometry = track(new BoxGeometry(1.48, 0.72, 0.055));
-      const slabEdgeGeometry = track(new EdgesGeometry(new BoxGeometry(1.5, 0.74, 0.07)));
+      indexStack.scale.setScalar(layoutMode === "mobile" ? 0.56 : 0.82);
+      const slabGeometry = track(createRoundedPanelGeometry(1.48, 0.72, 0.095, 0.105, 0.012));
+      const slabEdgeGeometry = track(new EdgesGeometry(slabGeometry, 32));
       for (let layer = 0; layer < 3; layer += 1) {
-        const material = track(new MeshBasicMaterial({
-          color: layer === 2 ? 0x2b335b : 0x182540,
+        const material = track(new MeshPhysicalMaterial({
+          color: layer === 2 ? 0x303963 : layer === 1 ? 0x1e2d4b : 0x111d32,
+          emissive: layer === 2 ? 0x11162d : 0x070d18,
+          emissiveIntensity: 0.3,
+          roughness: 0.18 + layer * 0.04,
+          metalness: 0.42,
+          clearcoat: 1,
+          clearcoatRoughness: 0.12,
           transparent: true,
           opacity: 0,
-          depthWrite: false,
+          depthWrite: true,
+          side: DoubleSide,
         }));
         const slab = new Mesh(slabGeometry, material);
         slab.position.set(0, (layer - 1) * 0.24, (layer - 1) * 0.12);
@@ -163,40 +186,74 @@ export function createArgyphEncounter(): ProjectEncounter {
         stackEdgeMaterials.push(edgeMaterial);
       }
 
-      // Angular A/G emblem reconstructed as dimensional bars from the same
-      // artwork, held above the local stack like a query aperture.
+      stackRailMaterial = track(new MeshBasicMaterial({
+        color: ARGYPH_COLORS.link,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      stackRails = new InstancedMesh(
+        track(createRoundedPanelGeometry(0.43, 0.012, 0.009, 0.005, 0.001)),
+        stackRailMaterial,
+        12,
+      );
+      stackRails.instanceMatrix.setUsage(DynamicDrawUsage);
+      indexStack.add(stackRails);
+
+      // Exact A/G identity embedded into the local index appliance. It reads
+      // as one product, not a separate logo tile floating above a diagram.
       brandMark = new Group();
       brandMark.name = "argyph-angular-mark";
       brandMark.position.set(
         center.x,
-        center.y + (layoutMode === "mobile" ? 0.35 : 0.78),
-        0.12,
+        center.y + (layoutMode === "mobile" ? 0.22 : 0.3),
+        0.2,
       );
-      const barSpecs = [
-        { x: -0.18, y: 0.08, width: 0.08, height: 0.36, rotation: -0.36 },
-        { x: 0.18, y: 0.08, width: 0.08, height: 0.36, rotation: 0.36 },
-        { x: -0.08, y: 0, width: 0.068, height: 0.28, rotation: -0.48 },
-        { x: 0.04, y: 0.06, width: 0.22, height: 0.062, rotation: 0 },
-        { x: 0.08, y: -0.06, width: 0.28, height: 0.068, rotation: 0 },
-        { x: 0.2, y: -0.13, width: 0.068, height: 0.18, rotation: 0 },
-        { x: -0.08, y: -0.2, width: 0.22, height: 0.075, rotation: -0.24 },
-        { x: 0.08, y: -0.2, width: 0.22, height: 0.075, rotation: 0.24 },
-      ] as const;
-      for (const spec of barSpecs) {
-        const material = track(new MeshBasicMaterial({
-          color: ARGYPH_COLORS.symbol,
-          transparent: true,
-          opacity: 0,
-          blending: AdditiveBlending,
-          depthWrite: false,
-        }));
-        const bar = new Mesh(track(new BoxGeometry(spec.width, spec.height, 0.06)), material);
-        bar.position.set(spec.x, spec.y, 0);
-        bar.rotation.z = spec.rotation;
-        brandMark.add(bar);
-        brandBars.push(bar);
-        brandMaterials.push(material);
+      brandMedallionMaterial = track(new MeshPhysicalMaterial({
+        color: 0x0a1020,
+        emissive: 0x050712,
+        emissiveIntensity: 0.3,
+        roughness: 0.15,
+        metalness: 0.5,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
+        transparent: true,
+        opacity: 0,
+        depthWrite: true,
+      }));
+      const medallion = new Mesh(
+        track(createRoundedPanelGeometry(0.5, 0.44, 0.075, 0.105, 0.01)),
+        brandMedallionMaterial,
+      );
+      medallion.position.z = -0.055;
+      brandMark.add(medallion);
+      const identityTexture = await new TextureLoader().loadAsync("/projects/argyph/argyph-identity.webp");
+      if (context.signal.aborted || disposed) {
+        identityTexture.dispose();
+        return;
       }
+      identityTexture.colorSpace = SRGBColorSpace;
+      identityTexture.wrapS = ClampToEdgeWrapping;
+      identityTexture.wrapT = ClampToEdgeWrapping;
+      identityTexture.repeat.set(0.28, 0.24);
+      identityTexture.offset.set(0.36, 0.69);
+      identityTexture.anisotropy = context.qualityTier === "high" ? 8 : 4;
+      identityTexture.needsUpdate = true;
+      track(identityTexture);
+      brandLogoMaterial = track(new MeshBasicMaterial({
+        color: 0xffffff,
+        map: identityTexture,
+        alphaMap: identityTexture,
+        alphaTest: 0.045,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      brandLogo = new Mesh(track(new PlaneGeometry(0.42, 0.36)), brandLogoMaterial);
+      brandLogo.position.z = 0.02;
+      brandMark.add(brandLogo);
 
       for (let index = 0; index < ARGYPH_COUNTS.reefPoints; index += 1) {
         reefPoint(index, _anchor);
@@ -225,7 +282,7 @@ export function createArgyphEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       reef = new InstancedMesh(
-        track(new BoxGeometry(0.014, 0.014, 0.014)),
+        track(new IcosahedronGeometry(0.011, 1)),
         reefMaterial,
         ARGYPH_COUNTS.reefPoints,
       );
@@ -242,16 +299,20 @@ export function createArgyphEncounter(): ProjectEncounter {
         reef.setMatrixAt(index, _matrix);
       }
 
-      symbolMaterial = track(new MeshBasicMaterial({
+      symbolMaterial = track(new MeshPhysicalMaterial({
         color: ARGYPH_COLORS.symbol,
+        emissive: 0x30386f,
+        emissiveIntensity: 0.7,
+        roughness: 0.16,
+        metalness: 0.3,
+        clearcoat: 1,
+        clearcoatRoughness: 0.08,
         transparent: true,
         opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
-        wireframe: true,
+        depthWrite: true,
       }));
       symbols = new InstancedMesh(
-        track(new OctahedronGeometry(0.045, 0)),
+        track(new IcosahedronGeometry(0.03, 1)),
         symbolMaterial,
         ARGYPH_COUNTS.symbols,
       );
@@ -283,7 +344,7 @@ export function createArgyphEncounter(): ProjectEncounter {
         side: 2,
       }));
       sweepRing = new Mesh(
-        track(new RingGeometry(0.985, 1, 96)),
+        track(new RingGeometry(0.96, 1, 96)),
         sweepMaterial,
       );
       sweepRing.position.copy(center);
@@ -305,13 +366,22 @@ export function createArgyphEncounter(): ProjectEncounter {
         pulses.push({ active: false, bornAt: 0, center: new Vector3(), revealed: false });
       }
 
+      lightingRig = new Group();
+      lightingRig.name = "argyph-product-lighting";
+      const ambient = new HemisphereLight(0xe9efff, 0x050914, 1.2);
+      const key = new DirectionalLight(0xf3f5ff, 2.15);
+      key.position.set(-1.6, 2.4, 2.8);
+      const rim = new PointLight(ARGYPH_COLORS.symbol, 3.6, 5.2, 1.5);
+      rim.position.set(0.9, -0.25, 1.5);
+      lightingRig.add(ambient, key, rim);
+
       loaded = true;
     },
 
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -338,29 +408,49 @@ export function createArgyphEncounter(): ProjectEncounter {
         const layerProgress = [reefT, sweepT, linksT];
         for (let layer = 0; layer < layerProgress.length; layer += 1) {
           const reveal = layerProgress[layer];
-          stackSlabMaterials[layer].opacity = reveal * (0.24 + layer * 0.055) * fade;
-          stackEdgeMaterials[layer].opacity = reveal * (0.3 + layer * 0.1) * fade;
-          stackSlabs[layer].position.y = (layer - 1) * (0.27 + widenT * 0.055);
+          stackSlabMaterials[layer].opacity = reveal * (0.52 + layer * 0.1) * fade;
+          stackEdgeMaterials[layer].opacity = reveal * (0.22 + layer * 0.08) * fade;
+          stackSlabs[layer].position.y = (layer - 1) * (0.17 + widenT * 0.045);
+          stackSlabs[layer].position.z = (layer - 1) * 0.11;
           stackEdges[layer].position.copy(stackSlabs[layer].position);
+        }
+        if (stackRails && stackRailMaterial) {
+          stackRailMaterial.opacity = linksT * 0.68 * fade;
+          for (let rail = 0; rail < 12; rail += 1) {
+            const layer = Math.floor(rail / 4);
+            const cell = rail % 4;
+            _pos.set(
+              cell % 2 === 0 ? -0.36 : 0.36,
+              (layer - 1) * (0.17 + widenT * 0.045) + (cell < 2 ? 0.14 : -0.14),
+              (layer - 1) * 0.11 + 0.065,
+            );
+            _quat.setFromAxisAngle(_slabAxis, -0.32);
+            _scale.setScalar(smoothstep01((layerProgress[layer] - cell * 0.07) / 0.79));
+            _matrix.compose(_pos, _quat, _scale);
+            stackRails.setMatrixAt(rail, _matrix);
+          }
+          stackRails.instanceMatrix.needsUpdate = true;
         }
       }
       if (brandMark) {
         const markReveal = smoothstep01((sweepT - 0.28) / 0.55);
         brandMark.rotation.y = frame.reducedMotion ? 0.1 : Math.sin(frame.time * 0.31) * 0.12;
-        brandMark.scale.setScalar(0.72 + markReveal * 0.28);
-        for (let bar = 0; bar < brandMaterials.length; bar += 1) {
-          const barReveal = smoothstep01((markReveal - bar * 0.12) / Math.max(1 - bar * 0.12, 1e-6));
-          brandMaterials[bar].opacity = barReveal * 0.86 * fade;
-          brandBars[bar].scale.y = 0.08 + barReveal * 0.92;
+        brandMark.scale.setScalar((0.72 + markReveal * 0.16) * (layoutMode === "mobile" ? 0.68 : 1));
+        if (brandMedallionMaterial) {
+          brandMedallionMaterial.opacity = (0.2 + markReveal * 0.72) * fade;
+        }
+        if (brandLogo && brandLogoMaterial) {
+          brandLogoMaterial.opacity = markReveal * fade;
+          brandLogo.scale.setScalar(0.68 + markReveal * 0.32);
         }
       }
 
       // Sonar sweep: one decisive pass, then it rests as the map widens.
       if (sweepRing && sweepMaterial) {
-        const radius = 0.08 + sweepT * ARGYPH_STAGE.sweepRadiusMax;
-        sweepRing.scale.setScalar(Math.max(radius, 1e-4) * (1 + widenT * 0.4));
+        const radius = 0.08 + sweepT * ARGYPH_STAGE.sweepRadiusMax * 0.68;
+        sweepRing.scale.setScalar(Math.max(radius, 1e-4) * (1 + widenT * 0.1));
         sweepMaterial.opacity = sweepT > 0 && sweepT < 1
-          ? (0.55 - sweepT * 0.35) * fade
+          ? (0.17 - sweepT * 0.12) * fade
           : (1 - sweepT) * 0.12 * fade;
         sweepRing.position.copy(center);
       }
@@ -402,7 +492,7 @@ export function createArgyphEncounter(): ProjectEncounter {
 
       // Symbol nodes resolve as the sweep passes their radius.
       if (symbols && symbolMaterial) {
-        symbolMaterial.opacity = fade * 0.85;
+        symbolMaterial.opacity = fade * 0.96;
         for (let index = 0; index < ARGYPH_COUNTS.symbols; index += 1) {
           const resolve = smoothstep01((sweepT * 1.2 - symbolRadius[index] / ARGYPH_STAGE.sweepRadiusMax) / 0.3);
           _pos.set(
@@ -497,7 +587,7 @@ export function createArgyphEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -508,7 +598,7 @@ export function createArgyphEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+        const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -526,8 +616,6 @@ export function createArgyphEncounter(): ProjectEncounter {
       stackSlabMaterials.length = 0;
       stackEdges.length = 0;
       stackEdgeMaterials.length = 0;
-      brandBars.length = 0;
-      brandMaterials.length = 0;
       loaded = false;
     },
   };

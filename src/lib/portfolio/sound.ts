@@ -11,7 +11,7 @@ import {
   getPreferencesSnapshot,
   hydratePreferencesStore,
   setPreferences,
-} from "@/features/ocean-experience/state/preferences-store";
+} from "../../features/ocean-experience/state/preferences-store.ts";
 
 type SoundKind = "ambient" | "press" | "ripple" | "hover" | "shockwave";
 

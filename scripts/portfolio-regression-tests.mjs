@@ -2081,15 +2081,31 @@ const tests = [
       new URL("../src/features/ocean-experience/render/projects/argyph/ArgyphScene.ts", import.meta.url),
       "utf8",
     );
+    const monkeyclawSceneSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/monkeyclaw/MonkeyClawScene.ts", import.meta.url),
+      "utf8",
+    );
+    const productGeometrySource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/shared/productGeometry.ts", import.meta.url),
+      "utf8",
+    );
     assert.match(etchSceneSource, /etch-verified-fifo-die/);
     assert.match(etchSceneSource, /dieDetails/);
     assert.match(etchSceneSource, /diePins/);
+    assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.match(floweSceneSource, /FlowE mobile planner frame/);
     assert.match(floweSceneSource, /TubeGeometry/);
     assert.match(floweSceneSource, /setDrawRange/);
     assert.match(floweSceneSource, /flowMarkHead/);
+    assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
+    assert.match(floweSceneSource, /alphaMap: identityTexture/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);
     assert.match(argyphSceneSource, /argyph-angular-mark/);
+    assert.match(argyphSceneSource, /projects\/argyph\/argyph-identity\.webp/);
+    assert.match(monkeyclawSceneSource, /monkeyclaw-verifier-telemetry/);
+    assert.match(monkeyclawSceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
+    assert.match(productGeometrySource, /createRoundedPanelGeometry/);
+    assert.match(productGeometrySource, /bevelEnabled: true/);
     // No per-frame allocation regressions in configs.
     const etchConfigSource = readFileSync(
       new URL("../src/features/ocean-experience/render/projects/etch/etchConfig.ts", import.meta.url),
