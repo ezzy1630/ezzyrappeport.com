@@ -238,9 +238,9 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
 
       coreMaterial = makeFresnelMaterial(MONKEYCLAW_COLORS.core, 0.85);
       const kernelGeometry = track(createRoundedPanelGeometry(
-        MONKEYCLAW_STAGE.coreRadius * 1.28,
-        MONKEYCLAW_STAGE.coreRadius * 1.28,
-        MONKEYCLAW_STAGE.coreRadius * 0.62,
+        MONKEYCLAW_STAGE.coreRadius * 1.14,
+        MONKEYCLAW_STAGE.coreRadius * 1.48,
+        MONKEYCLAW_STAGE.coreRadius * 0.58,
         MONKEYCLAW_STAGE.coreRadius * 0.24,
         MONKEYCLAW_STAGE.coreRadius * 0.05,
       ));
@@ -264,9 +264,9 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         side: DoubleSide,
       }));
       const sandboxGeometry = track(createRoundedPanelGeometry(
-        MONKEYCLAW_STAGE.coreRadius * 1.52,
-        MONKEYCLAW_STAGE.coreRadius * 1.52,
-        MONKEYCLAW_STAGE.coreRadius * 0.72,
+        MONKEYCLAW_STAGE.coreRadius * 1.42,
+        MONKEYCLAW_STAGE.coreRadius * 1.78,
+        MONKEYCLAW_STAGE.coreRadius * 0.76,
         MONKEYCLAW_STAGE.coreRadius * 0.28,
         MONKEYCLAW_STAGE.coreRadius * 0.05,
       ));
@@ -323,6 +323,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         MONKEYCLAW_COLORS.blue,
         MONKEYCLAW_COLORS.purple,
       ] as const;
+      const productLoopRadius = 0.43;
       const segmentArc = Math.PI * 2 / 5 - 0.16;
       for (let stageIndex = 0; stageIndex < stageColors.length; stageIndex += 1) {
         const angle = stageIndex * Math.PI * 2 / stageColors.length + Math.PI * 0.08;
@@ -334,7 +335,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const segment = new Mesh(
-          track(new TorusGeometry(0.79, 0.018, 6, 20, segmentArc)),
+          track(new TorusGeometry(productLoopRadius, 0.012, 6, 20, segmentArc)),
           segmentMaterial,
         );
         segment.rotation.z = angle;
@@ -354,11 +355,11 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           depthWrite: true,
         }));
         const node = new Mesh(
-          track(createRoundedPanelGeometry(0.13, 0.065, 0.08, 0.022, 0.006)),
+          track(createRoundedPanelGeometry(0.085, 0.042, 0.055, 0.014, 0.004)),
           nodeMaterial,
         );
         const nodeAngle = angle + segmentArc;
-        node.position.set(Math.cos(nodeAngle) * 0.79, Math.sin(nodeAngle) * 0.79, 0);
+        node.position.set(Math.cos(nodeAngle) * productLoopRadius, Math.sin(nodeAngle) * productLoopRadius, 0.03);
         node.rotation.z = nodeAngle + Math.PI / 2;
         securityLoop.add(node);
         loopStageNodes.push(node);
@@ -373,14 +374,14 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       ring = new Mesh(
-        track(new TorusGeometry(MONKEYCLAW_STAGE.judgeRadius, 0.006, 6, 72)),
+        track(new TorusGeometry(0.335, 0.005, 6, 72)),
         ringMaterial,
       );
       ring.position.copy(root);
 
       perimeterMaterial = makeFresnelMaterial(MONKEYCLAW_COLORS.blue, 0.16);
       perimeter = new Mesh(
-        track(new SphereGeometry(MONKEYCLAW_STAGE.perimeterRadius, 28, 20)),
+        track(new SphereGeometry(0.52, 28, 20)),
         perimeterMaterial,
       );
       perimeter.position.copy(root);
@@ -407,8 +408,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         const mesh = new Mesh(gateGeometry, material);
         const angle = (gate / MONKEYCLAW_COUNTS.judged) * Math.PI * 2 + 0.42;
         mesh.position.set(
-          root.x + Math.cos(angle) * MONKEYCLAW_STAGE.judgeRadius,
-          root.y + Math.sin(angle) * MONKEYCLAW_STAGE.judgeRadius,
+          root.x + Math.cos(angle) * 0.335,
+          root.y + Math.sin(angle) * 0.335,
           root.z,
         );
         mesh.rotation.z = angle + Math.PI / 2;
@@ -519,13 +520,14 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const judgeT = smoothstep01((t - loop.judgeStart) / Math.max(loop.judgeFull - loop.judgeStart, 1e-6));
       const blueT = smoothstep01((t - loop.blueStart) / Math.max(loop.blueFull - loop.blueStart, 1e-6));
       const purpleT = smoothstep01((t - loop.purpleStart) / Math.max(loop.purpleFull - loop.purpleStart, 1e-6));
+      const productScale = layoutMode === "mobile" ? 1.08 : 1.32;
 
       // Core: authored rotation from progress + restrained pulse.
       if (core && coreMaterial) {
         core.rotation.y = t * 1.2;
         core.rotation.x = t * 0.35;
         const judgePulse = judgeT * (1 - blueT) * 0.06;
-        core.scale.setScalar(1 + judgePulse + redT * 0.02);
+        core.scale.setScalar((1 + judgePulse + redT * 0.02) * productScale);
         coreMaterial.uniforms.uIntensity.value = (0.55 + redT * 0.3 + judgeT * 0.25) * fade;
       }
       if (sandboxBody && sandboxBodyMaterial) {
@@ -535,29 +537,32 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       }
       if (identityMark && identityMaterial) {
         identityMark.rotation.z = t * 0.04;
+        identityMark.scale.setScalar(productScale);
         identityMaterial.opacity = (0.48 + judgeT * 0.34 + blueT * 0.12) * fade;
       }
       if (cage && cageMaterial) {
         cage.rotation.y = -t * 0.8;
         cage.rotation.z = t * 0.5;
         cageMaterial.opacity = 0.34 * fade * (0.5 + redT * 0.5);
+        cage.scale.setScalar(productScale);
       }
       if (ring && ringMaterial) {
         ring.rotation.z = t * 0.4;
         ringMaterial.opacity = (0.1 + judgeT * 0.5 + purpleT * 0.12) * fade;
-        ring.scale.setScalar(1 + judgeT * (1 - blueT) * 0.03);
+        ring.scale.setScalar((1 + judgeT * (1 - blueT) * 0.03) * productScale);
       }
       if (perimeter && perimeterMaterial) {
-        perimeterMaterial.uniforms.uIntensity.value = (0.05 + blueT * 0.22) * fade;
+        perimeterMaterial.uniforms.uIntensity.value = (0.012 + blueT * 0.055) * fade;
       }
       if (securityLoop) {
         const stageProgress = [redT, judgeT, judgeT, blueT, purpleT];
         securityLoop.rotation.z = t * 0.12;
         securityLoop.rotation.x = Math.sin(t * Math.PI) * 0.09;
+        securityLoop.scale.setScalar(productScale);
         for (let stageIndex = 0; stageIndex < stageProgress.length; stageIndex += 1) {
           const activation = stageProgress[stageIndex];
-          loopSegmentMaterials[stageIndex].opacity = (0.08 + activation * 0.44) * fade;
-          loopStageMaterials[stageIndex].opacity = (0.12 + activation * 0.82) * fade;
+          loopSegmentMaterials[stageIndex].opacity = (0.04 + activation * 0.28) * fade;
+          loopStageMaterials[stageIndex].opacity = (0.1 + activation * 0.78) * fade;
           const assembled = smoothstep01((activation - stageIndex * 0.035) / Math.max(1 - stageIndex * 0.035, 1e-6));
           loopSegments[stageIndex].scale.setScalar(0.72 + assembled * 0.28);
           loopSegments[stageIndex].rotation.z = stageIndex * Math.PI * 2 / stageProgress.length

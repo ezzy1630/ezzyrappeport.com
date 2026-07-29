@@ -2092,6 +2092,9 @@ const tests = [
     assert.match(etchSceneSource, /etch-verified-fifo-die/);
     assert.match(etchSceneSource, /dieDetails/);
     assert.match(etchSceneSource, /diePins/);
+    assert.match(etchSceneSource, /resultBezel/);
+    assert.match(etchSceneSource, /dieScrews/);
+    assert.match(etchSceneSource, /const assemblyRetireAt = layoutMode === "mobile" \? 0\.35 : 0\.94/);
     assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.match(floweSceneSource, /FlowE mobile planner frame/);
     assert.match(floweSceneSource, /TubeGeometry/);
@@ -2099,13 +2102,18 @@ const tests = [
     assert.match(floweSceneSource, /flowMarkHead/);
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
     assert.match(floweSceneSource, /alphaMap: identityTexture/);
+    assert.match(floweSceneSource, /plannerInset/);
+    assert.match(floweSceneSource, /const primaryTask = index < 9/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);
     assert.match(argyphSceneSource, /argyph-angular-mark/);
     assert.match(argyphSceneSource, /projects\/argyph\/argyph-identity\.webp/);
+    assert.match(argyphSceneSource, /stackFins/);
+    assert.match(argyphSceneSource, /uniform sampler2D uIdentity/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-verifier-telemetry/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
+    assert.match(monkeyclawSceneSource, /const productLoopRadius = 0\.43/);
     assert.match(productGeometrySource, /createRoundedPanelGeometry/);
-    assert.match(productGeometrySource, /bevelEnabled: true/);
+    assert.match(productGeometrySource, /bevelEnabled: bevelSize > 0/);
     // No per-frame allocation regressions in configs.
     const etchConfigSource = readFileSync(
       new URL("../src/features/ocean-experience/render/projects/etch/etchConfig.ts", import.meta.url),

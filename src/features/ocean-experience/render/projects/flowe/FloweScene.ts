@@ -110,6 +110,8 @@ export function createFloweEncounter(): ProjectEncounter {
   let indexMaterial: MeshBasicMaterial | null = null;
   let plannerBody: Mesh | null = null;
   let plannerBodyMaterial: MeshPhysicalMaterial | null = null;
+  let plannerInset: Mesh | null = null;
+  let plannerInsetMaterial: MeshPhysicalMaterial | null = null;
   let plannerFrame: LineSegments | null = null;
   let plannerFrameMaterial: LineBasicMaterial | null = null;
   let flowMark: Mesh | null = null;
@@ -156,28 +158,33 @@ export function createFloweEncounter(): ProjectEncounter {
         fragmentDriftAnchor(index, _anchor);
         driftAnchors.push(new Vector3(_anchor[0], _anchor[1], _anchor[2]));
         const cluster = clusterForFragment(index);
-        const orbitT = index / Math.max(FLOWE_COUNTS.fragments - 1, 1);
-        const angle = -Math.PI * 0.86 + orbitT * Math.PI * 1.72;
-        const radius = 0.48 + (cluster % 2) * 0.18;
+        const primaryTask = index < 9;
+        const taskColumn = index % 3;
+        const taskRow = Math.floor(index / 3);
+        const overflowRank = index - 9;
         clusterTargets.push(new Vector3(
-          center.x + Math.cos(angle) * radius,
-          center.y + 0.12 + Math.sin(angle) * radius * 0.78,
-          0.1 + Math.sin(angle * 2 + cluster) * 0.055,
+          primaryTask ? center.x - 0.27 + taskColumn * 0.27 : center.x + 0.39,
+          primaryTask ? center.y - 0.25 - taskRow * 0.12 : center.y - 0.16 - (overflowRank % 8) * 0.065,
+          primaryTask ? 0.16 : 0.1 + (cluster % 2) * 0.008,
         ));
-        clusterAngles.push(angle);
+        clusterAngles.push(0);
         const streamT = index / Math.max(FLOWE_COUNTS.fragments - 1, 1);
-        streamTargets.push(new Vector3(
-          center.x - 0.55 + streamT * FLOWE_STAGE.streamLength,
-          center.y - 0.28 + Math.sin(streamT * Math.PI) * 0.1,
-          0,
-        ));
+        streamTargets.push(primaryTask
+          ? clusterTargets[index].clone()
+          : new Vector3(
+            center.x - 0.55 + streamT * FLOWE_STAGE.streamLength,
+            center.y - 0.28 + Math.sin(streamT * Math.PI) * 0.1,
+            0,
+          ));
         const col = index % 4;
         const row = Math.floor(index / 4) % 3;
-        indexTargets.push(new Vector3(
-          center.x + 0.52 + col * 0.09,
-          center.y - 0.62 + row * 0.09,
-          0,
-        ));
+        indexTargets.push(primaryTask
+          ? clusterTargets[index].clone()
+          : new Vector3(
+            center.x + 0.52 + col * 0.09,
+            center.y - 0.62 + row * 0.09,
+            0,
+          ));
         fragmentPhase.push((index * 0.37) % 1);
       }
 
@@ -269,7 +276,7 @@ export function createFloweEncounter(): ProjectEncounter {
         track(new RingGeometry(FLOWE_STAGE.focusRadius - 0.006, FLOWE_STAGE.focusRadius, 48)),
         focusMaterial,
       );
-      focusLens.position.set(center.x + 0.6, center.y - 0.18, 0);
+      focusLens.position.set(center.x, center.y - 0.38, 0.11);
 
       // Contracted index field — the Argyph sonar hint.
       indexMaterial = track(new MeshBasicMaterial({
@@ -308,6 +315,23 @@ export function createFloweEncounter(): ProjectEncounter {
         plannerBodyMaterial,
       );
       plannerBody.position.copy(center);
+      plannerInsetMaterial = track(new MeshPhysicalMaterial({
+        color: 0x05090c,
+        emissive: 0x020506,
+        emissiveIntensity: 0.18,
+        roughness: 0.08,
+        metalness: 0.22,
+        clearcoat: 1,
+        clearcoatRoughness: 0.045,
+        transparent: true,
+        opacity: 0,
+        depthWrite: true,
+      }));
+      plannerInset = new Mesh(
+        track(createRoundedPanelGeometry(0.94, 1.16, 0.035, 0.085, 0.006)),
+        plannerInsetMaterial,
+      );
+      plannerInset.position.set(center.x, center.y, 0.058);
       plannerFrameMaterial = track(new LineBasicMaterial({
         color: FLOWE_COLORS.current,
         transparent: true,
@@ -342,7 +366,7 @@ export function createFloweEncounter(): ProjectEncounter {
         track(new PlaneGeometry(0.88, 0.88)),
         flowIdentityMaterial,
       );
-      flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.062);
+      flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.088);
 
       // Traced from the real FlowE icon: one continuous brain/e ribbon. The
       // centerline draws on with scroll before the tasks organize through it.
@@ -432,7 +456,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -463,6 +487,12 @@ export function createFloweEncounter(): ProjectEncounter {
         plannerBody.rotation.y = plannerFrame?.rotation.y ?? -0.12;
         plannerBody.rotation.x = -0.08;
         plannerBody.scale.setScalar(visualScale);
+      }
+      if (plannerInset && plannerInsetMaterial) {
+        plannerInsetMaterial.opacity = (0.18 + identityReady * 0.72 - contractT * 0.2) * fade;
+        plannerInset.rotation.y = plannerFrame?.rotation.y ?? -0.12;
+        plannerInset.rotation.x = -0.08;
+        plannerInset.scale.setScalar(visualScale);
       }
       if (plannerFrame && plannerFrameMaterial) {
         plannerFrameMaterial.opacity = (0.08 + identityReady * 0.32 + organizedGroupT * 0.12 - contractT * 0.14) * fade;
@@ -533,11 +563,13 @@ export function createFloweEncounter(): ProjectEncounter {
           if (visualScale < 1) {
             _pos.sub(center).multiplyScalar(visualScale).add(center);
           }
-          const tangentAngle = clusterAngles[index] + Math.PI * 0.5;
+          const tangentAngle = clusterAngles[index];
           const cardTurn = (1 - organization) * Math.sin(phase * Math.PI * 2) * 0.9
             + organization * tangentAngle;
           _quat.setFromAxisAngle(_cardAxis, cardTurn);
-          const scalePulse = (0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp + organization * 0.25)
+          const organizedScale = index < 9 ? 0.82 : 0.02;
+          const scalePulse = (0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp)
+            * (1 + (organizedScale - 1) * organization)
             * visualScale;
           _scale.setScalar(scalePulse);
           _matrix.compose(_pos, _quat, _scale);
@@ -563,15 +595,15 @@ export function createFloweEncounter(): ProjectEncounter {
       // Current lines breathe in as grouping begins.
       for (let line = 0; line < currentLines.length; line += 1) {
         const breathe = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.6 + line) * 0.02;
-        currentMaterials[line].opacity = (organizedGroupT * 0.3 - contractT * 0.18) * fade;
+        currentMaterials[line].opacity = (organizedGroupT * 0.075 - contractT * 0.06) * fade;
         currentLines[line].rotation.z = 0.3 + organizedGroupT * 0.5 + breathe;
         currentLines[line].scale.setScalar(1 + breathe * 2);
       }
 
       // Focus lens: appears as the plan narrows.
       if (focusLens && focusMaterial) {
-        focusMaterial.opacity = (focusT * 0.5 - contractT * 0.3) * fade;
-        focusLens.scale.setScalar(1 - focusT * 0.25);
+        focusMaterial.opacity = (focusT * 0.16 - contractT * 0.12) * fade;
+        focusLens.scale.setScalar(0.72 - focusT * 0.12);
         focusLens.rotation.z = frame.reducedMotion ? 0 : frame.time * 0.15;
       }
 
@@ -657,7 +689,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -668,7 +700,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, plannerBody, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+        const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }

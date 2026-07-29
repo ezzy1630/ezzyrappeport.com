@@ -130,11 +130,14 @@ export function createEtchEncounter(): ProjectEncounter {
   let resultLattice: LineSegments | null = null;
   let resultAssembly: Group | null = null;
   let resultMaterial: MeshPhysicalMaterial | null = null;
+  let resultBezelMaterial: MeshPhysicalMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
   let dieCells: InstancedMesh | null = null;
   let dieCellMaterial: MeshPhysicalMaterial | null = null;
   let diePins: InstancedMesh | null = null;
   let diePinMaterial: MeshPhysicalMaterial | null = null;
+  let dieScrews: InstancedMesh | null = null;
+  let dieScrewMaterial: MeshPhysicalMaterial | null = null;
   const dieDetails: Mesh[] = [];
   const dieDetailMaterials: MeshBasicMaterial[] = [];
   const relaxCurves: Mesh[] = [];
@@ -296,6 +299,23 @@ export function createEtchEncounter(): ProjectEncounter {
         resultBodyGeometry,
         resultMaterial,
       );
+      resultBezelMaterial = track(new MeshPhysicalMaterial({
+        color: 0x050d12,
+        emissive: 0x031017,
+        emissiveIntensity: 0.28,
+        roughness: 0.11,
+        metalness: 0.46,
+        clearcoat: 1,
+        clearcoatRoughness: 0.055,
+        transparent: true,
+        opacity: 0,
+        depthWrite: true,
+      }));
+      const resultBezel = new Mesh(
+        track(createRoundedPanelGeometry(0.52, 0.37, 0.028, 0.047, 0.006)),
+        resultBezelMaterial,
+      );
+      resultBezel.position.z = 0.058;
       latticeMaterial = track(new LineBasicMaterial({
         color: ETCH_COLORS.result,
         transparent: true,
@@ -311,7 +331,7 @@ export function createEtchEncounter(): ProjectEncounter {
         ? 0.5
         : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.48;
       resultAssembly.position.set(resultX, 0, 0);
-      resultAssembly.add(resultMesh, resultLattice);
+      resultAssembly.add(resultMesh, resultBezel, resultLattice);
 
       const cellGeometry = track(createRoundedPanelGeometry(0.08, 0.055, 0.022, 0.012, 0.003));
       dieCellMaterial = track(new MeshPhysicalMaterial({
@@ -331,7 +351,7 @@ export function createEtchEncounter(): ProjectEncounter {
         _dieMatrix.makeTranslation(
           -0.18 + (cell % 4) * 0.12,
           0.13 - Math.floor(cell / 4) * 0.13,
-          0.052,
+          0.078,
         );
         dieCells.setMatrixAt(cell, _dieMatrix);
       }
@@ -346,7 +366,7 @@ export function createEtchEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const mesh = new Mesh(busGeometry, material);
-        mesh.position.set(0, bus === 0 ? 0.205 : -0.205, 0.055);
+        mesh.position.set(0, bus === 0 ? 0.205 : -0.205, 0.075);
         resultAssembly.add(mesh);
         dieDetails.push(mesh);
         dieDetailMaterials.push(material);
@@ -374,6 +394,31 @@ export function createEtchEncounter(): ProjectEncounter {
         diePins.setMatrixAt(pin, _dieMatrix);
       }
       resultAssembly.add(diePins);
+      dieScrewMaterial = track(new MeshPhysicalMaterial({
+        color: 0xc7d5db,
+        emissive: 0x293a40,
+        emissiveIntensity: 0.16,
+        roughness: 0.2,
+        metalness: 0.86,
+        clearcoat: 0.7,
+        transparent: true,
+        opacity: 0,
+        depthWrite: true,
+      }));
+      dieScrews = new InstancedMesh(
+        track(new IcosahedronGeometry(0.018, 1)),
+        dieScrewMaterial,
+        4,
+      );
+      for (let screw = 0; screw < 4; screw += 1) {
+        _dieMatrix.makeTranslation(
+          screw % 2 === 0 ? -0.265 : 0.265,
+          screw < 2 ? 0.205 : -0.205,
+          0.082,
+        );
+        dieScrews.setMatrixAt(screw, _dieMatrix);
+      }
+      resultAssembly.add(dieScrews);
       axisGroup.add(resultAssembly);
 
       const lightingRig = new Group();
@@ -434,6 +479,10 @@ export function createEtchEncounter(): ProjectEncounter {
       const candidatesT = smoothstep01((t - loop.candidatesStart) / (loop.candidatesFull - loop.candidatesStart));
       const gatesT = smoothstep01((t - loop.gatesStart) / (loop.gatesFull - loop.gatesStart));
       const relaxT = smoothstep01((t - loop.relaxStart) / (loop.relaxFull - loop.relaxStart));
+      const resultRevealStart = layoutMode === "mobile" ? 0.38 : 0.62;
+      const resultReveal = smoothstep01((gatesT - resultRevealStart) / 0.3);
+      const assemblyRetireAt = layoutMode === "mobile" ? 0.35 : 0.94;
+      const assemblyRetired = resultReveal >= assemblyRetireAt;
 
       // Inspection travel: the ladder pans laterally and settles slightly
       // downward as scroll scrubs the gates (pure function of progress).
@@ -449,7 +498,8 @@ export function createEtchEncounter(): ProjectEncounter {
         intentMaterial.uniforms.uTime.value = frame.time;
         intentMaterial.uniforms.uInstability.value = instability;
         intentMaterial.uniforms.uIntensity.value = (0.25 + intentT * 0.55) * fade
-          * (1 - candidatesT * 0.85);
+          * (1 - candidatesT * 0.85)
+          * (1 - resultReveal);
         intentMesh.scale.setScalar(0.55 + intentT * 0.45 + instability * 0.06);
         intentMesh.rotation.y = t * 0.9;
         intentMesh.position.x = axisX0 + candidatesT * 0.18;
@@ -465,7 +515,7 @@ export function createEtchEncounter(): ProjectEncounter {
         const compression = 1 - arrive * 0.16;
         frameLines[plane].scale.setScalar(compression);
         frameFills[plane].scale.setScalar(compression);
-        const handoff = 1 - candidatesT * 0.9;
+        const handoff = (1 - candidatesT * 0.9) * (1 - resultReveal);
         frameMaterials[plane].opacity = arrive * 0.5 * fade * handoff;
         fillMaterials[plane].opacity = arrive * 0.08 * fade * handoff;
       }
@@ -476,6 +526,7 @@ export function createEtchEncounter(): ProjectEncounter {
         const material = candidateMaterials[candidate];
         const formDelay = candidate * 0.08;
         const form = smoothstep01((candidatesT - formDelay) / Math.max(1 - formDelay, 1e-6));
+        mesh.visible = form > 0.001 && !assemblyRetired;
         const clearance = candidateClearance(candidate);
         const travel = smoothstep01((gatesT - candidate * 0.1) / Math.max(1 - candidate * 0.1, 1e-6));
         const stopX = clearance >= ETCH_COUNTS.gates - 1
@@ -492,7 +543,9 @@ export function createEtchEncounter(): ProjectEncounter {
         const held = failed ? 0.32 : 1;
         // Failed candidates stay visibly held at their gate — dimmed, sunk.
         if (failed) mesh.position.y = candidateBase[candidate].y - 0.09;
-        material.opacity = form * 0.82 * fade * held * (1 - relaxT * 0.4);
+        material.opacity = form * 0.82 * fade * held
+          * (1 - resultReveal * 0.94)
+          * (1 - relaxT * 0.4);
         mesh.scale.setScalar(form * (failed ? 0.85 : 1));
         _color.setHex(ETCH_COLORS.candidate);
         if (failed) _color.setHex(ETCH_COLORS.pending);
@@ -521,21 +574,27 @@ export function createEtchEncounter(): ProjectEncounter {
           : 0;
         gateMaterials[gate].opacity = (
           crossed ? 0.5 : passed ? 0.1 + leadTravel * 0.06 : pendingPulse
-        ) * fade * (1 - relaxT * 0.5);
+        ) * fade * (1 - relaxT * 0.5) * (1 - resultReveal)
+          * (assemblyRetired ? 0 : 1);
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
       }
 
       // Result: evidence-backed FIFO die held before the pending gate.
       if (resultMesh && resultMaterial && resultLattice && latticeMaterial) {
-        const revealStart = layoutMode === "mobile" ? 0.38 : 0.62;
-        const reveal = smoothstep01((gatesT - revealStart) / 0.3);
+        const reveal = resultReveal;
         resultMaterial.opacity = reveal * 0.84 * fade * (1 - relaxT * 0.25);
+        if (resultBezelMaterial) {
+          resultBezelMaterial.opacity = reveal * 0.94 * fade * (1 - relaxT * 0.25);
+        }
         latticeMaterial.opacity = reveal * 0.78 * fade * (1 - relaxT * 0.25);
         if (dieCellMaterial) {
           dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
         }
         if (diePinMaterial) {
           diePinMaterial.opacity = reveal * 0.7 * fade * (1 - relaxT * 0.25);
+        }
+        if (dieScrewMaterial) {
+          dieScrewMaterial.opacity = reveal * 0.9 * fade * (1 - relaxT * 0.25);
         }
         for (let detail = 0; detail < dieDetailMaterials.length; detail += 1) {
           const stagger = (detail % 4) * 0.07;
