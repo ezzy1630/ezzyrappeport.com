@@ -4,8 +4,14 @@
  * without pulling the WebGL chunk into the initial graph.
  */
 
-export const HERO_GLB_URL = "/assets/hero/ezzy-rappeport-glyphs.glb";
-export const HERO_MANIFEST_URL = "/assets/hero/ezzy-rappeport-glyphs.json";
+/**
+ * Version the paired glyph payloads together. `force-cache` is intentional for
+ * repeat visits, so an unversioned localhost/browser cache can otherwise pair
+ * an old v1 manifest with the v2 runtime and blank the live hero.
+ */
+export const HERO_ASSET_VERSION = "2";
+export const HERO_GLB_URL = `/assets/hero/ezzy-rappeport-glyphs.glb?v=${HERO_ASSET_VERSION}`;
+export const HERO_MANIFEST_URL = `/assets/hero/ezzy-rappeport-glyphs.json?v=${HERO_ASSET_VERSION}`;
 
 /** Cap desktop DPR for clean glyph silhouettes; adaptive scale recovers. */
 export const MAX_DESKTOP_RENDER_DPR = 2;

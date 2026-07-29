@@ -167,6 +167,7 @@ export default function KineticCanvas({
         try {
           const markReady = () => {
             if (disposed || generation !== startGeneration) return;
+            delete container.dataset.rendererError;
             setBoot("hiddenFrame");
             // One complete hidden frame is already rendered by onReady; begin crossfade.
             requestAnimationFrame(() => {
@@ -205,7 +206,15 @@ export default function KineticCanvas({
             container.dataset.rendererError = message.slice(0, 240);
             container.dataset.fluid = "failed";
             setBoot("failed");
+            // A partially initialized canvas may contain only the dark optical
+            // plate. Remove and dispose it immediately so semantic DOM + the
+            // authored poster remain visible on every asset/shader failure.
+            cleanup();
+            cleanup = () => {};
+            canvas.remove();
+            if (rendererCanvas === canvas) rendererCanvas = null;
             if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+            window.dispatchEvent(new Event("hero-renderer-failed"));
           };
 
           if (shouldEarlyFetchGlb(quality.tier, quality.saveData)) {
@@ -243,6 +252,7 @@ export default function KineticCanvas({
           container.dataset.fluid = "failed";
           setBoot("failed");
           if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+          window.dispatchEvent(new Event("hero-renderer-failed"));
         }
       })().finally(() => {
         if (generation === startGeneration) startInFlight = null;

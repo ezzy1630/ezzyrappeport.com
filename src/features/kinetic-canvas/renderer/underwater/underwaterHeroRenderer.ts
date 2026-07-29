@@ -333,6 +333,35 @@ function applyGlyphOptics(
   material.userData.opticsDispersionScale = optics.dispersion_scale;
 }
 
+function makeGlyphMaterialInstance(source: ShaderMaterial) {
+  const uniforms = Object.fromEntries(
+    Object.entries(source.uniforms).map(([name, uniform]) => {
+      const value = uniform.value;
+      const instanceValue =
+        value instanceof Color ||
+        value instanceof Vector2 ||
+        value instanceof Vector3 ||
+        value instanceof Vector4
+          ? value.clone()
+          : value;
+      return [name, { value: instanceValue }];
+    }),
+  );
+
+  // ShaderMaterial.clone() delegates to UniformsUtils.clone(), which warns for
+  // render-target textures. Those textures are intentionally shared; only the
+  // mutable color/vector uniforms need independent values per glyph.
+  return new ShaderMaterial({
+    uniforms,
+    vertexShader: source.vertexShader,
+    fragmentShader: source.fragmentShader,
+    side: source.side,
+    depthWrite: source.depthWrite,
+    depthTest: source.depthTest,
+    transparent: source.transparent,
+  });
+}
+
 function applyManifestTransform(
   object: Object3D,
   glyph: HeroGlyphManifestEntry,
@@ -399,7 +428,7 @@ async function loadGlyphs(
     }
     // Optical instances remain independent even when mesh data is shared.
     const instanceMaterial = material instanceof ShaderMaterial
-      ? material.clone()
+      ? makeGlyphMaterialInstance(material)
       : material;
     if (instanceMaterial instanceof ShaderMaterial) {
       applyGlyphOptics(instanceMaterial, glyph.optics, qualityTier);
