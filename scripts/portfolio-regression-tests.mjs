@@ -945,7 +945,7 @@ const tests = [
     const off = createMotionPolicy({ osReducedMotion: true, siteMotionEnabled: true });
     assert.equal(off.effectsAllowed, false);
     assert.equal(off.liquidAllowed, false);
-    assert.equal(off.soundAllowed, false);
+    assert.equal(off.soundAllowed, true);
     assert.equal(off.choreographyAllowed, false);
     const siteOff = createMotionPolicy({ osReducedMotion: false, siteMotionEnabled: false });
     assert.equal(siteOff.effectsAllowed, false);

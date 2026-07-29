@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, Volume2, VolumeX, Waves, X } from "lucide-react";
+import { Gauge, Menu, Volume2, VolumeX, Waves, X } from "lucide-react";
 import { bio, nav } from "@/lib/portfolio/content";
 import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/frame-clock";
 import {
@@ -14,11 +14,17 @@ import {
   type NavTheme,
 } from "@/lib/portfolio/nav-theme";
 import {
+  disposeSound,
   initSoundFromStorage,
   isSoundEnabled,
   setSoundEnabled,
 } from "@/lib/portfolio/sound";
 import styles from "./Navigation.module.css";
+import {
+  hydratePreferencesStore,
+  setPreferences,
+  type QualityPreference,
+} from "@/features/ocean-experience/state/preferences-store";
 
 type Props = {
   motionEnabled: boolean;
@@ -28,6 +34,7 @@ type Props = {
 const RIPPLE_CLOCK_ID = "portfolio.nav-ripple";
 const RIPPLE_STIFFNESS = 280;
 const RIPPLE_DAMPING = 22;
+const QUALITY_ORDER: readonly QualityPreference[] = ["auto", "high", "balanced", "low"];
 
 /**
  * Continuous depth/ripple metrics write directly to the DOM.
@@ -43,6 +50,7 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   const [scrolled, setScrolled] = useState(caseOnLoad);
   const [rippleVisible, setRippleVisible] = useState(false);
   const [soundOn, setSoundOn] = useState(false);
+  const [quality, setQuality] = useState<QualityPreference>("auto");
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileNavigationRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -129,6 +137,17 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
   useEffect(() => {
     initSoundFromStorage();
     setSoundOn(isSoundEnabled());
+    setQuality(hydratePreferencesStore().quality);
+    return () => disposeSound();
+  }, []);
+
+  const cycleQuality = useCallback(() => {
+    setQuality((current) => {
+      const index = QUALITY_ORDER.indexOf(current);
+      const next = QUALITY_ORDER[(index + 1) % QUALITY_ORDER.length];
+      setPreferences({ quality: next });
+      return next;
+    });
   }, []);
 
   useEffect(() => {
@@ -335,6 +354,17 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
         >
           {soundOn ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
         </button>
+        <button
+          type="button"
+          className={`site-nav-motion ${styles.navigationControl}`}
+          data-liquid-hover
+          data-magnetic="button"
+          aria-label={`Rendering quality: ${quality}. Activate to change.`}
+          title={`Quality: ${quality}`}
+          onClick={cycleQuality}
+        >
+          <Gauge aria-hidden="true" />
+        </button>
         <Link href={`/${nav.cta.href}`} className="site-nav-cta rv-pill-fill" data-liquid-hover data-magnetic="button" data-sound-hover>
           <span data-magnetic-label>{nav.cta.label}</span>
         </Link>
@@ -399,6 +429,13 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
             }}
           >
             Sound: {soundOn ? "On" : "Off"}
+          </button>
+          <button
+            type="button"
+            className={styles.mobileNavigationTouchTarget}
+            onClick={cycleQuality}
+          >
+            Quality: {quality}
           </button>
           <Link className={styles.mobileNavigationTouchTarget} href="/resume" onClick={closeMenu}>
             Resume

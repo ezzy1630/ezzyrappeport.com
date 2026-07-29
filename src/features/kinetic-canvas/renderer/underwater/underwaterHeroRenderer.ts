@@ -822,6 +822,11 @@ export function startUnderwaterHeroRenderer({
     },
     stageDistance: { monkeyclaw: 4.35, etch: 4.35, flowe: 4.4, argyph: 4.4 },
   });
+  encounterHost.setAudioSink((events) => {
+    void import("@/lib/portfolio/sound")
+      .then(({ playEncounterSoundEvents }) => playEncounterSoundEvents(events))
+      .catch(() => undefined);
+  });
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;
   let slowFrameWindows = 0;
