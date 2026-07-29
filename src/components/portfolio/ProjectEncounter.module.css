@@ -12,6 +12,12 @@
   min-height: 240vh;
 }
 
+/* Argyph is deliberately the shortest anchor beat (§10.5) — roughly half
+   the scroll budget of the other encounters. */
+.encounter[data-encounter="argyph"] {
+  min-height: 145vh;
+}
+
 .stage {
   position: sticky;
   top: 0;
@@ -194,6 +200,10 @@
     /* Taller than desktop share: the mobile chapter window starts later
        (0.24) and the pinned copy must survive the whole window. */
     min-height: 230vh;
+  }
+
+  .encounter[data-encounter="argyph"] {
+    min-height: 140vh;
   }
 
   .stage {

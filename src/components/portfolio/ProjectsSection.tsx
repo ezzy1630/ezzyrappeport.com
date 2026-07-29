@@ -1,25 +1,15 @@
-import type { CSSProperties } from "react";
-import {
-  projectDepthBand,
-  projectLayoutFamily,
-  projects,
-} from "@/lib/portfolio/content";
-import LazyProjectIdentity from "./LazyProjectIdentity";
+import { projects } from "@/lib/portfolio/content";
+import ChartedWork from "./ChartedWork";
 import ProjectEncounter from "./ProjectEncounter";
-import ProjectTransitionLink from "./ProjectTransitionLink";
 import ProjectsInteraction from "./ProjectsInteraction";
 import styles from "./ProjectsSection.module.css";
 
-/** Anchor projects rendered as spatial encounters (plan §10); the rest keep
-    the editorial row until their milestone lands. */
-const ENCOUNTER_SLUGS = new Set(["monkeyclaw", "etch", "flowe"]);
-
 /**
- * Homepage journey order (plan §4): the four anchors first, then the
- * Charted Work catalog region. Facts and project identity still come from
- * `content.ts`; this only re-orders the homepage list.
+ * Homepage journey order (plan §4): the four anchors as spatial encounters,
+ * then the Charted Work catalog keeps Velox, NexaRad, MathPilot (and every
+ * anchor) directly reachable. Facts and identity come from `content.ts`.
  */
-const HOMEPAGE_ROW_ORDER = ["monkeyclaw", "etch", "flowe", "argyph", "velox", "nexarad", "mathpilot"];
+const HOMEPAGE_ROW_ORDER = ["monkeyclaw", "etch", "flowe", "argyph"];
 const homepageProjects = HOMEPAGE_ROW_ORDER.map((slug) => {
   const project = projects.find((candidate) => candidate.slug === slug);
   if (!project) throw new Error(`Missing portfolio project: ${slug}`);
@@ -60,134 +50,22 @@ export default function ProjectsSection() {
 
       <ol className={styles.index}>
         {homepageProjects.map((project, order) => {
-          const layout = projectLayoutFamily[project.slug];
-          const band = projectDepthBand(project.slug);
           const weight = projectWeight(order);
           const progress = padIndex(order + 1);
 
-          if (ENCOUNTER_SLUGS.has(project.slug)) {
-            return (
-              <li key={project.slug} data-weight={weight}>
-                <ProjectEncounter
-                  project={project}
-                  progress={progress}
-                  total={totalLabel}
-                />
-              </li>
-            );
-          }
-
           return (
             <li key={project.slug} data-weight={weight}>
-              <article
-                id={`project-${project.slug}`}
-                className={styles.row}
-                data-project-row
-                data-layout={layout}
-                data-weight={weight}
-                data-depth-band={band}
-                data-split={
-                  layout === "split" && Number(project.index) % 2 === 0
-                    ? "end"
-                    : "start"
-                }
-              >
-                <div
-                  className={styles.rail}
-                  aria-label={`Project ${progress} of ${totalLabel}, ${project.year}`}
-                >
-                  <span className={styles.railTick} aria-hidden="true" />
-                  <span className={styles.railProgress} aria-hidden="true">
-                    <span className={styles.railCurrent}>{progress}</span>
-                    <span className={styles.railSep}> / </span>
-                    <span className={styles.railTotal}>{totalLabel}</span>
-                  </span>
-                  <span className={styles.railYear} aria-hidden="true">
-                    {project.year}
-                  </span>
-                </div>
-
-                <figure
-                  className={styles.media}
-                  data-project={project.slug}
-                  data-project-media
-                  style={
-                    {
-                      "--project-aspect": project.mediaPresentation.aspectRatio,
-                      "--project-fit": project.mediaPresentation.fit,
-                      "--project-scale": project.mediaPresentation.scale,
-                      "--project-position": project.mediaPresentation.position,
-                      "--project-offset-y": project.mediaPresentation.offsetY,
-                      "--project-well": project.mediaPresentation.wellColor,
-                    } as CSSProperties
-                  }
-                >
-                  <ProjectTransitionLink
-                    href={`/project/${project.slug}`}
-                    className={styles.mediaLink}
-                    aria-label={`Dive into the ${project.title} project`}
-                    transitionName={`project-${project.slug}`}
-                  >
-                    <LazyProjectIdentity
-                      slug={project.slug}
-                      media={project.media.cover}
-                      className={styles.projectIdentity}
-                    />
-                  </ProjectTransitionLink>
-                  <figcaption className={styles.mediaCaption}>
-                    <span className={styles.mediaCaptionTitle}>{project.title}</span>
-                    <span className={styles.mediaCaptionLine}>{project.subtitle}</span>
-                  </figcaption>
-                </figure>
-
-                <div className={styles.content}>
-                  <div className={styles.meta}>
-                    <span>{project.status}</span>
-                    {project.cautionLabel ? <span>{project.cautionLabel}</span> : null}
-                  </div>
-                  <div className={styles.heading}>
-                    <h3>{project.title}</h3>
-                    <p>{project.subtitle}</p>
-                  </div>
-                  <p className={styles.tagline}>{project.tagline}</p>
-                  <div className={styles.details}>
-                    <p>
-                      <span>Role</span>
-                      {project.role}
-                    </p>
-                    <p>
-                      <span>Proof</span>
-                      {project.proof}
-                    </p>
-                  </div>
-                </div>
-
-                <div className={styles.actions}>
-                  <ProjectTransitionLink
-                    href={`/project/${project.slug}`}
-                    className={`${styles.primaryAction} rv-pill-fill`}
-                    transitionName={`project-${project.slug}`}
-                    data-magnetic="button"
-                    data-pill-fill
-                  >
-                    Dive in <span aria-hidden="true">↗</span>
-                  </ProjectTransitionLink>
-                  {project.verifiedLinks.slice(0, 1).map((link) => (
-                    <a
-                      key={`${project.slug}-${link.href}`}
-                      href={link.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={styles.secondaryAction}
-                    >
-                      {link.label} <span aria-hidden="true">↗</span>
-                    </a>
-                  ))}
-                </div>
-              </article>
+              <ProjectEncounter
+                project={project}
+                progress={progress}
+                total={totalLabel}
+              />
             </li>
           );
         })}
+        <li data-weight="dominant" className={styles.chartedItem}>
+          <ChartedWork />
+        </li>
       </ol>
       <ProjectsInteraction />
     </section>

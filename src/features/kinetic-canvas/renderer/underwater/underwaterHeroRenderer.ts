@@ -816,8 +816,11 @@ export function startUnderwaterHeroRenderer({
       flowe: () => import(
         "@/features/ocean-experience/render/projects/flowe/FloweScene"
       ),
+      argyph: () => import(
+        "@/features/ocean-experience/render/projects/argyph/ArgyphScene"
+      ),
     },
-    stageDistance: { monkeyclaw: 4.35, etch: 4.35, flowe: 4.4 },
+    stageDistance: { monkeyclaw: 4.35, etch: 4.35, flowe: 4.4, argyph: 4.4 },
   });
   let entranceStart = Number.POSITIVE_INFINITY;
   let runtimeScale = quality.renderScale;

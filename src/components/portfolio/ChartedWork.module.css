@@ -1,0 +1,312 @@
+/**
+ * Charted Work — bathymetric project catalog (plan §11).
+ * A wide depth chart with semantic markers, a summary surface driven by
+ * hover and keyboard focus alike, and a plain readable list on mobile.
+ * Not a card grid, not a game map; useful with or without WebGL.
+ */
+
+.section {
+  position: relative;
+  padding: clamp(3rem, 7vw, 6rem) clamp(1.25rem, 4vw, 4rem);
+}
+
+.header {
+  max-width: 44rem;
+  margin-bottom: clamp(1.5rem, 3vw, 2.5rem);
+}
+
+.kicker {
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.62;
+  margin: 0 0 0.5rem;
+}
+
+.title {
+  font-size: clamp(1.8rem, 3.6vw, 3rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0 0 0.6rem;
+}
+
+.intro {
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  line-height: 1.5;
+  opacity: 0.85;
+  margin: 0;
+  text-wrap: pretty;
+}
+
+.chartWrap {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(18rem, 1fr);
+  gap: clamp(1.5rem, 3vw, 3rem);
+  align-items: stretch;
+}
+
+.chart {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.contour {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.14;
+  opacity: 0.16;
+  vector-effect: non-scaling-stroke;
+}
+
+.current {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 0.2;
+  opacity: 0.22;
+  stroke-dasharray: 2.5 1.6;
+  vector-effect: non-scaling-stroke;
+}
+
+.markers {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: clamp(20rem, 34vw, 30rem);
+}
+
+.markerItem {
+  position: absolute;
+  translate: -50% -50%;
+  margin: 0;
+}
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.7rem;
+  min-height: 44px;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: clamp(0.72rem, 1vw, 0.85rem);
+  letter-spacing: 0.04em;
+  border-radius: 999px;
+  color: inherit;
+  background: transparent;
+  transition: background-color 180ms ease, opacity 180ms ease;
+  opacity: 0.78;
+}
+
+.marker[data-active="true"],
+.marker:hover,
+.marker:focus-visible {
+  opacity: 1;
+  background: color-mix(in oklab, currentColor 8%, transparent);
+}
+
+.marker:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
+.markerDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0.22rem color-mix(in oklab, currentColor 22%, transparent);
+  flex-shrink: 0;
+}
+
+.summary {
+  position: relative;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: clamp(1rem, 2vw, 1.6rem) 0;
+}
+
+.summaryIdentity {
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.4rem;
+  opacity: 0.9;
+}
+
+.summaryIdentityAsset,
+.summaryIdentityAsset svg,
+.summaryIdentityAsset img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.summaryIndex {
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.62;
+  margin: 0;
+}
+
+.summaryTitle {
+  font-size: clamp(1.6rem, 2.8vw, 2.6rem);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  margin: 0;
+}
+
+.summarySubtitle {
+  font-size: 0.98rem;
+  opacity: 0.8;
+  margin: 0;
+}
+
+.summaryTagline {
+  font-size: 0.95rem;
+  line-height: 1.45;
+  max-width: 34ch;
+  margin: 0.2rem 0 0;
+  text-wrap: pretty;
+}
+
+.summaryProof {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  opacity: 0.72;
+  margin: 0.3rem 0 0;
+}
+
+.summaryAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  align-self: flex-start;
+  margin-top: 0.7rem;
+  padding: 0.68rem 1.4rem;
+  border-radius: 999px;
+  font-weight: 650;
+  font-size: 0.92rem;
+  text-decoration: none;
+  background: var(--color-ink, #0b2c40);
+  color: var(--color-surface, #f4fbff);
+  min-height: 44px;
+}
+
+.list {
+  display: none;
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+}
+
+@media (max-width: 860px) {
+  .chartWrap {
+    grid-template-columns: 1fr;
+  }
+
+  .markers {
+    min-height: clamp(14rem, 52vw, 20rem);
+  }
+
+  .markerLabel {
+    display: none;
+  }
+
+  .marker[data-active="true"] .markerLabel,
+  .marker:focus-visible .markerLabel {
+    display: inline;
+    position: absolute;
+    top: -1.7rem;
+    left: 50%;
+    translate: -50% 0;
+    white-space: nowrap;
+    background: color-mix(in oklab, var(--rv-pearl, #eef4f6) 92%, transparent);
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+  }
+
+  .summary {
+    padding-top: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .list {
+    display: block;
+  }
+
+  .listItem + .listItem {
+    border-top: 1px solid color-mix(in oklab, currentColor 12%, transparent);
+  }
+
+  .listLink {
+    display: grid;
+    grid-template-columns: 2.2rem 1fr auto 1.2rem;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.85rem 0.2rem;
+    min-height: 44px;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .listIndex {
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.6;
+  }
+
+  .listName {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .listName strong {
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+  }
+
+  .listName span {
+    font-size: 0.78rem;
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .listProof {
+    font-size: 0.68rem;
+    line-height: 1.35;
+    opacity: 0.62;
+    max-width: 12rem;
+    text-align: right;
+  }
+
+  .listArrow {
+    opacity: 0.55;
+  }
+
+  .listLink:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+  }
+}
+
+@media (max-width: 480px) {
+  .listProof {
+    display: none;
+  }
+
+  .listLink {
+    grid-template-columns: 2.2rem 1fr 1.2rem;
+  }
+}

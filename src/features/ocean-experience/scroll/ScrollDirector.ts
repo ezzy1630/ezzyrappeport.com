@@ -145,9 +145,7 @@ export const CHAPTER_ANCHOR_SELECTORS: Readonly<Record<string, string>> = {
   etch: "#project-etch",
   flowe: "#project-flowe",
   argyph: "#project-argyph",
-  // Until Milestone 5 builds the Charted Work map, the remaining catalog
-  // rows (Velox, NexaRad, MathPilot) mark the charted-work region.
-  "charted-work": "#project-velox",
+  "charted-work": "#charted-work",
   about: "#about",
   contact: "#contact",
 };
@@ -176,7 +174,7 @@ const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
   monkeyclaw: 0,
   etch: -0.5,
   flowe: -0.5,
-  argyph: -0.35,
+  argyph: -0.5,
   "charted-work": -0.35,
   about: -0.5,
   contact: -1,

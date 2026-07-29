@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { emitLiquidPress, emitLiquidWake, getLiquidPhysics } from "@/lib/portfolio/liquid-interaction";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
+import { shouldInterceptChapterHashClick } from "@/features/ocean-experience/navigation/chapter-hash-click";
 
 type DiveDirection = "forward" | "back";
 
@@ -134,6 +135,16 @@ export default function ProjectTransitionLink({
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
+        // Plain left clicks only: modified clicks, middle clicks, new-tab
+        // targets, and downloads keep native browser behavior (§19).
+        const anchor = event.currentTarget;
+        if (!shouldInterceptChapterHashClick(event, {
+          target: anchor.target ?? "",
+          download: typeof anchor.download === "string" ? anchor.download : "",
+        })) {
+          pointerDownRef.current = false;
+          return;
+        }
 
         if (!pointerDownRef.current) {
           emitTransitionWake(event.currentTarget, transitionDirection);

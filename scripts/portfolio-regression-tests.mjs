@@ -924,7 +924,7 @@ const tests = [
     assert.match(lazyIdentitySource, /IntersectionObserver/);
     assert.match(lazyIdentitySource, /RASTER_SLUGS/);
     assert.match(
-      readFileSync(new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url), "utf8"),
+      readFileSync(new URL("../src/components/portfolio/ChartedWork.tsx", import.meta.url), "utf8"),
       /LazyProjectIdentity/,
     );
     // WebGL boot still yields to idle before the heavy chunk (TBT hygiene).
@@ -2077,13 +2077,13 @@ const tests = [
     );
     assert.match(monkeyclawConfigSource, /VECTOR_TIMINGS/);
 
-    // Homepage order: anchors first, then the Charted Work catalog region.
+    // Homepage order: anchors as encounters, then the Charted Work catalog.
     const projectsSectionSource = readFileSync(
       new URL("../src/components/portfolio/ProjectsSection.tsx", import.meta.url),
       "utf8",
     );
-    assert.match(projectsSectionSource, /HOMEPAGE_ROW_ORDER = \["monkeyclaw", "etch", "flowe", "argyph", "velox", "nexarad", "mathpilot"\]/);
-    assert.match(projectsSectionSource, /"monkeyclaw", "etch", "flowe"/);
+    assert.match(projectsSectionSource, /HOMEPAGE_ROW_ORDER = \["monkeyclaw", "etch", "flowe", "argyph"\]/);
+    assert.match(projectsSectionSource, /ChartedWork/);
   }],
 ];
 
