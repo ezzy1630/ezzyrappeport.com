@@ -45,11 +45,11 @@ export const ARGYPH_STAGE = {
 } as const;
 
 export const ARGYPH_COLORS = {
-  reef: 0x86b8cc,
-  sweep: 0xcdf0f8,
-  symbol: 0xa8e0ea,
-  link: 0x7fc4d8,
-  query: 0xf2e2b8,
+  reef: 0x7183ac,
+  sweep: 0xd8deff,
+  symbol: 0xacb8ff,
+  link: 0x8393d8,
+  query: 0xe6d6b5,
 } as const;
 
 /** Deterministic reef point (golden-angle disc with terrain-like relief). */

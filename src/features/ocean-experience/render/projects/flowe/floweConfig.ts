@@ -46,6 +46,7 @@ export const FLOWE_STAGE = {
 } as const;
 
 export const FLOWE_COLORS = {
+  body: 0x102d38,
   fragment: 0xaee6f0,
   fragmentWarm: 0xf2e2b8,
   current: 0x8fd4e2,

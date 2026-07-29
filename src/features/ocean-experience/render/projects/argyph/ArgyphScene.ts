@@ -136,10 +136,9 @@ export function createArgyphEncounter(): ProjectEncounter {
       const slabEdgeGeometry = track(new EdgesGeometry(new BoxGeometry(1.5, 0.74, 0.07)));
       for (let layer = 0; layer < 3; layer += 1) {
         const material = track(new MeshBasicMaterial({
-          color: layer === 2 ? ARGYPH_COLORS.symbol : ARGYPH_COLORS.reef,
+          color: layer === 2 ? 0x2b335b : 0x182540,
           transparent: true,
           opacity: 0,
-          blending: AdditiveBlending,
           depthWrite: false,
         }));
         const slab = new Mesh(slabGeometry, material);
@@ -174,10 +173,14 @@ export function createArgyphEncounter(): ProjectEncounter {
         0.12,
       );
       const barSpecs = [
-        { x: -0.13, y: 0, width: 0.075, height: 0.42, rotation: -0.52 },
-        { x: 0.13, y: 0, width: 0.075, height: 0.42, rotation: 0.52 },
-        { x: 0.08, y: -0.1, width: 0.24, height: 0.065, rotation: 0 },
-        { x: 0.17, y: -0.17, width: 0.065, height: 0.16, rotation: 0 },
+        { x: -0.18, y: 0.08, width: 0.08, height: 0.36, rotation: -0.36 },
+        { x: 0.18, y: 0.08, width: 0.08, height: 0.36, rotation: 0.36 },
+        { x: -0.08, y: 0, width: 0.068, height: 0.28, rotation: -0.48 },
+        { x: 0.04, y: 0.06, width: 0.22, height: 0.062, rotation: 0 },
+        { x: 0.08, y: -0.06, width: 0.28, height: 0.068, rotation: 0 },
+        { x: 0.2, y: -0.13, width: 0.068, height: 0.18, rotation: 0 },
+        { x: -0.08, y: -0.2, width: 0.22, height: 0.075, rotation: -0.24 },
+        { x: 0.08, y: -0.2, width: 0.22, height: 0.075, rotation: 0.24 },
       ] as const;
       for (const spec of barSpecs) {
         const material = track(new MeshBasicMaterial({
@@ -335,7 +338,7 @@ export function createArgyphEncounter(): ProjectEncounter {
         const layerProgress = [reefT, sweepT, linksT];
         for (let layer = 0; layer < layerProgress.length; layer += 1) {
           const reveal = layerProgress[layer];
-          stackSlabMaterials[layer].opacity = reveal * (0.1 + layer * 0.035) * fade;
+          stackSlabMaterials[layer].opacity = reveal * (0.24 + layer * 0.055) * fade;
           stackEdgeMaterials[layer].opacity = reveal * (0.3 + layer * 0.1) * fade;
           stackSlabs[layer].position.y = (layer - 1) * (0.27 + widenT * 0.055);
           stackEdges[layer].position.copy(stackSlabs[layer].position);
@@ -345,8 +348,10 @@ export function createArgyphEncounter(): ProjectEncounter {
         const markReveal = smoothstep01((sweepT - 0.28) / 0.55);
         brandMark.rotation.y = frame.reducedMotion ? 0.1 : Math.sin(frame.time * 0.31) * 0.12;
         brandMark.scale.setScalar(0.72 + markReveal * 0.28);
-        for (const material of brandMaterials) {
-          material.opacity = markReveal * 0.78 * fade;
+        for (let bar = 0; bar < brandMaterials.length; bar += 1) {
+          const barReveal = smoothstep01((markReveal - bar * 0.12) / Math.max(1 - bar * 0.12, 1e-6));
+          brandMaterials[bar].opacity = barReveal * 0.86 * fade;
+          brandBars[bar].scale.y = 0.08 + barReveal * 0.92;
         }
       }
 

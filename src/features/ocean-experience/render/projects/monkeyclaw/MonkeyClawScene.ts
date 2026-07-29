@@ -499,7 +499,12 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           const activation = stageProgress[stageIndex];
           loopSegmentMaterials[stageIndex].opacity = (0.08 + activation * 0.44) * fade;
           loopStageMaterials[stageIndex].opacity = (0.12 + activation * 0.82) * fade;
-          const pulse = 0.78 + activation * 0.32;
+          const assembled = smoothstep01((activation - stageIndex * 0.035) / Math.max(1 - stageIndex * 0.035, 1e-6));
+          loopSegments[stageIndex].scale.setScalar(0.72 + assembled * 0.28);
+          loopSegments[stageIndex].rotation.z = stageIndex * Math.PI * 2 / stageProgress.length
+            + Math.PI * 0.08
+            + (1 - assembled) * 0.34;
+          const pulse = 0.58 + assembled * 0.52;
           loopStageNodes[stageIndex].scale.setScalar(pulse);
         }
       }

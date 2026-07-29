@@ -16,7 +16,7 @@ type Props = Omit<ComponentProps<typeof Link>, "href"> & {
 };
 
 type DocumentWithViewTransition = Document & {
-  startViewTransition?: (callback: () => void) => void;
+  startViewTransition?: (callback: () => void) => ViewTransition;
 };
 
 const WATER_WIPE_MS = 720;
@@ -76,7 +76,18 @@ function runDiveNavigation(navigate: () => void): void {
     navigate();
     return;
   }
-  (document as DocumentWithViewTransition).startViewTransition?.(navigate);
+  try {
+    const transition = (document as DocumentWithViewTransition).startViewTransition?.(navigate);
+    // Browsers reject these promises when a transition is superseded (for
+    // example, a rapid click during the chapter wipe). Navigation is still
+    // valid; contain that visual-only rejection instead of surfacing an app
+    // error or stranding the link.
+    void transition?.ready.catch(() => undefined);
+    void transition?.updateCallbackDone.catch(() => undefined);
+    void transition?.finished.catch(() => undefined);
+  } catch {
+    navigate();
+  }
 }
 
 export function navigateWithDive(

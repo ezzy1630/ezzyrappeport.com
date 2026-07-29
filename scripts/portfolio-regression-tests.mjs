@@ -677,6 +677,8 @@ const tests = [
     assert.match(contentSource, /projectDiagrams/);
     assert.match(transitionLinkSource, /playWaterWipe|data-water-wipe|waterWipe/);
     assert.match(transitionLinkSource, /navigateWithDive|startViewTransition|canStartViewTransition/);
+    assert.match(transitionLinkSource, /transition\?\.ready\.catch/);
+    assert.match(transitionLinkSource, /transition\?\.finished\.catch/);
     assert.match(contentSource, /system:/);
     assert.match(contentSource, /argyph-identity\.webp/);
     assert.match(contentSource, /flowe\/app-icon\.webp/);
@@ -2081,8 +2083,11 @@ const tests = [
     );
     assert.match(etchSceneSource, /etch-verified-fifo-die/);
     assert.match(etchSceneSource, /dieDetails/);
+    assert.match(etchSceneSource, /diePins/);
     assert.match(floweSceneSource, /FlowE mobile planner frame/);
     assert.match(floweSceneSource, /TubeGeometry/);
+    assert.match(floweSceneSource, /setDrawRange/);
+    assert.match(floweSceneSource, /flowMarkHead/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);
     assert.match(argyphSceneSource, /argyph-angular-mark/);
     // No per-frame allocation regressions in configs.
