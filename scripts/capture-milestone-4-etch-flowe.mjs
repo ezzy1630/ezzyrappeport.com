@@ -75,6 +75,16 @@ async function seekJourney(page, progress, settleMs = 1000) {
   await delay(settleMs);
 }
 
+async function seekEncounter(page, encounterId, progress = 0.42, settleMs = 1000) {
+  await page.evaluate(({ id, p }) => {
+    const section = document.querySelector(`#project-${id}`);
+    if (!(section instanceof HTMLElement)) throw new Error(`Missing encounter section: ${id}`);
+    const top = section.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: top + section.offsetHeight * p, left: 0, behavior: "instant" });
+  }, { id: encounterId, p: progress });
+  await delay(settleMs);
+}
+
 async function captureFrameTrace(page, seconds = 2) {
   return page.evaluate(async (durationSec) => {
     const samples = [];
@@ -128,17 +138,17 @@ function check(name, ok, detail) {
 }
 
 const ETCH_BEATS = [
-  { name: "00-intent", journey: 0.31 },
-  { name: "01-constraints", journey: 0.36 },
-  { name: "02-candidates", journey: 0.40 },
-  { name: "03-gates", journey: 0.44 },
-  { name: "04-relax", journey: 0.475 },
+  { name: "00-intent", journey: 0.28 },
+  { name: "01-constraints", journey: 0.32 },
+  { name: "02-candidates", journey: 0.36 },
+  { name: "03-gates", journey: 0.40 },
+  { name: "04-relax", journey: 0.44 },
 ];
 const FLOWE_BEATS = [
   { name: "00-drift", journey: 0.52 },
-  { name: "01-group", journey: 0.575 },
-  { name: "02-focus", journey: 0.64 },
-  { name: "03-contract", journey: 0.69 },
+  { name: "01-group", journey: 0.56 },
+  { name: "02-focus", journey: 0.60 },
+  { name: "03-contract", journey: 0.64 },
 ];
 
 try {
@@ -246,13 +256,15 @@ try {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await waitForIdleMetrics(page);
-  for (const [name, journey] of [["etch-mobile", 0.40], ["flowe-mobile", 0.60]]) {
-    await seekJourney(page, journey, 1100);
+  for (const [name, encounter] of [["etch-mobile", "etch"], ["flowe-mobile", "flowe"]]) {
+    await seekEncounter(page, encounter, 0.42, 1100);
     const path = join(seamsDir, `mobile-390x844-${name}.png`);
     await page.screenshot({ path, type: "png", captureBeyondViewport: false });
     const metrics = await collectMetrics(page);
-    report.seams.push({ name, journey, path, metrics });
-    check(`${name} active with complete DOM`, metrics.fluid === "ready",
+    report.seams.push({ name, encounter, path, metrics });
+    check(`${name} active with complete DOM`, metrics.fluid === "ready"
+      && metrics.encounter === encounter
+      && metrics.experienceChapter === encounter,
       `scene=${metrics.encounter} chapter=${metrics.experienceChapter}`);
   }
 

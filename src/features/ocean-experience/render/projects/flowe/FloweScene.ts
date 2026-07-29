@@ -14,7 +14,6 @@
 
 import {
   AdditiveBlending,
-  CatmullRomCurve3,
   Color,
   DirectionalLight,
   DoubleSide,
@@ -35,10 +34,10 @@ import {
   PlaneGeometry,
   Quaternion,
   RingGeometry,
+  ShaderMaterial,
   SphereGeometry,
   SRGBColorSpace,
   TextureLoader,
-  TubeGeometry,
   Vector3,
 } from "three";
 import type {
@@ -114,17 +113,8 @@ export function createFloweEncounter(): ProjectEncounter {
   let plannerInsetMaterial: MeshPhysicalMaterial | null = null;
   let plannerFrame: LineSegments | null = null;
   let plannerFrameMaterial: LineBasicMaterial | null = null;
-  let flowMark: Mesh | null = null;
-  let flowMarkMaterial: MeshPhysicalMaterial | null = null;
-  let flowMarkGeometry: TubeGeometry | null = null;
-  let flowMarkGlow: Mesh | null = null;
-  let flowMarkGlowMaterial: MeshBasicMaterial | null = null;
-  let flowMarkGlowGeometry: TubeGeometry | null = null;
-  let flowMarkHead: Mesh | null = null;
-  let flowMarkHeadMaterial: MeshBasicMaterial | null = null;
-  let flowMarkCurve: CatmullRomCurve3 | null = null;
   let flowIdentityPlate: Mesh | null = null;
-  let flowIdentityMaterial: MeshBasicMaterial | null = null;
+  let flowIdentityMaterial: ShaderMaterial | null = null;
   let lightingRig: Group | null = null;
   const nudges: ProbeNudge[] = [];
 
@@ -198,7 +188,7 @@ export function createFloweEncounter(): ProjectEncounter {
         clearcoatRoughness: 0.14,
         transparent: true,
         opacity: 0,
-        depthWrite: true,
+        depthWrite: false,
       }));
       fragments = new InstancedMesh(
         track(createRoundedPanelGeometry(0.145, 0.06, 0.026, 0.022, 0.004)),
@@ -293,10 +283,9 @@ export function createFloweEncounter(): ProjectEncounter {
       );
       indexField.instanceMatrix.setUsage(DynamicDrawUsage);
 
-      // Product silhouette: the FlowE mobile planner frame and its authored
-      // continuous-loop mark. The task-card system now visibly belongs to the
-      // app instead of floating as unrelated crystals.
-      const plannerGeometry = track(createRoundedPanelGeometry(1.13, 1.33, 0.09, 0.105, 0.012));
+      // Product silhouette: a shallow FlowE planner surface. The actual mark
+      // and task UI carry the identity; the shell stays visually subordinate.
+      const plannerGeometry = track(createRoundedPanelGeometry(1.13, 1.33, 0.045, 0.105, 0.01));
       plannerBodyMaterial = track(new MeshPhysicalMaterial({
         color: FLOWE_COLORS.body,
         emissive: 0x06151d,
@@ -307,13 +296,14 @@ export function createFloweEncounter(): ProjectEncounter {
         clearcoatRoughness: 0.1,
         transparent: true,
         opacity: 0,
-        depthWrite: true,
+        depthWrite: false,
         side: DoubleSide,
       }));
       plannerBody = new Mesh(
         plannerGeometry,
         plannerBodyMaterial,
       );
+      plannerBody.renderOrder = 0;
       plannerBody.position.copy(center);
       plannerInsetMaterial = track(new MeshPhysicalMaterial({
         color: 0x05090c,
@@ -325,13 +315,14 @@ export function createFloweEncounter(): ProjectEncounter {
         clearcoatRoughness: 0.045,
         transparent: true,
         opacity: 0,
-        depthWrite: true,
+        depthWrite: false,
       }));
       plannerInset = new Mesh(
-        track(createRoundedPanelGeometry(0.94, 1.16, 0.035, 0.085, 0.006)),
+        track(createRoundedPanelGeometry(0.94, 1.16, 0.012, 0.085, 0.004)),
         plannerInsetMaterial,
       );
-      plannerInset.position.set(center.x, center.y, 0.058);
+      plannerInset.renderOrder = 1;
+      plannerInset.position.set(center.x, center.y, 0.034);
       plannerFrameMaterial = track(new LineBasicMaterial({
         color: FLOWE_COLORS.current,
         transparent: true,
@@ -353,84 +344,57 @@ export function createFloweEncounter(): ProjectEncounter {
       identityTexture.colorSpace = SRGBColorSpace;
       identityTexture.anisotropy = context.qualityTier === "high" ? 8 : 4;
       track(identityTexture);
-      flowIdentityMaterial = track(new MeshBasicMaterial({
-        color: 0xffffff,
-        map: identityTexture,
-        alphaMap: identityTexture,
-        alphaTest: 0.035,
+      flowIdentityMaterial = track(new ShaderMaterial({
         transparent: true,
-        opacity: 0,
         depthWrite: false,
+        depthTest: false,
+        uniforms: {
+          uIdentity: { value: identityTexture },
+          uOpacity: { value: 0 },
+          uReveal: { value: 0 },
+          uTracer: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D uIdentity;
+          uniform float uOpacity;
+          uniform float uReveal;
+          uniform float uTracer;
+          varying vec2 vUv;
+
+          void main() {
+            vec4 source = texture2D(uIdentity, vUv);
+            float luminance = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
+            float mark = smoothstep(0.42, 0.78, luminance);
+            float strokeOrder = clamp(
+              0.58 * (1.0 - vUv.y) +
+              0.34 * vUv.x +
+              sin(vUv.y * 13.0) * 0.035,
+              0.0,
+              1.0
+            );
+            float ink = smoothstep(strokeOrder - 0.045, strokeOrder + 0.012, uReveal);
+            float leadingEdge = (1.0 - smoothstep(0.018, 0.06, abs(strokeOrder - uReveal))) * uTracer;
+            float alpha = mark * max(ink, leadingEdge) * uOpacity;
+            if (alpha < 0.01) discard;
+            vec3 paperWhite = mix(vec3(0.86, 0.93, 0.96), vec3(1.0), luminance);
+            gl_FragColor = vec4(paperWhite + leadingEdge * vec3(0.08, 0.2, 0.24), alpha);
+          }
+        `,
       }));
       flowIdentityPlate = new Mesh(
-        track(new PlaneGeometry(0.88, 0.88)),
+        track(new PlaneGeometry(0.72, 0.72)),
         flowIdentityMaterial,
       );
-      flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.088);
-
-      // Traced from the real FlowE icon: one continuous brain/e ribbon. The
-      // centerline draws on with scroll before the tasks organize through it.
-      flowMarkCurve = new CatmullRomCurve3([
-        new Vector3(0.42, -0.46, 0),
-        new Vector3(0.2, -0.5, 0.014),
-        new Vector3(0.02, -0.38, 0),
-        new Vector3(-0.16, -0.23, -0.014),
-        new Vector3(-0.18, 0.02, 0),
-        new Vector3(-0.03, 0.22, 0.016),
-        new Vector3(0.18, 0.28, 0),
-        new Vector3(0.32, 0.14, -0.012),
-        new Vector3(0.28, -0.02, 0),
-        new Vector3(0.08, -0.12, 0.014),
-        new Vector3(-0.18, -0.06, 0),
-        new Vector3(-0.42, 0.06, -0.012),
-        new Vector3(-0.52, 0.28, 0),
-        new Vector3(-0.4, 0.48, 0.014),
-        new Vector3(-0.12, 0.62, 0),
-        new Vector3(0.22, 0.6, -0.014),
-        new Vector3(0.5, 0.42, 0),
-        new Vector3(0.64, 0.16, 0.014),
-        new Vector3(0.58, -0.1, 0),
-        new Vector3(0.42, -0.25, -0.012),
-        new Vector3(0.24, -0.2, 0),
-        new Vector3(0.1, -0.36, 0.014),
-        new Vector3(0.18, -0.54, 0),
-        new Vector3(0.06, -0.7, -0.012),
-      ], false, "catmullrom", 0.42);
-      flowMarkGlowMaterial = track(new MeshBasicMaterial({
-        color: FLOWE_COLORS.current,
-        transparent: true,
-        opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
-      }));
-      flowMarkGlowGeometry = track(new TubeGeometry(flowMarkCurve, 120, 0.045, 8, false));
-      flowMarkGlow = new Mesh(flowMarkGlowGeometry, flowMarkGlowMaterial);
-      flowMarkGlow.position.set(center.x, center.y + 0.24, 0.075);
-      flowMarkGlow.scale.setScalar(0.62);
-      flowMarkMaterial = track(new MeshPhysicalMaterial({
-        color: FLOWE_COLORS.focus,
-        emissive: 0x2b6874,
-        emissiveIntensity: 0.62,
-        roughness: 0.12,
-        metalness: 0.08,
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        transparent: true,
-        opacity: 0,
-        depthWrite: true,
-      }));
-      flowMarkGeometry = track(new TubeGeometry(flowMarkCurve, 120, 0.027, 8, false));
-      flowMark = new Mesh(flowMarkGeometry, flowMarkMaterial);
-      flowMark.position.set(center.x, center.y + 0.24, 0.08);
-      flowMark.scale.setScalar(0.62);
-      flowMarkHeadMaterial = track(new MeshBasicMaterial({
-        color: FLOWE_COLORS.focus,
-        transparent: true,
-        opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
-      }));
-      flowMarkHead = new Mesh(track(new SphereGeometry(0.028, 8, 6)), flowMarkHeadMaterial);
+      flowIdentityPlate.name = "flowe-brand-mark-plane";
+      flowIdentityPlate.renderOrder = 3;
+      flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
       lightingRig = new Group();
       lightingRig.name = "flowe-product-lighting";
@@ -456,7 +420,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -474,7 +438,7 @@ export function createFloweEncounter(): ProjectEncounter {
       const focusT = smoothstep01((t - loop.focusStart) / (loop.focusFull - loop.focusStart));
       const contractT = smoothstep01((t - loop.contractStart) / (loop.contractFull - loop.contractStart));
       const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.04) / 0.38);
-      const identityReady = smoothstep01((logoDrawT - 0.68) / 0.32);
+      const identityReady = smoothstep01((logoDrawT - 0.5) / 0.5);
       const organizedGroupT = groupT * identityReady;
       const taskAssemblyT = smoothstep01(identityReady * 0.7 + groupT * 0.4);
       const visualScale = layoutMode === "mobile" ? 0.58 : 1;
@@ -501,39 +465,12 @@ export function createFloweEncounter(): ProjectEncounter {
         plannerFrame.scale.setScalar(visualScale);
       }
       if (flowIdentityPlate && flowIdentityMaterial) {
-        flowIdentityMaterial.opacity = identityReady * (0.96 - contractT * 0.24) * fade;
+        flowIdentityMaterial.uniforms.uOpacity.value = (0.96 - contractT * 0.24) * fade;
+        flowIdentityMaterial.uniforms.uReveal.value = logoDrawT;
+        flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : 1 - identityReady;
         flowIdentityPlate.rotation.y = plannerFrame?.rotation.y ?? -0.12;
         flowIdentityPlate.rotation.x = -0.08;
         flowIdentityPlate.scale.setScalar(visualScale);
-      }
-      if (flowMark && flowMarkMaterial && flowMarkGeometry && flowMarkCurve) {
-        const rotation = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.32) * 0.04;
-        const setDrawProgress = (geometry: TubeGeometry) => {
-          const indexCount = geometry.index?.count ?? 0;
-          geometry.setDrawRange(0, Math.floor(indexCount * logoDrawT / 3) * 3);
-        };
-        setDrawProgress(flowMarkGeometry);
-        if (flowMarkGlowGeometry) setDrawProgress(flowMarkGlowGeometry);
-        flowMarkMaterial.opacity = (0.025 + (1 - identityReady) * 0.82 + focusT * 0.035 - contractT * 0.04) * fade;
-        flowMark.rotation.z = rotation;
-        flowMark.scale.setScalar(0.62 * visualScale);
-        if (flowMarkGlow && flowMarkGlowMaterial) {
-          flowMarkGlow.rotation.z = rotation;
-          flowMarkGlow.scale.setScalar(0.62 * visualScale);
-          flowMarkGlowMaterial.opacity = (0.012 + (1 - identityReady) * 0.22 + focusT * 0.018) * fade;
-        }
-        if (flowMarkHead && flowMarkHeadMaterial) {
-          const point = flowMarkCurve.getPointAt(Math.min(logoDrawT, 0.999));
-          const cos = Math.cos(rotation);
-          const sin = Math.sin(rotation);
-          flowMarkHead.position.set(
-            center.x + (point.x * cos - point.y * sin) * 0.62,
-            center.y + 0.24 + (point.x * sin + point.y * cos) * 0.62,
-            0.09 + point.z * 0.62,
-          );
-          flowMarkHeadMaterial.opacity = logoDrawT > 0.01 && logoDrawT < 0.995 ? fade * 0.95 : 0;
-          flowMarkHead.scale.setScalar(0.72 + Math.sin(frame.time * 4) * 0.12);
-        }
       }
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
@@ -689,7 +626,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -700,7 +637,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, flowMarkGlow, flowMark, flowMarkHead, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+        const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }

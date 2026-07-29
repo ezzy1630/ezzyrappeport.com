@@ -37,6 +37,9 @@ import {
   Vector3,
   HemisphereLight,
   PointLight,
+  PlaneGeometry,
+  SRGBColorSpace,
+  TextureLoader,
   type Object3D,
 } from "three";
 import type {
@@ -123,7 +126,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   let sandboxBody: Mesh | null = null;
   let sandboxBodyMaterial: MeshPhysicalMaterial | null = null;
   let identityMark: Group | null = null;
-  let identityMaterial: MeshBasicMaterial | null = null;
+  let identityMaterial: ShaderMaterial | null = null;
   let cage: LineSegments | null = null;
   let cageMaterial: LineBasicMaterial | null = null;
   let ring: Mesh | null = null;
@@ -276,26 +279,54 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       );
       sandboxBody.position.copy(root);
 
-      // Verified telemetry ladder embedded in the sealed agent runtime.
-      identityMark = new Group();
-      identityMark.name = "monkeyclaw-verifier-telemetry";
-      identityMark.position.set(root.x, root.y, root.z + MONKEYCLAW_STAGE.coreRadius * 0.62);
-      identityMaterial = track(new MeshBasicMaterial({
-        color: 0xdffaff,
-        transparent: true,
-        opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
-      }));
-      for (let rail = 0; rail < 3; rail += 1) {
-        const width = 0.17 - rail * 0.035;
-        const telemetryRail = new Mesh(
-          track(createRoundedPanelGeometry(width, 0.025, 0.018, 0.01, 0.002)),
-          identityMaterial,
-        );
-        telemetryRail.position.set((rail - 1) * 0.012, 0.05 - rail * 0.05, 0.04);
-        identityMark.add(telemetryRail);
+      // The real MonkeyClaw head is a flat identity decal. Depth belongs to
+      // the sandbox and five-stage security loop, never to a made-up logo.
+      const identityTexture = await new TextureLoader().loadAsync("/projects/monkeyclaw/logo.webp");
+      if (context.signal.aborted || disposed) {
+        identityTexture.dispose();
+        return;
       }
+      identityTexture.colorSpace = SRGBColorSpace;
+      identityTexture.anisotropy = context.qualityTier === "high" ? 8 : 4;
+      track(identityTexture);
+      identityMark = new Group();
+      identityMark.name = "monkeyclaw-brand-decal";
+      identityMark.position.set(root.x, root.y, root.z + MONKEYCLAW_STAGE.coreRadius * 0.62);
+      identityMaterial = track(new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uIdentity: { value: identityTexture },
+          uOpacity: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D uIdentity;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          void main() {
+            vec2 sourceUv = vUv * vec2(0.48, 0.28) + vec2(0.24, 0.58);
+            vec3 source = texture2D(uIdentity, sourceUv).rgb;
+            float signal = max(source.r, max(source.g, source.b));
+            vec3 panel = vec3(0.043, 0.125, 0.173);
+            vec3 lifted = min(source * 2.2 + vec3(0.12, 0.18, 0.2), vec3(1.0));
+            vec3 exactMark = mix(panel, lifted, smoothstep(0.001, 0.045, signal));
+            gl_FragColor = vec4(exactMark, uOpacity);
+          }
+        `,
+      }));
+      const logoDecal = new Mesh(
+        track(new PlaneGeometry(0.4, 0.21)),
+        identityMaterial,
+      );
+      logoDecal.position.z = 0.04;
+      identityMark.add(logoDecal);
 
       cageMaterial = track(new LineBasicMaterial({
         color: MONKEYCLAW_COLORS.cage,
@@ -536,9 +567,9 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         sandboxBodyMaterial.opacity = (0.58 + judgeT * 0.12 + blueT * 0.1) * fade;
       }
       if (identityMark && identityMaterial) {
-        identityMark.rotation.z = t * 0.04;
+        identityMark.rotation.copy(sandboxBody?.rotation ?? identityMark.rotation);
         identityMark.scale.setScalar(productScale);
-        identityMaterial.opacity = (0.48 + judgeT * 0.34 + blueT * 0.12) * fade;
+        identityMaterial.uniforms.uOpacity.value = (0.58 + judgeT * 0.24 + blueT * 0.1) * fade;
       }
       if (cage && cageMaterial) {
         cage.rotation.y = -t * 0.8;

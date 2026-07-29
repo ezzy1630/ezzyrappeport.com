@@ -108,7 +108,6 @@ export function createArgyphEncounter(): ProjectEncounter {
   let indexStack: Group | null = null;
   let brandMark: Group | null = null;
   let lightingRig: Group | null = null;
-  let brandMedallionMaterial: MeshPhysicalMaterial | null = null;
   let brandLogo: Mesh | null = null;
   let brandLogoMaterial: ShaderMaterial | null = null;
   const stackSlabs: Mesh[] = [];
@@ -151,7 +150,7 @@ export function createArgyphEncounter(): ProjectEncounter {
       indexStack.name = "argyph-local-index-stack";
       indexStack.position.copy(center);
       indexStack.scale.setScalar(layoutMode === "mobile" ? 0.56 : 0.82);
-      const slabGeometry = track(createRoundedPanelGeometry(1.04, 1.08, 0.095, 0.12, 0.012));
+      const slabGeometry = track(createRoundedPanelGeometry(1.04, 1.08, 0.052, 0.12, 0.01));
       const slabEdgeGeometry = track(new EdgesGeometry(slabGeometry, 32));
       for (let layer = 0; layer < 3; layer += 1) {
         const material = track(new MeshPhysicalMaterial({
@@ -168,7 +167,7 @@ export function createArgyphEncounter(): ProjectEncounter {
           side: DoubleSide,
         }));
         const slab = new Mesh(slabGeometry, material);
-        slab.position.set(layer * 0.035, layer * 0.025, (layer - 1) * 0.12);
+        slab.position.set(layer * 0.022, layer * 0.018, (layer - 1) * 0.062);
         slab.rotation.x = -0.14;
         indexStack.add(slab);
         stackSlabs.push(slab);
@@ -229,8 +228,8 @@ export function createArgyphEncounter(): ProjectEncounter {
       }
       indexStack.add(stackFins);
 
-      // Exact A/G identity embedded into the local index appliance. It reads
-      // as one product, not a separate logo tile floating above a diagram.
+      // Exact A/G identity sits directly on the shallow local index layers.
+      // The mark stays flat; only the indexed data stack carries depth.
       brandMark = new Group();
       brandMark.name = "argyph-angular-mark";
       brandMark.position.set(
@@ -238,24 +237,6 @@ export function createArgyphEncounter(): ProjectEncounter {
         center.y + (layoutMode === "mobile" ? 0.14 : 0.16),
         0.2,
       );
-      brandMedallionMaterial = track(new MeshPhysicalMaterial({
-        color: 0x0a1020,
-        emissive: 0x050712,
-        emissiveIntensity: 0.3,
-        roughness: 0.15,
-        metalness: 0.5,
-        clearcoat: 1,
-        clearcoatRoughness: 0.08,
-        transparent: true,
-        opacity: 0,
-        depthWrite: true,
-      }));
-      const medallion = new Mesh(
-        track(createRoundedPanelGeometry(0.72, 0.62, 0.052, 0.11, 0.009)),
-        brandMedallionMaterial,
-      );
-      medallion.position.z = -0.055;
-      brandMark.add(medallion);
       const identityTexture = await new TextureLoader().loadAsync("/projects/argyph/argyph-identity.webp");
       if (context.signal.aborted || disposed) {
         identityTexture.dispose();
@@ -297,7 +278,8 @@ export function createArgyphEncounter(): ProjectEncounter {
         blending: AdditiveBlending,
         depthWrite: false,
       }));
-      brandLogo = new Mesh(track(new PlaneGeometry(0.5, 0.44)), brandLogoMaterial);
+      brandLogo = new Mesh(track(new PlaneGeometry(0.54, 0.48)), brandLogoMaterial);
+      brandLogo.name = "argyph-flat-identity-mark";
       brandLogo.position.z = 0.02;
       brandMark.add(brandLogo);
 
@@ -458,7 +440,7 @@ export function createArgyphEncounter(): ProjectEncounter {
           stackEdgeMaterials[layer].opacity = reveal * (0.22 + layer * 0.08) * fade;
           stackSlabs[layer].position.x = layer * (0.035 + widenT * 0.018);
           stackSlabs[layer].position.y = layer * (0.025 + widenT * 0.012);
-          stackSlabs[layer].position.z = (layer - 1) * 0.12;
+          stackSlabs[layer].position.z = (layer - 1) * 0.062;
           stackEdges[layer].position.copy(stackSlabs[layer].position);
         }
         if (stackRails && stackRailMaterial) {
@@ -486,9 +468,6 @@ export function createArgyphEncounter(): ProjectEncounter {
         const markReveal = smoothstep01((sweepT - 0.28) / 0.55);
         brandMark.rotation.y = frame.reducedMotion ? 0.1 : Math.sin(frame.time * 0.31) * 0.12;
         brandMark.scale.setScalar((0.72 + markReveal * 0.16) * (layoutMode === "mobile" ? 0.68 : 1));
-        if (brandMedallionMaterial) {
-          brandMedallionMaterial.opacity = (0.2 + markReveal * 0.72) * fade;
-        }
         if (brandLogo && brandLogoMaterial) {
           brandLogoMaterial.uniforms.uOpacity.value = markReveal * fade;
           brandLogo.scale.setScalar(0.68 + markReveal * 0.32);

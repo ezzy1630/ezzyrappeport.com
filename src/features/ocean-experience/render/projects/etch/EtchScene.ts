@@ -33,6 +33,8 @@ import {
   HemisphereLight,
   MeshPhysicalMaterial,
   PointLight,
+  SRGBColorSpace,
+  TextureLoader,
 } from "three";
 import type {
   EncounterAudioEvent,
@@ -131,6 +133,7 @@ export function createEtchEncounter(): ProjectEncounter {
   let resultAssembly: Group | null = null;
   let resultMaterial: MeshPhysicalMaterial | null = null;
   let resultBezelMaterial: MeshPhysicalMaterial | null = null;
+  let resultIdentityMaterial: ShaderMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
   let dieCells: InstancedMesh | null = null;
   let dieCellMaterial: MeshPhysicalMaterial | null = null;
@@ -333,6 +336,48 @@ export function createEtchEncounter(): ProjectEncounter {
       resultAssembly.position.set(resultX, 0, 0);
       resultAssembly.add(resultMesh, resultBezel, resultLattice);
 
+      const identityTexture = await new TextureLoader().loadAsync("/projects/etch/logo.svg");
+      if (context.signal.aborted || disposed) {
+        identityTexture.dispose();
+        return;
+      }
+      identityTexture.colorSpace = SRGBColorSpace;
+      identityTexture.anisotropy = context.qualityTier === "high" ? 8 : 4;
+      track(identityTexture);
+      resultIdentityMaterial = track(new ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        uniforms: {
+          uIdentity: { value: identityTexture },
+          uOpacity: { value: 0 },
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform sampler2D uIdentity;
+          uniform float uOpacity;
+          varying vec2 vUv;
+          void main() {
+            vec3 source = texture2D(uIdentity, vUv).rgb;
+            float alpha = smoothstep(0.2, 0.72, dot(source, vec3(0.2126, 0.7152, 0.0722))) * uOpacity;
+            if (alpha < 0.01) discard;
+            gl_FragColor = vec4(mix(vec3(0.72, 0.82, 0.86), vec3(1.0), source.r), alpha);
+          }
+        `,
+      }));
+      const identityDecal = new Mesh(
+        track(new PlaneGeometry(0.13, 0.13)),
+        resultIdentityMaterial,
+      );
+      identityDecal.name = "etch-nib-surface-engraving";
+      identityDecal.position.set(-0.205, 0, 0.079);
+      resultAssembly.add(identityDecal);
+
       const cellGeometry = track(createRoundedPanelGeometry(0.08, 0.055, 0.022, 0.012, 0.003));
       dieCellMaterial = track(new MeshPhysicalMaterial({
         color: ETCH_COLORS.result,
@@ -349,7 +394,7 @@ export function createEtchEncounter(): ProjectEncounter {
       dieCells.instanceMatrix.setUsage(DynamicDrawUsage);
       for (let cell = 0; cell < 12; cell += 1) {
         _dieMatrix.makeTranslation(
-          -0.18 + (cell % 4) * 0.12,
+          -0.1 + (cell % 4) * 0.11,
           0.13 - Math.floor(cell / 4) * 0.13,
           0.078,
         );
@@ -589,6 +634,9 @@ export function createEtchEncounter(): ProjectEncounter {
         latticeMaterial.opacity = reveal * 0.78 * fade * (1 - relaxT * 0.25);
         if (dieCellMaterial) {
           dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
+        }
+        if (resultIdentityMaterial) {
+          resultIdentityMaterial.uniforms.uOpacity.value = reveal * 0.82 * fade * (1 - relaxT * 0.25);
         }
         if (diePinMaterial) {
           diePinMaterial.opacity = reveal * 0.7 * fade * (1 - relaxT * 0.25);
