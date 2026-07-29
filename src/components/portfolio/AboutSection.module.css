@@ -14,6 +14,25 @@
   --about-muted: var(--rv-live-muted);
 }
 
+/* A distant view back toward the brighter project water. It is section-owned,
+   never crosses the portrait, and fades before the reading column. */
+.section::before {
+  content: "";
+  position: absolute;
+  top: 1.5rem;
+  right: calc(50% - 50vw);
+  width: min(43vw, 42rem);
+  height: min(32vw, 24rem);
+  z-index: -1;
+  border-radius: 52% 0 0 48%;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgba(220, 246, 255, 0.34), transparent 58%),
+    radial-gradient(ellipse at 70% 38%, rgba(74, 166, 218, 0.2), transparent 68%);
+  filter: blur(1.8rem);
+  opacity: calc(0.28 + var(--world-light, 1) * 0.12);
+  pointer-events: none;
+}
+
 /* No full-section fog wash — that painted the unnatural horizontal bar.
    Reading light lives on .header / .layout only (see below). */
 
@@ -37,7 +56,17 @@
 
 .header {
   position: relative;
-  margin-bottom: clamp(2.4rem, 4vw, 3.6rem);
+  margin-bottom: clamp(2rem, 3.4vw, 3rem);
+}
+
+.kicker {
+  margin: 0 0 0.7rem;
+  color: var(--about-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-shadow: var(--rv-live-text-shadow);
 }
 
 /* Soft sunlit / abyss pool behind the headline — inverts with read-deep. */
@@ -80,6 +109,9 @@
   gap: clamp(2.5rem, 7vw, 7rem);
   align-items: start;
 }
+
+.story { grid-column: 1; }
+.portrait { grid-column: 2; grid-row: 1; }
 
 .layout::before {
   content: "";
@@ -401,10 +433,15 @@
     gap: 2.25rem;
   }
 
+  .story,
   .portrait {
-    order: -1;
-    padding-top: 0;
+    grid-column: 1;
   }
+
+  .portrait { grid-row: 1; }
+  .story { grid-row: 2; }
+
+  .portrait { padding-top: 0; }
 
   .portraitFrame {
     width: min(16.5rem, 68vw);
