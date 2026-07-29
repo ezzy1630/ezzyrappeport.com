@@ -1919,6 +1919,8 @@ const tests = [
     assert.match(sceneSource, /chapterProgress/);
     assert.match(sceneSource, /dispose\(\)/);
     assert.match(sceneSource, /probe/);
+    assert.match(sceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
+    assert.match(sceneSource, /sandboxBody/);
     assert.doesNotMatch(sceneSource, /addEventListener/);
     assert.doesNotMatch(sceneSource, /Math\.random\(/);
 
@@ -2065,6 +2067,24 @@ const tests = [
       assert.match(sceneSource, /chapterProgress/);
       assert.match(sceneSource, /dispose\(\)/);
     }
+    const etchSceneSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/etch/EtchScene.ts", import.meta.url),
+      "utf8",
+    );
+    const floweSceneSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/flowe/FloweScene.ts", import.meta.url),
+      "utf8",
+    );
+    const argyphSceneSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/argyph/ArgyphScene.ts", import.meta.url),
+      "utf8",
+    );
+    assert.match(etchSceneSource, /etch-verified-fifo-die/);
+    assert.match(etchSceneSource, /dieDetails/);
+    assert.match(floweSceneSource, /FlowE mobile planner frame/);
+    assert.match(floweSceneSource, /TubeGeometry/);
+    assert.match(argyphSceneSource, /argyph-local-index-stack/);
+    assert.match(argyphSceneSource, /argyph-angular-mark/);
     // No per-frame allocation regressions in configs.
     const etchConfigSource = readFileSync(
       new URL("../src/features/ocean-experience/render/projects/etch/etchConfig.ts", import.meta.url),

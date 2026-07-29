@@ -15,13 +15,15 @@ import {
   AdditiveBlending,
   BoxGeometry,
   Color,
+  DynamicDrawUsage,
   EdgesGeometry,
   IcosahedronGeometry,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
-  OctahedronGeometry,
   PlaneGeometry,
   ShaderMaterial,
   Vector3,
@@ -91,6 +93,7 @@ type ProbePerturbation = {
 };
 
 const _color = new Color();
+const _dieMatrix = new Matrix4();
 
 export function createEtchEncounter(): ProjectEncounter {
   const root = new Vector3();
@@ -115,12 +118,17 @@ export function createEtchEncounter(): ProjectEncounter {
   const candidateMeshes: Mesh[] = [];
   const candidateMaterials: MeshBasicMaterial[] = [];
   const candidateBase: Vector3[] = [];
-  const gatePlanes: Mesh[] = [];
-  const gateMaterials: MeshBasicMaterial[] = [];
+  const gatePlanes: LineSegments[] = [];
+  const gateMaterials: LineBasicMaterial[] = [];
   let resultMesh: Mesh | null = null;
   let resultLattice: LineSegments | null = null;
+  let resultAssembly: Group | null = null;
   let resultMaterial: MeshBasicMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
+  let dieCells: InstancedMesh | null = null;
+  let dieCellMaterial: MeshBasicMaterial | null = null;
+  const dieDetails: Mesh[] = [];
+  const dieDetailMaterials: MeshBasicMaterial[] = [];
   const relaxCurves: Mesh[] = [];
   const relaxMaterials: MeshBasicMaterial[] = [];
   const perturbations: ProbePerturbation[] = [];
@@ -205,9 +213,9 @@ export function createEtchEncounter(): ProjectEncounter {
 
       // Candidate crystalline structures.
       const candidateGeometries = [
-        track(new OctahedronGeometry(ETCH_STAGE.candidateSize, 0)),
-        track(new IcosahedronGeometry(ETCH_STAGE.candidateSize * 0.92, 0)),
-        track(new OctahedronGeometry(ETCH_STAGE.candidateSize * 1.08, 0)),
+        track(new BoxGeometry(ETCH_STAGE.candidateSize * 1.35, ETCH_STAGE.candidateSize, 0.045)),
+        track(new BoxGeometry(ETCH_STAGE.candidateSize * 1.15, ETCH_STAGE.candidateSize * 1.12, 0.045)),
+        track(new BoxGeometry(ETCH_STAGE.candidateSize * 1.35, ETCH_STAGE.candidateSize, 0.045)),
       ];
       for (let candidate = 0; candidate < ETCH_COUNTS.candidates; candidate += 1) {
         const material = track(new MeshBasicMaterial({
@@ -228,19 +236,19 @@ export function createEtchEncounter(): ProjectEncounter {
       }
 
       // Verification gate light planes; the signoff gate stays an open frame.
-      const gateGeometry = track(new PlaneGeometry(0.5, ETCH_STAGE.gateHeight));
+      const gateGeometry = track(new EdgesGeometry(
+        new BoxGeometry(0.08, ETCH_STAGE.gateHeight, 0.06),
+      ));
       for (let gate = 0; gate < ETCH_COUNTS.gates; gate += 1) {
         const pending = !ETCH_GATES[gate].passed;
-        const material = track(new MeshBasicMaterial({
+        const material = track(new LineBasicMaterial({
           color: pending ? ETCH_COLORS.pending : ETCH_COLORS.pass,
           transparent: true,
           opacity: 0,
           blending: AdditiveBlending,
           depthWrite: false,
-          side: 2,
-          wireframe: pending,
         }));
-        const plane = new Mesh(gateGeometry, material);
+        const plane = new LineSegments(gateGeometry, material);
         plane.position.set(
           gateStationX(gate, axisX0, ETCH_STAGE.gateSpacing),
           0,
@@ -251,17 +259,20 @@ export function createEtchEncounter(): ProjectEncounter {
         gateMaterials.push(material);
       }
 
-      // Evidence-backed result: clean lattice crystal held before signoff.
+      // Evidence-backed result: an actual FIFO die, not a generic crystal.
+      // The cell bank and buses make the generated RTL tangible while the
+      // final open gate still communicates that physical signoff is pending.
+      resultAssembly = new Group();
+      resultAssembly.name = "etch-verified-fifo-die";
       resultMaterial = track(new MeshBasicMaterial({
         color: ETCH_COLORS.result,
         transparent: true,
         opacity: 0,
         blending: AdditiveBlending,
         depthWrite: false,
-        wireframe: true,
       }));
       resultMesh = new Mesh(
-        track(new BoxGeometry(0.24, 0.24, 0.24)),
+        track(new BoxGeometry(0.36, 0.31, 0.055)),
         resultMaterial,
       );
       latticeMaterial = track(new LineBasicMaterial({
@@ -272,13 +283,50 @@ export function createEtchEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       resultLattice = new LineSegments(
-        track(new EdgesGeometry(new OctahedronGeometry(0.15, 0))),
+        track(new EdgesGeometry(new BoxGeometry(0.39, 0.34, 0.07))),
         latticeMaterial,
       );
-      const resultX = gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.3;
-      resultMesh.position.set(resultX, 0, 0);
-      resultLattice.position.copy(resultMesh.position);
-      axisGroup.add(resultMesh, resultLattice);
+      const resultX = layoutMode === "mobile"
+        ? 0.5
+        : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.3;
+      resultAssembly.position.set(resultX, 0, 0);
+      resultAssembly.add(resultMesh, resultLattice);
+
+      const cellGeometry = track(new BoxGeometry(0.052, 0.042, 0.016));
+      dieCellMaterial = track(new MeshBasicMaterial({
+        color: ETCH_COLORS.result,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      dieCells = new InstancedMesh(cellGeometry, dieCellMaterial, 12);
+      dieCells.instanceMatrix.setUsage(DynamicDrawUsage);
+      for (let cell = 0; cell < 12; cell += 1) {
+        _dieMatrix.makeTranslation(
+          -0.12 + (cell % 4) * 0.08,
+          0.09 - Math.floor(cell / 4) * 0.09,
+          0.038,
+        );
+        dieCells.setMatrixAt(cell, _dieMatrix);
+      }
+      resultAssembly.add(dieCells);
+      const busGeometry = track(new BoxGeometry(0.31, 0.009, 0.012));
+      for (let bus = 0; bus < 2; bus += 1) {
+        const material = track(new MeshBasicMaterial({
+          color: ETCH_COLORS.constraint,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const mesh = new Mesh(busGeometry, material);
+        mesh.position.set(0, bus === 0 ? 0.145 : -0.145, 0.04);
+        resultAssembly.add(mesh);
+        dieDetails.push(mesh);
+        dieDetailMaterials.push(material);
+      }
+      axisGroup.add(resultAssembly);
 
       // Soft linked paths relaxing toward FlowE.
       for (let path = 0; path < ETCH_COUNTS.relaxPaths; path += 1) {
@@ -420,15 +468,25 @@ export function createEtchEncounter(): ProjectEncounter {
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
       }
 
-      // Result: evidence-backed crystal held before the pending gate.
+      // Result: evidence-backed FIFO die held before the pending gate.
       if (resultMesh && resultMaterial && resultLattice && latticeMaterial) {
-        const reveal = smoothstep01((gatesT - 0.62) / 0.3);
-        resultMaterial.opacity = reveal * 0.75 * fade * (1 - relaxT * 0.25);
-        latticeMaterial.opacity = reveal * 0.5 * fade * (1 - relaxT * 0.25);
-        resultMesh.rotation.y = frame.time * 0.2;
-        resultLattice.rotation.y = -frame.time * 0.26;
-        resultMesh.scale.setScalar(0.4 + reveal * 0.6);
-        resultLattice.scale.setScalar(0.4 + reveal * 0.6);
+        const revealStart = layoutMode === "mobile" ? 0.38 : 0.62;
+        const reveal = smoothstep01((gatesT - revealStart) / 0.3);
+        resultMaterial.opacity = reveal * 0.11 * fade * (1 - relaxT * 0.25);
+        latticeMaterial.opacity = reveal * 0.78 * fade * (1 - relaxT * 0.25);
+        if (dieCellMaterial) {
+          dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
+        }
+        for (let detail = 0; detail < dieDetailMaterials.length; detail += 1) {
+          const stagger = (detail % 4) * 0.07;
+          const detailReveal = smoothstep01((reveal - stagger) / Math.max(1 - stagger, 1e-6));
+          dieDetailMaterials[detail].opacity = detailReveal * 0.96 * fade * (1 - relaxT * 0.25);
+        }
+        if (resultAssembly) {
+          resultAssembly.rotation.y = (frame.reducedMotion ? 0.18 : Math.sin(frame.time * 0.28) * 0.22) + 0.18;
+          resultAssembly.rotation.x = -0.22;
+          resultAssembly.scale.setScalar(0.45 + reveal * 1.15);
+        }
       }
 
       // Relax: rigid proof geometry softens into linked paths toward FlowE.
@@ -535,6 +593,8 @@ export function createEtchEncounter(): ProjectEncounter {
       relaxCurves.length = 0;
       relaxMaterials.length = 0;
       perturbations.length = 0;
+      dieDetails.length = 0;
+      dieDetailMaterials.length = 0;
       loaded = false;
     },
   };

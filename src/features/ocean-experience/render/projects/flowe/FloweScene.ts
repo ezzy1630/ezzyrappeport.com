@@ -14,10 +14,15 @@
 
 import {
   AdditiveBlending,
+  BoxGeometry,
+  CatmullRomCurve3,
   Color,
   DynamicDrawUsage,
+  EdgesGeometry,
   InstancedBufferAttribute,
   InstancedMesh,
+  LineBasicMaterial,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -25,6 +30,7 @@ import {
   Quaternion,
   RingGeometry,
   SphereGeometry,
+  TubeGeometry,
   Vector3,
   type Group,
 } from "three";
@@ -65,6 +71,7 @@ const _quat = new Quaternion();
 const _scale = new Vector3();
 const _matrix = new Matrix4();
 const _color = new Color();
+const _cardAxis = new Vector3(0, 1, 0);
 const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
 
@@ -91,6 +98,10 @@ export function createFloweEncounter(): ProjectEncounter {
   let focusMaterial: MeshBasicMaterial | null = null;
   let indexField: InstancedMesh | null = null;
   let indexMaterial: MeshBasicMaterial | null = null;
+  let plannerFrame: LineSegments | null = null;
+  let plannerFrameMaterial: LineBasicMaterial | null = null;
+  let flowMark: Mesh | null = null;
+  let flowMarkMaterial: MeshBasicMaterial | null = null;
   const nudges: ProbeNudge[] = [];
 
   // Deterministic per-fragment state.
@@ -126,7 +137,7 @@ export function createFloweEncounter(): ProjectEncounter {
         clusterTargets.push(new Vector3(
           center.x - 0.42 + cluster * FLOWE_STAGE.clusterSpacing,
           center.y + 0.34 - rank * 0.095,
-          0,
+          ((index % 3) - 1) * 0.045,
         ));
         const streamT = index / Math.max(FLOWE_COUNTS.fragments - 1, 1);
         streamTargets.push(new Vector3(
@@ -152,7 +163,9 @@ export function createFloweEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       fragments = new InstancedMesh(
-        track(new OctahedronGeometry(0.035, 0)),
+        // Each obligation is a real task card. The cards enter loose, align
+        // into the daily plan, then narrow into one focus stream.
+        track(new BoxGeometry(0.17, 0.075, 0.022)),
         fragmentMaterial,
         FLOWE_COUNTS.fragments,
       );
@@ -231,6 +244,46 @@ export function createFloweEncounter(): ProjectEncounter {
       );
       indexField.instanceMatrix.setUsage(DynamicDrawUsage);
 
+      // Product silhouette: the FlowE mobile planner frame and its authored
+      // continuous-loop mark. The task-card system now visibly belongs to the
+      // app instead of floating as unrelated crystals.
+      plannerFrameMaterial = track(new LineBasicMaterial({
+        color: FLOWE_COLORS.current,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      plannerFrame = new LineSegments(
+        track(new EdgesGeometry(new BoxGeometry(1.15, 1.35, 0.07))),
+        plannerFrameMaterial,
+      );
+      plannerFrame.position.copy(center);
+
+      const markCurve = new CatmullRomCurve3([
+        new Vector3(-0.5, 0.08, 0),
+        new Vector3(-0.34, 0.42, 0.015),
+        new Vector3(0.12, 0.5, 0),
+        new Vector3(0.47, 0.2, -0.012),
+        new Vector3(0.32, -0.06, 0),
+        new Vector3(0.02, 0.04, 0.018),
+        new Vector3(-0.06, 0.28, 0),
+        new Vector3(0.24, 0.24, -0.014),
+        new Vector3(0.3, -0.2, 0),
+        new Vector3(-0.05, -0.43, 0.016),
+        new Vector3(-0.38, -0.23, 0),
+      ], true, "catmullrom", 0.42);
+      flowMarkMaterial = track(new MeshBasicMaterial({
+        color: FLOWE_COLORS.focus,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      flowMark = new Mesh(track(new TubeGeometry(markCurve, 64, 0.024, 7, true)), flowMarkMaterial);
+      flowMark.position.set(center.x, center.y + 0.48, 0.08);
+      flowMark.scale.setScalar(0.32);
+
       for (let nudge = 0; nudge < FLOWE_COUNTS.probePool; nudge += 1) {
         nudges.push({
           active: false,
@@ -246,7 +299,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [fragments, motes, focusLens, indexField, ...currentLines];
+      const objects = [plannerFrame, flowMark, fragments, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -266,6 +319,16 @@ export function createFloweEncounter(): ProjectEncounter {
       // Organization: motes settle, the water calms as the plan forms.
       const organization = smoothstep01(groupT * 0.6 + focusT * 0.4);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
+
+      if (plannerFrame && plannerFrameMaterial) {
+        plannerFrameMaterial.opacity = (0.1 + groupT * 0.34 - contractT * 0.14) * fade;
+        plannerFrame.rotation.y = frame.reducedMotion ? -0.12 : -0.12 + Math.sin(frame.time * 0.24) * 0.035;
+        plannerFrame.rotation.x = -0.08;
+      }
+      if (flowMark && flowMarkMaterial) {
+        flowMarkMaterial.opacity = (0.24 + groupT * 0.38 + focusT * 0.28 - contractT * 0.2) * fade;
+        flowMark.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.32) * 0.04;
+      }
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
       if (fragments && fragmentMaterial) {
@@ -288,7 +351,9 @@ export function createFloweEncounter(): ProjectEncounter {
           // Probe nudges offset the fragment; the current reabsorbs it.
           const nudge = nudges.find((candidate) => candidate.active && candidate.fragmentIndex === index);
           if (nudge) _pos.add(nudge.offset);
-          _quat.identity();
+          const cardTurn = (1 - organization) * Math.sin(phase * Math.PI * 2) * 0.9
+            + organization * ((index % 3) - 1) * 0.08;
+          _quat.setFromAxisAngle(_cardAxis, cardTurn);
           const scalePulse = 0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp + organization * 0.25;
           _scale.setScalar(scalePulse);
           _matrix.compose(_pos, _quat, _scale);
@@ -401,7 +466,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [fragments, motes, focusLens, indexField, ...currentLines];
+      const objects = [plannerFrame, flowMark, fragments, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -412,7 +477,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [fragments, motes, focusLens, indexField, ...currentLines];
+        const objects = [plannerFrame, flowMark, fragments, motes, focusLens, indexField, ...currentLines];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }

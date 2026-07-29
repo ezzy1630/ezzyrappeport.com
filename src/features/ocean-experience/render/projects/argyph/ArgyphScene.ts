@@ -16,8 +16,12 @@ import {
   BoxGeometry,
   Color,
   DynamicDrawUsage,
+  EdgesGeometry,
+  Group,
   InstancedBufferAttribute,
   InstancedMesh,
+  LineBasicMaterial,
+  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -25,7 +29,6 @@ import {
   Quaternion,
   RingGeometry,
   Vector3,
-  type Group,
 } from "three";
 import type {
   EncounterAudioEvent,
@@ -64,6 +67,7 @@ const _quat = new Quaternion();
 const _scale = new Vector3();
 const _matrix = new Matrix4();
 const _color = new Color();
+const _linkAxis = new Vector3(0, 0, 1);
 const _reefCool = new Color(ARGYPH_COLORS.reef);
 const _queryWarm = new Color(ARGYPH_COLORS.query);
 const _anchor: [number, number, number] = [0, 0, 0];
@@ -85,10 +89,18 @@ export function createArgyphEncounter(): ProjectEncounter {
   let reefMaterial: MeshBasicMaterial | null = null;
   let symbols: InstancedMesh | null = null;
   let symbolMaterial: MeshBasicMaterial | null = null;
-  const linkMeshes: Mesh[] = [];
-  const linkMaterials: MeshBasicMaterial[] = [];
+  let links: InstancedMesh | null = null;
+  let linkMaterial: MeshBasicMaterial | null = null;
   let sweepRing: Mesh | null = null;
   let sweepMaterial: MeshBasicMaterial | null = null;
+  let indexStack: Group | null = null;
+  let brandMark: Group | null = null;
+  const stackSlabs: Mesh[] = [];
+  const stackSlabMaterials: MeshBasicMaterial[] = [];
+  const stackEdges: LineSegments[] = [];
+  const stackEdgeMaterials: LineBasicMaterial[] = [];
+  const brandBars: Mesh[] = [];
+  const brandMaterials: MeshBasicMaterial[] = [];
   const pulseMeshes: Mesh[] = [];
   const pulseMaterials: MeshBasicMaterial[] = [];
   const pulses: QueryPulse[] = [];
@@ -113,6 +125,75 @@ export function createArgyphEncounter(): ProjectEncounter {
       if (loaded || disposed || context.signal.aborted) return;
       layoutMode = context.layout;
       const center = reefCenter();
+
+      // Product silhouette from the portfolio's real Argyph identity: three
+      // sealed local layers for repo packing, semantic chunks, and the symbol
+      // graph. The live index resolves over this physical stack.
+      indexStack = new Group();
+      indexStack.name = "argyph-local-index-stack";
+      indexStack.position.copy(center);
+      const slabGeometry = track(new BoxGeometry(1.48, 0.72, 0.055));
+      const slabEdgeGeometry = track(new EdgesGeometry(new BoxGeometry(1.5, 0.74, 0.07)));
+      for (let layer = 0; layer < 3; layer += 1) {
+        const material = track(new MeshBasicMaterial({
+          color: layer === 2 ? ARGYPH_COLORS.symbol : ARGYPH_COLORS.reef,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const slab = new Mesh(slabGeometry, material);
+        slab.position.set(0, (layer - 1) * 0.24, (layer - 1) * 0.12);
+        slab.rotation.x = -0.32;
+        indexStack.add(slab);
+        stackSlabs.push(slab);
+        stackSlabMaterials.push(material);
+
+        const edgeMaterial = track(new LineBasicMaterial({
+          color: layer === 2 ? ARGYPH_COLORS.symbol : ARGYPH_COLORS.link,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const edge = new LineSegments(slabEdgeGeometry, edgeMaterial);
+        edge.position.copy(slab.position);
+        edge.rotation.copy(slab.rotation);
+        indexStack.add(edge);
+        stackEdges.push(edge);
+        stackEdgeMaterials.push(edgeMaterial);
+      }
+
+      // Angular A/G emblem reconstructed as dimensional bars from the same
+      // artwork, held above the local stack like a query aperture.
+      brandMark = new Group();
+      brandMark.name = "argyph-angular-mark";
+      brandMark.position.set(
+        center.x,
+        center.y + (layoutMode === "mobile" ? 0.35 : 0.78),
+        0.12,
+      );
+      const barSpecs = [
+        { x: -0.13, y: 0, width: 0.075, height: 0.42, rotation: -0.52 },
+        { x: 0.13, y: 0, width: 0.075, height: 0.42, rotation: 0.52 },
+        { x: 0.08, y: -0.1, width: 0.24, height: 0.065, rotation: 0 },
+        { x: 0.17, y: -0.17, width: 0.065, height: 0.16, rotation: 0 },
+      ] as const;
+      for (const spec of barSpecs) {
+        const material = track(new MeshBasicMaterial({
+          color: ARGYPH_COLORS.symbol,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const bar = new Mesh(track(new BoxGeometry(spec.width, spec.height, 0.06)), material);
+        bar.position.set(spec.x, spec.y, 0);
+        bar.rotation.z = spec.rotation;
+        brandMark.add(bar);
+        brandBars.push(bar);
+        brandMaterials.push(material);
+      }
 
       for (let index = 0; index < ARGYPH_COUNTS.reefPoints; index += 1) {
         reefPoint(index, _anchor);
@@ -173,19 +254,21 @@ export function createArgyphEncounter(): ProjectEncounter {
       );
       symbols.instanceMatrix.setUsage(DynamicDrawUsage);
 
-      // Semantic links: thin stretched boxes between symbol pairs.
-      for (let link = 0; link < ARGYPH_COUNTS.links; link += 1) {
-        const material = track(new MeshBasicMaterial({
-          color: ARGYPH_COLORS.link,
-          transparent: true,
-          opacity: 0,
-          blending: AdditiveBlending,
-          depthWrite: false,
-        }));
-        const mesh = new Mesh(track(new BoxGeometry(1, 0.004, 0.004)), material);
-        linkMeshes.push(mesh);
-        linkMaterials.push(material);
-      }
+      // Semantic links share one instanced draw. Per-link emergence remains
+      // deterministic through each instance matrix.
+      linkMaterial = track(new MeshBasicMaterial({
+        color: ARGYPH_COLORS.link,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      links = new InstancedMesh(
+        track(new BoxGeometry(1, 0.004, 0.004)),
+        linkMaterial,
+        ARGYPH_COUNTS.links,
+      );
+      links.instanceMatrix.setUsage(DynamicDrawUsage);
 
       // Sonar sweep ring.
       sweepMaterial = track(new MeshBasicMaterial({
@@ -225,7 +308,7 @@ export function createArgyphEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [reef, symbols, sweepRing, ...linkMeshes, ...pulseMeshes];
+      const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -243,6 +326,29 @@ export function createArgyphEncounter(): ProjectEncounter {
       const linksT = smoothstep01((t - loop.linksStart) / (loop.linksFull - loop.linksStart));
       const widenT = smoothstep01((t - loop.widenStart) / (loop.widenFull - loop.widenStart));
       const spread = 1 + widenT * 0.55;
+
+      if (indexStack) {
+        indexStack.rotation.y = frame.reducedMotion
+          ? -0.12
+          : -0.12 + Math.sin(frame.time * 0.22) * 0.045;
+        indexStack.rotation.z = widenT * -0.035;
+        const layerProgress = [reefT, sweepT, linksT];
+        for (let layer = 0; layer < layerProgress.length; layer += 1) {
+          const reveal = layerProgress[layer];
+          stackSlabMaterials[layer].opacity = reveal * (0.1 + layer * 0.035) * fade;
+          stackEdgeMaterials[layer].opacity = reveal * (0.3 + layer * 0.1) * fade;
+          stackSlabs[layer].position.y = (layer - 1) * (0.27 + widenT * 0.055);
+          stackEdges[layer].position.copy(stackSlabs[layer].position);
+        }
+      }
+      if (brandMark) {
+        const markReveal = smoothstep01((sweepT - 0.28) / 0.55);
+        brandMark.rotation.y = frame.reducedMotion ? 0.1 : Math.sin(frame.time * 0.31) * 0.12;
+        brandMark.scale.setScalar(0.72 + markReveal * 0.28);
+        for (const material of brandMaterials) {
+          material.opacity = markReveal * 0.78 * fade;
+        }
+      }
 
       // Sonar sweep: one decisive pass, then it rests as the map widens.
       if (sweepRing && sweepMaterial) {
@@ -308,7 +414,10 @@ export function createArgyphEncounter(): ProjectEncounter {
       }
 
       // Semantic links emerge after the symbols resolve.
-      for (let link = 0; link < linkMeshes.length; link += 1) {
+      if (links && linkMaterial) {
+        linkMaterial.opacity = 0.42 * fade * (1 - widenT * 0.3);
+      }
+      for (let link = 0; link < ARGYPH_COUNTS.links; link += 1) {
         const [first, second] = linkPair(link);
         const stagger = (link % 6) * 0.05;
         const emerge = smoothstep01((linksT - stagger) / Math.max(1 - stagger, 1e-6));
@@ -319,11 +428,13 @@ export function createArgyphEncounter(): ProjectEncounter {
         const bx = center.x + (b.x - center.x) * spread;
         const by = center.y + (b.y - center.y) * spread;
         const length = Math.hypot(bx - ax, by - ay) * emerge;
-        linkMeshes[link].scale.set(Math.max(length, 1e-4), 1, 1);
-        linkMeshes[link].position.set((ax + bx) / 2, (ay + by) / 2, 0.02);
-        linkMeshes[link].rotation.z = Math.atan2(by - ay, bx - ax);
-        linkMaterials[link].opacity = emerge * 0.42 * fade * (1 - widenT * 0.3);
+        _pos.set((ax + bx) / 2, (ay + by) / 2, 0.02);
+        _quat.setFromAxisAngle(_linkAxis, Math.atan2(by - ay, bx - ax));
+        _scale.set(Math.max(length, 1e-4), emerge, emerge);
+        _matrix.compose(_pos, _quat, _scale);
+        links?.setMatrixAt(link, _matrix);
       }
+      if (links) links.instanceMatrix.needsUpdate = true;
 
       // Audio hook: the sweep completes once per traversal.
       if (sweepT >= 0.98 && sweepT < 1 && eventBuffer.length < 4) {
@@ -381,7 +492,7 @@ export function createArgyphEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [reef, symbols, sweepRing, ...linkMeshes, ...pulseMeshes];
+      const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -392,7 +503,7 @@ export function createArgyphEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [reef, symbols, sweepRing, ...linkMeshes, ...pulseMeshes];
+        const objects = [indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -400,14 +511,18 @@ export function createArgyphEncounter(): ProjectEncounter {
       }
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
-      linkMeshes.length = 0;
-      linkMaterials.length = 0;
       pulseMeshes.length = 0;
       pulseMaterials.length = 0;
       pulses.length = 0;
       reefPositions.length = 0;
       symbolPositions.length = 0;
       symbolRadius.length = 0;
+      stackSlabs.length = 0;
+      stackSlabMaterials.length = 0;
+      stackEdges.length = 0;
+      stackEdgeMaterials.length = 0;
+      brandBars.length = 0;
+      brandMaterials.length = 0;
       loaded = false;
     },
   };

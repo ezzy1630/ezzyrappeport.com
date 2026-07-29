@@ -18,7 +18,7 @@ import {
   ConeGeometry,
   DynamicDrawUsage,
   EdgesGeometry,
-  IcosahedronGeometry,
+  Group,
   InstancedBufferAttribute,
   InstancedMesh,
   LineBasicMaterial,
@@ -32,7 +32,6 @@ import {
   SphereGeometry,
   TorusGeometry,
   Vector3,
-  type Group,
   type Object3D,
 } from "three";
 import type {
@@ -115,12 +114,19 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   // Core + cage + judge ring
   let core: Mesh | null = null;
   let coreMaterial: ShaderMaterial | null = null;
+  let sandboxBody: Mesh | null = null;
+  let sandboxBodyMaterial: MeshBasicMaterial | null = null;
   let cage: LineSegments | null = null;
   let cageMaterial: LineBasicMaterial | null = null;
   let ring: Mesh | null = null;
   let ringMaterial: MeshBasicMaterial | null = null;
   let perimeter: Mesh | null = null;
   let perimeterMaterial: ShaderMaterial | null = null;
+  let securityLoop: Group | null = null;
+  const loopSegments: Mesh[] = [];
+  const loopSegmentMaterials: MeshBasicMaterial[] = [];
+  const loopStageNodes: Mesh[] = [];
+  const loopStageMaterials: MeshBasicMaterial[] = [];
   const gateMeshes: Mesh[] = [];
   const gateMaterials: MeshBasicMaterial[] = [];
   const railMeshes: Mesh[] = [];
@@ -223,10 +229,30 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
 
       coreMaterial = makeFresnelMaterial(MONKEYCLAW_COLORS.core, 0.85);
       core = new Mesh(
-        track(new IcosahedronGeometry(MONKEYCLAW_STAGE.coreRadius, 1)),
+        track(new BoxGeometry(
+          MONKEYCLAW_STAGE.coreRadius * 1.4,
+          MONKEYCLAW_STAGE.coreRadius * 1.4,
+          MONKEYCLAW_STAGE.coreRadius * 0.9,
+        )),
         coreMaterial,
       );
       core.position.copy(root);
+
+      sandboxBodyMaterial = track(new MeshBasicMaterial({
+        color: 0x123748,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      sandboxBody = new Mesh(
+        track(new BoxGeometry(
+          MONKEYCLAW_STAGE.coreRadius * 1.28,
+          MONKEYCLAW_STAGE.coreRadius * 1.28,
+          MONKEYCLAW_STAGE.coreRadius * 0.82,
+        )),
+        sandboxBodyMaterial,
+      );
+      sandboxBody.position.copy(root);
 
       cageMaterial = track(new LineBasicMaterial({
         color: MONKEYCLAW_COLORS.cage,
@@ -236,10 +262,62 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       cage = new LineSegments(
-        track(new EdgesGeometry(new IcosahedronGeometry(MONKEYCLAW_STAGE.cageRadius, 1))),
+        track(new EdgesGeometry(new BoxGeometry(
+          MONKEYCLAW_STAGE.cageRadius * 1.45,
+          MONKEYCLAW_STAGE.cageRadius * 1.45,
+          MONKEYCLAW_STAGE.cageRadius,
+        ))),
         cageMaterial,
       );
       cage.position.copy(root);
+
+      // Product silhouette: the five-stage autonomous security loop wrapped
+      // around a literal sandboxed agent runtime. Each joint is one real
+      // MonkeyClaw stage: red, judge, repro, blue, purple.
+      securityLoop = new Group();
+      securityLoop.name = "monkeyclaw-red-judge-repro-blue-purple";
+      securityLoop.position.copy(root);
+      const stageColors = [
+        MONKEYCLAW_COLORS.hostile,
+        MONKEYCLAW_COLORS.judge,
+        MONKEYCLAW_COLORS.judge,
+        MONKEYCLAW_COLORS.blue,
+        MONKEYCLAW_COLORS.purple,
+      ] as const;
+      const segmentArc = Math.PI * 2 / 5 - 0.16;
+      for (let stageIndex = 0; stageIndex < stageColors.length; stageIndex += 1) {
+        const angle = stageIndex * Math.PI * 2 / stageColors.length + Math.PI * 0.08;
+        const segmentMaterial = track(new MeshBasicMaterial({
+          color: stageColors[stageIndex],
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const segment = new Mesh(
+          track(new TorusGeometry(0.79, 0.018, 6, 20, segmentArc)),
+          segmentMaterial,
+        );
+        segment.rotation.z = angle;
+        securityLoop.add(segment);
+        loopSegments.push(segment);
+        loopSegmentMaterials.push(segmentMaterial);
+
+        const nodeMaterial = track(new MeshBasicMaterial({
+          color: stageColors[stageIndex],
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const node = new Mesh(track(new BoxGeometry(0.13, 0.065, 0.08)), nodeMaterial);
+        const nodeAngle = angle + segmentArc;
+        node.position.set(Math.cos(nodeAngle) * 0.79, Math.sin(nodeAngle) * 0.79, 0);
+        node.rotation.z = nodeAngle + Math.PI / 2;
+        securityLoop.add(node);
+        loopStageNodes.push(node);
+        loopStageMaterials.push(nodeMaterial);
+      }
 
       ringMaterial = track(new MeshBasicMaterial({
         color: MONKEYCLAW_COLORS.judge,
@@ -365,7 +443,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       if (!loaded || stage) return;
       stage = stageRoot;
       const objects = ([
-        perimeter, core, cage, ring, vectors, flashes,
+        perimeter, securityLoop, sandboxBody, core, cage, ring, vectors, flashes,
         ...gateMeshes, ...railMeshes, ...pulseMeshes,
       ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
       for (const object of objects) {
@@ -395,6 +473,11 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         core.scale.setScalar(1 + judgePulse + redT * 0.02);
         coreMaterial.uniforms.uIntensity.value = (0.55 + redT * 0.3 + judgeT * 0.25) * fade;
       }
+      if (sandboxBody && sandboxBodyMaterial) {
+        sandboxBody.rotation.copy(core?.rotation ?? sandboxBody.rotation);
+        sandboxBody.scale.copy(core?.scale ?? sandboxBody.scale);
+        sandboxBodyMaterial.opacity = (0.12 + judgeT * 0.08 + blueT * 0.06) * fade;
+      }
       if (cage && cageMaterial) {
         cage.rotation.y = -t * 0.8;
         cage.rotation.z = t * 0.5;
@@ -407,6 +490,18 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       }
       if (perimeter && perimeterMaterial) {
         perimeterMaterial.uniforms.uIntensity.value = (0.05 + blueT * 0.22) * fade;
+      }
+      if (securityLoop) {
+        const stageProgress = [redT, judgeT, judgeT, blueT, purpleT];
+        securityLoop.rotation.z = t * 0.12;
+        securityLoop.rotation.x = Math.sin(t * Math.PI) * 0.09;
+        for (let stageIndex = 0; stageIndex < stageProgress.length; stageIndex += 1) {
+          const activation = stageProgress[stageIndex];
+          loopSegmentMaterials[stageIndex].opacity = (0.08 + activation * 0.44) * fade;
+          loopStageMaterials[stageIndex].opacity = (0.12 + activation * 0.82) * fade;
+          const pulse = 0.78 + activation * 0.32;
+          loopStageNodes[stageIndex].scale.setScalar(pulse);
+        }
       }
 
       // Attack vectors — pure function of loop progress per zone.
@@ -621,7 +716,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
     detach() {
       if (!stage) return;
       const objects = ([
-        perimeter, core, cage, ring, vectors, flashes,
+        perimeter, securityLoop, sandboxBody, core, cage, ring, vectors, flashes,
         ...gateMeshes, ...railMeshes, ...pulseMeshes,
       ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
       for (const object of objects) {
@@ -636,7 +731,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       // detach via host (stage reference dropped here too)
       if (stage) {
         const objects = ([
-          perimeter, core, cage, ring, vectors, flashes,
+          perimeter, securityLoop, sandboxBody, core, cage, ring, vectors, flashes,
           ...gateMeshes, ...railMeshes, ...pulseMeshes,
         ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
         for (const object of objects) {
@@ -653,6 +748,10 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       pulseMeshes.length = 0;
       pulseMaterials.length = 0;
       pulses.length = 0;
+      loopSegments.length = 0;
+      loopSegmentMaterials.length = 0;
+      loopStageNodes.length = 0;
+      loopStageMaterials.length = 0;
       loaded = false;
     },
   };
