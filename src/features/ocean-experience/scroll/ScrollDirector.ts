@@ -42,6 +42,7 @@ import {
   notifyJourneyResize,
   notifyJourneyScroll,
 } from "./journey-scroll-bus.ts";
+import { writeJourneyScrollY } from "./journey-scroll-writer.ts";
 
 export type ScrollSampleListener = (sample: {
   progress: number;
@@ -252,11 +253,7 @@ export class ScrollDirector {
     this.getViewportFn = options.getViewport ?? defaultViewport;
     this.getScrollMetricsFn =
       options.getScrollMetrics ?? (() => defaultRootMetrics(this.root));
-    this.setScrollYFn =
-      options.setScrollY ??
-      ((y: number) => {
-        runtimeWindow()?.scrollTo({ top: y, left: 0, behavior: "auto" });
-      });
+    this.setScrollYFn = options.setScrollY ?? writeJourneyScrollY;
     this.scene = options.scene ?? null;
   }
 

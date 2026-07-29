@@ -170,6 +170,9 @@ export default function ContactEmailSlab() {
           {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
           <span className="contact-section__copy-label">{copied ? "Copied" : "Copy"}</span>
         </button>
+        <span className="sr-only" role="status" aria-live="polite">
+          {copied ? `Copied ${bio.email} to the clipboard.` : ""}
+        </span>
       </div>
     </div>
   );

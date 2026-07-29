@@ -9,6 +9,7 @@ import {
 } from "@/lib/portfolio/scroll-choreography";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
 import { getActiveScrollDirector } from "@/features/ocean-experience/scroll/active-scroll-director";
+import { setJourneyScrollWriter } from "@/features/ocean-experience/scroll/journey-scroll-writer";
 
 const SCROLL_CLOCK_ID = "smooth-scroll-lenis";
 
@@ -162,6 +163,9 @@ export default function SmoothScrollProvider({
     };
 
     if (reducedMotion || !readMotionPolicy().choreographyAllowed) {
+      setJourneyScrollWriter((top) => {
+        window.scrollTo({ top, left: 0, behavior: "auto" });
+      });
       nativeCleanup = bindNativeScrollFallback({
         cancelled: () => cancelled,
         alignmentTimers,
@@ -173,6 +177,7 @@ export default function SmoothScrollProvider({
 
       return () => {
         cancelled = true;
+        setJourneyScrollWriter(null);
         if (alignmentFrame) window.cancelAnimationFrame(alignmentFrame);
         alignmentTimers.forEach((timer) => window.clearTimeout(timer));
         nativeCleanup?.();
@@ -216,6 +221,7 @@ export default function SmoothScrollProvider({
         const scrollImmediate = (top: number) => {
           lenis?.scrollTo(top, { immediate: true, force: true });
         };
+        setJourneyScrollWriter(scrollImmediate);
 
         const afterStableLayout = () => {
           if (cancelled) return;
@@ -277,7 +283,11 @@ export default function SmoothScrollProvider({
         removeLenisScroll?.();
         lenis?.destroy();
         lenis = null;
+        setJourneyScrollWriter(null);
         if (!cancelled) {
+          setJourneyScrollWriter((top) => {
+            window.scrollTo({ top, left: 0, behavior: "auto" });
+          });
           nativeCleanup = bindNativeScrollFallback({
             cancelled: () => cancelled,
             alignmentTimers,
@@ -295,6 +305,7 @@ export default function SmoothScrollProvider({
     return () => {
       cancelled = true;
       unsubscribeFrameClock(SCROLL_CLOCK_ID);
+      setJourneyScrollWriter(null);
       removeLenisScroll?.();
       lenis?.destroy();
       lenis = null;
