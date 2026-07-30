@@ -1922,7 +1922,8 @@ const tests = [
     assert.match(sceneSource, /dispose\(\)/);
     assert.match(sceneSource, /probe/);
     assert.match(sceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
-    assert.match(sceneSource, /sandboxBody/);
+    assert.match(sceneSource, /monkeyclaw-brand-decal/);
+    assert.match(sceneSource, /perimeter/);
     assert.doesNotMatch(sceneSource, /addEventListener/);
     assert.doesNotMatch(sceneSource, /Math\.random\(/);
 
@@ -1940,6 +1941,8 @@ const tests = [
     assert.match(encounterSource, /project\.proof/);
     assert.match(encounterSource, /<dl className=\{styles\.facts\}>/);
     assert.match(encounterSource, /ProjectTransitionLink/);
+    assert.match(encounterSource, /ENCOUNTER_BEATS/);
+    assert.match(encounterSource, /Live system model/);
     assert.doesNotMatch(encounterSource, /IntersectionObserver/);
 
     // Sticky staging depends on the global overflow-x: clip (not hidden).
@@ -2101,7 +2104,7 @@ const tests = [
     assert.match(etchSceneSource, /etch-nib-surface-engraving/);
     assert.match(etchSceneSource, /projects\/etch\/logo\.svg/);
     assert.match(etchSceneSource, /etch-gate-/);
-    assert.match(etchSceneSource, /Physical signoff/);
+    assert.match(etchSceneSource, /physical-signoff/);
     assert.match(etchSceneSource, /const assemblyRetireAt = layoutMode === "mobile" \? 0\.35 : 0\.94/);
     assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.doesNotMatch(floweSceneSource, /plannerBody/);

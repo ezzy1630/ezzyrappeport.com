@@ -17,7 +17,6 @@ import {
   Color,
   ConeGeometry,
   DirectionalLight,
-  DoubleSide,
   DynamicDrawUsage,
   EdgesGeometry,
   Group,

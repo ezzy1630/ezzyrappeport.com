@@ -163,7 +163,9 @@ try {
     seq.slice(1).every((entry) => entry.metrics.encounter === "monkeyclaw"),
     seq.map((entry) => entry.metrics.encounter).join(","));
   check("fade rises then falls across the window",
-    Number(seq[2].metrics.encounterFade) > 0.5 && Number(seq[6].metrics.encounterFade) < 0.75,
+    Number(seq[2].metrics.encounterFade) > 0.5
+      && Number(seq[6].metrics.encounterFade) < Number(seq[3].metrics.encounterFade)
+      && Number(seq[6].metrics.encounterFade) < 0.85,
     `red fade=${seq[2].metrics.encounterFade} out fade=${seq[6].metrics.encounterFade}`);
   check("scene budget: draw calls ≤ 90 at peak",
     Math.max(...seq.map((entry) => Number(entry.metrics.drawCalls))) <= 90,

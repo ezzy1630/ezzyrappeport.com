@@ -9,6 +9,39 @@ type Props = {
   total: string;
 };
 
+type EncounterBeat = {
+  label: string;
+  detail: string;
+  state?: "pending";
+};
+
+const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
+  monkeyclaw: [
+    { label: "Ingress", detail: "18 seeded zones" },
+    { label: "Contain", detail: "sandbox deflects" },
+    { label: "Verdict", detail: "8 verifier gates" },
+    { label: "Telemetry", detail: "regression returns" },
+  ],
+  etch: [
+    { label: "Intent", detail: "language enters" },
+    { label: "Constraints", detail: "typed boundary" },
+    { label: "Evidence", detail: "sim + formal" },
+    { label: "Signoff", detail: "physical pending", state: "pending" },
+  ],
+  flowe: [
+    { label: "Capture", detail: "Canvas + tasks" },
+    { label: "Organize", detail: "daily plan" },
+    { label: "Focus", detail: "one calm block" },
+    { label: "Index", detail: "offline local state" },
+  ],
+  argyph: [
+    { label: "Scan", detail: "repository reef" },
+    { label: "Symbols", detail: "definitions + refs" },
+    { label: "Semantic", detail: "local links" },
+    { label: "Return", detail: "bounded spans" },
+  ],
+};
+
 /**
  * Semantic story surface for a 3D project encounter (plan §10.1).
  * The DOM owns the title, value line, role/status, proof points, and the
@@ -16,6 +49,8 @@ type Props = {
  * Content is complete and readable with the renderer absent or failed.
  */
 export default function ProjectEncounter({ project, progress, total }: Props) {
+  const beats = ENCOUNTER_BEATS[project.slug] ?? [];
+
   return (
     <article
       id={`project-${project.slug}`}
@@ -30,6 +65,30 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
           <span className={styles.sceneHintRail} />
           <span className={styles.sceneHintRail} />
           <span className={styles.sceneHintRail} />
+        </div>
+        <div className={styles.sceneFrame} aria-hidden="true">
+          <div className={styles.frameHeader}>
+            <span>Live system model</span>
+            <span>Scroll-linked / 04 states</span>
+          </div>
+          <ol className={styles.beatRail}>
+            {beats.map((beat, index) => (
+              <li
+                key={`${project.slug}-${beat.label}`}
+                className={styles.beat}
+                data-state={beat.state}
+              >
+                <span className={styles.beatTrack} />
+                <span className={styles.beatIndex}>{String(index + 1).padStart(2, "0")}</span>
+                <strong>{beat.label}</strong>
+                <small>{beat.detail}</small>
+              </li>
+            ))}
+          </ol>
+          <span className={styles.frameCorner} data-corner="north-west" />
+          <span className={styles.frameCorner} data-corner="north-east" />
+          <span className={styles.frameCorner} data-corner="south-west" />
+          <span className={styles.frameCorner} data-corner="south-east" />
         </div>
         <div className={styles.copy}>
           <p className={styles.kicker} aria-label={`Project ${progress} of ${total}, ${project.year}`}>
