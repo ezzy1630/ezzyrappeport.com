@@ -24,6 +24,7 @@
   min-height: 420vh;
 }
 
+
 .stage {
   position: sticky;
   top: 0;
@@ -66,7 +67,21 @@
   --encounter-accent: #bc5f57;
   --encounter-ink: #123746;
 }
-.encounter[data-encounter="etch"] .sceneFrame { --encounter-accent: #5aa8ba; }
+.encounter[data-encounter="etch"] .sceneFrame {
+  --encounter-accent: #3f9bb1;
+  --encounter-ink: #0c3442;
+  background:
+    radial-gradient(circle at 42% 46%, rgb(244 252 255 / 36%), transparent 48%),
+    linear-gradient(90deg, rgb(226 244 249 / 24%), transparent 34%),
+    repeating-linear-gradient(
+      90deg,
+      color-mix(in oklab, var(--encounter-accent) 12%, transparent) 0 1px,
+      transparent 1px 5.5rem
+    );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 30%),
+    0 1.5rem 5rem rgb(26 91 113 / 8%);
+}
 .encounter[data-encounter="flowe"] .sceneFrame { --encounter-accent: #5c9fc5; }
 .encounter[data-encounter="argyph"] .sceneFrame { --encounter-accent: #8a86bd; }
 
@@ -144,6 +159,13 @@
   color: rgb(205 228 235 / 82%);
   font-size: 0.56rem;
   line-height: 1.2;
+}
+
+.encounter[data-encounter="etch"] .sceneAnnotation {
+  background: color-mix(in oklab, #06212a 93%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 12%),
+    0 0.8rem 2.2rem rgb(4 41 52 / 18%);
 }
 
 .sceneAnnotation[data-slot="left-top"] { left: 2%; top: 10%; }
@@ -266,6 +288,25 @@
 
 .encounter[data-encounter="monkeyclaw"] .beatIndex {
   grid-row: auto;
+}
+
+.encounter[data-encounter="etch"] .beat {
+  grid-template-columns: 1fr;
+  gap: 0.12rem;
+  padding-inline: 0.42rem;
+}
+
+.encounter[data-encounter="etch"] .beatIndex {
+  grid-row: auto;
+}
+
+.encounter[data-encounter="etch"] .beat strong {
+  font-size: 0.62rem;
+  letter-spacing: 0.055em;
+}
+
+.encounter[data-encounter="etch"] .beat small {
+  font-size: 0.56rem;
 }
 
 .beat[data-state="pending"] strong::after {
@@ -582,6 +623,15 @@
   .encounter[data-encounter="monkeyclaw"] .beat strong {
     font-size: 0.44rem;
     letter-spacing: 0.01em;
+  }
+
+  .encounter[data-encounter="etch"] .beat {
+    padding-inline: 0.12rem;
+  }
+
+  .encounter[data-encounter="etch"] .beat strong {
+    font-size: 0.4rem;
+    letter-spacing: 0;
   }
 
   .beat small {

@@ -9,21 +9,21 @@
  */
 
 export const ETCH_LOOP = {
-  intentStart: 0.02,
-  intentFull: 0.2,
-  constraintsStart: 0.18,
-  constraintsFull: 0.38,
-  candidatesStart: 0.36,
-  candidatesFull: 0.55,
-  gatesStart: 0.52,
-  gatesFull: 0.85,
-  relaxStart: 0.82,
-  relaxFull: 0.97,
+  intentStart: 0.01,
+  intentFull: 0.16,
+  constraintsStart: 0.13,
+  constraintsFull: 0.31,
+  candidatesStart: 0.27,
+  candidatesFull: 0.45,
+  gatesStart: 0.38,
+  gatesFull: 0.82,
+  relaxStart: 0.9,
+  relaxFull: 0.99,
 } as const;
 
 export const ETCH_COUNTS = {
   /** Typed constraint planes that crystallize the intent volume. */
-  constraintPlanes: 3,
+  constraintPlanes: 4,
   /** Candidate structures formed from the crystallized boundary. */
   candidates: 3,
   /** Verification gates (4th = physical signoff, visibly pending). */
@@ -46,13 +46,13 @@ export const ETCH_GATES = [
 export const ETCH_STAGE = {
   distance: 4.35,
   /** Verification ladder axis: enters left, inspected toward center-right. */
-  axisDesktop: { x0: -1.75, x1: 1.05, y: -0.08 } as const,
-  axisMobile: { x0: -0.9, x1: 0.9, y: 0.62 } as const,
-  intentRadius: 0.3,
-  candidateSize: 0.17,
+  axisDesktop: { x0: -1.42, x1: 1.12, y: -0.04 } as const,
+  axisMobile: { x0: -0.82, x1: 0.92, y: 0.66 } as const,
+  intentRadius: 0.41,
+  candidateSize: 0.22,
   gateWidth: 0.028,
-  gateHeight: 0.62,
-  gateSpacing: 0.46,
+  gateHeight: 0.82,
+  gateSpacing: 0.5,
   relaxLength: 0.85,
 } as const;
 

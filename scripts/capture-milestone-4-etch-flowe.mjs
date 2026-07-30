@@ -9,12 +9,14 @@
  *   node scripts/capture-milestone-4-etch-flowe.mjs [baseUrl]
  */
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { execSync } from "node:child_process";
 import { launchChrome, waitForHeroReady, delay } from "./lib/chrome.mjs";
 
 const baseUrl = process.argv[2] ?? "http://127.0.0.1:3000";
-const outRoot = new URL("../.verification/milestone-4/", import.meta.url);
+const outRoot = process.env.PORTFOLIO_CAPTURE_ROOT
+  ? resolve(process.env.PORTFOLIO_CAPTURE_ROOT)
+  : new URL("../.verification/milestone-4/", import.meta.url).pathname;
 
 function gitCommit() {
   try {
@@ -42,6 +44,9 @@ async function collectMetrics(page) {
       encounter: canvas?.dataset.encounterScene ?? null,
       encounterFade: canvas?.dataset.encounterSceneFade ?? null,
       experienceChapter: document.documentElement.dataset.experienceChapter ?? null,
+      chapterProgress: Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--experience-chapter-progress"),
+      ),
       drawCalls: canvas?.dataset.drawCalls ?? null,
       triangles: canvas?.dataset.triangles ?? null,
       frameMsP95: canvas?.dataset.frameMsP95 ?? null,
@@ -111,9 +116,9 @@ async function captureFrameTrace(page, seconds = 2) {
 }
 
 const browser = await launchChrome({ defaultViewport: null });
-const etchDir = new URL("./etch/", outRoot).pathname;
-const floweDir = new URL("./flowe/", outRoot).pathname;
-const seamsDir = new URL("./seams/", outRoot).pathname;
+const etchDir = join(outRoot, "etch");
+const floweDir = join(outRoot, "flowe");
+const seamsDir = join(outRoot, "seams");
 for (const dir of [etchDir, floweDir, seamsDir]) {
   mkdirSync(dir, { recursive: true });
 }
@@ -138,16 +143,18 @@ function check(name, ok, detail) {
 }
 
 const ETCH_BEATS = [
-  { name: "00-intent", journey: 0.28 },
-  { name: "01-constraints", journey: 0.32 },
-  { name: "02-candidates", journey: 0.36 },
-  { name: "03-gates", journey: 0.40 },
-  { name: "04-relax", journey: 0.44 },
+  { name: "00-requirement", journey: 0.418 },
+  { name: "01-typed-spec", journey: 0.427 },
+  { name: "02-candidates", journey: 0.442 },
+  { name: "03-simulate", journey: 0.457 },
+  { name: "04-formal", journey: 0.472 },
+  { name: "05-synthesize", journey: 0.487 },
+  { name: "06-signoff-pending", journey: 0.497 },
 ];
 const FLOWE_BEATS = [
-  { name: "00-drift", journey: 0.52 },
+  { name: "00-drift", journey: 0.54 },
   { name: "01-group", journey: 0.56 },
-  { name: "02-focus", journey: 0.60 },
+  { name: "02-focus", journey: 0.6 },
   { name: "03-contract", journey: 0.64 },
 ];
 
@@ -269,8 +276,8 @@ try {
   }
 
   const failures = report.checks.filter((entry) => !entry.ok);
-  writeFileSync(new URL("./capture-report.json", outRoot), JSON.stringify(report, null, 2));
-  writeFileSync(new URL("./README.md", outRoot),
+  writeFileSync(join(outRoot, "capture-report.json"), JSON.stringify(report, null, 2));
+  writeFileSync(join(outRoot, "README.md"),
     `# Milestone 4 — Etch + FlowE encounter evidence\n\nCaptured at: ${report.capturedAt}\nCommit: ${report.commit}\n\nVerification-ladder and planning-current sequences, probe signatures,\ncausal seams, reversibility, mobile compositions, and frame traces.\n\nChecks: ${report.checks.length - failures.length}/${report.checks.length} passed.\n`);
   if (failures.length > 0) {
     throw new Error(`Milestone 4 capture checks failed: ${failures.map((f) => f.name).join(", ")}`);

@@ -173,7 +173,10 @@ const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
   surface: 0,
   descent: 0,
   monkeyclaw: 0,
-  etch: -0.5,
+  // Etch opens on seven dense proof states. Start only once its own sticky
+  // stage reaches the viewport so requirement/spec frames never render under
+  // MonkeyClaw's releasing frame.
+  etch: 0,
   flowe: -0.5,
   argyph: -0.5,
   "charted-work": -0.35,

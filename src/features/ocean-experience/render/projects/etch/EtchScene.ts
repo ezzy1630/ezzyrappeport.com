@@ -143,6 +143,10 @@ export function createEtchEncounter(): ProjectEncounter {
   let diePinMaterial: MeshPhysicalMaterial | null = null;
   let dieScrews: InstancedMesh | null = null;
   let dieScrewMaterial: MeshPhysicalMaterial | null = null;
+  let dieTraces: InstancedMesh | null = null;
+  let dieTraceMaterial: MeshBasicMaterial | null = null;
+  let dieVias: InstancedMesh | null = null;
+  let dieViaMaterial: MeshPhysicalMaterial | null = null;
   const dieDetails: Mesh[] = [];
   const dieDetailMaterials: MeshBasicMaterial[] = [];
   const relaxCurves: Mesh[] = [];
@@ -218,7 +222,8 @@ export function createEtchEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const fill = new Mesh(fillGeometry, fillMaterial);
-        line.position.set(axisX0, 0, (plane - 1) * 0.16);
+        const planeDepth = (plane - (ETCH_COUNTS.constraintPlanes - 1) * 0.5) * 0.13;
+        line.position.set(axisX0, 0, planeDepth);
         fill.position.copy(line.position);
         axisGroup.add(line, fill);
         frameLines.push(line);
@@ -314,7 +319,7 @@ export function createEtchEncounter(): ProjectEncounter {
         depthWrite: true,
         side: DoubleSide,
       }));
-      const resultBodyGeometry = track(new BoxGeometry(0.6, 0.46, 0.022));
+      const resultBodyGeometry = track(new BoxGeometry(0.72, 0.54, 0.03));
       resultMesh = new Mesh(
         resultBodyGeometry,
         resultMaterial,
@@ -332,7 +337,7 @@ export function createEtchEncounter(): ProjectEncounter {
       );
       const resultX = layoutMode === "mobile"
         ? 0.5
-        : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.48;
+        : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
       resultAssembly.position.set(resultX, 0, 0);
       resultAssembly.add(resultMesh, resultLattice);
 
@@ -371,14 +376,14 @@ export function createEtchEncounter(): ProjectEncounter {
         `,
       }));
       const identityDecal = new Mesh(
-        track(new PlaneGeometry(0.13, 0.13)),
+        track(new PlaneGeometry(0.15, 0.15)),
         resultIdentityMaterial,
       );
       identityDecal.name = "etch-nib-surface-engraving";
-      identityDecal.position.set(-0.205, 0, 0.079);
+      identityDecal.position.set(-0.26, 0, 0.096);
       resultAssembly.add(identityDecal);
 
-      const cellGeometry = track(createRoundedPanelGeometry(0.08, 0.055, 0.022, 0.012, 0.003));
+      const cellGeometry = track(createRoundedPanelGeometry(0.095, 0.066, 0.027, 0.012, 0.003));
       dieCellMaterial = track(new MeshPhysicalMaterial({
         color: ETCH_COLORS.result,
         emissive: ETCH_COLORS.result,
@@ -394,14 +399,14 @@ export function createEtchEncounter(): ProjectEncounter {
       dieCells.instanceMatrix.setUsage(DynamicDrawUsage);
       for (let cell = 0; cell < 12; cell += 1) {
         _dieMatrix.makeTranslation(
-          -0.1 + (cell % 4) * 0.11,
-          0.13 - Math.floor(cell / 4) * 0.13,
-          0.078,
+          -0.115 + (cell % 4) * 0.125,
+          0.15 - Math.floor(cell / 4) * 0.15,
+          0.094,
         );
         dieCells.setMatrixAt(cell, _dieMatrix);
       }
       resultAssembly.add(dieCells);
-      const busGeometry = track(new BoxGeometry(0.54, 0.012, 0.014));
+      const busGeometry = track(new BoxGeometry(0.64, 0.012, 0.014));
       for (let bus = 0; bus < 2; bus += 1) {
         const material = track(new MeshBasicMaterial({
           color: ETCH_COLORS.constraint,
@@ -411,7 +416,7 @@ export function createEtchEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const mesh = new Mesh(busGeometry, material);
-        mesh.position.set(0, bus === 0 ? 0.205 : -0.205, 0.075);
+        mesh.position.set(0, bus === 0 ? 0.245 : -0.245, 0.092);
         resultAssembly.add(mesh);
         dieDetails.push(mesh);
         dieDetailMaterials.push(material);
@@ -428,17 +433,75 @@ export function createEtchEncounter(): ProjectEncounter {
         depthWrite: true,
       }));
       diePins = new InstancedMesh(
-        track(createRoundedPanelGeometry(0.095, 0.026, 0.026, 0.008, 0.002)),
+        track(createRoundedPanelGeometry(0.11, 0.028, 0.028, 0.008, 0.002)),
         diePinMaterial,
-        16,
+        24,
       );
-      for (let pin = 0; pin < 16; pin += 1) {
-        const side = pin < 8 ? -1 : 1;
-        const rank = pin % 8;
-        _dieMatrix.makeTranslation(side * 0.37, -0.205 + rank * 0.0585, 0);
+      for (let pin = 0; pin < 24; pin += 1) {
+        if (pin < 16) {
+          const side = pin < 8 ? -1 : 1;
+          const rank = pin % 8;
+          _dieMatrix.makeTranslation(side * 0.43, -0.235 + rank * 0.067, 0);
+        } else {
+          const top = pin < 20 ? 1 : -1;
+          const rank = pin % 4;
+          _dieMatrix.makeRotationZ(Math.PI * 0.5);
+          _dieMatrix.setPosition(-0.205 + rank * 0.137, top * 0.34, 0);
+        }
         diePins.setMatrixAt(pin, _dieMatrix);
       }
       resultAssembly.add(diePins);
+
+      // Fine copper routing and via field. These instanced details keep the
+      // result legible as a designed FIFO die, not a flat glowing rectangle.
+      dieTraceMaterial = track(new MeshBasicMaterial({
+        color: ETCH_COLORS.constraint,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      dieTraces = new InstancedMesh(
+        track(new BoxGeometry(0.09, 0.008, 0.008)),
+        dieTraceMaterial,
+        18,
+      );
+      for (let trace = 0; trace < 18; trace += 1) {
+        const vertical = trace >= 10;
+        if (vertical) _dieMatrix.makeRotationZ(Math.PI * 0.5);
+        else _dieMatrix.identity();
+        _dieMatrix.setPosition(
+          vertical ? -0.17 + (trace - 10) * 0.055 : -0.2 + (trace % 5) * 0.1,
+          vertical ? 0.015 : -0.19 + Math.floor(trace / 5) * 0.125,
+          0.09,
+        );
+        dieTraces.setMatrixAt(trace, _dieMatrix);
+      }
+      resultAssembly.add(dieTraces);
+
+      dieViaMaterial = track(new MeshPhysicalMaterial({
+        color: 0xd8f8ff,
+        emissive: ETCH_COLORS.result,
+        emissiveIntensity: 0.5,
+        roughness: 0.16,
+        metalness: 0.62,
+        transparent: true,
+        opacity: 0,
+      }));
+      dieVias = new InstancedMesh(
+        track(new IcosahedronGeometry(0.012, 1)),
+        dieViaMaterial,
+        12,
+      );
+      for (let via = 0; via < 12; via += 1) {
+        _dieMatrix.makeTranslation(
+          -0.19 + (via % 4) * 0.13,
+          0.17 - Math.floor(via / 4) * 0.17,
+          0.102,
+        );
+        dieVias.setMatrixAt(via, _dieMatrix);
+      }
+      resultAssembly.add(dieVias);
       dieScrewMaterial = track(new MeshPhysicalMaterial({
         color: 0xc7d5db,
         emissive: 0x293a40,
@@ -457,9 +520,9 @@ export function createEtchEncounter(): ProjectEncounter {
       );
       for (let screw = 0; screw < 4; screw += 1) {
         _dieMatrix.makeTranslation(
-          screw % 2 === 0 ? -0.265 : 0.265,
-          screw < 2 ? 0.205 : -0.205,
-          0.082,
+          screw % 2 === 0 ? -0.325 : 0.325,
+          screw < 2 ? 0.245 : -0.245,
+          0.098,
         );
         dieScrews.setMatrixAt(screw, _dieMatrix);
       }
@@ -524,8 +587,8 @@ export function createEtchEncounter(): ProjectEncounter {
       const candidatesT = smoothstep01((t - loop.candidatesStart) / (loop.candidatesFull - loop.candidatesStart));
       const gatesT = smoothstep01((t - loop.gatesStart) / (loop.gatesFull - loop.gatesStart));
       const relaxT = smoothstep01((t - loop.relaxStart) / (loop.relaxFull - loop.relaxStart));
-      const resultRevealStart = layoutMode === "mobile" ? 0.38 : 0.62;
-      const resultReveal = smoothstep01((gatesT - resultRevealStart) / 0.3);
+      const resultRevealStart = layoutMode === "mobile" ? 0.34 : 0.5;
+      const resultReveal = smoothstep01((gatesT - resultRevealStart) / 0.28);
       const assemblyRetireAt = layoutMode === "mobile" ? 0.35 : 0.94;
       const assemblyRetired = resultReveal >= assemblyRetireAt;
 
@@ -536,6 +599,7 @@ export function createEtchEncounter(): ProjectEncounter {
         root.y - gatesT * 0.06,
         0,
       );
+      axisGroup.scale.setScalar(layoutMode === "mobile" ? 0.9 : 1.12);
 
       // Intent volume: churns until constraints crystallize the boundary.
       if (intentMesh && intentMaterial) {
@@ -555,14 +619,15 @@ export function createEtchEncounter(): ProjectEncounter {
         const stagger = plane * 0.06;
         const arrive = smoothstep01((constraintsT - stagger) / Math.max(1 - stagger, 1e-6));
         const offset = (1 - arrive) * (plane % 2 === 0 ? 0.5 : -0.5);
-        frameLines[plane].position.set(axisX0 + candidatesT * 0.18, offset, (plane - 1) * 0.16);
+        const planeDepth = (plane - (ETCH_COUNTS.constraintPlanes - 1) * 0.5) * 0.13;
+        frameLines[plane].position.set(axisX0 + candidatesT * 0.18, offset, planeDepth);
         frameFills[plane].position.copy(frameLines[plane].position);
         const compression = 1 - arrive * 0.16;
         frameLines[plane].scale.setScalar(compression);
         frameFills[plane].scale.setScalar(compression);
         const handoff = (1 - candidatesT * 0.9) * (1 - resultReveal);
-        frameMaterials[plane].opacity = arrive * 0.5 * fade * handoff;
-        fillMaterials[plane].opacity = arrive * 0.08 * fade * handoff;
+        frameMaterials[plane].opacity = arrive * 0.72 * fade * handoff;
+        fillMaterials[plane].opacity = arrive * 0.12 * fade * handoff;
       }
 
       // Candidates form along the ladder, then travel it through the gates.
@@ -588,7 +653,7 @@ export function createEtchEncounter(): ProjectEncounter {
         const held = failed ? 0.32 : 1;
         // Failed candidates stay visibly held at their gate — dimmed, sunk.
         if (failed) mesh.position.y = candidateBase[candidate].y - 0.09;
-        material.opacity = form * 0.82 * fade * held
+        material.opacity = form * 0.96 * fade * held
           * (1 - resultReveal * 0.94)
           * (1 - relaxT * 0.4);
         mesh.scale.setScalar(form * (failed ? 0.85 : 1));
@@ -617,23 +682,25 @@ export function createEtchEncounter(): ProjectEncounter {
         const pendingPulse = !passed
           ? 0.16 + Math.sin(frame.time * 1.4) * 0.05
           : 0;
+        const staysVisible = assemblyRetired && passed ? 0 : 1;
+        const resultSuppression = passed ? 1 - resultReveal : 1;
         gateMaterials[gate].opacity = (
           crossed ? 0.5 : passed ? 0.1 + leadTravel * 0.06 : pendingPulse
-        ) * fade * (1 - relaxT * 0.5) * (1 - resultReveal)
-          * (assemblyRetired ? 0 : 1);
+        ) * fade * (1 - relaxT * 0.5) * resultSuppression
+          * staysVisible;
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
         const gateReveal = smoothstep01((gatesT - gate * 0.08) / Math.max(1 - gate * 0.08, 1e-6));
         gateLabelMaterials[gate].opacity = gateReveal * (passed ? 0.82 : 0.58 + pendingPulse) * fade
           * (1 - relaxT)
-          * (assemblyRetired ? 0 : 1);
-        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.82 : 1);
+          * staysVisible;
+        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.78 : 1.08);
       }
 
       // Result: evidence-backed FIFO die held before the pending gate.
       if (resultMesh && resultMaterial && resultLattice && latticeMaterial) {
         const reveal = resultReveal;
-        resultMaterial.opacity = reveal * 0.28 * fade * (1 - relaxT * 0.25);
-        latticeMaterial.opacity = reveal * 0.78 * fade * (1 - relaxT * 0.25);
+        resultMaterial.opacity = reveal * 0.68 * fade * (1 - relaxT * 0.25);
+        latticeMaterial.opacity = reveal * 0.94 * fade * (1 - relaxT * 0.25);
         if (dieCellMaterial) {
           dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
         }
@@ -646,6 +713,12 @@ export function createEtchEncounter(): ProjectEncounter {
         if (dieScrewMaterial) {
           dieScrewMaterial.opacity = reveal * 0.9 * fade * (1 - relaxT * 0.25);
         }
+        if (dieTraceMaterial) {
+          dieTraceMaterial.opacity = reveal * 0.74 * fade * (1 - relaxT * 0.25);
+        }
+        if (dieViaMaterial) {
+          dieViaMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
+        }
         for (let detail = 0; detail < dieDetailMaterials.length; detail += 1) {
           const stagger = (detail % 4) * 0.07;
           const detailReveal = smoothstep01((reveal - stagger) / Math.max(1 - stagger, 1e-6));
@@ -656,8 +729,8 @@ export function createEtchEncounter(): ProjectEncounter {
           resultAssembly.rotation.x = -0.22;
           resultAssembly.scale.setScalar(
             layoutMode === "mobile"
-              ? 0.24 + reveal * 0.78
-              : 0.36 + reveal * 1.3,
+              ? 0.28 + reveal * 0.84
+              : 0.4 + reveal * 1.12,
           );
         }
       }

@@ -29,10 +29,13 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Purple", detail: "blocked + observed", start: 0.73, end: 0.92, accent: "#7c3aed" },
   ],
   etch: [
-    { label: "Intent", detail: "language enters", start: 0, end: 0.28 },
-    { label: "Constraints", detail: "typed boundary", start: 0.24, end: 0.52 },
-    { label: "Evidence", detail: "sim + formal", start: 0.48, end: 0.78 },
-    { label: "Signoff", detail: "physical pending", start: 0.74, end: 1, state: "pending" },
+    { label: "Requirement", detail: "FIFO intent", start: 0, end: 0.16, accent: "#dd8058" },
+    { label: "Typed spec", detail: "width · depth · clocks", start: 0.12, end: 0.29, accent: "#4f9eb4" },
+    { label: "Candidates", detail: "03 RTL proposals", start: 0.24, end: 0.42, accent: "#5caec3" },
+    { label: "Simulate", detail: "oracle + traces", start: 0.37, end: 0.55, accent: "#39a98f" },
+    { label: "Formal", detail: "bounded properties", start: 0.5, end: 0.68, accent: "#268e7f" },
+    { label: "Synthesize", detail: "Yosys 0.66 metrics", start: 0.62, end: 0.78, accent: "#397fa8" },
+    { label: "Signoff", detail: "physical pending", start: 0.7, end: 1, accent: "#7e92a0", state: "pending" },
   ],
   flowe: [
     { label: "Capture", detail: "Canvas + tasks", start: 0, end: 0.28 },
@@ -61,6 +64,23 @@ const MONKEYCLAW_ANNOTATIONS = [
   { beat: 4, slot: "right-top", label: "Patch verifier", detail: "eight gates" },
   { beat: 5, slot: "left-mid", label: "Detection oracle", detail: "blocked + observed" },
   { beat: 5, slot: "right-top", label: "Feedback router", detail: "gap → red priority" },
+] as const;
+
+const ETCH_ANNOTATIONS = [
+  { beat: 0, slot: "left-top", label: "Natural-language intent", detail: "synchronous FIFO" },
+  { beat: 0, slot: "right-mid", label: "Run workspace", detail: "saved + reproducible" },
+  { beat: 1, slot: "left-mid", label: "Typed design spec", detail: "width 8 · depth 16" },
+  { beat: 1, slot: "right-top", label: "Clock boundary", detail: "single-domain contract" },
+  { beat: 2, slot: "left-top", label: "Candidate bank", detail: "03 ranked structures" },
+  { beat: 2, slot: "right-bottom", label: "Independent oracle", detail: "candidate-neutral" },
+  { beat: 3, slot: "left-bottom", label: "Simulation", detail: "trace comparison passed" },
+  { beat: 3, slot: "right-top", label: "Failure retained", detail: "evidence, not erased" },
+  { beat: 4, slot: "left-top", label: "Bounded formal", detail: "properties discharged" },
+  { beat: 4, slot: "right-mid", label: "Proof ledger", detail: "claim linked to artifact" },
+  { beat: 5, slot: "left-mid", label: "Yosys 0.66", detail: "synthesis metrics" },
+  { beat: 5, slot: "right-top", label: "Verified FIFO die", detail: "evidence-backed result" },
+  { beat: 6, slot: "left-bottom", label: "Physical proxy", detail: "readiness evidence only" },
+  { beat: 6, slot: "right-top", label: "Signoff pending", detail: "no silicon claim" },
 ] as const;
 
 /**
@@ -92,9 +112,9 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
             <span>Live system model</span>
             <span>Scroll-linked / {String(beats.length).padStart(2, "0")} states</span>
           </div>
-          {project.slug === "monkeyclaw" ? (
+          {project.slug === "monkeyclaw" || project.slug === "etch" ? (
             <div className={styles.sceneAnnotations} aria-hidden="true">
-              {MONKEYCLAW_ANNOTATIONS.map((annotation, index) => {
+              {(project.slug === "monkeyclaw" ? MONKEYCLAW_ANNOTATIONS : ETCH_ANNOTATIONS).map((annotation, index) => {
                 const beat = beats[annotation.beat];
                 return (
                   <span
