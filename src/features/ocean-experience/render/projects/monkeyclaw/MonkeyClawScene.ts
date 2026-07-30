@@ -923,6 +923,13 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const previousT = lastLoopT;
       lastLoopT = t;
 
+      // Mobile is a distinct poster composition. Scale the complete system —
+      // gates, traces, attacks, lights, and identity — as one instrument so
+      // desktop-world objects cannot crowd the copy or escape the frame.
+      if (stage) {
+        stage.scale.setScalar(layoutMode === "mobile" ? 0.66 : 1);
+      }
+
       const loop = MONKEYCLAW_LOOP;
       const targetT = smoothstep01(
         (t - loop.targetStart) / Math.max(loop.targetFull - loop.targetStart, 1e-6),
@@ -932,7 +939,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const reproT = smoothstep01((t - loop.reproStart) / Math.max(loop.reproFull - loop.reproStart, 1e-6));
       const blueT = smoothstep01((t - loop.blueStart) / Math.max(loop.blueFull - loop.blueStart, 1e-6));
       const purpleT = smoothstep01((t - loop.purpleStart) / Math.max(loop.purpleFull - loop.purpleStart, 1e-6));
-      const baseProductScale = layoutMode === "mobile" ? 1.06 : 1.48;
+      const baseProductScale = layoutMode === "mobile" ? 1.27 : 1.48;
       const productScale = baseProductScale * (
         0.92
         + targetT * 0.08

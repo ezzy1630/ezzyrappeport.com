@@ -43,7 +43,7 @@ export const MONKEYCLAW_STAGE = {
   /** Core center: left field so DOM copy owns the calm right region. */
   coreDesktop: [-1.04, -0.02, 0] as const,
   /** Mobile: upper field, copy below — vertical poster composition. */
-  coreMobile: [0, 0.62, 0] as const,
+  coreMobile: [0, 1.15, 0] as const,
   coreRadius: 0.38,
   cageRadius: 0.5,
   judgeRadius: 0.68,
