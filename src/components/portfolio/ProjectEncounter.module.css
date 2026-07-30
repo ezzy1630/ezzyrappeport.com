@@ -24,6 +24,11 @@
   min-height: 420vh;
 }
 
+/* Eight Etch states need enough distance to read, hold, and crossfade. */
+.encounter[data-encounter="etch"] {
+  min-height: 520vh;
+}
+
 
 .stage {
   position: sticky;
@@ -106,12 +111,12 @@
 .sceneAnnotation {
   --annotation-entered: clamp(
     0,
-    calc((var(--experience-chapter-progress, 0) - var(--beat-start, 0)) * 16),
+    calc((var(--experience-chapter-progress, 0) - var(--beat-start, 0)) * 30),
     1
   );
   --annotation-exited: clamp(
     0,
-    calc((var(--experience-chapter-progress, 0) - var(--beat-end, 1)) * 42),
+    calc((var(--experience-chapter-progress, 0) - var(--beat-end, 1)) * 30),
     1
   );
   --annotation-active: max(0, calc(var(--annotation-entered) - var(--annotation-exited)));
@@ -187,8 +192,16 @@
   grid-template-columns: repeat(var(--beat-count, 4), minmax(0, 1fr));
   gap: 0;
   margin: 0;
-  padding: 0 0 0.8rem;
+  padding: 0.7rem 0 0.85rem;
   list-style: none;
+  border-top: 1px solid color-mix(in oklab, var(--encounter-accent) 30%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, #eaf7fa 86%, transparent),
+    color-mix(in oklab, #dceef3 76%, transparent)
+  );
+  box-shadow: 0 -1rem 2.5rem rgb(213 235 241 / 48%);
+  backdrop-filter: blur(10px) saturate(0.85);
 }
 
 .beat {
@@ -210,7 +223,7 @@
   gap: 0.08rem 0.42rem;
   min-width: 0;
   padding: 0.78rem 0.55rem 0;
-  opacity: calc(0.28 + var(--beat-entered) * 0.72 - var(--beat-exited) * 0.52);
+  opacity: calc(0.48 + var(--beat-entered) * 0.52 - var(--beat-exited) * 0.36);
   translate: 0 calc((1 - var(--beat-active)) * 0.08rem);
   transition: opacity 120ms linear, translate 180ms ease-out;
 }
@@ -272,6 +285,10 @@
   white-space: nowrap;
 }
 
+.beatLabelShort {
+  display: none;
+}
+
 .beat small {
   overflow: visible;
   font-size: 0.64rem;
@@ -294,6 +311,7 @@
   grid-template-columns: 1fr;
   gap: 0.12rem;
   padding-inline: 0.42rem;
+  color: #123d4a;
 }
 
 .encounter[data-encounter="etch"] .beatIndex {
@@ -301,12 +319,18 @@
 }
 
 .encounter[data-encounter="etch"] .beat strong {
-  font-size: 0.62rem;
+  overflow: visible;
+  font-size: 0.66rem;
   letter-spacing: 0.055em;
+  line-height: 1.15;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .encounter[data-encounter="etch"] .beat small {
-  font-size: 0.56rem;
+  color: rgb(24 64 76 / 82%);
+  font-size: 0.59rem;
+  line-height: 1.3;
 }
 
 .beat[data-state="pending"] strong::after {
@@ -386,6 +410,10 @@
   padding-block: 2rem;
 }
 
+.encounter[data-encounter="etch"] .copy {
+  width: min(35rem, 37%);
+}
+
 .kicker {
   display: flex;
   align-items: baseline;
@@ -459,8 +487,10 @@
 
 .facts dd {
   margin: 0;
+  min-width: 0;
   font-size: 0.92rem;
   line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .actions {
@@ -630,8 +660,17 @@
   }
 
   .encounter[data-encounter="etch"] .beat strong {
-    font-size: 0.4rem;
-    letter-spacing: 0;
+    font-size: 0.43rem;
+    letter-spacing: 0.01em;
+    line-height: 1;
+  }
+
+  .encounter[data-encounter="etch"] .beatLabelLong {
+    display: none;
+  }
+
+  .encounter[data-encounter="etch"] .beatLabelShort {
+    display: inline;
   }
 
   .beat small {
@@ -655,6 +694,10 @@
       color-mix(in oklab, var(--rv-pearl, #eef4f6) 94%, transparent) 84%,
       transparent
     );
+  }
+
+  .encounter[data-encounter="etch"] .copy {
+    width: 100vw;
   }
 
   .kicker {

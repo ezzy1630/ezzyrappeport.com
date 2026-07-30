@@ -29,6 +29,7 @@ function gitCommit() {
 async function collectMetrics(page) {
   return page.evaluate(() => {
     const canvas = document.querySelector(".fluid-canvas canvas");
+    const experienceRoot = document.querySelector(".portfolio-root");
     const encounters = {};
     for (const el of document.querySelectorAll("[data-encounter]")) {
       const title = el.querySelector('[class*="title"]');
@@ -43,9 +44,11 @@ async function collectMetrics(page) {
       fluid: document.querySelector(".fluid-canvas")?.dataset.fluid ?? null,
       encounter: canvas?.dataset.encounterScene ?? null,
       encounterFade: canvas?.dataset.encounterSceneFade ?? null,
-      experienceChapter: document.documentElement.dataset.experienceChapter ?? null,
+      experienceChapter: experienceRoot?.dataset.experienceChapter ?? null,
       chapterProgress: Number.parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--experience-chapter-progress"),
+        experienceRoot
+          ? getComputedStyle(experienceRoot).getPropertyValue("--experience-chapter-progress")
+          : "",
       ),
       drawCalls: canvas?.dataset.drawCalls ?? null,
       triangles: canvas?.dataset.triangles ?? null,
@@ -76,21 +79,55 @@ async function waitForIdleMetrics(page, timeoutMs = 16000) {
   }
 }
 
-async function seekJourney(page, progress, settleMs = 1000) {
-  await page.evaluate((p) => {
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    window.scrollTo({ top: maxScroll * p, left: 0, behavior: "instant" });
-  }, progress);
-  await delay(settleMs);
-}
-
 async function seekEncounter(page, encounterId, progress = 0.42, settleMs = 1000) {
   await page.evaluate(({ id, p }) => {
     const section = document.querySelector(`#project-${id}`);
     if (!(section instanceof HTMLElement)) throw new Error(`Missing encounter section: ${id}`);
     const top = section.getBoundingClientRect().top + window.scrollY;
-    window.scrollTo({ top: top + section.offsetHeight * p, left: 0, behavior: "instant" });
+    const stickyTravel = Math.max(0, section.offsetHeight - window.innerHeight);
+    window.scrollTo({ top: top + stickyTravel * p, left: 0, behavior: "instant" });
   }, { id: encounterId, p: progress });
+  await delay(settleMs);
+}
+
+async function seekChapterProgress(page, encounterId, target, settleMs = 1000) {
+  const bounds = await page.evaluate((id) => {
+    const section = document.querySelector(`#project-${id}`);
+    if (!(section instanceof HTMLElement)) throw new Error(`Missing encounter section: ${id}`);
+    const top = section.getBoundingClientRect().top + window.scrollY;
+    return {
+      low: Math.max(0, top - window.innerHeight * 0.35),
+      high: top + section.offsetHeight,
+    };
+  }, encounterId);
+  let low = bounds.low;
+  let high = bounds.high;
+  for (let iteration = 0; iteration < 14; iteration += 1) {
+    const midpoint = (low + high) * 0.5;
+    await page.evaluate((scrollY) => {
+      window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
+    }, midpoint);
+    await delay(32);
+    const sample = await page.evaluate(() => {
+      const root = document.querySelector(".portfolio-root");
+      return {
+        chapter: root?.dataset.experienceChapter ?? null,
+        progress: Number.parseFloat(
+          root ? getComputedStyle(root).getPropertyValue("--experience-chapter-progress") : "",
+        ),
+      };
+    });
+    if (sample.chapter === encounterId && sample.progress >= target) high = midpoint;
+    else if (sample.chapter === encounterId) low = midpoint;
+    else {
+      const sectionOrder = ["monkeyclaw", "etch", "flowe", "argyph"];
+      if (sectionOrder.indexOf(sample.chapter) < sectionOrder.indexOf(encounterId)) low = midpoint;
+      else high = midpoint;
+    }
+  }
+  await page.evaluate((scrollY) => {
+    window.scrollTo({ top: scrollY, left: 0, behavior: "instant" });
+  }, (low + high) * 0.5);
   await delay(settleMs);
 }
 
@@ -147,20 +184,20 @@ function check(name, ok, detail) {
 }
 
 const ETCH_BEATS = [
-  { name: "00-intent", journey: 0.416 },
-  { name: "01-design-spec", journey: 0.429 },
-  { name: "02-candidates", journey: 0.442 },
-  { name: "03-simulation", journey: 0.455 },
-  { name: "04-formal", journey: 0.468 },
-  { name: "05-rank", journey: 0.481 },
-  { name: "06-physical-blocked", journey: 0.494 },
-  { name: "07-proof-dossier", journey: 0.503 },
+  { name: "00-intent", progress: 0.09 },
+  { name: "01-design-spec", progress: 0.1875 },
+  { name: "02-candidates", progress: 0.3125 },
+  { name: "03-simulation", progress: 0.4375 },
+  { name: "04-formal", progress: 0.5625 },
+  { name: "05-rank", progress: 0.6875 },
+  { name: "06-physical-blocked", progress: 0.8125 },
+  { name: "07-proof-dossier", progress: 0.9 },
 ];
 const FLOWE_BEATS = [
-  { name: "00-drift", journey: 0.54 },
-  { name: "01-group", journey: 0.56 },
-  { name: "02-focus", journey: 0.6 },
-  { name: "03-contract", journey: 0.64 },
+  { name: "00-drift", progress: 0.125 },
+  { name: "01-group", progress: 0.375 },
+  { name: "02-focus", progress: 0.625 },
+  { name: "03-contract", progress: 0.875 },
 ];
 
 try {
@@ -170,7 +207,7 @@ try {
   await waitForIdleMetrics(page);
 
   for (const beat of ETCH_BEATS) {
-    await seekJourney(page, beat.journey);
+    await seekChapterProgress(page, "etch", beat.progress);
     const path = join(etchDir, `desktop-1440x900-${beat.name}.png`);
     await page.screenshot({ path, type: "png", captureBeyondViewport: false });
     const metrics = await collectMetrics(page);
@@ -178,7 +215,7 @@ try {
     process.stdout.write(`etch ${beat.name} scene=${metrics.encounter} chapter=${metrics.experienceChapter} dd=${metrics.drawCalls}\n`);
   }
   for (const beat of FLOWE_BEATS) {
-    await seekJourney(page, beat.journey);
+    await seekChapterProgress(page, "flowe", beat.progress);
     const path = join(floweDir, `desktop-1440x900-${beat.name}.png`);
     await page.screenshot({ path, type: "png", captureBeyondViewport: false });
     const metrics = await collectMetrics(page);
@@ -215,13 +252,13 @@ try {
   check("aggregate budget: triangles ≤ 350k", peakTri <= 350000, `peak=${peakTri}`);
 
   // --- Frame traces during chapter holds --------------------------------
-  await seekJourney(page, 0.44, 1200);
+  await seekChapterProgress(page, "etch", 0.56, 1200);
   report.frameTraces.push({ viewport: "desktop-1440x900", state: "etch-gates-hold", ...(await captureFrameTrace(page, 2)) });
-  await seekJourney(page, 0.62, 1200);
+  await seekChapterProgress(page, "flowe", 0.62, 1200);
   report.frameTraces.push({ viewport: "desktop-1440x900", state: "flowe-focus-hold", ...(await captureFrameTrace(page, 2)) });
 
   // --- Probe signatures ---------------------------------------------------
-  await seekJourney(page, 0.42, 1100);
+  await seekChapterProgress(page, "etch", 0.32, 1100);
   await page.mouse.click(430, 470);
   await delay(300);
   const etchProbePath = join(etchDir, "desktop-1440x900-probe-perturb.png");
@@ -233,7 +270,7 @@ try {
   check("etch probe perturbation settles back",
     etchProbe.fluid === "ready" && etchSettled.fluid === "ready");
 
-  await seekJourney(page, 0.56, 1100);
+  await seekChapterProgress(page, "flowe", 0.4, 1100);
   await page.mouse.click(330, 360);
   await delay(300);
   const floweProbePath = join(floweDir, "desktop-1440x900-probe-nudge.png");
@@ -243,21 +280,21 @@ try {
   check("flowe probe nudge keeps renderer live", floweProbe.fluid === "ready");
 
   // --- Causal seams --------------------------------------------------------
-  for (const [name, journey] of [["monkeyclaw-to-etch", 0.265], ["etch-to-flowe", 0.5]]) {
-    await seekJourney(page, journey, 1100);
+  for (const [name, encounter] of [["monkeyclaw-to-etch", "monkeyclaw"], ["etch-to-flowe", "etch"]]) {
+    await seekEncounter(page, encounter, 0.98, 1100);
     const path = join(seamsDir, `desktop-1440x900-${name}.png`);
     await page.screenshot({ path, type: "png", captureBeyondViewport: false });
     const metrics = await collectMetrics(page);
-    report.seams.push({ name, journey, path, metrics });
+    report.seams.push({ name, encounter, path, metrics });
   }
   check("seams keep one coherent water (renderer live through handoffs)",
     report.seams.every((entry) => entry.metrics.fluid === "ready"));
 
   // --- Reversibility --------------------------------------------------------
-  await seekJourney(page, 0.44, 1000);
+  await seekChapterProgress(page, "etch", 0.56, 1000);
   const downMetrics = await collectMetrics(page);
-  await seekJourney(page, 0.62, 700);
-  await seekJourney(page, 0.44, 1000);
+  await seekChapterProgress(page, "etch", 0.78, 700);
+  await seekChapterProgress(page, "etch", 0.56, 1000);
   const upMetrics = await collectMetrics(page);
   check("etch state reconstructs on reverse",
     downMetrics.encounter === upMetrics.encounter
@@ -269,7 +306,7 @@ try {
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await waitForIdleMetrics(page);
   for (const [name, encounter] of [["etch-mobile", "etch"], ["flowe-mobile", "flowe"]]) {
-    await seekEncounter(page, encounter, 0.42, 1100);
+    await seekChapterProgress(page, encounter, 0.5, 1100);
     const path = join(seamsDir, `mobile-390x844-${name}.png`);
     await page.screenshot({ path, type: "png", captureBeyondViewport: false });
     const metrics = await collectMetrics(page);

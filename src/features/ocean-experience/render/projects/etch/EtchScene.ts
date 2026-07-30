@@ -65,6 +65,13 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+/** A scene owns a bounded scroll interval with soft crossfades at each edge. */
+function scenePresence(progress: number, start: number, end: number, feather = 0.055): number {
+  const enters = smoothstep01((progress - (start - feather)) / feather);
+  const exits = 1 - smoothstep01((progress - end) / feather);
+  return enters * exits;
+}
+
 const INTENT_SHADER = {
   vertex: /* glsl */ `
     uniform float uTime;
@@ -128,6 +135,7 @@ export function createEtchEncounter(): ProjectEncounter {
   const fillMaterials: MeshBasicMaterial[] = [];
   const candidateMeshes: Mesh[] = [];
   const candidateMaterials: MeshPhysicalMaterial[] = [];
+  const candidateCellMaterials: MeshBasicMaterial[] = [];
   const candidateBase: Vector3[] = [];
   const candidateLabels: Mesh[] = [];
   const candidateLabelMaterials: MeshBasicMaterial[] = [];
@@ -249,7 +257,8 @@ export function createEtchEncounter(): ProjectEncounter {
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.15, ETCH_STAGE.candidateSize * 1.12, 0.055, 0.03, 0.005)),
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.35, ETCH_STAGE.candidateSize, 0.055, 0.03, 0.005)),
       ];
-      const candidateLabelGeometry = track(new PlaneGeometry(0.44, 0.105));
+      const candidateLabelGeometry = track(new PlaneGeometry(0.5, 0.12));
+      const candidateCellGeometry = track(createRoundedPanelGeometry(0.058, 0.038, 0.012, 0.008, 0.002));
       for (let candidate = 0; candidate < ETCH_COUNTS.candidates; candidate += 1) {
         const material = track(new MeshPhysicalMaterial({
           color: ETCH_COLORS.candidate,
@@ -264,11 +273,29 @@ export function createEtchEncounter(): ProjectEncounter {
           depthWrite: true,
         }));
         const mesh = new Mesh(candidateGeometries[candidate], material);
+        const cellMaterial = track(new MeshBasicMaterial({
+          color: ETCH_COLORS.constraint,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const cells = new InstancedMesh(candidateCellGeometry, cellMaterial, 6);
+        for (let cell = 0; cell < 6; cell += 1) {
+          _dieMatrix.makeTranslation(
+            -0.075 + (cell % 3) * 0.075,
+            0.035 - Math.floor(cell / 3) * 0.07,
+            0.066,
+          );
+          cells.setMatrixAt(cell, _dieMatrix);
+        }
+        mesh.add(cells);
         const stationX = axisX0 + 0.34 + candidate * 0.3;
         mesh.position.set(axisX0, 0, 0);
         axisGroup.add(mesh);
         candidateMeshes.push(mesh);
         candidateMaterials.push(material);
+        candidateCellMaterials.push(cellMaterial);
         candidateBase.push(new Vector3(stationX, (1 - candidate) * 0.2, (candidate - 1) * 0.08));
 
         const evidence = ETCH_CANDIDATES[candidate];
@@ -315,7 +342,7 @@ export function createEtchEncounter(): ProjectEncounter {
       const gateGeometry = track(new EdgesGeometry(
         new BoxGeometry(0.08, ETCH_STAGE.gateHeight, 0.06),
       ));
-      const gateLabelGeometry = track(new PlaneGeometry(0.24, 0.075));
+      const gateLabelGeometry = track(new PlaneGeometry(0.3, 0.09));
       for (let gate = 0; gate < ETCH_COUNTS.gates; gate += 1) {
         const pending = !ETCH_GATES[gate].passed;
         const material = track(new LineBasicMaterial({
@@ -584,7 +611,7 @@ export function createEtchEncounter(): ProjectEncounter {
       // chip. Layered sheets frame the verified die and stay visibly open.
       dossierAssembly = new Group();
       dossierAssembly.name = "etch-proof-dossier";
-      dossierAssembly.position.set(resultX + 0.43, 0.06, 0.08);
+      dossierAssembly.position.set(resultX + 0.05, 0.06, 0.08);
       dossierMaterial = track(new MeshPhysicalMaterial({
         color: ETCH_COLORS.dossier,
         emissive: 0x183d48,
@@ -690,22 +717,29 @@ export function createEtchEncounter(): ProjectEncounter {
       const candidatesT = smoothstep01((t - loop.candidatesStart) / (loop.candidatesFull - loop.candidatesStart));
       const gatesT = smoothstep01((t - loop.gatesStart) / (loop.gatesFull - loop.gatesStart));
       const simulationEvidence = smoothstep01((t - loop.simulationStart) / 0.11);
-      const formalEvidence = smoothstep01((t - loop.formalStart) / 0.11);
       const rankingT = smoothstep01((t - loop.rankingStart) / 0.13);
       const physicalT = smoothstep01((t - loop.physicalStart) / 0.12);
-      const dossierT = smoothstep01((t - loop.dossierStart) / 0.15);
       const relaxT = smoothstep01((t - loop.relaxStart) / (loop.relaxFull - loop.relaxStart));
-      const resultReveal = smoothstep01((rankingT - 0.12) / 0.72);
-      const assemblyRetired = dossierT > 0.72;
+      const stateFeather = 0.035;
+      const intentScene = scenePresence(t, 0, 0.125, stateFeather);
+      const specScene = scenePresence(t, 0.125, 0.25, stateFeather);
+      const candidateScene = scenePresence(t, 0.25, 0.375, stateFeather);
+      const simulationScene = scenePresence(t, 0.375, 0.5, stateFeather);
+      const formalScene = scenePresence(t, 0.5, 0.625, stateFeather);
+      const rankScene = scenePresence(t, 0.625, 0.75, stateFeather);
+      const physicalScene = scenePresence(t, 0.75, 0.875, stateFeather);
+      const dossierScene = scenePresence(t, 0.875, 1, stateFeather);
+      const candidateStory = Math.max(candidateScene, simulationScene, formalScene, rankScene);
+      const resultReveal = Math.max(physicalScene, dossierScene);
 
       // Inspection travel: the ladder pans laterally and settles slightly
       // downward as scroll scrubs the gates (pure function of progress).
       axisGroup.position.set(
-        root.x - gatesT * 0.42 + relaxT * 0.2,
-        root.y - gatesT * 0.06,
+        root.x - gatesT * 0.22 + relaxT * 0.12,
+        root.y + physicalScene * 0.06 + dossierScene * 0.08,
         0,
       );
-      axisGroup.scale.setScalar(layoutMode === "mobile" ? 0.9 : 1.12);
+      axisGroup.scale.setScalar(layoutMode === "mobile" ? 0.86 : 1.02);
 
       // Intent volume: churns until constraints crystallize the boundary.
       if (intentMesh && intentMaterial) {
@@ -713,8 +747,7 @@ export function createEtchEncounter(): ProjectEncounter {
         intentMaterial.uniforms.uTime.value = frame.time;
         intentMaterial.uniforms.uInstability.value = instability;
         intentMaterial.uniforms.uIntensity.value = (0.25 + intentT * 0.55) * fade
-          * (1 - candidatesT * 0.85)
-          * (1 - resultReveal);
+          * Math.max(intentScene, specScene * 0.32);
         intentMesh.scale.setScalar(0.55 + intentT * 0.45 + instability * 0.06);
         intentMesh.rotation.y = t * 0.9;
         intentMesh.position.x = axisX0 + candidatesT * 0.18;
@@ -731,9 +764,11 @@ export function createEtchEncounter(): ProjectEncounter {
         const compression = 1 - arrive * 0.16;
         frameLines[plane].scale.setScalar(compression);
         frameFills[plane].scale.setScalar(compression);
-        const handoff = (1 - candidatesT * 0.9) * (1 - resultReveal);
+        const handoff = Math.max(specScene, candidateScene * 0.32);
+        frameLines[plane].visible = handoff > 0.001;
+        frameFills[plane].visible = handoff > 0.001;
         frameMaterials[plane].opacity = arrive * 0.72 * fade * handoff;
-        fillMaterials[plane].opacity = arrive * 0.12 * fade * handoff;
+        fillMaterials[plane].opacity = arrive * 0.065 * fade * handoff;
       }
 
       // Candidates form along the ladder, then travel it through the gates.
@@ -742,7 +777,10 @@ export function createEtchEncounter(): ProjectEncounter {
         const material = candidateMaterials[candidate];
         const formDelay = candidate * 0.08;
         const form = smoothstep01((candidatesT - formDelay) / Math.max(1 - formDelay, 1e-6));
-        mesh.visible = form > 0.001 && !assemblyRetired;
+        const candidatePresence = candidate === 1
+          ? Math.max(candidateScene, simulationScene, formalScene * 0.28)
+          : candidateStory;
+        mesh.visible = form > 0.001 && candidatePresence > 0.001;
         const travel = smoothstep01((gatesT - candidate * 0.1) / Math.max(1 - candidate * 0.1, 1e-6));
         const stopX = gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.42;
         // Candidates form at the crystallized boundary, take their station,
@@ -750,30 +788,60 @@ export function createEtchEncounter(): ProjectEncounter {
         const stationX = candidateBase[candidate].x;
         const x = axisX0 + (stationX - axisX0) * form + (stopX - stationX) * travel;
         mesh.position.set(x, candidateBase[candidate].y, candidateBase[candidate].z);
+        if (formalScene > 0) {
+          const formalX = layoutMode === "mobile"
+            ? axisX0 + 0.62 + candidate * 0.24
+            : axisX0 + 1.0 + candidate * 0.38;
+          const formalY = 0.23 - candidate * 0.23;
+          mesh.position.x += (formalX - mesh.position.x) * formalScene;
+          mesh.position.y += (formalY - mesh.position.y) * formalScene;
+        }
+        if (rankScene > 0) {
+          const rankX = layoutMode === "mobile"
+            ? candidate === 0 ? axisX0 + 0.68 : axisX0 + 1.02
+            : candidate === 0 ? axisX0 + 1.25 : axisX0 + 1.7;
+          const rankY = candidate === 0 ? 0.1 : -0.22;
+          mesh.position.x += (rankX - mesh.position.x) * rankScene;
+          mesh.position.y += (rankY - mesh.position.y) * rankScene;
+          mesh.position.z += (0.1 - mesh.position.z) * rankScene;
+        }
         mesh.rotation.y = frame.time * 0.08 + candidate * 0.18;
         mesh.rotation.z = t * 0.16;
+        const evidenceFacing = Math.max(formalScene, rankScene);
+        if (evidenceFacing > 0) {
+          mesh.rotation.y += (0.12 - mesh.rotation.y) * evidenceFacing;
+          mesh.rotation.z *= 1 - evidenceFacing;
+        }
         const falsified = candidate === 1 && simulationEvidence > 0.12;
         const winner = candidate === 0;
         const runnerUp = candidate === 2;
         if (falsified) mesh.position.y -= 0.08 * simulationEvidence;
         const verdictStrength = falsified ? 0.48 : runnerUp ? 0.72 : 1;
-        material.opacity = form * 0.96 * fade * verdictStrength
-          * (1 - dossierT * 0.96)
-          * (1 - relaxT * 0.4);
-        mesh.scale.setScalar(form * (falsified ? 0.82 : winner ? 1 + rankingT * 0.18 : 0.94));
+        material.opacity = form * 0.9 * fade * verdictStrength * candidatePresence;
+        candidateCellMaterials[candidate].opacity = material.opacity * 0.78;
+        const rankScale = winner ? 1.34 : 0.88;
+        const baseScale = falsified ? 0.82 : winner ? 1 + rankingT * 0.12 : 0.94;
+        mesh.scale.setScalar(form * (baseScale + (rankScale - baseScale) * rankScene));
         _color.setHex(ETCH_COLORS.candidate);
         if (falsified) _color.setHex(ETCH_COLORS.fail);
         else if (runnerUp) _color.setHex(ETCH_COLORS.runnerUp);
         else if (rankingT > 0.1) _color.setHex(ETCH_COLORS.result);
         material.color.copy(_color);
+        candidateCellMaterials[candidate].color.copy(_color).offsetHSL(0, -0.08, 0.18);
 
         const label = candidateLabels[candidate];
         const labelMaterial = candidateLabelMaterials[candidate];
-        const verdictReveal = candidate === 1 ? simulationEvidence : formalEvidence;
-        label.visible = verdictReveal > 0.01 && !assemblyRetired;
-        label.position.set(mesh.position.x, mesh.position.y + 0.16, mesh.position.z + 0.12);
-        label.scale.setScalar(layoutMode === "mobile" ? 0.72 : 0.9);
-        labelMaterial.opacity = verdictReveal * fade * (1 - dossierT);
+        const verdictScene = candidate === 1
+          ? Math.max(simulationScene, formalScene * 0.28)
+          : Math.max(formalScene, rankScene);
+        label.visible = verdictScene > 0.01;
+        label.position.set(
+          mesh.position.x + (candidate === 1 ? 0.02 : 0),
+          mesh.position.y + 0.155,
+          mesh.position.z + 0.12,
+        );
+        label.scale.setScalar(layoutMode === "mobile" ? 0.58 : 0.9);
+        labelMaterial.opacity = verdictScene * fade * 0.94;
 
         // Probe perturbation: constraint planes reveal the violation bounds.
         const perturb = perturbations.find((p) => p.active && p.candidateIndex === candidate);
@@ -784,17 +852,19 @@ export function createEtchEncounter(): ProjectEncounter {
 
       if (counterexampleTrace && counterexampleMaterial && candidateMeshes[1]) {
         const failedCandidate = candidateMeshes[1];
-        counterexampleTrace.visible = simulationEvidence > 0.01 && !assemblyRetired;
+        const counterexampleScene = Math.max(simulationScene, formalScene * 0.25);
+        counterexampleTrace.visible = counterexampleScene > 0.01;
         counterexampleTrace.position.set(
           failedCandidate.position.x,
           failedCandidate.position.y - 0.17,
           failedCandidate.position.z + 0.13,
         );
-        counterexampleMaterial.opacity = simulationEvidence * (1 - dossierT) * fade * 0.92;
+        counterexampleMaterial.opacity = counterexampleScene * fade * 0.92;
       }
 
       // Gates light as the lead candidate crosses; signoff stays pending.
       const leadTravel = smoothstep01((gatesT - 0.2) / 0.8);
+      const gateScenes = [simulationScene, formalScene, rankScene, physicalScene] as const;
       for (let gate = 0; gate < gatePlanes.length; gate += 1) {
         const passed = ETCH_GATES[gate].passed;
         const stationT = (gate + 1) / (ETCH_COUNTS.gates + 1);
@@ -807,85 +877,82 @@ export function createEtchEncounter(): ProjectEncounter {
         const pendingPulse = !passed
           ? 0.16 + Math.sin(frame.time * 1.4) * 0.05
           : 0;
-        const staysVisible = assemblyRetired && passed ? 0 : 1;
-        const resultSuppression = passed ? 1 - resultReveal : 1;
+        const gateScene = gateScenes[gate] ?? 0;
+        gatePlanes[gate].visible = gateScene > 0.001;
+        gateLabels[gate].visible = gateScene > 0.001;
         gateMaterials[gate].opacity = (
           crossed ? 0.5 : passed ? 0.1 + leadTravel * 0.06 : pendingPulse
-        ) * fade * (1 - relaxT * 0.5) * resultSuppression * (1 - dossierT * 0.92)
-          * staysVisible;
+        ) * fade * gateScene;
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
         const gateReveal = smoothstep01((gatesT - gate * 0.08) / Math.max(1 - gate * 0.08, 1e-6));
-        gateLabelMaterials[gate].opacity = gateReveal * (passed ? 0.82 : 0.58 + pendingPulse) * fade
-          * (1 - relaxT)
-          * (1 - dossierT * 0.92)
-          * staysVisible;
-        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.78 : 1.08);
+        gateLabelMaterials[gate].opacity = gateReveal * gateScene
+          * (passed ? 0.9 : 0.72 + pendingPulse) * fade;
+        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.76 : 1.02);
       }
 
       // Result: evidence-backed FIFO die held before the pending gate.
       if (resultMesh && resultMaterial && resultLattice && latticeMaterial) {
         const reveal = resultReveal;
-        resultMaterial.opacity = reveal * 0.68 * fade * (1 - relaxT * 0.25);
-        latticeMaterial.opacity = reveal * 0.94 * fade * (1 - relaxT * 0.25);
+        if (resultAssembly) resultAssembly.visible = reveal > 0.001;
+        resultMaterial.opacity = reveal * 0.72 * fade;
+        latticeMaterial.opacity = reveal * 0.9 * fade;
         if (dieCellMaterial) {
-          dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
+          dieCellMaterial.opacity = reveal * 0.96 * fade;
         }
         if (resultIdentityMaterial) {
-          resultIdentityMaterial.uniforms.uOpacity.value = reveal * 0.82 * fade * (1 - relaxT * 0.25);
+          resultIdentityMaterial.uniforms.uOpacity.value = reveal * 0.82 * fade;
         }
         if (diePinMaterial) {
-          diePinMaterial.opacity = reveal * 0.7 * fade * (1 - relaxT * 0.25);
+          diePinMaterial.opacity = reveal * 0.7 * fade;
         }
         if (dieScrewMaterial) {
-          dieScrewMaterial.opacity = reveal * 0.9 * fade * (1 - relaxT * 0.25);
+          dieScrewMaterial.opacity = reveal * 0.9 * fade;
         }
         if (dieTraceMaterial) {
-          dieTraceMaterial.opacity = reveal * 0.74 * fade * (1 - relaxT * 0.25);
+          dieTraceMaterial.opacity = reveal * 0.74 * fade;
         }
         if (dieViaMaterial) {
-          dieViaMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);
+          dieViaMaterial.opacity = reveal * 0.96 * fade;
         }
         for (let detail = 0; detail < dieDetailMaterials.length; detail += 1) {
           const stagger = (detail % 4) * 0.07;
           const detailReveal = smoothstep01((reveal - stagger) / Math.max(1 - stagger, 1e-6));
-          dieDetailMaterials[detail].opacity = detailReveal * 0.96 * fade * (1 - relaxT * 0.25);
+          dieDetailMaterials[detail].opacity = detailReveal * 0.96 * fade;
         }
         if (resultAssembly) {
           const resultX = layoutMode === "mobile"
             ? 0.5
             : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
-          resultAssembly.position.set(resultX - dossierT * 0.32, -dossierT * 0.04, 0);
+          resultAssembly.position.set(resultX - dossierScene * 0.32, -dossierScene * 0.04, 0);
           resultAssembly.rotation.y = (frame.reducedMotion ? 0.18 : Math.sin(frame.time * 0.28) * 0.22) + 0.18;
           resultAssembly.rotation.x = -0.22;
-          const resultScale = (
-            layoutMode === "mobile"
-              ? 0.28 + reveal * 0.84
-              : 0.4 + reveal * 1.12
-          ) * (1 - dossierT * 0.42);
+          const resultScale = layoutMode === "mobile"
+            ? 0.3 + reveal * 0.62
+            : (0.42 + reveal * 0.66) * (1 - dossierScene * 0.32);
           resultAssembly.scale.setScalar(resultScale);
         }
       }
 
 
       if (dossierAssembly && dossierMaterial) {
-        dossierAssembly.visible = dossierT > 0.001;
+        dossierAssembly.visible = dossierScene > 0.001;
         const resultX = layoutMode === "mobile"
           ? 0.5
           : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
         dossierAssembly.position.set(
-          resultX + (layoutMode === "mobile" ? 0.18 : 0.43),
+          resultX + (layoutMode === "mobile" ? 0.12 : 0.05),
           0.06,
           0.08,
         );
-        dossierMaterial.opacity = dossierT * 0.72 * fade * (1 - relaxT * 0.35);
+        dossierMaterial.opacity = dossierScene * 0.78 * fade;
         dossierAssembly.rotation.x = -0.08;
         dossierAssembly.rotation.y = 0.08;
         dossierAssembly.scale.setScalar(
-          layoutMode === "mobile" ? 0.72 + dossierT * 0.12 : 0.86 + dossierT * 0.18,
+          layoutMode === "mobile" ? 0.72 + dossierScene * 0.1 : 0.82 + dossierScene * 0.16,
         );
         for (let label = 0; label < dossierLabelMaterials.length; label += 1) {
-          const staggered = smoothstep01((dossierT - label * 0.12) / Math.max(1 - label * 0.12, 1e-6));
-          dossierLabelMaterials[label].opacity = staggered * fade * (1 - relaxT * 0.4);
+          const staggered = smoothstep01((dossierScene - label * 0.12) / Math.max(1 - label * 0.12, 1e-6));
+          dossierLabelMaterials[label].opacity = staggered * fade;
         }
       }
 
@@ -993,6 +1060,7 @@ export function createEtchEncounter(): ProjectEncounter {
       fillMaterials.length = 0;
       candidateMeshes.length = 0;
       candidateMaterials.length = 0;
+      candidateCellMaterials.length = 0;
       candidateBase.length = 0;
       candidateLabels.length = 0;
       candidateLabelMaterials.length = 0;

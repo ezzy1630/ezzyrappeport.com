@@ -12,6 +12,7 @@ type Props = {
 
 type EncounterBeat = {
   label: string;
+  shortLabel?: string;
   detail: string;
   start: number;
   end: number;
@@ -29,14 +30,14 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Purple", detail: "blocked + observed", start: 0.73, end: 0.92, accent: "#7c3aed" },
   ],
   etch: [
-    { label: "Intent", detail: "8-bit FIFO · depth 16", start: 0, end: 0.14, accent: "#dd8058" },
-    { label: "DesignSpec", detail: "typed contract · 10 ns", start: 0.1, end: 0.27, accent: "#4f9eb4" },
-    { label: "Candidates", detail: "A · B · C retained", start: 0.22, end: 0.4, accent: "#5caec3" },
-    { label: "Simulation", detail: "50-cycle oracle", start: 0.35, end: 0.52, accent: "#39a98f" },
-    { label: "Formal", detail: "BMC depth 32", start: 0.47, end: 0.64, accent: "#268e7f" },
-    { label: "Rank", detail: "A wins · smallest", start: 0.59, end: 0.76, accent: "#397fa8" },
-    { label: "Physical", detail: "tools missing", start: 0.68, end: 0.84, accent: "#7e92a0", state: "pending" },
-    { label: "Dossier", detail: "Markdown + JSON", start: 0.77, end: 1, accent: "#5caec3" },
+    { label: "Intent", shortLabel: "Intent", detail: "8-bit FIFO · depth 16", start: 0, end: 0.125, accent: "#dd8058" },
+    { label: "DesignSpec", shortLabel: "Spec", detail: "typed contract · 10 ns", start: 0.125, end: 0.25, accent: "#4f9eb4" },
+    { label: "Candidates", shortLabel: "RTL", detail: "A · B · C retained", start: 0.25, end: 0.375, accent: "#5caec3" },
+    { label: "Simulation", shortLabel: "Sim", detail: "50-cycle oracle", start: 0.375, end: 0.5, accent: "#39a98f" },
+    { label: "Formal", shortLabel: "Formal", detail: "BMC depth 32", start: 0.5, end: 0.625, accent: "#268e7f" },
+    { label: "Rank", shortLabel: "Rank", detail: "A wins · smallest", start: 0.625, end: 0.75, accent: "#397fa8" },
+    { label: "Physical", shortLabel: "Phys.", detail: "tools missing", start: 0.75, end: 0.875, accent: "#7e92a0", state: "pending" },
+    { label: "Dossier", shortLabel: "Proof", detail: "Markdown + JSON", start: 0.875, end: 1, accent: "#5caec3" },
   ],
   flowe: [
     { label: "Capture", detail: "Canvas + tasks", start: 0, end: 0.28 },
@@ -161,7 +162,10 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
                 <span className={styles.beatTrack} />
                 <span className={styles.beatPulse} aria-hidden="true" />
                 <span className={styles.beatIndex}>{String(index + 1).padStart(2, "0")}</span>
-                <strong>{beat.label}</strong>
+                <strong>
+                  <span className={styles.beatLabelLong}>{beat.label}</span>
+                  {beat.shortLabel ? <span className={styles.beatLabelShort}>{beat.shortLabel}</span> : null}
+                </strong>
                 <small>{beat.detail}</small>
               </li>
             ))}
