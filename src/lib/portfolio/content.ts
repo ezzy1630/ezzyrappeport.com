@@ -335,7 +335,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     index: "02",
     title: "ETCH",
     subtitle: "Verification-First Hardware Design",
-    tagline: "From natural-language intent to RTL evidence, gates, and proof dossiers.",
+    tagline: "Verification-first hardware design from intent to evidence.",
     description:
       "Etch is a local hardware-design cockpit that turns a natural-language requirement into a typed design spec, candidate RTL, independent verification artifacts, EDA gate results, correctness-first ranking, physical readiness records, and a proof dossier.",
     problem:
@@ -356,7 +356,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-medium",
     personality: "etch",
     status: "Public repository · local vertical slice",
-    proof: "Saved FIFO run · simulation pass · bounded-formal pass · signoff pending",
+    proof: "A proven · 50-cycle sim · BMC depth 32 · Yosys 0.66",
     cautionLabel: "Physical signoff pending",
     media: {
       cover: {

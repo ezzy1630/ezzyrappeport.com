@@ -13,6 +13,7 @@
 
 import {
   AdditiveBlending,
+  BufferGeometry,
   BoxGeometry,
   Color,
   DirectionalLight,
@@ -21,6 +22,7 @@ import {
   EdgesGeometry,
   IcosahedronGeometry,
   InstancedMesh,
+  Line,
   LineBasicMaterial,
   LineSegments,
   Matrix4,
@@ -44,11 +46,11 @@ import type {
 } from "../../encounter-contract.ts";
 import {
   ETCH_COLORS,
+  ETCH_CANDIDATES,
   ETCH_COUNTS,
   ETCH_GATES,
   ETCH_LOOP,
   ETCH_STAGE,
-  candidateClearance,
   gateStationX,
 } from "./etchConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
@@ -127,6 +129,10 @@ export function createEtchEncounter(): ProjectEncounter {
   const candidateMeshes: Mesh[] = [];
   const candidateMaterials: MeshPhysicalMaterial[] = [];
   const candidateBase: Vector3[] = [];
+  const candidateLabels: Mesh[] = [];
+  const candidateLabelMaterials: MeshBasicMaterial[] = [];
+  let counterexampleTrace: Line | null = null;
+  let counterexampleMaterial: LineBasicMaterial | null = null;
   const gatePlanes: LineSegments[] = [];
   const gateMaterials: LineBasicMaterial[] = [];
   const gateLabels: Mesh[] = [];
@@ -134,6 +140,11 @@ export function createEtchEncounter(): ProjectEncounter {
   let resultMesh: Mesh | null = null;
   let resultLattice: LineSegments | null = null;
   let resultAssembly: Group | null = null;
+  let dossierAssembly: Group | null = null;
+  let dossierSheets: InstancedMesh | null = null;
+  let dossierMaterial: MeshPhysicalMaterial | null = null;
+  const dossierLabels: Mesh[] = [];
+  const dossierLabelMaterials: MeshBasicMaterial[] = [];
   let resultMaterial: MeshPhysicalMaterial | null = null;
   let resultIdentityMaterial: ShaderMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
@@ -238,6 +249,7 @@ export function createEtchEncounter(): ProjectEncounter {
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.15, ETCH_STAGE.candidateSize * 1.12, 0.055, 0.03, 0.005)),
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.35, ETCH_STAGE.candidateSize, 0.055, 0.03, 0.005)),
       ];
+      const candidateLabelGeometry = track(new PlaneGeometry(0.44, 0.105));
       for (let candidate = 0; candidate < ETCH_COUNTS.candidates; candidate += 1) {
         const material = track(new MeshPhysicalMaterial({
           color: ETCH_COLORS.candidate,
@@ -257,8 +269,47 @@ export function createEtchEncounter(): ProjectEncounter {
         axisGroup.add(mesh);
         candidateMeshes.push(mesh);
         candidateMaterials.push(material);
-        candidateBase.push(new Vector3(stationX, 0, (candidate - 1) * 0.14));
+        candidateBase.push(new Vector3(stationX, (1 - candidate) * 0.2, (candidate - 1) * 0.08));
+
+        const evidence = ETCH_CANDIDATES[candidate];
+        const instrument = createInstrumentLabel(
+          `CANDIDATE ${evidence.id} · ${evidence.verdict}`,
+          evidence.metric,
+          {
+            accent: `#${evidence.color.toString(16).padStart(6, "0")}`,
+            background: "rgba(5, 22, 29, 0.9)",
+            foreground: "rgba(242, 250, 251, 0.98)",
+            muted: "rgba(174, 205, 211, 0.94)",
+          },
+        );
+        track(instrument.texture);
+        track(instrument.material);
+        const label = new Mesh(candidateLabelGeometry, instrument.material);
+        label.renderOrder = 5;
+        label.visible = false;
+        axisGroup.add(label);
+        candidateLabels.push(label);
+        candidateLabelMaterials.push(instrument.material);
       }
+
+      // Candidate B's retained counterexample. The binary step breaks at
+      // cycle 1, where rd_valid diverges while the reference remains low.
+      const counterexampleGeometry = track(new BufferGeometry().setFromPoints([
+        new Vector3(-0.22, 0, 0), new Vector3(-0.14, 0, 0),
+        new Vector3(-0.14, 0.08, 0), new Vector3(-0.05, 0.08, 0),
+        new Vector3(-0.05, -0.05, 0), new Vector3(0.05, -0.05, 0),
+        new Vector3(0.05, 0.08, 0), new Vector3(0.2, 0.08, 0),
+      ]));
+      counterexampleMaterial = track(new LineBasicMaterial({
+        color: ETCH_COLORS.fail,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      counterexampleTrace = new Line(counterexampleGeometry, counterexampleMaterial);
+      counterexampleTrace.renderOrder = 5;
+      axisGroup.add(counterexampleTrace);
 
       // Verification gate light planes; the signoff gate stays an open frame.
       const gateGeometry = track(new EdgesGeometry(
@@ -529,6 +580,58 @@ export function createEtchEncounter(): ProjectEncounter {
       resultAssembly.add(dieScrews);
       axisGroup.add(resultAssembly);
 
+      // The durable product is the proof dossier, not an implied fabricated
+      // chip. Layered sheets frame the verified die and stay visibly open.
+      dossierAssembly = new Group();
+      dossierAssembly.name = "etch-proof-dossier";
+      dossierAssembly.position.set(resultX + 0.43, 0.06, 0.08);
+      dossierMaterial = track(new MeshPhysicalMaterial({
+        color: ETCH_COLORS.dossier,
+        emissive: 0x183d48,
+        emissiveIntensity: 0.16,
+        roughness: 0.34,
+        metalness: 0.08,
+        clearcoat: 0.8,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        side: DoubleSide,
+      }));
+      dossierSheets = new InstancedMesh(
+        track(createRoundedPanelGeometry(1.02, 0.72, 0.012, 0.035, 0.006)),
+        dossierMaterial,
+        3,
+      );
+      for (let sheet = 0; sheet < 3; sheet += 1) {
+        _dieMatrix.makeRotationZ((sheet - 1) * 0.025);
+        _dieMatrix.setPosition((sheet - 1) * 0.025, (sheet - 1) * 0.025, -sheet * 0.018);
+        dossierSheets.setMatrixAt(sheet, _dieMatrix);
+      }
+      dossierAssembly.add(dossierSheets);
+      const dossierLabelGeometry = track(new PlaneGeometry(0.5, 0.11));
+      const dossierLabelData = [
+        ["PROOF DOSSIER", "Markdown + JSON"],
+        ["WINNER · A", "correctness first · smallest proven"],
+      ] as const;
+      for (let labelIndex = 0; labelIndex < dossierLabelData.length; labelIndex += 1) {
+        const [heading, detail] = dossierLabelData[labelIndex];
+        const instrument = createInstrumentLabel(heading, detail, {
+          accent: labelIndex === 0 ? "#79d8c9" : "#7fd0e8",
+          background: "rgba(5, 22, 29, 0.92)",
+          foreground: "rgba(242, 250, 251, 0.98)",
+          muted: "rgba(174, 205, 211, 0.94)",
+        });
+        track(instrument.texture);
+        track(instrument.material);
+        const label = new Mesh(dossierLabelGeometry, instrument.material);
+        label.position.set(0.17, labelIndex === 0 ? 0.25 : 0.08, 0.075);
+        label.renderOrder = 6;
+        dossierAssembly.add(label);
+        dossierLabels.push(label);
+        dossierLabelMaterials.push(instrument.material);
+      }
+      axisGroup.add(dossierAssembly);
+
       const lightingRig = new Group();
       const ambient = new HemisphereLight(0xc7edff, 0x071017, 1.35);
       const key = new DirectionalLight(0xe7f8ff, 3.2);
@@ -545,7 +648,7 @@ export function createEtchEncounter(): ProjectEncounter {
           transparent: true,
           opacity: 0,
           blending: AdditiveBlending,
-          depthWrite: false,
+          depthWrite: true,
         }));
         const mesh = new Mesh(track(new BoxGeometry(1, 0.006, 0.006)), material);
         relaxCurves.push(mesh);
@@ -586,11 +689,14 @@ export function createEtchEncounter(): ProjectEncounter {
       const constraintsT = smoothstep01((t - loop.constraintsStart) / (loop.constraintsFull - loop.constraintsStart));
       const candidatesT = smoothstep01((t - loop.candidatesStart) / (loop.candidatesFull - loop.candidatesStart));
       const gatesT = smoothstep01((t - loop.gatesStart) / (loop.gatesFull - loop.gatesStart));
+      const simulationEvidence = smoothstep01((t - loop.simulationStart) / 0.11);
+      const formalEvidence = smoothstep01((t - loop.formalStart) / 0.11);
+      const rankingT = smoothstep01((t - loop.rankingStart) / 0.13);
+      const physicalT = smoothstep01((t - loop.physicalStart) / 0.12);
+      const dossierT = smoothstep01((t - loop.dossierStart) / 0.15);
       const relaxT = smoothstep01((t - loop.relaxStart) / (loop.relaxFull - loop.relaxStart));
-      const resultRevealStart = layoutMode === "mobile" ? 0.34 : 0.5;
-      const resultReveal = smoothstep01((gatesT - resultRevealStart) / 0.28);
-      const assemblyRetireAt = layoutMode === "mobile" ? 0.35 : 0.94;
-      const assemblyRetired = resultReveal >= assemblyRetireAt;
+      const resultReveal = smoothstep01((rankingT - 0.12) / 0.72);
+      const assemblyRetired = dossierT > 0.72;
 
       // Inspection travel: the ladder pans laterally and settles slightly
       // downward as scroll scrubs the gates (pure function of progress).
@@ -637,35 +743,54 @@ export function createEtchEncounter(): ProjectEncounter {
         const formDelay = candidate * 0.08;
         const form = smoothstep01((candidatesT - formDelay) / Math.max(1 - formDelay, 1e-6));
         mesh.visible = form > 0.001 && !assemblyRetired;
-        const clearance = candidateClearance(candidate);
         const travel = smoothstep01((gatesT - candidate * 0.1) / Math.max(1 - candidate * 0.1, 1e-6));
-        const stopX = clearance >= ETCH_COUNTS.gates - 1
-          ? gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.3
-          : gateStationX(clearance, axisX0, ETCH_STAGE.gateSpacing) - 0.16;
+        const stopX = gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.42;
         // Candidates form at the crystallized boundary, take their station,
         // then travel the ladder to their clearance point.
         const stationX = candidateBase[candidate].x;
         const x = axisX0 + (stationX - axisX0) * form + (stopX - stationX) * travel;
         mesh.position.set(x, candidateBase[candidate].y, candidateBase[candidate].z);
-        mesh.rotation.y = frame.time * 0.12 + candidate;
-        mesh.rotation.z = t * 0.4;
-        const failed = clearance < ETCH_COUNTS.gates - 1 && travel > 0.97;
-        const held = failed ? 0.32 : 1;
-        // Failed candidates stay visibly held at their gate — dimmed, sunk.
-        if (failed) mesh.position.y = candidateBase[candidate].y - 0.09;
-        material.opacity = form * 0.96 * fade * held
-          * (1 - resultReveal * 0.94)
+        mesh.rotation.y = frame.time * 0.08 + candidate * 0.18;
+        mesh.rotation.z = t * 0.16;
+        const falsified = candidate === 1 && simulationEvidence > 0.12;
+        const winner = candidate === 0;
+        const runnerUp = candidate === 2;
+        if (falsified) mesh.position.y -= 0.08 * simulationEvidence;
+        const verdictStrength = falsified ? 0.48 : runnerUp ? 0.72 : 1;
+        material.opacity = form * 0.96 * fade * verdictStrength
+          * (1 - dossierT * 0.96)
           * (1 - relaxT * 0.4);
-        mesh.scale.setScalar(form * (failed ? 0.85 : 1));
+        mesh.scale.setScalar(form * (falsified ? 0.82 : winner ? 1 + rankingT * 0.18 : 0.94));
         _color.setHex(ETCH_COLORS.candidate);
-        if (failed) _color.setHex(ETCH_COLORS.pending);
+        if (falsified) _color.setHex(ETCH_COLORS.fail);
+        else if (runnerUp) _color.setHex(ETCH_COLORS.runnerUp);
+        else if (rankingT > 0.1) _color.setHex(ETCH_COLORS.result);
         material.color.copy(_color);
+
+        const label = candidateLabels[candidate];
+        const labelMaterial = candidateLabelMaterials[candidate];
+        const verdictReveal = candidate === 1 ? simulationEvidence : formalEvidence;
+        label.visible = verdictReveal > 0.01 && !assemblyRetired;
+        label.position.set(mesh.position.x, mesh.position.y + 0.16, mesh.position.z + 0.12);
+        label.scale.setScalar(layoutMode === "mobile" ? 0.72 : 0.9);
+        labelMaterial.opacity = verdictReveal * fade * (1 - dossierT);
 
         // Probe perturbation: constraint planes reveal the violation bounds.
         const perturb = perturbations.find((p) => p.active && p.candidateIndex === candidate);
         if (perturb) {
           mesh.position.add(perturb.offset);
         }
+      }
+
+      if (counterexampleTrace && counterexampleMaterial && candidateMeshes[1]) {
+        const failedCandidate = candidateMeshes[1];
+        counterexampleTrace.visible = simulationEvidence > 0.01 && !assemblyRetired;
+        counterexampleTrace.position.set(
+          failedCandidate.position.x,
+          failedCandidate.position.y - 0.17,
+          failedCandidate.position.z + 0.13,
+        );
+        counterexampleMaterial.opacity = simulationEvidence * (1 - dossierT) * fade * 0.92;
       }
 
       // Gates light as the lead candidate crosses; signoff stays pending.
@@ -686,12 +811,13 @@ export function createEtchEncounter(): ProjectEncounter {
         const resultSuppression = passed ? 1 - resultReveal : 1;
         gateMaterials[gate].opacity = (
           crossed ? 0.5 : passed ? 0.1 + leadTravel * 0.06 : pendingPulse
-        ) * fade * (1 - relaxT * 0.5) * resultSuppression
+        ) * fade * (1 - relaxT * 0.5) * resultSuppression * (1 - dossierT * 0.92)
           * staysVisible;
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
         const gateReveal = smoothstep01((gatesT - gate * 0.08) / Math.max(1 - gate * 0.08, 1e-6));
         gateLabelMaterials[gate].opacity = gateReveal * (passed ? 0.82 : 0.58 + pendingPulse) * fade
           * (1 - relaxT)
+          * (1 - dossierT * 0.92)
           * staysVisible;
         gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.78 : 1.08);
       }
@@ -725,14 +851,48 @@ export function createEtchEncounter(): ProjectEncounter {
           dieDetailMaterials[detail].opacity = detailReveal * 0.96 * fade * (1 - relaxT * 0.25);
         }
         if (resultAssembly) {
+          const resultX = layoutMode === "mobile"
+            ? 0.5
+            : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
+          resultAssembly.position.set(resultX - dossierT * 0.32, -dossierT * 0.04, 0);
           resultAssembly.rotation.y = (frame.reducedMotion ? 0.18 : Math.sin(frame.time * 0.28) * 0.22) + 0.18;
           resultAssembly.rotation.x = -0.22;
-          resultAssembly.scale.setScalar(
+          const resultScale = (
             layoutMode === "mobile"
               ? 0.28 + reveal * 0.84
-              : 0.4 + reveal * 1.12,
-          );
+              : 0.4 + reveal * 1.12
+          ) * (1 - dossierT * 0.42);
+          resultAssembly.scale.setScalar(resultScale);
         }
+      }
+
+
+      if (dossierAssembly && dossierMaterial) {
+        dossierAssembly.visible = dossierT > 0.001;
+        const resultX = layoutMode === "mobile"
+          ? 0.5
+          : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
+        dossierAssembly.position.set(
+          resultX + (layoutMode === "mobile" ? 0.18 : 0.43),
+          0.06,
+          0.08,
+        );
+        dossierMaterial.opacity = dossierT * 0.72 * fade * (1 - relaxT * 0.35);
+        dossierAssembly.rotation.x = -0.08;
+        dossierAssembly.rotation.y = 0.08;
+        dossierAssembly.scale.setScalar(
+          layoutMode === "mobile" ? 0.72 + dossierT * 0.12 : 0.86 + dossierT * 0.18,
+        );
+        for (let label = 0; label < dossierLabelMaterials.length; label += 1) {
+          const staggered = smoothstep01((dossierT - label * 0.12) / Math.max(1 - label * 0.12, 1e-6));
+          dossierLabelMaterials[label].opacity = staggered * fade * (1 - relaxT * 0.4);
+        }
+      }
+
+      // The last station remains an unresolved boundary. Physical proxies can
+      // exist, but missing OpenROAD, DRC and LVS cannot become a pass state.
+      if (gateMaterials[3]) {
+        gateMaterials[3].opacity *= 0.7 + physicalT * 0.3;
       }
 
       // Relax: rigid proof geometry softens into linked paths toward FlowE.
@@ -834,6 +994,8 @@ export function createEtchEncounter(): ProjectEncounter {
       candidateMeshes.length = 0;
       candidateMaterials.length = 0;
       candidateBase.length = 0;
+      candidateLabels.length = 0;
+      candidateLabelMaterials.length = 0;
       gatePlanes.length = 0;
       gateMaterials.length = 0;
       gateLabels.length = 0;
@@ -843,6 +1005,8 @@ export function createEtchEncounter(): ProjectEncounter {
       perturbations.length = 0;
       dieDetails.length = 0;
       dieDetailMaterials.length = 0;
+      dossierLabels.length = 0;
+      dossierLabelMaterials.length = 0;
       loaded = false;
     },
   };

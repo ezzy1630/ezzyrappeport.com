@@ -14,9 +14,14 @@ export const ETCH_LOOP = {
   constraintsStart: 0.13,
   constraintsFull: 0.31,
   candidatesStart: 0.27,
-  candidatesFull: 0.45,
-  gatesStart: 0.38,
-  gatesFull: 0.82,
+  candidatesFull: 0.4,
+  simulationStart: 0.36,
+  formalStart: 0.48,
+  rankingStart: 0.61,
+  physicalStart: 0.72,
+  dossierStart: 0.76,
+  gatesStart: 0.35,
+  gatesFull: 0.8,
   relaxStart: 0.9,
   relaxFull: 0.99,
 } as const;
@@ -34,12 +39,18 @@ export const ETCH_COUNTS = {
   probePool: 2,
 } as const;
 
-/** Gate identity from content.ts proof line. */
+/** Exact evidence stations from the saved FIFO proof dossier. */
 export const ETCH_GATES = [
-  { id: "fifo", label: "Saved FIFO run", passed: true },
-  { id: "sim", label: "Simulation pass", passed: true },
-  { id: "formal", label: "Bounded-formal pass", passed: true },
-  { id: "signoff", label: "Physical signoff", passed: false },
+  { id: "sim", label: "50-cycle oracle", passed: true },
+  { id: "formal", label: "BMC depth 32", passed: true },
+  { id: "synth", label: "Yosys 0.66", passed: true },
+  { id: "physical", label: "DRC / LVS blocked", passed: false },
+] as const;
+
+export const ETCH_CANDIDATES = [
+  { id: "A", verdict: "PROVEN", metric: "486 cells · 5485.2608 µm²", color: 0x7fd0e8 },
+  { id: "B", verdict: "FALSIFIED", metric: "cycle 1 · no_underflow", color: 0xd45b47 },
+  { id: "C", verdict: "PROVEN", metric: "493 cells · 5606.6272 µm²", color: 0x8ea6b8 },
 ] as const;
 
 /** Stage-local composition (camera-locked; +x right, +y up, +z to camera). */
@@ -62,16 +73,18 @@ export const ETCH_COLORS = {
   candidate: 0xd9ecf6,
   pass: 0x6fd8c8,
   pending: 0x8ea6b8,
+  fail: 0xd45b47,
+  runnerUp: 0x8ea6b8,
   result: 0x7fd0e8,
+  dossier: 0x173942,
   relax: 0x9fd8e2,
 } as const;
 
 /**
- * Candidate ladder outcome: which gate stops each candidate (3 = clears all
- * available gates). Candidate 0 fails at simulation, candidate 1 at
- * bounded-formal, candidate 2 clears every available gate (signoff pending).
+ * Analysis reach, not verdict. Every candidate is retained through ranking so
+ * the dossier can show both positive proof and the counterexample.
  */
-const CANDIDATE_CLEARANCE: readonly number[] = [1, 2, 3];
+const CANDIDATE_CLEARANCE: readonly number[] = [3, 3, 3];
 
 export function candidateClearance(candidateIndex: number): number {
   return CANDIDATE_CLEARANCE[candidateIndex] ?? 0;

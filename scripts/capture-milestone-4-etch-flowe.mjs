@@ -53,7 +53,11 @@ async function collectMetrics(page) {
       workMsP95: canvas?.dataset.workMsP95 ?? null,
       fps: canvas?.dataset.fps ?? null,
       encounters,
-      etchProof: Boolean(document.querySelector('[data-encounter="etch"]')?.textContent?.includes("Saved FIFO run · simulation pass · bounded-formal pass · signoff pending")),
+      etchProof: (() => {
+        const text = document.querySelector('[data-encounter="etch"]')?.textContent ?? "";
+        return text.includes("A proven · 50-cycle sim · BMC depth 32 · Yosys 0.66")
+          && text.includes("Physical signoff pending");
+      })(),
       floweProof: Boolean(document.querySelector('[data-encounter="flowe"]')?.textContent?.includes("SwiftUI client · Convex backend · Canvas sync · offline retry")),
     };
   });
@@ -143,13 +147,14 @@ function check(name, ok, detail) {
 }
 
 const ETCH_BEATS = [
-  { name: "00-requirement", journey: 0.418 },
-  { name: "01-typed-spec", journey: 0.427 },
+  { name: "00-intent", journey: 0.416 },
+  { name: "01-design-spec", journey: 0.429 },
   { name: "02-candidates", journey: 0.442 },
-  { name: "03-simulate", journey: 0.457 },
-  { name: "04-formal", journey: 0.472 },
-  { name: "05-synthesize", journey: 0.487 },
-  { name: "06-signoff-pending", journey: 0.497 },
+  { name: "03-simulation", journey: 0.455 },
+  { name: "04-formal", journey: 0.468 },
+  { name: "05-rank", journey: 0.481 },
+  { name: "06-physical-blocked", journey: 0.494 },
+  { name: "07-proof-dossier", journey: 0.503 },
 ];
 const FLOWE_BEATS = [
   { name: "00-drift", journey: 0.54 },

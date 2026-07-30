@@ -1959,6 +1959,7 @@ const tests = [
   ["Milestone 4: Etch + FlowE encounters and measured chapter knots", async () => {
     const {
       ETCH_COUNTS,
+      ETCH_CANDIDATES,
       ETCH_GATES,
       ETCH_LOOP,
       candidateClearance,
@@ -1988,14 +1989,22 @@ const tests = [
       subscribeExperience,
     } = await import("../src/features/ocean-experience/state/experience-store.ts");
 
-    // Etch: the verification ladder keeps signoff visibly pending.
+    // Etch: exact saved-run evidence, including falsification and honest gaps.
     assert.equal(ETCH_COUNTS.gates, 4);
     assert.equal(ETCH_GATES.length, 4);
-    assert.equal(ETCH_GATES[3].id, "signoff");
+    assert.equal(ETCH_GATES[0].label, "50-cycle oracle");
+    assert.equal(ETCH_GATES[1].label, "BMC depth 32");
+    assert.equal(ETCH_GATES[2].label, "Yosys 0.66");
+    assert.equal(ETCH_GATES[3].id, "physical");
     assert.equal(ETCH_GATES[3].passed, false, "no false completion");
     assert.ok(ETCH_GATES.slice(0, 3).every((gate) => gate.passed));
-    assert.equal(candidateClearance(0), 1);
-    assert.equal(candidateClearance(1), 2);
+    assert.equal(ETCH_CANDIDATES[0].verdict, "PROVEN");
+    assert.match(ETCH_CANDIDATES[0].metric, /5485\.2608/);
+    assert.equal(ETCH_CANDIDATES[1].verdict, "FALSIFIED");
+    assert.match(ETCH_CANDIDATES[1].metric, /cycle 1/);
+    assert.equal(ETCH_CANDIDATES[2].verdict, "PROVEN");
+    assert.equal(candidateClearance(0), 3);
+    assert.equal(candidateClearance(1), 3);
     assert.equal(candidateClearance(2), 3);
     assert.ok(gateStationX(1, -1.75, 0.46) > gateStationX(0, -1.75, 0.46));
     assert.ok(ETCH_LOOP.gatesStart < ETCH_LOOP.gatesFull);
