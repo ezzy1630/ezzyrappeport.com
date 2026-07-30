@@ -1820,8 +1820,8 @@ const tests = [
     const {
       MONKEYCLAW_COUNTS,
       MONKEYCLAW_LOOP,
-      telemetryRankForVector,
-      vectorReachesJudge,
+      findingRankForVector,
+      vectorBecomesFinding,
       vectorSpawnDirection,
       vectorTiming,
     } = await import("../src/features/ocean-experience/render/projects/monkeyclaw/monkeyclawConfig.ts");
@@ -1871,16 +1871,17 @@ const tests = [
 
     // Facts from content.ts are structurally encoded in the scene.
     assert.equal(MONKEYCLAW_COUNTS.vectors, 18);
-    assert.equal(MONKEYCLAW_COUNTS.judged, 8);
-    let judgedCount = 0;
+    assert.equal(MONKEYCLAW_COUNTS.confirmedFindings, 3);
+    assert.equal(MONKEYCLAW_COUNTS.verifierGates, 8);
+    let findingCount = 0;
     for (let index = 0; index < 18; index += 1) {
-      if (vectorReachesJudge(index)) judgedCount += 1;
+      if (vectorBecomesFinding(index)) findingCount += 1;
     }
-    assert.equal(judgedCount, 8);
+    assert.equal(findingCount, 3);
     for (let index = 0; index < 18; index += 1) {
-      const rank = telemetryRankForVector(index);
-      if (index < 10) assert.equal(rank, -1);
-      else assert.equal(rank, index - 10);
+      const rank = findingRankForVector(index);
+      if (index < 15) assert.equal(rank, -1);
+      else assert.equal(rank, index - 15);
     }
     // Deterministic spawn paths and monotonic per-vector timing.
     const first = [0, 0, 0];
@@ -1892,7 +1893,7 @@ const tests = [
       const timing = vectorTiming(index);
       assert.ok(timing.startT < timing.arriveT);
       assert.ok(timing.startT >= MONKEYCLAW_LOOP.redStart - 1e-9);
-      if (vectorReachesJudge(index)) assert.ok(timing.judgeT > timing.arriveT);
+      if (vectorBecomesFinding(index)) assert.ok(timing.judgeT > timing.arriveT);
     }
 
     // Renderer integration: one host, encounter layer pass, probe, disposal.
@@ -1946,8 +1947,9 @@ const tests = [
     assert.match(encounterSource, /ENCOUNTER_BEATS/);
     assert.match(encounterSource, /Live system model/);
     assert.match(encounterSource, /Scroll-linked \/ \{String\(beats\.length\)/);
-    assert.match(encounterSource, /10 vectors deflected/);
-    assert.match(encounterSource, /defense authored/);
+    assert.match(encounterSource, /6 checks \+ ensemble/);
+    assert.match(encounterSource, /blocked \+ observed/);
+    assert.match(encounterSource, /patch · 8 gates/);
     assert.doesNotMatch(encounterSource, /IntersectionObserver/);
 
     // Sticky staging depends on the global overflow-x: clip (not hidden).
@@ -2138,7 +2140,11 @@ const tests = [
     assert.doesNotMatch(monkeyclawSceneSource, /sandboxBody/);
     assert.match(monkeyclawSceneSource, /const productLoopRadius = 0\.48/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-stage-/);
-    assert.match(monkeyclawSceneSource, /score verdict/);
+    assert.match(monkeyclawSceneSource, /tiered analysis/);
+    assert.match(monkeyclawSceneSource, /monkeyclaw-replay-minimize-cold-verify/);
+    assert.match(monkeyclawSceneSource, /monkeyclaw-detection-as-pass/);
+    assert.match(monkeyclawSceneSource, /six deterministic programmatic checks/);
+    assert.match(monkeyclawSceneSource, /Blue's eight verifier gates/);
     assert.match(productGeometrySource, /createRoundedPanelGeometry/);
     assert.match(productGeometrySource, /bevelEnabled: bevelSize > 0/);
     assert.match(instrumentLabelSource, /CanvasTexture/);
@@ -2154,6 +2160,8 @@ const tests = [
       "utf8",
     );
     assert.match(monkeyclawConfigSource, /VECTOR_TIMINGS/);
+    assert.match(monkeyclawConfigSource, /targetStart: 0/);
+    assert.match(monkeyclawConfigSource, /reproStart: 0\.41/);
 
     // Homepage order: anchors as encounters, then the Charted Work catalog.
     const projectsSectionSource = readFileSync(

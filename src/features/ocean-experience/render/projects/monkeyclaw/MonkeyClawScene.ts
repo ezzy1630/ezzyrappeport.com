@@ -1,10 +1,10 @@
 /**
- * MonkeyClaw encounter — adversarial current field (plan §10.2).
+ * MonkeyClaw encounter — continuous agent-security loop (plan §10.2).
  *
- * A suspended translucent agent core in darkening blue water. Eighteen faint
- * attack vectors approach; the sandbox perimeter deflects most; eight reach
- * the judge layer and light the verifier gates; verified detections return
- * as telemetry rails that exit as clean parallel paths toward Etch.
+ * A suspended NemoClaw victim sits inside the real target → red → judge →
+ * repro → blue → purple lifecycle. Each frame exposes one production concept:
+ * dual-axis coverage, attack execution, tiered judgment, cold-verified repro,
+ * eight-gate patch verification, and detection-as-pass feedback.
  *
  * Every primary transform is a pure function of chapter progress — reverse
  * scroll reconstructs the exact composition. Probe pulses and idle pulses
@@ -53,8 +53,8 @@ import {
   MONKEYCLAW_COUNTS,
   MONKEYCLAW_LOOP,
   MONKEYCLAW_STAGE,
-  telemetryRankForVector,
-  vectorReachesJudge,
+  findingRankForVector,
+  vectorBecomesFinding,
   vectorSpawnDirection,
   vectorTiming,
 } from "./monkeyclawConfig.ts";
@@ -136,6 +136,14 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   let lightingRig: Group | null = null;
   let containmentShield: Group | null = null;
   let containmentMaterial: MeshBasicMaterial | null = null;
+  let judgeProgramChecks: InstancedMesh | null = null;
+  let judgeProgramMaterial: MeshBasicMaterial | null = null;
+  let judgeEnsembleNodes: InstancedMesh | null = null;
+  let judgeEnsembleMaterial: MeshBasicMaterial | null = null;
+  let reproSystem: Group | null = null;
+  let reproVictims: InstancedMesh | null = null;
+  let reproVictimMaterial: MeshPhysicalMaterial | null = null;
+  const reproRingMaterials: MeshBasicMaterial[] = [];
   let patchLattice: LineSegments | null = null;
   let patchLatticeMaterial: LineBasicMaterial | null = null;
   let patchNodes: InstancedMesh | null = null;
@@ -152,6 +160,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   const railMaterials: MeshBasicMaterial[] = [];
   let telemetryBeads: InstancedMesh | null = null;
   let telemetryBeadMaterial: MeshBasicMaterial | null = null;
+  let detectionQuadrants: Group | null = null;
+  const detectionQuadrantMaterials: MeshPhysicalMaterial[] = [];
   let vectors: InstancedMesh | null = null;
   let vectorMaterial: MeshBasicMaterial | null = null;
   let flashes: InstancedMesh | null = null;
@@ -181,14 +191,14 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const radius = MONKEYCLAW_STAGE.spawnRadiusMin
         + ((index * 7) % 5) / 4 * (MONKEYCLAW_STAGE.spawnRadiusMax - MONKEYCLAW_STAGE.spawnRadiusMin);
       const spawnPoint = new Vector3(spawnDir[0], spawnDir[1], spawnDir[2]).multiplyScalar(radius);
-      spawnPoint.x = Math.min(spawnPoint.x, 1);
-      spawnPoint.y = Math.max(-1, Math.min(1, spawnPoint.y));
+      spawnPoint.x = Math.max(-0.72, Math.min(spawnPoint.x, 0.92));
+      spawnPoint.y = Math.max(-0.7, Math.min(0.7, spawnPoint.y));
       pathSpawn.push(spawnPoint);
       const inward = new Vector3(spawnDir[0], spawnDir[1], spawnDir[2]).normalize();
       pathPerimeter.push(inward.clone().multiplyScalar(MONKEYCLAW_STAGE.perimeterRadius));
-      if (vectorReachesJudge(index)) {
-        const rank = telemetryRankForVector(index);
-        const angle = (rank / MONKEYCLAW_COUNTS.judged) * Math.PI * 2 + 0.42;
+      if (vectorBecomesFinding(index)) {
+        const rank = findingRankForVector(index);
+        const angle = (rank / MONKEYCLAW_COUNTS.confirmedFindings) * Math.PI * 2 + 0.42;
         const ringPoint = new Vector3(
           Math.cos(angle) * MONKEYCLAW_STAGE.judgeRadius,
           Math.sin(angle) * MONKEYCLAW_STAGE.judgeRadius,
@@ -206,8 +216,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         const deflectPoint = inward.clone().multiplyScalar(MONKEYCLAW_STAGE.perimeterRadius)
             .addScaledVector(tangent, 0.62)
             .addScaledVector(inward, 0.4);
-        deflectPoint.x = Math.min(deflectPoint.x, 1);
-        deflectPoint.y = Math.max(-1, Math.min(1, deflectPoint.y));
+        deflectPoint.x = Math.max(-0.68, Math.min(deflectPoint.x, 0.92));
+        deflectPoint.y = Math.max(-0.74, Math.min(0.74, deflectPoint.y));
         pathDeflect.push(deflectPoint);
       }
     }
@@ -341,11 +351,11 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         MONKEYCLAW_COLORS.purple,
       ] as const;
       const stageCopy = [
-        ["RED", "seed attack"],
-        ["JUDGE", "score verdict"],
-        ["REPRO", "lock evidence"],
-        ["BLUE", "repair runtime"],
-        ["PURPLE", "regression"],
+        ["RED", "ideate + execute"],
+        ["JUDGE", "tiered analysis"],
+        ["REPRO", "replay + minimize"],
+        ["BLUE", "patch + verify"],
+        ["PURPLE", "detect + route gap"],
       ] as const;
       const stageAccent = ["#e88a81", "#d8f7ff", "#b9dbe2", "#72c8dd", "#a69bd8"] as const;
       const stageLabelGeometry = track(new PlaneGeometry(0.34, 0.105));
@@ -457,6 +467,126 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         containmentShield.add(segment);
       }
 
+      // Judge state: six deterministic programmatic checks inside a five-role
+      // semantic ensemble. Distinct rings keep this separate from blue's
+      // eight patch-verifier gates.
+      const judgeCheckGeometry = track(new SphereGeometry(0.025, 10, 8));
+      judgeProgramMaterial = track(new MeshBasicMaterial({
+        color: MONKEYCLAW_COLORS.judge,
+        transparent: true,
+        opacity: 0,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      judgeProgramChecks = new InstancedMesh(judgeCheckGeometry, judgeProgramMaterial, 6);
+      judgeProgramChecks.instanceMatrix.setUsage(DynamicDrawUsage);
+      for (let checkIndex = 0; checkIndex < 6; checkIndex += 1) {
+        const angle = checkIndex / 6 * Math.PI * 2 + 0.2;
+        _pos.set(
+          root.x + Math.cos(angle) * 0.34,
+          root.y + Math.sin(angle) * 0.34,
+          root.z + 0.05,
+        );
+        _quat.identity();
+        _scale.setScalar(1);
+        _matrix.compose(_pos, _quat, _scale);
+        judgeProgramChecks.setMatrixAt(checkIndex, _matrix);
+      }
+      judgeProgramChecks.instanceMatrix.needsUpdate = true;
+
+      judgeEnsembleMaterial = track(new MeshBasicMaterial({
+        color: 0xa8dce8,
+        transparent: true,
+        opacity: 0,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      judgeEnsembleNodes = new InstancedMesh(judgeCheckGeometry, judgeEnsembleMaterial, 5);
+      judgeEnsembleNodes.instanceMatrix.setUsage(DynamicDrawUsage);
+      for (let roleIndex = 0; roleIndex < 5; roleIndex += 1) {
+        const angle = roleIndex / 5 * Math.PI * 2 - 0.35;
+        _pos.set(
+          root.x + Math.cos(angle) * 0.47,
+          root.y + Math.sin(angle) * 0.47,
+          root.z + 0.035,
+        );
+        _quat.identity();
+        _scale.setScalar(1.18);
+        _matrix.compose(_pos, _quat, _scale);
+        judgeEnsembleNodes.setMatrixAt(roleIndex, _matrix);
+      }
+      judgeEnsembleNodes.instanceMatrix.needsUpdate = true;
+
+      // Repro state: three fresh-victim replays orbit the minimized evidence
+      // package before the cold-verifier handoff.
+      reproSystem = new Group();
+      reproSystem.name = "monkeyclaw-replay-minimize-cold-verify";
+      reproSystem.position.copy(root);
+      for (let replayIndex = 0; replayIndex < 3; replayIndex += 1) {
+        const material = track(new MeshBasicMaterial({
+          color: MONKEYCLAW_COLORS.repro,
+          transparent: true,
+          opacity: 0,
+          depthTest: false,
+          depthWrite: false,
+        }));
+        const replayRing = new Mesh(
+          track(new TorusGeometry(0.38 + replayIndex * 0.095, 0.006, 5, 72)),
+          material,
+        );
+        replayRing.rotation.x = (replayIndex - 1) * 0.18;
+        replayRing.rotation.y = (1 - replayIndex) * 0.12;
+        reproSystem.add(replayRing);
+        reproRingMaterials.push(material);
+      }
+      reproVictimMaterial = track(new MeshPhysicalMaterial({
+        color: 0xd99b35,
+        emissive: MONKEYCLAW_COLORS.repro,
+        emissiveIntensity: 0.7,
+        roughness: 0.28,
+        metalness: 0.36,
+        clearcoat: 0.9,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      reproVictims = new InstancedMesh(
+        track(createRoundedPanelGeometry(0.115, 0.058, 0.035, 0.014, 0.003)),
+        reproVictimMaterial,
+        3,
+      );
+      reproVictims.instanceMatrix.setUsage(DynamicDrawUsage);
+      reproSystem.add(reproVictims);
+
+      // Purple's prevention × observability oracle. PASS is the only bright
+      // result; weak, partial, and fail remain visible as rejected outcomes.
+      detectionQuadrants = new Group();
+      detectionQuadrants.name = "monkeyclaw-detection-as-pass";
+      detectionQuadrants.position.copy(root);
+      const quadrantColors = [0x2da44e, 0xd9a315, 0xdd6b20, 0xd64531] as const;
+      for (let quadrantIndex = 0; quadrantIndex < quadrantColors.length; quadrantIndex += 1) {
+        const material = track(new MeshPhysicalMaterial({
+          color: quadrantColors[quadrantIndex],
+          emissive: quadrantColors[quadrantIndex],
+          emissiveIntensity: quadrantIndex === 0 ? 1.1 : 0.28,
+          roughness: 0.3,
+          metalness: 0.25,
+          clearcoat: 0.86,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }));
+        const quadrant = new Mesh(
+          track(createRoundedPanelGeometry(0.135, 0.065, 0.035, 0.014, 0.003)),
+          material,
+        );
+        const angle = Math.PI * 0.25 + quadrantIndex * Math.PI * 0.5;
+        quadrant.position.set(Math.cos(angle) * 0.58, Math.sin(angle) * 0.58, 0.055);
+        quadrant.rotation.z = angle + Math.PI * 0.5;
+        detectionQuadrants.add(quadrant);
+        detectionQuadrantMaterials.push(material);
+      }
+
       // Patch state: a bounded defense lattice and twelve explicit policy
       // nodes assemble around the sandbox, then yield to telemetry.
       patchLatticeMaterial = track(new LineBasicMaterial({
@@ -521,7 +651,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         0.021,
         0.004,
       ));
-      for (let gate = 0; gate < MONKEYCLAW_COUNTS.judged; gate += 1) {
+      for (let gate = 0; gate < MONKEYCLAW_COUNTS.verifierGates; gate += 1) {
         const material = track(new MeshPhysicalMaterial({
           color: 0x426c75,
           emissive: MONKEYCLAW_COLORS.judge,
@@ -534,7 +664,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const mesh = new Mesh(gateGeometry, material);
-        const angle = (gate / MONKEYCLAW_COUNTS.judged) * Math.PI * 2 + 0.42;
+        const angle = (gate / MONKEYCLAW_COUNTS.verifierGates) * Math.PI * 2 + 0.42;
         mesh.position.set(
           root.x + Math.cos(angle) * MONKEYCLAW_STAGE.judgeRadius,
           root.y + Math.sin(angle) * MONKEYCLAW_STAGE.judgeRadius,
@@ -644,8 +774,12 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const objects = ([
         perimeter,
         containmentShield,
+        judgeProgramChecks,
+        judgeEnsembleNodes,
+        reproSystem,
         patchLattice,
         patchNodes,
+        detectionQuadrants,
         securityLoop,
         lightingRig,
         core,
@@ -671,19 +805,19 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       lastLoopT = t;
 
       const loop = MONKEYCLAW_LOOP;
-      const wakeT = smoothstep01((t - loop.wakeStart) / Math.max(loop.wakeFull - loop.wakeStart, 1e-6));
-      const redT = smoothstep01((t - loop.redStart) / Math.max(loop.redFull - loop.redStart, 1e-6));
-      const containT = smoothstep01(
-        (t - loop.containStart) / Math.max(loop.containFull - loop.containStart, 1e-6),
+      const targetT = smoothstep01(
+        (t - loop.targetStart) / Math.max(loop.targetFull - loop.targetStart, 1e-6),
       );
+      const redT = smoothstep01((t - loop.redStart) / Math.max(loop.redFull - loop.redStart, 1e-6));
       const judgeT = smoothstep01((t - loop.judgeStart) / Math.max(loop.judgeFull - loop.judgeStart, 1e-6));
+      const reproT = smoothstep01((t - loop.reproStart) / Math.max(loop.reproFull - loop.reproStart, 1e-6));
       const blueT = smoothstep01((t - loop.blueStart) / Math.max(loop.blueFull - loop.blueStart, 1e-6));
       const purpleT = smoothstep01((t - loop.purpleStart) / Math.max(loop.purpleFull - loop.purpleStart, 1e-6));
-      const baseProductScale = layoutMode === "mobile" ? 1.16 : 1.48;
+      const baseProductScale = layoutMode === "mobile" ? 1.06 : 1.48;
       const productScale = baseProductScale * (
         0.92
-        + wakeT * 0.08
-        + judgeT * (1 - blueT) * 0.045
+        + targetT * 0.08
+        + judgeT * (1 - reproT) * 0.045
         - purpleT * 0.025
       );
 
@@ -691,10 +825,10 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       if (core && coreMaterial) {
         core.rotation.y = t * 1.2;
         core.rotation.x = t * 0.35;
-        const judgePulse = judgeT * (1 - blueT) * 0.075;
-        core.scale.setScalar((0.94 + wakeT * 0.06 + judgePulse + redT * 0.025) * productScale);
+        const judgePulse = judgeT * (1 - reproT) * 0.075;
+        core.scale.setScalar((0.94 + targetT * 0.06 + judgePulse + redT * 0.025) * productScale);
         coreMaterial.uniforms.uIntensity.value = (
-          0.34 + wakeT * 0.08 + redT * 0.15 + judgeT * 0.16
+          0.34 + targetT * 0.08 + redT * 0.15 + judgeT * 0.16
         ) * fade;
       }
       if (identityMark && identityMaterial) {
@@ -702,7 +836,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         identityMark.scale.setScalar(productScale);
         identityMaterial.uniforms.uOpacity.value = Math.min(
           1,
-          0.92 + wakeT * 0.04 + judgeT * 0.04,
+          0.92 + targetT * 0.04 + judgeT * 0.04,
         ) * fade;
       }
       if (cage && cageMaterial) {
@@ -722,13 +856,39 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       }
       if (perimeter && perimeterMaterial) {
         perimeterMaterial.uniforms.uIntensity.value = (
-          0.035 + wakeT * 0.025 + containT * 0.11 + blueT * 0.04
+          0.035 + targetT * 0.025 + judgeT * 0.11 + blueT * 0.04
         ) * fade;
       }
       if (containmentShield && containmentMaterial) {
         containmentShield.rotation.z = -t * 0.18;
-        const containFocus = containT * (1 - judgeT * 0.58);
-        containmentMaterial.opacity = (0.05 + containFocus * 0.72 + blueT * 0.16) * fade;
+        const judgeFocus = judgeT * (1 - reproT * 0.72);
+        containmentMaterial.opacity = (0.03 + judgeFocus * 0.58 + blueT * 0.08) * fade;
+      }
+      if (judgeProgramMaterial && judgeEnsembleMaterial) {
+        const judgeFocus = judgeT * (1 - reproT * 0.78);
+        judgeProgramMaterial.opacity = judgeFocus * 0.95 * fade;
+        judgeEnsembleMaterial.opacity = judgeFocus * 0.72 * fade;
+      }
+      if (reproSystem && reproVictims && reproVictimMaterial) {
+        const reproFocus = reproT * Math.pow(1 - blueT, 3);
+        reproSystem.rotation.z = -t * 0.34;
+        reproSystem.rotation.y = Math.sin(t * Math.PI) * 0.12;
+        reproSystem.scale.setScalar(layoutMode === "mobile" ? 0.76 : 1);
+        reproRingMaterials.forEach((material, replayIndex) => {
+          material.opacity = reproFocus * (0.38 + replayIndex * 0.2) * fade;
+        });
+        reproVictimMaterial.opacity = reproFocus * fade;
+        for (let replayIndex = 0; replayIndex < 3; replayIndex += 1) {
+          const angle = t * Math.PI * (1.15 + replayIndex * 0.16)
+            + replayIndex * Math.PI * 2 / 3;
+          const radius = 0.38 + replayIndex * 0.095;
+          _pos.set(Math.cos(angle) * radius, Math.sin(angle) * radius, 0.07);
+          _quat.setFromAxisAngle(UP, 0);
+          _scale.setScalar(0.76 + reproFocus * 0.34);
+          _matrix.compose(_pos, _quat, _scale);
+          reproVictims.setMatrixAt(replayIndex, _matrix);
+        }
+        reproVictims.instanceMatrix.needsUpdate = true;
       }
       if (patchLattice && patchLatticeMaterial && patchNodes && patchNodeMaterial) {
         patchLattice.rotation.y = t * 0.34;
@@ -738,8 +898,18 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         patchLatticeMaterial.opacity = Math.min(1, patchFocus * 1.3) * fade;
         patchNodeMaterial.opacity = Math.min(1, patchFocus * 1.55) * fade;
       }
+      if (detectionQuadrants) {
+        detectionQuadrants.rotation.z = t * 0.08;
+        detectionQuadrantMaterials.forEach((material, quadrantIndex) => {
+          const semanticWeight = quadrantIndex === 0 ? 0.92 : 0.26;
+          material.opacity = purpleT * semanticWeight * fade;
+          material.emissiveIntensity = quadrantIndex === 0
+            ? 0.45 + purpleT * 1.15
+            : 0.12 + purpleT * 0.18;
+        });
+      }
       if (securityLoop) {
-        const stageProgress = [redT, judgeT, judgeT, blueT, purpleT];
+        const stageProgress = [redT, judgeT, reproT, blueT, purpleT];
         securityLoop.rotation.z = t * 0.12;
         securityLoop.rotation.x = Math.sin(t * Math.PI) * 0.09;
         securityLoop.scale.setScalar(productScale);
@@ -767,24 +937,25 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       // Attack vectors — pure function of loop progress per zone.
       if (vectors && vectorMaterial) {
         vectorMaterial.opacity = fade
-          * (0.4 + redT * 0.6)
+          * (0.12 + redT * 0.88)
+          * Math.pow(1 - reproT, 3)
           * Math.pow(1 - purpleT, 2);
         for (let index = 0; index < MONKEYCLAW_COUNTS.vectors; index += 1) {
           const timing = vectorTiming(index);
-          const judged = vectorReachesJudge(index);
+          const finding = vectorBecomesFinding(index);
           const approach = smoothstep01(
             (t - timing.startT) / Math.max(timing.arriveT - timing.startT, 1e-6),
           );
           _pos.copy(pathSpawn[index]).lerp(pathPerimeter[index], approach);
           let brightness = approach * (1 - approach * 0.25);
-          if (judged) {
-            const rank = telemetryRankForVector(index);
+          if (finding) {
+            const rank = findingRankForVector(index);
             const converge = smoothstep01(
               (t - timing.arriveT) / Math.max(timing.judgeT - timing.arriveT, 1e-6),
             );
             _pos.lerp(pathRing[index], converge);
             const penetrate = smoothstep01(
-              (t - (loop.blueStart + rank * 0.018)) / 0.16,
+              (t - (loop.reproStart + rank * 0.018)) / 0.16,
             );
             _pos.lerp(pathCore[index], penetrate);
             brightness = Math.max(
@@ -793,7 +964,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
             );
           } else {
             const deflectT = smoothstep01(
-              (t - (loop.containStart + (index % 5) * 0.016)) / 0.18,
+              (t - (loop.judgeStart + (index % 5) * 0.016)) / 0.18,
             );
             _pos.lerp(pathDeflect[index], deflectT);
             brightness *= 1 - deflectT * 0.92;
@@ -804,19 +975,21 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           _dir.normalize();
           _quat.setFromUnitVectors(UP, _dir);
           const scaleBase = 0.9 + approach * 0.8;
-          const vectorStateScale = 1 - containT * 0.22 - judgeT * 0.46;
+          const outcomeScale = finding ? 1 : Math.max(0.18, 1 - judgeT * 0.82);
+          const vectorStateScale = outcomeScale * (1 - reproT * 0.68);
           _scale.setScalar(
             scaleBase
             * (0.7 + brightness * 0.5)
+            * (0.32 + redT * 0.68)
             * Math.max(0.3, vectorStateScale),
           );
           _pos.add(root);
           _matrix.compose(_pos, _quat, _scale);
           vectors.setMatrixAt(index, _matrix);
           // Hostile red pressure → judged mineral → telemetry cool.
-          if (judged && t > timing.judgeT - 0.06) {
+          if (finding && t > timing.judgeT - 0.06) {
             _color.setHex(MONKEYCLAW_COLORS.judge).multiplyScalar(0.5 + brightness * 0.5);
-          } else if (!judged && containT > 0.25) {
+          } else if (!finding && judgeT > 0.25) {
             _color.setHex(MONKEYCLAW_COLORS.blue).multiplyScalar(0.46 + brightness * 0.54);
           } else {
             _color.setHex(MONKEYCLAW_COLORS.hostile).multiplyScalar(0.52 + brightness * 0.48);
@@ -829,13 +1002,13 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
 
       // Deflect flashes at the perimeter.
       if (flashes && flashMaterial) {
-        flashMaterial.opacity = fade * containT;
+        flashMaterial.opacity = fade * judgeT * (1 - reproT * 0.85);
         for (let index = 0; index < MONKEYCLAW_COUNTS.vectors; index += 1) {
-          if (vectorReachesJudge(index)) {
+          if (vectorBecomesFinding(index)) {
             _scale.setScalar(0);
           } else {
             const deflectT = smoothstep01(
-              (t - (loop.containStart + (index % 5) * 0.016)) / 0.18,
+              (t - (loop.judgeStart + (index % 5) * 0.016)) / 0.18,
             );
             const ring = deflectT > 0 && deflectT < 1
               ? Math.sin(deflectT * Math.PI) * 0.9
@@ -850,12 +1023,11 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         flashes.instanceMatrix.needsUpdate = true;
       }
 
-      // Verifier gates light as their judged vector arrives.
+      // Blue's eight verifier gates resolve in sequence around the candidate
+      // patch. They are deliberately absent during the judge and repro beats.
       for (let gate = 0; gate < gateMaterials.length; gate += 1) {
-        const vectorIndex = MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.judged + gate;
-        const timing = vectorTiming(vectorIndex);
-        const lit = smoothstep01((t - timing.judgeT) / 0.05);
-        gateMaterials[gate].opacity = (0.34 + lit * 0.66) * fade;
+        const lit = smoothstep01((t - (loop.blueStart + gate * 0.015)) / 0.08);
+        gateMaterials[gate].opacity = lit * fade;
         gateMaterials[gate].emissiveIntensity = 0.2 + lit * 1.35;
         const gateScale = 0.76 + lit * 0.38;
         gateMeshes[gate].scale.set(gateScale, gateScale, gateScale);
@@ -880,14 +1052,16 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
 
       // Edge-triggered audio hooks from primary crossings (bounded).
       if (eventBuffer.length < 4) {
-        for (let gate = 0; gate < MONKEYCLAW_COUNTS.judged; gate += 1) {
-          const vectorIndex = MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.judged + gate;
+        for (let finding = 0; finding < MONKEYCLAW_COUNTS.confirmedFindings; finding += 1) {
+          const vectorIndex = MONKEYCLAW_COUNTS.vectors
+            - MONKEYCLAW_COUNTS.confirmedFindings
+            + finding;
           const judgeAt = vectorTiming(vectorIndex).judgeT;
           if (previousT < judgeAt && t >= judgeAt && eventBuffer.length < 4) {
             eventBuffer.push("judge-hit");
           }
         }
-        const deflectEdge = loop.containStart + 0.05;
+        const deflectEdge = loop.judgeStart + 0.05;
         if (previousT < deflectEdge && t >= deflectEdge && eventBuffer.length < 4) {
           eventBuffer.push("deflect");
         }
@@ -1011,8 +1185,12 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       const objects = ([
         perimeter,
         containmentShield,
+        judgeProgramChecks,
+        judgeEnsembleNodes,
+        reproSystem,
         patchLattice,
         patchNodes,
+        detectionQuadrants,
         securityLoop,
         lightingRig,
         core,
@@ -1036,7 +1214,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       // detach via host (stage reference dropped here too)
       if (stage) {
         const objects = ([
-          perimeter, containmentShield, patchLattice, patchNodes, securityLoop,
+          perimeter, containmentShield, judgeProgramChecks, judgeEnsembleNodes,
+          reproSystem, patchLattice, patchNodes, detectionQuadrants, securityLoop,
           lightingRig, core, identityMark, cage, ring, vectors, flashes, telemetryBeads,
           ...gateMeshes, ...railMeshes, ...pulseMeshes,
         ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
@@ -1060,6 +1239,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       loopStageMaterials.length = 0;
       loopStageLabels.length = 0;
       loopStageLabelMaterials.length = 0;
+      reproRingMaterials.length = 0;
+      detectionQuadrantMaterials.length = 0;
       loaded = false;
     },
   };

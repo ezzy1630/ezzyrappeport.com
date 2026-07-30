@@ -1,35 +1,37 @@
 /**
  * MonkeyClaw encounter — authored constants (plan §10.2).
  *
- * The scene communicates attack → judge → reproduce → patch → detection:
- * 18 faint attack vectors (the 18 seeded attack zones) approach through the
- * surrounding water; a sandbox perimeter deflects most; 8 reach the judge
- * layer and light the 8 verifier gates; verified detections return as
- * telemetry rails that align into Etch's clean verification geometry.
+ * The scene communicates target → red → judge → repro → blue → purple:
+ * coverage selects one of 18 attack-surface zones; red generates and executes
+ * an attack; tiered judging promotes evidence into replay/minimization; blue
+ * proposes a patch and runs 8 verifier gates; purple requires both prevention
+ * and observability, then routes the detection gap into the next red cycle.
  */
 
 /** Chapter-progress loop windows. Primary state is a pure function of these. */
 export const MONKEYCLAW_LOOP = {
-  wakeStart: 0,
-  wakeFull: 0.12,
-  redStart: 0.08,
-  redFull: 0.26,
-  containStart: 0.22,
-  containFull: 0.42,
-  judgeStart: 0.38,
-  judgeFull: 0.58,
-  blueStart: 0.54,
-  blueFull: 0.72,
-  purpleStart: 0.68,
-  purpleFull: 0.86,
+  targetStart: 0,
+  targetFull: 0.15,
+  redStart: 0.1,
+  redFull: 0.3,
+  judgeStart: 0.25,
+  judgeFull: 0.46,
+  reproStart: 0.41,
+  reproFull: 0.62,
+  blueStart: 0.57,
+  blueFull: 0.78,
+  purpleStart: 0.73,
+  purpleFull: 0.92,
 } as const;
 
 export const MONKEYCLAW_COUNTS = {
-  /** 18 seeded attack zones (content.ts fact). */
+  /** The public registry's 18 attack-surface zones. */
   vectors: 18,
-  /** Vectors that reach the judge layer == the 8 verifier gates. */
-  judged: 8,
-  /** Verified detections that return as telemetry rails. */
+  /** Three confirmed criticals shown by the checked-in demo cycle. */
+  confirmedFindings: 3,
+  /** Independent blue-team patch-verifier stages. */
+  verifierGates: 8,
+  /** Evidence streams emitted after the verifier completes. */
   telemetryRails: 8,
   /** Concurrent probe pulses (pointer signature). */
   probePool: 3,
@@ -55,6 +57,7 @@ export const MONKEYCLAW_COLORS = {
   hostile: 0xe2604a,
   hostileDim: 0x8f4a40,
   judge: 0xcdeef6,
+  repro: 0xd18a1d,
   blue: 0x4f9eff,
   purple: 0x8f86f2,
   telemetry: 0x5cd4e6,
@@ -62,15 +65,15 @@ export const MONKEYCLAW_COLORS = {
   cage: 0x9fc8d8,
 } as const;
 
-/** Deterministic per-vector outcome: index < 10 deflect at the perimeter. */
-export function vectorReachesJudge(vectorIndex: number): boolean {
-  return vectorIndex >= MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.judged;
+/** Deterministic demo outcome: three attack paths become confirmed findings. */
+export function vectorBecomesFinding(vectorIndex: number): boolean {
+  return vectorIndex >= MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.confirmedFindings;
 }
 
-/** Verified detections among judged vectors → telemetry rail rank, else -1. */
-export function telemetryRankForVector(vectorIndex: number): number {
-  if (!vectorReachesJudge(vectorIndex)) return -1;
-  return vectorIndex - (MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.judged);
+/** Confirmed-finding rank for the demo path, else -1. */
+export function findingRankForVector(vectorIndex: number): number {
+  if (!vectorBecomesFinding(vectorIndex)) return -1;
+  return vectorIndex - (MONKEYCLAW_COUNTS.vectors - MONKEYCLAW_COUNTS.confirmedFindings);
 }
 
 /** Golden-angle sphere direction, deterministic by index. */
@@ -91,13 +94,13 @@ export function vectorSpawnDirection(
 /** Per-vector loop timing: staggered approach inside the red window. */
 const VECTOR_TIMINGS = Array.from({ length: MONKEYCLAW_COUNTS.vectors }, (_, vectorIndex) => {
   const rank = vectorIndex / MONKEYCLAW_COUNTS.vectors;
-  const judged = vectorReachesJudge(vectorIndex);
-  const startT = MONKEYCLAW_LOOP.redStart + rank * 0.16;
+  const finding = vectorBecomesFinding(vectorIndex);
+  const startT = MONKEYCLAW_LOOP.redStart + rank * 0.11;
   return {
     startT,
-    arriveT: startT + 0.15 + (vectorIndex % 3) * 0.012,
-    judgeT: judged ? MONKEYCLAW_LOOP.judgeStart + 0.05
-      + telemetryRankForVector(vectorIndex) * 0.028 : 1,
+    arriveT: startT + 0.12 + (vectorIndex % 3) * 0.012,
+    judgeT: finding ? MONKEYCLAW_LOOP.judgeStart + 0.11
+      + findingRankForVector(vectorIndex) * 0.04 : 1,
   };
 });
 

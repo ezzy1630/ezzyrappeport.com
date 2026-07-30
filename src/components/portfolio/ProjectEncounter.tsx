@@ -15,17 +15,18 @@ type EncounterBeat = {
   detail: string;
   start: number;
   end: number;
+  accent?: string;
   state?: "pending";
 };
 
 const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
   monkeyclaw: [
-    { label: "Wake", detail: "system acquires", start: 0, end: 0.12 },
-    { label: "Ingress", detail: "18 zones seeded", start: 0.08, end: 0.26 },
-    { label: "Contain", detail: "10 vectors deflected", start: 0.22, end: 0.42 },
-    { label: "Verdict", detail: "8 gates resolve", start: 0.38, end: 0.58 },
-    { label: "Patch", detail: "defense authored", start: 0.54, end: 0.72 },
-    { label: "Telemetry", detail: "detection returns", start: 0.68, end: 0.86 },
+    { label: "Target", detail: "lowest coverage gap", start: 0, end: 0.15, accent: "#327784" },
+    { label: "Red", detail: "ideate + execute", start: 0.1, end: 0.3, accent: "#d64531" },
+    { label: "Judge", detail: "6 checks + ensemble", start: 0.25, end: 0.46, accent: "#79aebc" },
+    { label: "Repro", detail: "replay + minimize", start: 0.41, end: 0.62, accent: "#c98718" },
+    { label: "Blue", detail: "patch · 8 gates", start: 0.57, end: 0.78, accent: "#2563c9" },
+    { label: "Purple", detail: "blocked + observed", start: 0.73, end: 0.92, accent: "#7c3aed" },
   ],
   etch: [
     { label: "Intent", detail: "language enters", start: 0, end: 0.28 },
@@ -48,18 +49,18 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
 };
 
 const MONKEYCLAW_ANNOTATIONS = [
-  { beat: 0, slot: "left-top", label: "Sandbox sphere", detail: "isolated runtime" },
-  { beat: 0, slot: "right-mid", label: "MonkeyClaw core", detail: "policy engine" },
-  { beat: 1, slot: "left-top", label: "Threat signals", detail: "18 zones mapped" },
-  { beat: 1, slot: "right-bottom", label: "Attack vectors", detail: "inbound pressure" },
-  { beat: 2, slot: "left-mid", label: "Deflection shield", detail: "10 blocked" },
-  { beat: 2, slot: "right-bottom", label: "Evidence fragments", detail: "captured" },
-  { beat: 3, slot: "left-top", label: "Verifier ring", detail: "8 gates resolve" },
-  { beat: 3, slot: "right-mid", label: "Verdict signals", detail: "consensus reached" },
-  { beat: 4, slot: "left-bottom", label: "Defense lattice", detail: "policy update" },
-  { beat: 4, slot: "right-top", label: "Config commit", detail: "defense authored" },
-  { beat: 5, slot: "left-mid", label: "Detection returns", detail: "evidence streaming" },
-  { beat: 5, slot: "right-top", label: "System health", detail: "observable" },
+  { beat: 0, slot: "left-top", label: "Coverage model", detail: "lowest-coverage zone" },
+  { beat: 0, slot: "right-mid", label: "18 attack zones", detail: "attack + detection axes" },
+  { beat: 1, slot: "left-top", label: "Nemotron ideation", detail: "five prompt modes" },
+  { beat: 1, slot: "right-bottom", label: "Attack lane", detail: "multi-turn execution" },
+  { beat: 2, slot: "left-mid", label: "Tier 1 checks", detail: "six programmatic" },
+  { beat: 2, slot: "right-top", label: "Judge ensemble", detail: "five semantic roles" },
+  { beat: 3, slot: "left-top", label: "Replay + minimize", detail: "fresh victims" },
+  { beat: 3, slot: "right-bottom", label: "Cold verifier", detail: "context-free proof" },
+  { beat: 4, slot: "left-bottom", label: "Candidate diff", detail: "least invasive first" },
+  { beat: 4, slot: "right-top", label: "Patch verifier", detail: "eight gates" },
+  { beat: 5, slot: "left-mid", label: "Detection oracle", detail: "blocked + observed" },
+  { beat: 5, slot: "right-top", label: "Feedback router", detail: "gap → red priority" },
 ] as const;
 
 /**
@@ -105,6 +106,7 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
                       {
                         "--beat-start": beat?.start ?? 0,
                         "--beat-end": beat?.end ?? 1,
+                        "--annotation-accent": beat?.accent,
                       } as CSSProperties
                     }
                   >
@@ -129,6 +131,7 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
                     "--beat-start": beat.start,
                     "--beat-end": beat.end,
                     "--beat-span": Math.max(beat.end - beat.start, 0.01),
+                    "--beat-accent": beat.accent,
                   } as CSSProperties
                 }
               >

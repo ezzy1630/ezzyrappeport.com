@@ -100,8 +100,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     slug: "monkeyclaw",
     index: "01",
     title: "MONKEYCLAW",
-    subtitle: "Multi-Agent Security System",
-    tagline: "Continuous red, blue, and purple-team security testing for agent runtimes.",
+    subtitle: "Autonomous Red / Purple / Blue Security Agent for NVIDIA NemoClaw",
+    tagline: "Attacks live sandboxes, proves and patches confirmed findings, then checks the defense was visible in NemoClaw telemetry.",
     description:
       "MonkeyClaw is a continuous security agent for NemoClaw and OpenClaw deployments. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
     problem:
@@ -113,7 +113,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     system:
       "Live multi-panel dashboard over an 18-zone attack map. Red to judge to repro to blue to purple loop with detection-as-pass gates.",
     evidence:
-      "Attack-blocked / detection-fired matrix, zero-credential demo path, 8 verifier gates, 1,051 tracked test functions, README badge coverage for 18 zones.",
+      "Detection-as-pass matrix, zero-credential demo path, 8 verifier gates, 1,000+ tests, and dual-axis coverage across 18 zones.",
     constraints:
       "Multi-contributor project. Demo runs without model credentials; live LLM paths remain optional and environment-gated.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
@@ -121,8 +121,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     role: "Lead Engineer & Contributor",
     accent: "blue-strong",
     personality: "monkeyclaw",
-    status: "Public repository · working demo",
-    proof: "18 seeded attack zones · 8 verifier gates · 1,051 tracked test functions",
+    status: "Public repository · zero-credential demo",
+    proof: "18 attack-surface zones · 8 verifier gates · 1,000+ tests",
     cautionLabel: "Multi-contributor project",
     media: {
       cover: {

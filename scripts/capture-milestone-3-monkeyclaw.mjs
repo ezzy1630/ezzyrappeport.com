@@ -2,8 +2,8 @@
 /**
  * Milestone 3 MonkeyClaw encounter evidence capture.
  *
- * Captures the adversarial current field across the chapter loop (wake →
- * ingress → contain → verdict → patch → telemetry), the probe signature interaction, mobile/reduced/
+ * Captures the continuous security loop (target → red → judge → repro →
+ * blue → purple), the probe signature interaction, mobile/reduced/
  * failure compositions, lazy-load + eviction behavior, case-study route
  * transition, and scene budgets.
  *
@@ -45,7 +45,7 @@ async function collectMetrics(page) {
       scrollY: Math.round(window.scrollY),
       encounterDomPresent: Boolean(encounterDom),
       encounterDomHeight: encounterDom ? Math.round(encounterDom.getBoundingClientRect().height) : 0,
-      proofText: encounterDom?.textContent?.includes("18 seeded attack zones · 8 verifier gates · 1,051 tracked test functions") ?? false,
+      proofText: encounterDom?.textContent?.includes("18 attack-surface zones · 8 verifier gates · 1,000+ tests") ?? false,
       diveHref: encounterDom?.querySelector('a[href="/project/monkeyclaw"]')?.getAttribute("href") ?? null,
       sourceHref: encounterDom?.querySelector('a[href^="https://github.com"]')?.getAttribute("href") ?? null,
     };
@@ -128,12 +128,12 @@ function check(name, ok, detail) {
 const BEATS = [
   { name: "00-before-window", journey: 0.06, expectEncounter: false },
   { name: "01-fade-in", journey: 0.1, expectEncounter: true },
-  { name: "02-wake", journey: 0.115, expectEncounter: true },
-  { name: "03-ingress", journey: 0.135, expectEncounter: true },
-  { name: "04-contain", journey: 0.155, expectEncounter: true },
-  { name: "05-verdict", journey: 0.175, expectEncounter: true },
-  { name: "06-patch", journey: 0.195, expectEncounter: true },
-  { name: "07-telemetry", journey: 0.22, expectEncounter: true },
+  { name: "02-target", journey: 0.115, expectEncounter: true },
+  { name: "03-red", journey: 0.135, expectEncounter: true },
+  { name: "04-judge", journey: 0.155, expectEncounter: true },
+  { name: "05-repro", journey: 0.175, expectEncounter: true },
+  { name: "06-blue", journey: 0.195, expectEncounter: true },
+  { name: "07-purple", journey: 0.22, expectEncounter: true },
   { name: "08-fade-out", journey: 0.25, expectEncounter: true },
 ];
 
@@ -152,7 +152,7 @@ try {
     process.stdout.write(
       `seq ${beat.name} encounter=${metrics.encounter} fade=${metrics.encounterFade} chapter=${metrics.experienceChapter} dd=${metrics.drawCalls} tri=${metrics.triangles}\n`,
     );
-    if (beat.name === "05-verdict") {
+    if (beat.name === "05-repro") {
       report.frameTraces.push({ viewport: "desktop-1440x900", state: "monkeyclaw-hold", ...(await captureFrameTrace(page, 2)) });
     }
   }
