@@ -10,14 +10,18 @@
 
 /** Chapter-progress loop windows. Primary state is a pure function of these. */
 export const MONKEYCLAW_LOOP = {
-  redStart: 0.02,
-  redFull: 0.3,
-  judgeStart: 0.3,
-  judgeFull: 0.56,
-  blueStart: 0.52,
-  blueFull: 0.8,
-  purpleStart: 0.74,
-  purpleFull: 0.97,
+  wakeStart: 0,
+  wakeFull: 0.12,
+  redStart: 0.08,
+  redFull: 0.26,
+  containStart: 0.22,
+  containFull: 0.42,
+  judgeStart: 0.38,
+  judgeFull: 0.58,
+  blueStart: 0.54,
+  blueFull: 0.72,
+  purpleStart: 0.68,
+  purpleFull: 0.86,
 } as const;
 
 export const MONKEYCLAW_COUNTS = {
@@ -35,16 +39,16 @@ export const MONKEYCLAW_COUNTS = {
 export const MONKEYCLAW_STAGE = {
   distance: 4.35,
   /** Core center: left field so DOM copy owns the calm right region. */
-  coreDesktop: [-0.98, -0.04, 0] as const,
+  coreDesktop: [-1.04, -0.02, 0] as const,
   /** Mobile: upper field, copy below — vertical poster composition. */
   coreMobile: [0, 0.62, 0] as const,
-  coreRadius: 0.34,
-  cageRadius: 0.46,
-  judgeRadius: 0.62,
-  perimeterRadius: 1.02,
-  spawnRadiusMin: 1.55,
-  spawnRadiusMax: 2.25,
-  telemetryLength: 1.15,
+  coreRadius: 0.38,
+  cageRadius: 0.5,
+  judgeRadius: 0.68,
+  perimeterRadius: 1.08,
+  spawnRadiusMin: 1.6,
+  spawnRadiusMax: 2.3,
+  telemetryLength: 0.92,
 } as const;
 
 export const MONKEYCLAW_COLORS = {

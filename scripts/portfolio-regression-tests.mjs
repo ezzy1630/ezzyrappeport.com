@@ -1924,6 +1924,8 @@ const tests = [
     assert.match(sceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
     assert.match(sceneSource, /monkeyclaw-brand-decal/);
     assert.match(sceneSource, /perimeter/);
+    assert.match(sceneSource, /monkeyclaw-containment-shield/);
+    assert.match(sceneSource, /monkeyclaw-defense-patch-lattice/);
     assert.doesNotMatch(sceneSource, /addEventListener/);
     assert.doesNotMatch(sceneSource, /Math\.random\(/);
 
@@ -1943,6 +1945,9 @@ const tests = [
     assert.match(encounterSource, /ProjectTransitionLink/);
     assert.match(encounterSource, /ENCOUNTER_BEATS/);
     assert.match(encounterSource, /Live system model/);
+    assert.match(encounterSource, /Scroll-linked \/ \{String\(beats\.length\)/);
+    assert.match(encounterSource, /10 vectors deflected/);
+    assert.match(encounterSource, /defense authored/);
     assert.doesNotMatch(encounterSource, /IntersectionObserver/);
 
     // Sticky staging depends on the global overflow-x: clip (not hidden).
@@ -2131,7 +2136,7 @@ const tests = [
     assert.match(monkeyclawSceneSource, /projects\/monkeyclaw\/logo\.webp/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
     assert.doesNotMatch(monkeyclawSceneSource, /sandboxBody/);
-    assert.match(monkeyclawSceneSource, /const productLoopRadius = 0\.43/);
+    assert.match(monkeyclawSceneSource, /const productLoopRadius = 0\.48/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-stage-/);
     assert.match(monkeyclawSceneSource, /score verdict/);
     assert.match(productGeometrySource, /createRoundedPanelGeometry/);

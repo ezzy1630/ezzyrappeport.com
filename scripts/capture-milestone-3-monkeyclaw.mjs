@@ -2,8 +2,8 @@
 /**
  * Milestone 3 MonkeyClaw encounter evidence capture.
  *
- * Captures the adversarial current field across the chapter loop (red →
- * judge → blue → purple), the probe signature interaction, mobile/reduced/
+ * Captures the adversarial current field across the chapter loop (wake →
+ * ingress → contain → verdict → patch → telemetry), the probe signature interaction, mobile/reduced/
  * failure compositions, lazy-load + eviction behavior, case-study route
  * transition, and scene budgets.
  *
@@ -128,11 +128,13 @@ function check(name, ok, detail) {
 const BEATS = [
   { name: "00-before-window", journey: 0.06, expectEncounter: false },
   { name: "01-fade-in", journey: 0.1, expectEncounter: true },
-  { name: "02-red-pressure", journey: 0.13, expectEncounter: true },
-  { name: "03-judge-convergence", journey: 0.16, expectEncounter: true },
-  { name: "04-blue-response", journey: 0.19, expectEncounter: true },
-  { name: "05-purple-telemetry", journey: 0.22, expectEncounter: true },
-  { name: "06-fade-out", journey: 0.25, expectEncounter: true },
+  { name: "02-wake", journey: 0.115, expectEncounter: true },
+  { name: "03-ingress", journey: 0.135, expectEncounter: true },
+  { name: "04-contain", journey: 0.155, expectEncounter: true },
+  { name: "05-verdict", journey: 0.175, expectEncounter: true },
+  { name: "06-patch", journey: 0.195, expectEncounter: true },
+  { name: "07-telemetry", journey: 0.22, expectEncounter: true },
+  { name: "08-fade-out", journey: 0.25, expectEncounter: true },
 ];
 
 try {
@@ -150,7 +152,7 @@ try {
     process.stdout.write(
       `seq ${beat.name} encounter=${metrics.encounter} fade=${metrics.encounterFade} chapter=${metrics.experienceChapter} dd=${metrics.drawCalls} tri=${metrics.triangles}\n`,
     );
-    if (beat.name === "03-judge-convergence") {
+    if (beat.name === "05-verdict") {
       report.frameTraces.push({ viewport: "desktop-1440x900", state: "monkeyclaw-hold", ...(await captureFrameTrace(page, 2)) });
     }
   }
@@ -163,10 +165,10 @@ try {
     seq.slice(1).every((entry) => entry.metrics.encounter === "monkeyclaw"),
     seq.map((entry) => entry.metrics.encounter).join(","));
   check("fade rises then falls across the window",
-    Number(seq[2].metrics.encounterFade) > 0.5
-      && Number(seq[6].metrics.encounterFade) < Number(seq[3].metrics.encounterFade)
-      && Number(seq[6].metrics.encounterFade) < 0.85,
-    `red fade=${seq[2].metrics.encounterFade} out fade=${seq[6].metrics.encounterFade}`);
+    Number(seq[3].metrics.encounterFade) > 0.5
+      && Number(seq.at(-1).metrics.encounterFade) < Number(seq[5].metrics.encounterFade)
+      && Number(seq.at(-1).metrics.encounterFade) < 0.85,
+    `ingress fade=${seq[3].metrics.encounterFade} out fade=${seq.at(-1).metrics.encounterFade}`);
   check("scene budget: draw calls ≤ 90 at peak",
     Math.max(...seq.map((entry) => Number(entry.metrics.drawCalls))) <= 90,
     `peak=${Math.max(...seq.map((entry) => Number(entry.metrics.drawCalls)))}`);
@@ -175,12 +177,12 @@ try {
     `peak=${Math.max(...seq.map((entry) => Number(entry.metrics.triangles)))}`);
   check("encounter DOM complete with facts",
     seq.every((entry) => entry.metrics.encounterDomPresent && entry.metrics.proofText),
-    `proof=${seq[2].metrics.proofText}`);
+    `proof=${seq[3].metrics.proofText}`);
   check("case-study + source links present",
-    seq[2].metrics.diveHref === "/project/monkeyclaw" && Boolean(seq[2].metrics.sourceHref));
+    seq[3].metrics.diveHref === "/project/monkeyclaw" && Boolean(seq[3].metrics.sourceHref));
 
   // --- Probe signature interaction --------------------------------------
-  await seekJourney(page, 0.16, 1200);
+  await seekJourney(page, 0.175, 1200);
   const preProbe = await collectMetrics(page);
   await page.mouse.click(500, 420);
   await delay(280);
