@@ -2089,6 +2089,10 @@ const tests = [
       new URL("../src/features/ocean-experience/render/projects/shared/productGeometry.ts", import.meta.url),
       "utf8",
     );
+    const instrumentLabelSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/shared/instrumentLabel.ts", import.meta.url),
+      "utf8",
+    );
     assert.match(etchSceneSource, /etch-verified-fifo-die/);
     assert.match(etchSceneSource, /dieDetails/);
     assert.match(etchSceneSource, /diePins/);
@@ -2096,6 +2100,8 @@ const tests = [
     assert.match(etchSceneSource, /dieScrews/);
     assert.match(etchSceneSource, /etch-nib-surface-engraving/);
     assert.match(etchSceneSource, /projects\/etch\/logo\.svg/);
+    assert.match(etchSceneSource, /etch-gate-/);
+    assert.match(etchSceneSource, /Physical signoff/);
     assert.match(etchSceneSource, /const assemblyRetireAt = layoutMode === "mobile" \? 0\.35 : 0\.94/);
     assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.doesNotMatch(floweSceneSource, /plannerBody/);
@@ -2105,6 +2111,8 @@ const tests = [
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
     assert.match(floweSceneSource, /uniform sampler2D uIdentity/);
     assert.match(floweSceneSource, /uReveal/);
+    assert.match(floweSceneSource, /Focus block/);
+    assert.match(floweSceneSource, /flowe-task-/);
     assert.doesNotMatch(floweSceneSource, /plannerInset/);
     assert.match(floweSceneSource, /const primaryTask = index < 9/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);
@@ -2114,13 +2122,19 @@ const tests = [
     assert.doesNotMatch(argyphSceneSource, /objects = \[lightingRig, indexStack/);
     assert.doesNotMatch(argyphSceneSource, /stackSlabs/);
     assert.match(argyphSceneSource, /uniform sampler2D uIdentity/);
+    assert.match(argyphSceneSource, /argyph-tier-/);
+    assert.match(argyphSceneSource, /definitions \+ refs/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-brand-decal/);
     assert.match(monkeyclawSceneSource, /projects\/monkeyclaw\/logo\.webp/);
     assert.match(monkeyclawSceneSource, /monkeyclaw-red-judge-repro-blue-purple/);
     assert.doesNotMatch(monkeyclawSceneSource, /sandboxBody/);
     assert.match(monkeyclawSceneSource, /const productLoopRadius = 0\.43/);
+    assert.match(monkeyclawSceneSource, /monkeyclaw-stage-/);
+    assert.match(monkeyclawSceneSource, /score verdict/);
     assert.match(productGeometrySource, /createRoundedPanelGeometry/);
     assert.match(productGeometrySource, /bevelEnabled: bevelSize > 0/);
+    assert.match(instrumentLabelSource, /CanvasTexture/);
+    assert.match(instrumentLabelSource, /context\.roundRect/);
     // No per-frame allocation regressions in configs.
     const etchConfigSource = readFileSync(
       new URL("../src/features/ocean-experience/render/projects/etch/etchConfig.ts", import.meta.url),

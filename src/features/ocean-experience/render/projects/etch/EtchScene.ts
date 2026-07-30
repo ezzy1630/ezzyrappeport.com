@@ -52,6 +52,7 @@ import {
   gateStationX,
 } from "./etchConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
+import { createInstrumentLabel } from "../shared/instrumentLabel.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -128,6 +129,8 @@ export function createEtchEncounter(): ProjectEncounter {
   const candidateBase: Vector3[] = [];
   const gatePlanes: LineSegments[] = [];
   const gateMaterials: LineBasicMaterial[] = [];
+  const gateLabels: Mesh[] = [];
+  const gateLabelMaterials: MeshBasicMaterial[] = [];
   let resultMesh: Mesh | null = null;
   let resultLattice: LineSegments | null = null;
   let resultAssembly: Group | null = null;
@@ -256,6 +259,7 @@ export function createEtchEncounter(): ProjectEncounter {
       const gateGeometry = track(new EdgesGeometry(
         new BoxGeometry(0.08, ETCH_STAGE.gateHeight, 0.06),
       ));
+      const gateLabelGeometry = track(new PlaneGeometry(0.24, 0.075));
       for (let gate = 0; gate < ETCH_COUNTS.gates; gate += 1) {
         const pending = !ETCH_GATES[gate].passed;
         const material = track(new LineBasicMaterial({
@@ -274,6 +278,22 @@ export function createEtchEncounter(): ProjectEncounter {
         axisGroup.add(plane);
         gatePlanes.push(plane);
         gateMaterials.push(material);
+
+        const label = createInstrumentLabel(ETCH_GATES[gate].id.toUpperCase(), ETCH_GATES[gate].label, {
+          accent: pending ? "#9fb2bf" : "#79d8c9",
+          background: "rgba(8, 24, 30, 0.82)",
+          foreground: "rgba(242, 250, 251, 0.98)",
+          muted: "rgba(163, 192, 197, 0.94)",
+        });
+        track(label.texture);
+        track(label.material);
+        const labelMesh = new Mesh(gateLabelGeometry, label.material);
+        labelMesh.name = `etch-gate-${ETCH_GATES[gate].id}`;
+        labelMesh.position.set(plane.position.x, ETCH_STAGE.gateHeight * 0.58, 0.07);
+        labelMesh.renderOrder = 4;
+        axisGroup.add(labelMesh);
+        gateLabels.push(labelMesh);
+        gateLabelMaterials.push(label.material);
       }
 
       // Evidence-backed result: an actual FIFO die, not a generic crystal.
@@ -602,6 +622,11 @@ export function createEtchEncounter(): ProjectEncounter {
         ) * fade * (1 - relaxT * 0.5) * (1 - resultReveal)
           * (assemblyRetired ? 0 : 1);
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
+        const gateReveal = smoothstep01((gatesT - gate * 0.08) / Math.max(1 - gate * 0.08, 1e-6));
+        gateLabelMaterials[gate].opacity = gateReveal * (passed ? 0.82 : 0.58 + pendingPulse) * fade
+          * (1 - relaxT)
+          * (assemblyRetired ? 0 : 1);
+        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.82 : 1);
       }
 
       // Result: evidence-backed FIFO die held before the pending gate.
@@ -738,6 +763,8 @@ export function createEtchEncounter(): ProjectEncounter {
       candidateBase.length = 0;
       gatePlanes.length = 0;
       gateMaterials.length = 0;
+      gateLabels.length = 0;
+      gateLabelMaterials.length = 0;
       relaxCurves.length = 0;
       relaxMaterials.length = 0;
       perturbations.length = 0;

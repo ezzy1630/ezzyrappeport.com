@@ -126,13 +126,13 @@ function check(name, ok, detail) {
 }
 
 const BEATS = [
-  { name: "00-before-window", journey: 0.17, expectEncounter: false },
-  { name: "01-fade-in", journey: 0.225, expectEncounter: true },
-  { name: "02-red-pressure", journey: 0.27, expectEncounter: true },
-  { name: "03-judge-convergence", journey: 0.31, expectEncounter: true },
-  { name: "04-blue-response", journey: 0.35, expectEncounter: true },
-  { name: "05-purple-telemetry", journey: 0.38, expectEncounter: true },
-  { name: "06-fade-out", journey: 0.415, expectEncounter: true },
+  { name: "00-before-window", journey: 0.06, expectEncounter: false },
+  { name: "01-fade-in", journey: 0.1, expectEncounter: true },
+  { name: "02-red-pressure", journey: 0.13, expectEncounter: true },
+  { name: "03-judge-convergence", journey: 0.16, expectEncounter: true },
+  { name: "04-blue-response", journey: 0.19, expectEncounter: true },
+  { name: "05-purple-telemetry", journey: 0.22, expectEncounter: true },
+  { name: "06-fade-out", journey: 0.25, expectEncounter: true },
 ];
 
 try {
@@ -178,7 +178,7 @@ try {
     seq[2].metrics.diveHref === "/project/monkeyclaw" && Boolean(seq[2].metrics.sourceHref));
 
   // --- Probe signature interaction --------------------------------------
-  await seekJourney(page, 0.3, 1200);
+  await seekJourney(page, 0.16, 1200);
   const preProbe = await collectMetrics(page);
   await page.mouse.click(500, 420);
   await delay(280);
@@ -199,7 +199,7 @@ try {
     `fade ${preProbe.encounterFade} → ${settled.encounterFade}`);
 
   // --- Reverse eviction ---------------------------------------------------
-  await seekJourney(page, 0.1, 1400);
+  await seekJourney(page, 0.05, 1400);
   const reversed = await collectMetrics(page);
   check("encounter releases on reverse past the window",
     reversed.encounter === "none" || Number(reversed.encounterFade) < 0.02,
@@ -209,7 +209,7 @@ try {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await waitForIdleMetrics(page);
-  await seekJourney(page, 0.31, 1200);
+  await seekJourney(page, 0.16, 1200);
   const mobilePath = join(sequenceDir, "mobile-390x844-judge.png");
   await page.screenshot({ path: mobilePath, type: "png", captureBeyondViewport: false });
   const mobileMetrics = await collectMetrics(page);
@@ -223,7 +223,7 @@ try {
   await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await delay(2500);
-  await seekJourney(page, 0.31, 900);
+  await seekJourney(page, 0.16, 900);
   const reducedPath = join(statesDir, "reduced-motion-judge.png");
   await page.screenshot({ path: reducedPath, type: "png", captureBeyondViewport: false });
   const reducedMetrics = await collectMetrics(page);
@@ -260,7 +260,7 @@ try {
   await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
   await page.goto(`${baseUrl}/`, { waitUntil: "networkidle0", timeout: 60000 });
   await waitForIdleMetrics(page);
-  await seekJourney(page, 0.31, 1100);
+  await seekJourney(page, 0.16, 1100);
   const link = await page.$('[data-encounter="monkeyclaw"] a[href="/project/monkeyclaw"]');
   if (!link) throw new Error("Dive in link not found");
   await link.click();

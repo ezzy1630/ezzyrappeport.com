@@ -60,6 +60,7 @@ import {
   vectorTiming,
 } from "./monkeyclawConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
+import { createInstrumentLabel } from "../shared/instrumentLabel.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -138,6 +139,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   const loopSegmentMaterials: MeshBasicMaterial[] = [];
   const loopStageNodes: Mesh[] = [];
   const loopStageMaterials: MeshPhysicalMaterial[] = [];
+  const loopStageLabels: Mesh[] = [];
+  const loopStageLabelMaterials: MeshBasicMaterial[] = [];
   const gateMeshes: Mesh[] = [];
   const gateMaterials: MeshBasicMaterial[] = [];
   const railMeshes: Mesh[] = [];
@@ -238,7 +241,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         : MONKEYCLAW_STAGE.coreDesktop;
       root.set(coreOffset[0], coreOffset[1], coreOffset[2]);
 
-      coreMaterial = makeFresnelMaterial(MONKEYCLAW_COLORS.core, 0.85);
+      coreMaterial = makeFresnelMaterial(0x4c8594, 0.38);
       const kernelGeometry = track(new IcosahedronGeometry(MONKEYCLAW_STAGE.coreRadius * 0.58, 2));
       core = new Mesh(
         kernelGeometry,
@@ -322,6 +325,15 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         MONKEYCLAW_COLORS.blue,
         MONKEYCLAW_COLORS.purple,
       ] as const;
+      const stageCopy = [
+        ["RED", "seed attack"],
+        ["JUDGE", "score verdict"],
+        ["REPRO", "lock evidence"],
+        ["BLUE", "repair runtime"],
+        ["PURPLE", "regression"],
+      ] as const;
+      const stageAccent = ["#e88a81", "#d8f7ff", "#b9dbe2", "#72c8dd", "#a69bd8"] as const;
+      const stageLabelGeometry = track(new PlaneGeometry(0.24, 0.075));
       const productLoopRadius = 0.43;
       const segmentArc = Math.PI * 2 / 5 - 0.16;
       for (let stageIndex = 0; stageIndex < stageColors.length; stageIndex += 1) {
@@ -363,6 +375,23 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         securityLoop.add(node);
         loopStageNodes.push(node);
         loopStageMaterials.push(nodeMaterial);
+
+        const [labelTitle, labelDetail] = stageCopy[stageIndex];
+        const label = createInstrumentLabel(labelTitle, labelDetail, {
+          accent: stageAccent[stageIndex],
+          background: "rgba(5, 18, 25, 0.84)",
+          foreground: "rgba(244, 251, 252, 0.98)",
+          muted: "rgba(160, 188, 194, 0.94)",
+        });
+        track(label.texture);
+        track(label.material);
+        const labelMesh = new Mesh(stageLabelGeometry, label.material);
+        labelMesh.name = `monkeyclaw-stage-${labelTitle.toLowerCase()}`;
+        labelMesh.position.set(Math.cos(nodeAngle) * 0.6, Math.sin(nodeAngle) * 0.6, 0.08);
+        labelMesh.renderOrder = 4;
+        securityLoop.add(labelMesh);
+        loopStageLabels.push(labelMesh);
+        loopStageLabelMaterials.push(label.material);
       }
 
       ringMaterial = track(new MeshBasicMaterial({
@@ -527,7 +556,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         core.rotation.x = t * 0.35;
         const judgePulse = judgeT * (1 - blueT) * 0.06;
         core.scale.setScalar((1 + judgePulse + redT * 0.02) * productScale);
-        coreMaterial.uniforms.uIntensity.value = (0.55 + redT * 0.3 + judgeT * 0.25) * fade;
+        coreMaterial.uniforms.uIntensity.value = (0.26 + redT * 0.14 + judgeT * 0.12) * fade;
       }
       if (identityMark && identityMaterial) {
         identityMark.rotation.set(0, 0, 0);
@@ -557,11 +586,14 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           const activation = stageProgress[stageIndex];
           loopSegmentMaterials[stageIndex].opacity = (0.04 + activation * 0.28) * fade;
           loopStageMaterials[stageIndex].opacity = (0.1 + activation * 0.78) * fade;
+          loopStageLabelMaterials[stageIndex].opacity = activation * 0.92 * fade;
           const assembled = smoothstep01((activation - stageIndex * 0.035) / Math.max(1 - stageIndex * 0.035, 1e-6));
           loopSegments[stageIndex].scale.setScalar(0.72 + assembled * 0.28);
           loopSegments[stageIndex].rotation.z = stageIndex * Math.PI * 2 / stageProgress.length
             + Math.PI * 0.08
             + (1 - assembled) * 0.34;
+          loopStageLabels[stageIndex].scale.setScalar(0.72 + assembled * 0.28);
+          loopStageLabels[stageIndex].rotation.z = -securityLoop.rotation.z;
           const pulse = 0.58 + assembled * 0.52;
           loopStageNodes[stageIndex].scale.setScalar(pulse);
         }
@@ -815,6 +847,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       loopSegmentMaterials.length = 0;
       loopStageNodes.length = 0;
       loopStageMaterials.length = 0;
+      loopStageLabels.length = 0;
+      loopStageLabelMaterials.length = 0;
       loaded = false;
     },
   };

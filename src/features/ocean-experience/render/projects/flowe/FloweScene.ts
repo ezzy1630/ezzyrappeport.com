@@ -52,6 +52,7 @@ import {
   moteSeed,
 } from "./floweConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
+import { createInstrumentLabel } from "../shared/instrumentLabel.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -75,9 +76,21 @@ const _scale = new Vector3();
 const _matrix = new Matrix4();
 const _color = new Color();
 const _cardAxis = new Vector3(0, 0, 1);
+const _focusTarget = new Vector3();
 const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
 const FLOWE_TASK_WIDTHS = [1.28, 0.94, 1.16, 1.02, 1.34, 0.88, 1.18, 0.9, 1.26] as const;
+const FLOWE_TASKS = [
+  ["Canvas", "2 assignments due"],
+  ["Chem lab", "today · 4:00 PM"],
+  ["Focus block", "50 minutes"],
+  ["Essay draft", "revise introduction"],
+  ["Daily plan", "6 tasks · 2 complete"],
+  ["Review cards", "18 remaining"],
+  ["Office hours", "tomorrow · 2:30"],
+  ["Study group", "library · 6:00"],
+  ["Submit quiz", "due 11:59 PM"],
+] as const;
 
 export function createFloweEncounter(): ProjectEncounter {
   const root = new Vector3();
@@ -106,6 +119,8 @@ export function createFloweEncounter(): ProjectEncounter {
   let indexMaterial: MeshBasicMaterial | null = null;
   let flowIdentityPlate: Mesh | null = null;
   let flowIdentityMaterial: ShaderMaterial | null = null;
+  const taskLabels: Mesh[] = [];
+  const taskLabelMaterials: MeshBasicMaterial[] = [];
   let lightingRig: Group | null = null;
   const nudges: ProbeNudge[] = [];
 
@@ -334,6 +349,24 @@ export function createFloweEncounter(): ProjectEncounter {
       flowIdentityPlate.renderOrder = 3;
       flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
+      const taskLabelGeometry = track(new PlaneGeometry(0.31, 0.097));
+      for (let task = 0; task < FLOWE_TASKS.length; task += 1) {
+        const [title, detail] = FLOWE_TASKS[task];
+        const label = createInstrumentLabel(title, detail, {
+          accent: "rgba(117, 219, 232, 0.96)",
+          background: "rgba(8, 25, 32, 0.82)",
+          foreground: "rgba(241, 251, 252, 0.98)",
+          muted: "rgba(164, 198, 204, 0.94)",
+        });
+        track(label.texture);
+        track(label.material);
+        const mesh = new Mesh(taskLabelGeometry, label.material);
+        mesh.name = `flowe-task-${task + 1}`;
+        mesh.renderOrder = 4;
+        taskLabels.push(mesh);
+        taskLabelMaterials.push(label.material);
+      }
+
       lightingRig = new Group();
       lightingRig.name = "flowe-product-lighting";
       const ambient = new HemisphereLight(0xe9fbff, 0x071923, 1.45);
@@ -358,7 +391,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -391,6 +424,28 @@ export function createFloweEncounter(): ProjectEncounter {
         flowIdentityPlate.rotation.y = frame.reducedMotion ? -0.04 : -0.04 + Math.sin(frame.time * 0.24) * 0.018;
         flowIdentityPlate.rotation.x = -0.035;
         flowIdentityPlate.scale.setScalar(visualScale);
+      }
+
+      const focusTask = 2;
+      for (let task = 0; task < taskLabels.length; task += 1) {
+        const stagger = task * 0.035;
+        const reveal = smoothstep01((taskAssemblyT - stagger) / Math.max(0.72 - stagger, 0.001));
+        _pos.copy(clusterTargets[task]);
+        _pos.y += (1 - reveal) * 0.18;
+        if (task === focusTask) {
+          _focusTarget.set(center.x, center.y - 0.06, 0.24);
+          _pos.lerp(_focusTarget, focusT);
+        } else {
+          _pos.x += (task % 3 - 1) * focusT * 0.08;
+          _pos.y -= focusT * 0.05;
+        }
+        if (visualScale < 1) _pos.sub(center).multiplyScalar(visualScale).add(center);
+        taskLabels[task].position.copy(_pos);
+        taskLabels[task].rotation.z = (1 - reveal) * (task % 2 === 0 ? -0.12 : 0.12);
+        const focusScale = task === focusTask ? 1 + focusT * 0.38 : 1 - focusT * 0.12;
+        taskLabels[task].scale.setScalar((0.72 + reveal * 0.28) * focusScale * visualScale);
+        const focusOpacity = task === focusTask ? 1 : 1 - focusT * 0.88;
+        taskLabelMaterials[task].opacity = reveal * focusOpacity * (1 - contractT) * fade;
       }
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
@@ -428,7 +483,7 @@ export function createFloweEncounter(): ProjectEncounter {
           const scalePulse = (0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp)
             * (1 + (organizedScale - 1) * organization)
             * visualScale
-            * (index < 9 ? 1 : Math.pow(1 - organization, 2.5));
+            * (index < 9 ? 1 - taskAssemblyT * 0.84 : Math.pow(1 - organization, 2.5));
           _scale.set(
             scalePulse * (index < FLOWE_TASK_WIDTHS.length ? FLOWE_TASK_WIDTHS[index] : 1),
             scalePulse,
@@ -551,7 +606,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -562,7 +617,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -572,6 +627,8 @@ export function createFloweEncounter(): ProjectEncounter {
       disposables.length = 0;
       currentLines.length = 0;
       currentMaterials.length = 0;
+      taskLabels.length = 0;
+      taskLabelMaterials.length = 0;
       driftAnchors.length = 0;
       clusterTargets.length = 0;
       clusterAngles.length = 0;

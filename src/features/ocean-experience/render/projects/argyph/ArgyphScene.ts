@@ -56,6 +56,7 @@ import {
   symbolPoint,
 } from "./argyphConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
+import { createInstrumentLabel } from "../shared/instrumentLabel.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -110,6 +111,8 @@ export function createArgyphEncounter(): ProjectEncounter {
   let lightingRig: Group | null = null;
   let brandLogo: Mesh | null = null;
   let brandLogoMaterial: ShaderMaterial | null = null;
+  const tierLabels: Mesh[] = [];
+  const tierLabelMaterials: MeshBasicMaterial[] = [];
   let stackRails: InstancedMesh | null = null;
   let stackRailMaterial: MeshBasicMaterial | null = null;
   let stackFins: InstancedMesh | null = null;
@@ -240,6 +243,30 @@ export function createArgyphEncounter(): ProjectEncounter {
       brandLogo.position.z = 0.02;
       brandMark.add(brandLogo);
 
+      const tierGeometry = track(new PlaneGeometry(0.21, 0.065));
+      const tiers = [
+        ["REPOSITORY", "packed source + docs", -0.38, 0.14],
+        ["SEMANTIC", "local chunk index", 0.34, -0.02],
+        ["SYMBOLS", "definitions + refs", -0.22, -0.3],
+      ] as const;
+      for (let tier = 0; tier < tiers.length; tier += 1) {
+        const [title, detail, x, y] = tiers[tier];
+        const label = createInstrumentLabel(title, detail, {
+          accent: tier === 0 ? "#9aa9e8" : tier === 1 ? "#8ed2dc" : "#c0b4ef",
+          background: "rgba(8, 13, 31, 0.82)",
+          foreground: "rgba(244, 246, 255, 0.98)",
+          muted: "rgba(169, 177, 211, 0.94)",
+        });
+        track(label.texture);
+        track(label.material);
+        const mesh = new Mesh(tierGeometry, label.material);
+        mesh.name = `argyph-tier-${tier + 1}`;
+        mesh.position.set(center.x + x, center.y + y, 0.22);
+        mesh.renderOrder = 4;
+        tierLabels.push(mesh);
+        tierLabelMaterials.push(label.material);
+      }
+
       for (let index = 0; index < ARGYPH_COUNTS.reefPoints; index += 1) {
         reefPoint(index, _anchor);
         reefPositions.push(new Vector3(
@@ -366,7 +393,7 @@ export function createArgyphEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes, ...tierLabels];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -419,6 +446,12 @@ export function createArgyphEncounter(): ProjectEncounter {
           brandLogoMaterial.uniforms.uOpacity.value = markReveal * fade;
           brandLogo.scale.setScalar(0.68 + markReveal * 0.32);
         }
+      }
+      const tierProgress = [reefT, sweepT, linksT];
+      for (let tier = 0; tier < tierLabels.length; tier += 1) {
+        const reveal = smoothstep01((tierProgress[tier] - tier * 0.06) / Math.max(1 - tier * 0.06, 1e-6));
+        tierLabelMaterials[tier].opacity = reveal * (0.92 - widenT * 0.16) * fade;
+        tierLabels[tier].scale.setScalar((0.72 + reveal * 0.28) * (layoutMode === "mobile" ? 0.66 : 1));
       }
 
       // Sonar sweep: one decisive pass, then it rests as the map widens.
@@ -563,7 +596,7 @@ export function createArgyphEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes, ...tierLabels];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -574,7 +607,7 @@ export function createArgyphEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+        const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes, ...tierLabels];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -588,6 +621,8 @@ export function createArgyphEncounter(): ProjectEncounter {
       reefPositions.length = 0;
       symbolPositions.length = 0;
       symbolRadius.length = 0;
+      tierLabels.length = 0;
+      tierLabelMaterials.length = 0;
       loaded = false;
     },
   };
