@@ -132,7 +132,6 @@ export function createEtchEncounter(): ProjectEncounter {
   let resultLattice: LineSegments | null = null;
   let resultAssembly: Group | null = null;
   let resultMaterial: MeshPhysicalMaterial | null = null;
-  let resultBezelMaterial: MeshPhysicalMaterial | null = null;
   let resultIdentityMaterial: ShaderMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
   let dieCells: InstancedMesh | null = null;
@@ -295,30 +294,11 @@ export function createEtchEncounter(): ProjectEncounter {
         depthWrite: true,
         side: DoubleSide,
       }));
-      const resultBodyGeometry = track(
-        createRoundedPanelGeometry(0.62, 0.48, 0.09, 0.06, 0.01),
-      );
+      const resultBodyGeometry = track(new BoxGeometry(0.6, 0.46, 0.022));
       resultMesh = new Mesh(
         resultBodyGeometry,
         resultMaterial,
       );
-      resultBezelMaterial = track(new MeshPhysicalMaterial({
-        color: 0x050d12,
-        emissive: 0x031017,
-        emissiveIntensity: 0.28,
-        roughness: 0.11,
-        metalness: 0.46,
-        clearcoat: 1,
-        clearcoatRoughness: 0.055,
-        transparent: true,
-        opacity: 0,
-        depthWrite: true,
-      }));
-      const resultBezel = new Mesh(
-        track(createRoundedPanelGeometry(0.52, 0.37, 0.028, 0.047, 0.006)),
-        resultBezelMaterial,
-      );
-      resultBezel.position.z = 0.058;
       latticeMaterial = track(new LineBasicMaterial({
         color: ETCH_COLORS.result,
         transparent: true,
@@ -334,7 +314,7 @@ export function createEtchEncounter(): ProjectEncounter {
         ? 0.5
         : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.48;
       resultAssembly.position.set(resultX, 0, 0);
-      resultAssembly.add(resultMesh, resultBezel, resultLattice);
+      resultAssembly.add(resultMesh, resultLattice);
 
       const identityTexture = await new TextureLoader().loadAsync("/projects/etch/logo.svg");
       if (context.signal.aborted || disposed) {
@@ -627,10 +607,7 @@ export function createEtchEncounter(): ProjectEncounter {
       // Result: evidence-backed FIFO die held before the pending gate.
       if (resultMesh && resultMaterial && resultLattice && latticeMaterial) {
         const reveal = resultReveal;
-        resultMaterial.opacity = reveal * 0.84 * fade * (1 - relaxT * 0.25);
-        if (resultBezelMaterial) {
-          resultBezelMaterial.opacity = reveal * 0.94 * fade * (1 - relaxT * 0.25);
-        }
+        resultMaterial.opacity = reveal * 0.28 * fade * (1 - relaxT * 0.25);
         latticeMaterial.opacity = reveal * 0.78 * fade * (1 - relaxT * 0.25);
         if (dieCellMaterial) {
           dieCellMaterial.opacity = reveal * 0.96 * fade * (1 - relaxT * 0.25);

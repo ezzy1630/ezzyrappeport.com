@@ -110,10 +110,6 @@ export function createArgyphEncounter(): ProjectEncounter {
   let lightingRig: Group | null = null;
   let brandLogo: Mesh | null = null;
   let brandLogoMaterial: ShaderMaterial | null = null;
-  const stackSlabs: Mesh[] = [];
-  const stackSlabMaterials: MeshPhysicalMaterial[] = [];
-  const stackEdges: LineSegments[] = [];
-  const stackEdgeMaterials: LineBasicMaterial[] = [];
   let stackRails: InstancedMesh | null = null;
   let stackRailMaterial: MeshBasicMaterial | null = null;
   let stackFins: InstancedMesh | null = null;
@@ -143,51 +139,12 @@ export function createArgyphEncounter(): ProjectEncounter {
       layoutMode = context.layout;
       const center = reefCenter();
 
-      // Product silhouette from the portfolio's real Argyph identity: three
-      // sealed local layers for repo packing, semantic chunks, and the symbol
-      // graph. The live index resolves over this physical stack.
+      // Open local-index instrument: rails, graph fins, and live symbols.
+      // Repository structure stays spatial without becoming another device.
       indexStack = new Group();
       indexStack.name = "argyph-local-index-stack";
       indexStack.position.copy(center);
       indexStack.scale.setScalar(layoutMode === "mobile" ? 0.56 : 0.82);
-      const slabGeometry = track(createRoundedPanelGeometry(1.04, 1.08, 0.052, 0.12, 0.01));
-      const slabEdgeGeometry = track(new EdgesGeometry(slabGeometry, 32));
-      for (let layer = 0; layer < 3; layer += 1) {
-        const material = track(new MeshPhysicalMaterial({
-          color: layer === 2 ? 0x303963 : layer === 1 ? 0x1e2d4b : 0x111d32,
-          emissive: layer === 2 ? 0x11162d : 0x070d18,
-          emissiveIntensity: 0.3,
-          roughness: 0.18 + layer * 0.04,
-          metalness: 0.42,
-          clearcoat: 1,
-          clearcoatRoughness: 0.12,
-          transparent: true,
-          opacity: 0,
-          depthWrite: true,
-          side: DoubleSide,
-        }));
-        const slab = new Mesh(slabGeometry, material);
-        slab.position.set(layer * 0.022, layer * 0.018, (layer - 1) * 0.062);
-        slab.rotation.x = -0.14;
-        indexStack.add(slab);
-        stackSlabs.push(slab);
-        stackSlabMaterials.push(material);
-
-        const edgeMaterial = track(new LineBasicMaterial({
-          color: layer === 2 ? ARGYPH_COLORS.symbol : ARGYPH_COLORS.link,
-          transparent: true,
-          opacity: 0,
-          blending: AdditiveBlending,
-          depthWrite: false,
-        }));
-        const edge = new LineSegments(slabEdgeGeometry, edgeMaterial);
-        edge.position.copy(slab.position);
-        edge.rotation.copy(slab.rotation);
-        indexStack.add(edge);
-        stackEdges.push(edge);
-        stackEdgeMaterials.push(edgeMaterial);
-      }
-
       stackRailMaterial = track(new MeshBasicMaterial({
         color: ARGYPH_COLORS.link,
         transparent: true,
@@ -409,7 +366,7 @@ export function createArgyphEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -433,16 +390,6 @@ export function createArgyphEncounter(): ProjectEncounter {
           ? -0.12
           : -0.12 + Math.sin(frame.time * 0.22) * 0.045;
         indexStack.rotation.z = widenT * -0.035;
-        const layerProgress = [reefT, sweepT, linksT];
-        for (let layer = 0; layer < layerProgress.length; layer += 1) {
-          const reveal = layerProgress[layer];
-          stackSlabMaterials[layer].opacity = reveal * (0.52 + layer * 0.1) * fade;
-          stackEdgeMaterials[layer].opacity = reveal * (0.22 + layer * 0.08) * fade;
-          stackSlabs[layer].position.x = layer * (0.035 + widenT * 0.018);
-          stackSlabs[layer].position.y = layer * (0.025 + widenT * 0.012);
-          stackSlabs[layer].position.z = (layer - 1) * 0.062;
-          stackEdges[layer].position.copy(stackSlabs[layer].position);
-        }
         if (stackRails && stackRailMaterial) {
           stackRailMaterial.opacity = linksT * 0.68 * fade;
           for (let rail = 0; rail < 12; rail += 1) {
@@ -616,7 +563,7 @@ export function createArgyphEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+      const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -627,7 +574,7 @@ export function createArgyphEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, indexStack, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
+        const objects = [lightingRig, brandMark, reef, symbols, links, sweepRing, ...pulseMeshes];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -641,10 +588,6 @@ export function createArgyphEncounter(): ProjectEncounter {
       reefPositions.length = 0;
       symbolPositions.length = 0;
       symbolRadius.length = 0;
-      stackSlabs.length = 0;
-      stackSlabMaterials.length = 0;
-      stackEdges.length = 0;
-      stackEdgeMaterials.length = 0;
       loaded = false;
     },
   };

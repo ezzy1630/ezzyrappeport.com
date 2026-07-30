@@ -16,15 +16,11 @@ import {
   AdditiveBlending,
   Color,
   DirectionalLight,
-  DoubleSide,
   DynamicDrawUsage,
-  EdgesGeometry,
   Group,
   HemisphereLight,
   InstancedBufferAttribute,
   InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -81,6 +77,7 @@ const _color = new Color();
 const _cardAxis = new Vector3(0, 0, 1);
 const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
+const FLOWE_TASK_WIDTHS = [1.28, 0.94, 1.16, 1.02, 1.34, 0.88, 1.18, 0.9, 1.26] as const;
 
 export function createFloweEncounter(): ProjectEncounter {
   const root = new Vector3();
@@ -107,12 +104,6 @@ export function createFloweEncounter(): ProjectEncounter {
   let focusMaterial: MeshBasicMaterial | null = null;
   let indexField: InstancedMesh | null = null;
   let indexMaterial: MeshBasicMaterial | null = null;
-  let plannerBody: Mesh | null = null;
-  let plannerBodyMaterial: MeshPhysicalMaterial | null = null;
-  let plannerInset: Mesh | null = null;
-  let plannerInsetMaterial: MeshPhysicalMaterial | null = null;
-  let plannerFrame: LineSegments | null = null;
-  let plannerFrameMaterial: LineBasicMaterial | null = null;
   let flowIdentityPlate: Mesh | null = null;
   let flowIdentityMaterial: ShaderMaterial | null = null;
   let lightingRig: Group | null = null;
@@ -153,8 +144,8 @@ export function createFloweEncounter(): ProjectEncounter {
         const taskRow = Math.floor(index / 3);
         const overflowRank = index - 9;
         clusterTargets.push(new Vector3(
-          primaryTask ? center.x - 0.27 + taskColumn * 0.27 : center.x + 0.39,
-          primaryTask ? center.y - 0.25 - taskRow * 0.12 : center.y - 0.16 - (overflowRank % 8) * 0.065,
+          primaryTask ? center.x - 0.3 + taskColumn * 0.3 : center.x + 0.43,
+          primaryTask ? center.y - 0.24 - taskRow * 0.14 : center.y - 0.18 - (overflowRank % 8) * 0.065,
           primaryTask ? 0.16 : 0.1 + (cluster % 2) * 0.008,
         ));
         clusterAngles.push(0);
@@ -191,7 +182,7 @@ export function createFloweEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       fragments = new InstancedMesh(
-        track(createRoundedPanelGeometry(0.145, 0.06, 0.026, 0.022, 0.004)),
+        track(createRoundedPanelGeometry(0.18, 0.066, 0.018, 0.018, 0.003)),
         fragmentMaterial,
         FLOWE_COUNTS.fragments,
       );
@@ -283,59 +274,6 @@ export function createFloweEncounter(): ProjectEncounter {
       );
       indexField.instanceMatrix.setUsage(DynamicDrawUsage);
 
-      // Product silhouette: a shallow FlowE planner surface. The actual mark
-      // and task UI carry the identity; the shell stays visually subordinate.
-      const plannerGeometry = track(createRoundedPanelGeometry(1.13, 1.33, 0.045, 0.105, 0.01));
-      plannerBodyMaterial = track(new MeshPhysicalMaterial({
-        color: FLOWE_COLORS.body,
-        emissive: 0x06151d,
-        emissiveIntensity: 0.22,
-        roughness: 0.16,
-        metalness: 0.38,
-        clearcoat: 1,
-        clearcoatRoughness: 0.1,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-        side: DoubleSide,
-      }));
-      plannerBody = new Mesh(
-        plannerGeometry,
-        plannerBodyMaterial,
-      );
-      plannerBody.renderOrder = 0;
-      plannerBody.position.copy(center);
-      plannerInsetMaterial = track(new MeshPhysicalMaterial({
-        color: 0x05090c,
-        emissive: 0x020506,
-        emissiveIntensity: 0.18,
-        roughness: 0.08,
-        metalness: 0.22,
-        clearcoat: 1,
-        clearcoatRoughness: 0.045,
-        transparent: true,
-        opacity: 0,
-        depthWrite: false,
-      }));
-      plannerInset = new Mesh(
-        track(createRoundedPanelGeometry(0.94, 1.16, 0.012, 0.085, 0.004)),
-        plannerInsetMaterial,
-      );
-      plannerInset.renderOrder = 1;
-      plannerInset.position.set(center.x, center.y, 0.034);
-      plannerFrameMaterial = track(new LineBasicMaterial({
-        color: FLOWE_COLORS.current,
-        transparent: true,
-        opacity: 0,
-        blending: AdditiveBlending,
-        depthWrite: false,
-      }));
-      plannerFrame = new LineSegments(
-        track(new EdgesGeometry(plannerGeometry, 34)),
-        plannerFrameMaterial,
-      );
-      plannerFrame.position.copy(center);
-
       const identityTexture = await new TextureLoader().loadAsync("/projects/flowe/app-icon.webp");
       if (context.signal.aborted || disposed) {
         identityTexture.dispose();
@@ -420,7 +358,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -446,30 +384,12 @@ export function createFloweEncounter(): ProjectEncounter {
       const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
-      if (plannerBody && plannerBodyMaterial) {
-        plannerBodyMaterial.opacity = (0.14 + identityReady * 0.62 - contractT * 0.18) * fade;
-        plannerBody.rotation.y = plannerFrame?.rotation.y ?? -0.12;
-        plannerBody.rotation.x = -0.08;
-        plannerBody.scale.setScalar(visualScale);
-      }
-      if (plannerInset && plannerInsetMaterial) {
-        plannerInsetMaterial.opacity = (0.18 + identityReady * 0.72 - contractT * 0.2) * fade;
-        plannerInset.rotation.y = plannerFrame?.rotation.y ?? -0.12;
-        plannerInset.rotation.x = -0.08;
-        plannerInset.scale.setScalar(visualScale);
-      }
-      if (plannerFrame && plannerFrameMaterial) {
-        plannerFrameMaterial.opacity = (0.08 + identityReady * 0.32 + organizedGroupT * 0.12 - contractT * 0.14) * fade;
-        plannerFrame.rotation.y = frame.reducedMotion ? -0.12 : -0.12 + Math.sin(frame.time * 0.24) * 0.035;
-        plannerFrame.rotation.x = -0.08;
-        plannerFrame.scale.setScalar(visualScale);
-      }
       if (flowIdentityPlate && flowIdentityMaterial) {
         flowIdentityMaterial.uniforms.uOpacity.value = (0.96 - contractT * 0.24) * fade;
         flowIdentityMaterial.uniforms.uReveal.value = logoDrawT;
         flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : 1 - identityReady;
-        flowIdentityPlate.rotation.y = plannerFrame?.rotation.y ?? -0.12;
-        flowIdentityPlate.rotation.x = -0.08;
+        flowIdentityPlate.rotation.y = frame.reducedMotion ? -0.04 : -0.04 + Math.sin(frame.time * 0.24) * 0.018;
+        flowIdentityPlate.rotation.x = -0.035;
         flowIdentityPlate.scale.setScalar(visualScale);
       }
 
@@ -504,11 +424,16 @@ export function createFloweEncounter(): ProjectEncounter {
           const cardTurn = (1 - organization) * Math.sin(phase * Math.PI * 2) * 0.9
             + organization * tangentAngle;
           _quat.setFromAxisAngle(_cardAxis, cardTurn);
-          const organizedScale = index < 9 ? 0.82 : 0.02;
+          const organizedScale = index < 9 ? 0.94 : 0;
           const scalePulse = (0.75 + Math.sin(frame.time * 0.8 + phase * 6.3) * 0.12 * idleAmp)
             * (1 + (organizedScale - 1) * organization)
-            * visualScale;
-          _scale.setScalar(scalePulse);
+            * visualScale
+            * (index < 9 ? 1 : Math.pow(1 - organization, 2.5));
+          _scale.set(
+            scalePulse * (index < FLOWE_TASK_WIDTHS.length ? FLOWE_TASK_WIDTHS[index] : 1),
+            scalePulse,
+            scalePulse,
+          );
           _matrix.compose(_pos, _quat, _scale);
           fragments.setMatrixAt(index, _matrix);
           if (fragmentAccents) {
@@ -626,7 +551,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -637,7 +562,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, plannerBody, plannerInset, plannerFrame, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
+        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
