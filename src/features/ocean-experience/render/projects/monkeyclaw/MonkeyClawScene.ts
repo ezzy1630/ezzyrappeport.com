@@ -14,6 +14,8 @@
 import {
   AdditiveBlending,
   BoxGeometry,
+  BufferGeometry,
+  CatmullRomCurve3,
   Color,
   ConeGeometry,
   DirectionalLight,
@@ -23,6 +25,7 @@ import {
   IcosahedronGeometry,
   InstancedBufferAttribute,
   InstancedMesh,
+  Line,
   LineBasicMaterial,
   LineSegments,
   Matrix4,
@@ -126,6 +129,9 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   let coreMaterial: ShaderMaterial | null = null;
   let identityMark: Group | null = null;
   let identityMaterial: ShaderMaterial | null = null;
+  let identityCarrier: Mesh | null = null;
+  let identityCarrierMaterial: MeshBasicMaterial | null = null;
+  let identityCarrierEdgeMaterial: LineBasicMaterial | null = null;
   let cage: LineSegments | null = null;
   let cageMaterial: LineBasicMaterial | null = null;
   let ring: Mesh | null = null;
@@ -156,8 +162,15 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   const loopStageLabelMaterials: MeshBasicMaterial[] = [];
   const gateMeshes: Mesh[] = [];
   const gateMaterials: MeshPhysicalMaterial[] = [];
-  const railMeshes: Mesh[] = [];
+  const gateStatusMeshes: Mesh[] = [];
+  const gateStatusMaterials: MeshBasicMaterial[] = [];
+  let verifierSpokes: LineSegments | null = null;
+  let verifierSpokeMaterial: LineBasicMaterial | null = null;
+  const railMeshes: Line[] = [];
   const railMaterials: MeshBasicMaterial[] = [];
+  const telemetryCurves: CatmullRomCurve3[] = [];
+  let feedbackReturn: Line | null = null;
+  let feedbackReturnMaterial: LineBasicMaterial | null = null;
   let telemetryBeads: InstancedMesh | null = null;
   let telemetryBeadMaterial: MeshBasicMaterial | null = null;
   let detectionQuadrants: Group | null = null;
@@ -176,8 +189,6 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
   const pathRing: Vector3[] = [];
   const pathCore: Vector3[] = [];
   const pathDeflect: Vector3[] = [];
-  const railStart: Vector3[] = [];
-  const railDir: Vector3[] = [];
 
   let fade = 0;
   let lastLoopT = 0;
@@ -223,15 +234,22 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
     }
     for (let rail = 0; rail < MONKEYCLAW_COUNTS.telemetryRails; rail += 1) {
       const angle = (rail / MONKEYCLAW_COUNTS.telemetryRails) * Math.PI * 2 + 0.2;
-      railStart.push(new Vector3(
-        Math.cos(angle) * (MONKEYCLAW_STAGE.coreRadius + 0.05),
-        Math.sin(angle) * (MONKEYCLAW_STAGE.coreRadius + 0.05),
-        0,
-      ));
-      // Rails leave as one calm, slightly fanned family — the clear
-      // evidence-stream handoff shown in the authored telemetry frame.
       const fan = (rail - (MONKEYCLAW_COUNTS.telemetryRails - 1) / 2) * 0.045;
-      railDir.push(new Vector3(-1, fan, 0).normalize());
+      const arcPoints = Array.from({ length: 7 }, (_, pointIndex) => {
+        const arcT = pointIndex / 6;
+        const pointAngle = angle + (Math.PI - angle) * arcT;
+        const radius = MONKEYCLAW_STAGE.judgeRadius + rail * 0.004;
+        return new Vector3(
+          Math.cos(pointAngle) * radius,
+          Math.sin(pointAngle) * radius,
+          0.035 + arcT * 0.008,
+        );
+      });
+      arcPoints.push(
+        new Vector3(-0.82, fan * 1.2, 0.042),
+        new Vector3(-1.02, fan * 1.7, 0.03),
+      );
+      telemetryCurves.push(new CatmullRomCurve3(arcPoints, false, "centripetal"));
     }
   }
 
@@ -316,6 +334,35 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           }
         `,
       }));
+      identityCarrierMaterial = track(new MeshBasicMaterial({
+        color: 0xd5e9ec,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      const identityCarrierGeometry = track(
+        createRoundedPanelGeometry(0.43, 0.235, 0.065, 0.025, 0.005),
+      );
+      identityCarrier = new Mesh(
+        identityCarrierGeometry,
+        identityCarrierMaterial,
+      );
+      identityCarrier.name = "monkeyclaw-protected-runtime";
+      identityCarrier.position.z = -0.005;
+      identityMark.add(identityCarrier);
+      identityCarrierEdgeMaterial = track(new LineBasicMaterial({
+        color: 0x315f67,
+        transparent: true,
+        opacity: 0,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      const carrierEdge = new LineSegments(
+        track(new EdgesGeometry(identityCarrierGeometry, 24)),
+        identityCarrierEdgeMaterial,
+      );
+      carrierEdge.position.z = 0.012;
+      identityMark.add(carrierEdge);
       const logoDecal = new Mesh(
         track(new PlaneGeometry(0.52, 0.27)),
         identityMaterial,
@@ -558,8 +605,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       reproVictims.instanceMatrix.setUsage(DynamicDrawUsage);
       reproSystem.add(reproVictims);
 
-      // Purple's prevention × observability oracle. PASS is the only bright
-      // result; weak, partial, and fail remain visible as rejected outcomes.
+      // Purple's prevention × observability oracle is one literal 2×2 matrix.
+      // PASS is the only bright result; the other three remain rejected.
       detectionQuadrants = new Group();
       detectionQuadrants.name = "monkeyclaw-detection-as-pass";
       detectionQuadrants.position.copy(root);
@@ -580,9 +627,13 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           track(createRoundedPanelGeometry(0.135, 0.065, 0.035, 0.014, 0.003)),
           material,
         );
-        const angle = Math.PI * 0.25 + quadrantIndex * Math.PI * 0.5;
-        quadrant.position.set(Math.cos(angle) * 0.58, Math.sin(angle) * 0.58, 0.055);
-        quadrant.rotation.z = angle + Math.PI * 0.5;
+        const column = quadrantIndex % 2;
+        const row = Math.floor(quadrantIndex / 2);
+        quadrant.position.set(
+          -0.09 + column * 0.18,
+          -0.52 - row * 0.095,
+          0.065,
+        );
         detectionQuadrants.add(quadrant);
         detectionQuadrantMaterials.push(material);
       }
@@ -651,6 +702,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         0.021,
         0.004,
       ));
+      const gateStatusGeometry = track(new RingGeometry(0.012, 0.025, 16));
+      const spokePoints: Vector3[] = [];
       for (let gate = 0; gate < MONKEYCLAW_COUNTS.verifierGates; gate += 1) {
         const material = track(new MeshPhysicalMaterial({
           color: 0x426c75,
@@ -673,10 +726,49 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         mesh.rotation.z = angle + Math.PI / 2;
         gateMeshes.push(mesh);
         gateMaterials.push(material);
-      }
 
-      // Telemetry rails — aligned family leaving toward Etch.
-      const railGeometry = track(new BoxGeometry(1, 0.018, 0.018));
+        const statusMaterial = track(new MeshBasicMaterial({
+          color: 0xb8f1dc,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthTest: false,
+          depthWrite: false,
+        }));
+        const status = new Mesh(gateStatusGeometry, statusMaterial);
+        status.position.copy(mesh.position);
+        status.position.z += 0.05;
+        gateStatusMeshes.push(status);
+        gateStatusMaterials.push(statusMaterial);
+
+        spokePoints.push(
+          new Vector3(
+            root.x + Math.cos(angle) * (MONKEYCLAW_STAGE.coreRadius + 0.08),
+            root.y + Math.sin(angle) * (MONKEYCLAW_STAGE.coreRadius + 0.08),
+            root.z + 0.015,
+          ),
+          new Vector3(
+            root.x + Math.cos(angle) * (MONKEYCLAW_STAGE.judgeRadius - 0.11),
+            root.y + Math.sin(angle) * (MONKEYCLAW_STAGE.judgeRadius - 0.11),
+            root.z + 0.015,
+          ),
+        );
+      }
+      verifierSpokeMaterial = track(new LineBasicMaterial({
+        color: 0x78c9d8,
+        transparent: true,
+        opacity: 0,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      verifierSpokes = new LineSegments(
+        track(new BufferGeometry().setFromPoints(spokePoints)),
+        verifierSpokeMaterial,
+      );
+      verifierSpokes.name = "monkeyclaw-eight-verifier-bus";
+
+      // Eight gate-evidence paths converge into one detection oracle. Curves
+      // route around the runtime instead of slicing through its identity.
       for (let rail = 0; rail < MONKEYCLAW_COUNTS.telemetryRails; rail += 1) {
         const material = track(new MeshBasicMaterial({
           color: 0x168ba0,
@@ -685,11 +777,36 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           depthTest: false,
           depthWrite: false,
         }));
-        const mesh = new Mesh(railGeometry, material);
-        mesh.rotation.z = Math.atan2(railDir[rail].y, railDir[rail].x);
+        const geometry = track(new BufferGeometry().setFromPoints(
+          telemetryCurves[rail].getPoints(48),
+        ));
+        geometry.setDrawRange(0, 0);
+        const mesh = new Line(geometry, material);
+        mesh.position.copy(root);
+        mesh.renderOrder = 7;
         railMeshes.push(mesh);
         railMaterials.push(material);
       }
+      feedbackReturnMaterial = track(new LineBasicMaterial({
+        color: MONKEYCLAW_COLORS.purple,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthTest: false,
+        depthWrite: false,
+      }));
+      const feedbackCurve = new CatmullRomCurve3([
+        new Vector3(-1.02, 0, 0.02),
+        new Vector3(-1.2, 0.72, 0.015),
+        new Vector3(-0.36, 1.03, 0.01),
+        new Vector3(0.53, 0.46, 0.035),
+      ], false, "centripetal");
+      const feedbackGeometry = track(new BufferGeometry().setFromPoints(feedbackCurve.getPoints(64)));
+      feedbackGeometry.setDrawRange(0, 0);
+      feedbackReturn = new Line(feedbackGeometry, feedbackReturnMaterial);
+      feedbackReturn.name = "monkeyclaw-gap-to-red-feedback";
+      feedbackReturn.position.copy(root);
+      feedbackReturn.renderOrder = 7;
       telemetryBeadMaterial = track(new MeshBasicMaterial({
         color: 0xb7f1f5,
         transparent: true,
@@ -780,6 +897,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         patchLattice,
         patchNodes,
         detectionQuadrants,
+        verifierSpokes,
         securityLoop,
         lightingRig,
         core,
@@ -789,7 +907,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         vectors,
         flashes,
         telemetryBeads,
-        ...gateMeshes, ...railMeshes, ...pulseMeshes,
+        feedbackReturn,
+        ...gateMeshes, ...gateStatusMeshes, ...railMeshes, ...pulseMeshes,
       ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
       for (const object of objects) {
         if (object) stage.add(object);
@@ -838,6 +957,12 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           1,
           0.92 + targetT * 0.04 + judgeT * 0.04,
         ) * fade;
+        if (identityCarrierMaterial) {
+          identityCarrierMaterial.opacity = (0.13 + targetT * 0.12 + blueT * 0.04) * fade;
+        }
+        if (identityCarrierEdgeMaterial) {
+          identityCarrierEdgeMaterial.opacity = (0.28 + blueT * 0.18 + purpleT * 0.12) * fade;
+        }
       }
       if (cage && cageMaterial) {
         cage.rotation.y = -t * 0.8;
@@ -899,7 +1024,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         patchNodeMaterial.opacity = Math.min(1, patchFocus * 1.55) * fade;
       }
       if (detectionQuadrants) {
-        detectionQuadrants.rotation.z = t * 0.08;
+        detectionQuadrants.rotation.z = 0;
+        detectionQuadrants.scale.setScalar(0.82 + purpleT * 0.18);
         detectionQuadrantMaterials.forEach((material, quadrantIndex) => {
           const semanticWeight = quadrantIndex === 0 ? 0.92 : 0.26;
           material.opacity = purpleT * semanticWeight * fade;
@@ -1031,20 +1157,28 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         gateMaterials[gate].emissiveIntensity = 0.2 + lit * 1.35;
         const gateScale = 0.76 + lit * 0.38;
         gateMeshes[gate].scale.set(gateScale, gateScale, gateScale);
+        gateStatusMeshes[gate].scale.setScalar(0.72 + lit * 0.34);
+        gateStatusMaterials[gate].opacity = lit * (0.38 + blueT * 0.52) * fade;
+      }
+      if (verifierSpokeMaterial) {
+        verifierSpokeMaterial.opacity = blueT * (0.12 + purpleT * 0.42) * fade;
       }
 
-      // Telemetry rails grow outward as detections verify.
+      // Gate evidence resolves toward one oracle; the final purple return
+      // closes the architecture by routing the observed gap back to Red.
       for (let rail = 0; rail < railMaterials.length; rail += 1) {
         const railT = smoothstep01(
           (t - (loop.purpleStart + rail * 0.01)) / 0.1,
         );
-        const length = MONKEYCLAW_STAGE.telemetryLength * railT;
-        railMeshes[rail].scale.set(Math.max(length, 1e-4), 1, 1);
-        _pos.copy(railStart[rail])
-          .addScaledVector(railDir[rail], length * 0.5)
-          .add(root);
-        railMeshes[rail].position.copy(_pos);
-        railMaterials[rail].opacity = railT * 0.9 * fade;
+        const pointCount = railMeshes[rail].geometry.getAttribute("position").count;
+        railMeshes[rail].geometry.setDrawRange(0, Math.ceil(pointCount * railT));
+        railMaterials[rail].opacity = railT * (rail === 0 ? 0.95 : 0.68) * fade;
+      }
+      if (feedbackReturn && feedbackReturnMaterial) {
+        const feedbackT = smoothstep01((t - (loop.purpleStart + 0.09)) / 0.14);
+        const pointCount = feedbackReturn.geometry.getAttribute("position").count;
+        feedbackReturn.geometry.setDrawRange(0, Math.ceil(pointCount * feedbackT));
+        feedbackReturnMaterial.opacity = feedbackT * 0.72 * fade;
       }
       if (telemetryBeadMaterial) {
         telemetryBeadMaterial.opacity = purpleT * 0.95 * fade;
@@ -1114,10 +1248,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
           const travel = frame.reducedMotion
             ? 0.72
             : (time * 0.22 + rail / MONKEYCLAW_COUNTS.telemetryRails) % 1;
-          const length = MONKEYCLAW_STAGE.telemetryLength * railT;
-          _pos.copy(railStart[rail])
-            .addScaledVector(railDir[rail], length * travel)
-            .add(root);
+          _pos.copy(telemetryCurves[rail].getPoint(railT * travel)).add(root);
           _quat.identity();
           _scale.setScalar(Math.max(railT * (0.72 + 0.28 * fade), 1e-4));
           _matrix.compose(_pos, _quat, _scale);
@@ -1191,6 +1322,7 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         patchLattice,
         patchNodes,
         detectionQuadrants,
+        verifierSpokes,
         securityLoop,
         lightingRig,
         core,
@@ -1200,7 +1332,8 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
         vectors,
         flashes,
         telemetryBeads,
-        ...gateMeshes, ...railMeshes, ...pulseMeshes,
+        feedbackReturn,
+        ...gateMeshes, ...gateStatusMeshes, ...railMeshes, ...pulseMeshes,
       ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
@@ -1215,9 +1348,9 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       if (stage) {
         const objects = ([
           perimeter, containmentShield, judgeProgramChecks, judgeEnsembleNodes,
-          reproSystem, patchLattice, patchNodes, detectionQuadrants, securityLoop,
+          reproSystem, patchLattice, patchNodes, detectionQuadrants, verifierSpokes, securityLoop,
           lightingRig, core, identityMark, cage, ring, vectors, flashes, telemetryBeads,
-          ...gateMeshes, ...railMeshes, ...pulseMeshes,
+          feedbackReturn, ...gateMeshes, ...gateStatusMeshes, ...railMeshes, ...pulseMeshes,
         ] as (Object3D | null)[]).filter((object): object is Object3D => object !== null);
         for (const object of objects) {
           if (object.parent === stage) stage.remove(object);
@@ -1228,8 +1361,11 @@ export function createMonkeyClawEncounter(): ProjectEncounter {
       disposables.length = 0;
       gateMeshes.length = 0;
       gateMaterials.length = 0;
+      gateStatusMeshes.length = 0;
+      gateStatusMaterials.length = 0;
       railMeshes.length = 0;
       railMaterials.length = 0;
+      telemetryCurves.length = 0;
       pulseMeshes.length = 0;
       pulseMaterials.length = 0;
       pulses.length = 0;

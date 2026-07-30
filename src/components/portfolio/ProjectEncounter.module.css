@@ -376,10 +376,15 @@
 }
 
 .title {
-  font-size: clamp(2.2rem, 4.25vw, 4.15rem);
+  font-size: clamp(2.2rem, 3.65vw, 4.15rem);
   line-height: 0.95;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+.encounter[data-encounter="monkeyclaw"] .title {
+  font-size: clamp(2.15rem, 3.35vw, 3.8rem);
+  white-space: nowrap;
 }
 
 .subtitle {
@@ -454,6 +459,46 @@
   opacity: 1;
   text-decoration: underline;
   text-underline-offset: 0.2em;
+}
+
+/* Short desktop canvases are the hardest composition: the browser still has
+   desktop width, but the scene cannot borrow vertical room. Keep the system
+   and editorial column in distinct optical fields, and cap the one-word title
+   before it can escape the viewport. */
+@media (min-width: 768px) and (max-height: 760px) {
+  .stage {
+    padding: clamp(1rem, 3vw, 2.5rem);
+  }
+
+  .sceneFrame {
+    left: clamp(1.25rem, 3vw, 3rem);
+    top: clamp(4.75rem, 10vh, 6rem);
+    bottom: clamp(2.8rem, 6vh, 4rem);
+    width: min(50vw, 43rem);
+  }
+
+  .copy {
+    width: min(32rem, 38%);
+    gap: 0.48rem;
+    padding-block: 1rem;
+  }
+
+  .encounter[data-encounter="monkeyclaw"] .title {
+    font-size: clamp(2rem, 3.05vw, 3.35rem);
+  }
+
+  .tagline {
+    font-size: clamp(0.98rem, 1.35vw, 1.15rem);
+    line-height: 1.38;
+  }
+
+  .facts {
+    margin-top: 0.2rem;
+  }
+
+  .actions {
+    margin-top: 0.45rem;
+  }
 }
 
 @media (max-width: 767px) {
