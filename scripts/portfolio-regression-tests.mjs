@@ -2127,10 +2127,11 @@ const tests = [
     assert.match(etchSceneSource, /dossierAssembly\.visible = dossierScene > 0\.001/);
     assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.doesNotMatch(floweSceneSource, /plannerBody/);
-    assert.match(floweSceneSource, /TubeGeometry/);
-    assert.match(floweSceneSource, /CatmullRomCurve3/);
-    assert.match(floweSceneSource, /flowe-logo-draw-system/);
-    assert.match(floweSceneSource, /geometry\.setDrawRange/);
+    assert.doesNotMatch(floweSceneSource, /TubeGeometry/);
+    assert.doesNotMatch(floweSceneSource, /CatmullRomCurve3/);
+    assert.doesNotMatch(floweSceneSource, /flowe-logo-draw-system/);
+    assert.match(floweSceneSource, /considerSegment/);
+    assert.match(floweSceneSource, /sampled logo remains the final alpha mask/);
     assert.match(floweSceneSource, /BRAIN DUMP/);
     assert.match(floweSceneSource, /OFFLINE QUEUE/);
     assert.match(floweSceneSource, /MORNING BRIEF/);

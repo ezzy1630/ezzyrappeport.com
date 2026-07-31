@@ -194,7 +194,9 @@ const ETCH_BEATS = [
   { name: "07-proof-dossier", progress: 0.94 },
 ];
 const FLOWE_BEATS = [
-  { name: "00-logo-draw", progress: 0.08 },
+  { name: "00a-logo-first-light", progress: 0.125 },
+  { name: "00b-logo-draw", progress: 0.155 },
+  { name: "00c-logo-formed", progress: 0.185 },
   { name: "01-brain-dump", progress: 0.2 },
   { name: "02-semantic-parse", progress: 0.32 },
   { name: "03-course-context", progress: 0.44 },

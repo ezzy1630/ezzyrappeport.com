@@ -14,7 +14,6 @@
 
 import {
   AdditiveBlending,
-  CatmullRomCurve3,
   Color,
   DirectionalLight,
   DynamicDrawUsage,
@@ -35,7 +34,6 @@ import {
   SphereGeometry,
   SRGBColorSpace,
   TextureLoader,
-  TubeGeometry,
   Vector3,
 } from "three";
 import type {
@@ -163,15 +161,17 @@ export function createFloweEncounter(): ProjectEncounter {
   let indexMaterial: MeshBasicMaterial | null = null;
   let flowIdentityPlate: Mesh | null = null;
   let flowIdentityMaterial: ShaderMaterial | null = null;
-  let flowLogoDrawGroup: Group | null = null;
-  const flowLogoStrokes: Mesh[] = [];
-  const flowLogoStrokeGeometries: TubeGeometry[] = [];
-  const flowLogoStrokeMaterials: MeshPhysicalMaterial[] = [];
   const taskLabels: Mesh[] = [];
   const taskLabelMaterials: MeshBasicMaterial[] = [];
+  const taskShells: Mesh[] = [];
+  let taskShellMaterial: MeshPhysicalMaterial | null = null;
   const featurePanels: Mesh[] = [];
   const featurePanelMaterials: MeshBasicMaterial[] = [];
+  const featurePanelShells: Mesh[] = [];
+  const featurePanelShellMaterials: MeshPhysicalMaterial[] = [];
   let lightingRig: Group | null = null;
+  let flowKeyLight: DirectionalLight | null = null;
+  let flowRimLight: PointLight | null = null;
   const nudges: ProbeNudge[] = [];
 
   // Deterministic per-fragment state.
@@ -356,6 +356,7 @@ export function createFloweEncounter(): ProjectEncounter {
           uOpacity: { value: 0 },
           uReveal: { value: 0 },
           uTracer: { value: 0 },
+          uTime: { value: 0 },
         },
         vertexShader: `
           varying vec2 vUv;
@@ -369,25 +370,93 @@ export function createFloweEncounter(): ProjectEncounter {
           uniform float uOpacity;
           uniform float uReveal;
           uniform float uTracer;
+          uniform float uTime;
           varying vec2 vUv;
+
+          void considerSegment(
+            vec2 point,
+            vec2 startPoint,
+            vec2 endPoint,
+            float startOrder,
+            float endOrder,
+            inout float bestDistance,
+            inout float bestOrder
+          ) {
+            vec2 segment = endPoint - startPoint;
+            float position = clamp(
+              dot(point - startPoint, segment) / max(dot(segment, segment), 0.00001),
+              0.0,
+              1.0
+            );
+            float distanceToSegment = length(point - (startPoint + segment * position));
+            if (distanceToSegment < bestDistance) {
+              bestDistance = distanceToSegment;
+              bestOrder = mix(startOrder, endOrder, position);
+            }
+          }
 
           void main() {
             vec4 source = texture2D(uIdentity, vUv);
             float luminance = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
             float mark = smoothstep(0.42, 0.78, luminance);
-            float strokeOrder = clamp(
-              0.58 * (1.0 - vUv.y) +
-              0.34 * vUv.x +
-              sin(vUv.y * 13.0) * 0.035,
-              0.0,
-              1.0
-            );
-            float ink = smoothstep(strokeOrder - 0.045, strokeOrder + 0.012, uReveal);
-            float leadingEdge = (1.0 - smoothstep(0.018, 0.06, abs(strokeOrder - uReveal))) * uTracer;
-            float alpha = mark * max(ink, leadingEdge) * uOpacity;
+            float bestDistance = 10.0;
+            float strokeOrder = 1.0;
+
+            // The reveal follows the real FlowE mark's four centerlines. The
+            // sampled logo remains the final alpha mask, so no substitute
+            // geometry can change its silhouette, overlaps, or tapered tail.
+            considerSegment(vUv, vec2(.344,.453), vec2(.246,.457), .000,.025, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.246,.457), vec2(.188,.492), .025,.050, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.188,.492), vec2(.152,.547), .050,.075, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.152,.547), vec2(.148,.605), .075,.100, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.148,.605), vec2(.176,.668), .100,.125, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.176,.668), vec2(.227,.719), .125,.150, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.227,.719), vec2(.313,.777), .150,.175, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.313,.777), vec2(.410,.813), .175,.200, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.410,.813), vec2(.504,.824), .200,.225, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.504,.824), vec2(.602,.813), .225,.250, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.602,.813), vec2(.688,.770), .250,.275, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.688,.770), vec2(.762,.703), .275,.300, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.762,.703), vec2(.813,.621), .300,.325, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.813,.621), vec2(.840,.543), .325,.350, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.840,.543), vec2(.836,.477), .350,.375, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.836,.477), vec2(.801,.438), .375,.400, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.801,.438), vec2(.691,.430), .400,.425, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.691,.430), vec2(.648,.418), .425,.450, bestDistance, strokeOrder);
+
+            considerSegment(vUv, vec2(.344,.453), vec2(.344,.547), .170,.195, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.344,.547), vec2(.395,.621), .195,.220, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.395,.621), vec2(.512,.680), .220,.245, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.512,.680), vec2(.602,.625), .245,.270, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.602,.625), vec2(.598,.531), .270,.295, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.598,.531), vec2(.492,.488), .295,.320, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.492,.488), vec2(.344,.453), .320,.345, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.344,.453), vec2(.367,.367), .345,.380, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.367,.367), vec2(.500,.324), .380,.415, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.500,.324), vec2(.648,.418), .415,.450, bestDistance, strokeOrder);
+
+            considerSegment(vUv, vec2(.648,.418), vec2(.777,.426), .450,.500, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.777,.426), vec2(.824,.383), .500,.550, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.824,.383), vec2(.816,.332), .550,.600, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.816,.332), vec2(.707,.266), .600,.650, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.707,.266), vec2(.621,.258), .650,.700, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.621,.258), vec2(.512,.297), .700,.750, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.512,.297), vec2(.492,.340), .750,.800, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.492,.340), vec2(.551,.402), .800,.850, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.551,.402), vec2(.648,.418), .850,.875, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.621,.258), vec2(.613,.215), .875,.910, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.613,.215), vec2(.625,.164), .910,.950, bestDistance, strokeOrder);
+            considerSegment(vUv, vec2(.625,.164), vec2(.648,.117), .950,1.000, bestDistance, strokeOrder);
+
+            float centerlineCoverage = 1.0 - smoothstep(0.095, 0.155, bestDistance);
+            float ink = smoothstep(strokeOrder - 0.018, strokeOrder + 0.008, uReveal) * centerlineCoverage;
+            float completedMark = smoothstep(0.94, 1.0, uReveal);
+            float leadingEdge = (
+              1.0 - smoothstep(0.012, 0.045, abs(strokeOrder - uReveal))
+            ) * centerlineCoverage * uTracer * (0.88 + sin(uTime * 4.0) * 0.12);
+            float alpha = mark * max(max(ink, completedMark), leadingEdge) * uOpacity;
             if (alpha < 0.01) discard;
-            vec3 paperWhite = mix(vec3(0.86, 0.93, 0.96), vec3(1.0), luminance);
-            gl_FragColor = vec4(paperWhite + leadingEdge * vec3(0.08, 0.2, 0.24), alpha);
+            gl_FragColor = vec4(source.rgb + leadingEdge * vec3(0.08, 0.22, 0.28), alpha);
           }
         `,
       }));
@@ -399,52 +468,20 @@ export function createFloweEncounter(): ProjectEncounter {
       flowIdentityPlate.renderOrder = 3;
       flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
-      // Literal logo construction. Three independent tubes follow the outer
-      // brain, inner e, and descending tail. drawRange is tied to scroll, so
-      // the mark is built rather than uncovered by a rectangular wipe.
-      flowLogoDrawGroup = new Group();
-      flowLogoDrawGroup.name = "flowe-logo-draw-system";
-      const logoPaths = [
-        [
-          [-0.42, 0.08], [-0.39, 0.3], [-0.2, 0.48], [0.08, 0.52],
-          [0.34, 0.4], [0.45, 0.17], [0.39, -0.02], [0.23, -0.09],
-        ],
-        [
-          [-0.25, 0.06], [-0.17, 0.28], [0.03, 0.34], [0.18, 0.23],
-          [0.15, 0.06], [-0.04, -0.06], [-0.18, -0.18], [-0.08, -0.31],
-          [0.15, -0.28], [0.31, -0.16],
-        ],
-        [
-          [0.31, -0.16], [0.38, -0.28], [0.27, -0.38], [0.12, -0.36],
-          [0.2, -0.48], [0.25, -0.6],
-        ],
-      ] as const;
-      for (const [strokeIndex, points] of logoPaths.entries()) {
-        const curve = new CatmullRomCurve3(points.map(([x, y]) => new Vector3(x, y, 0)));
-        const geometry = track(new TubeGeometry(curve, strokeIndex === 1 ? 104 : 72, 0.037, 8, false));
-        geometry.setDrawRange(0, 0);
-        const material = track(new MeshPhysicalMaterial({
-          color: 0xf3fbff,
-          emissive: strokeIndex === 1 ? 0x72d8ea : 0x4aa8cc,
-          emissiveIntensity: strokeIndex === 1 ? 0.48 : 0.34,
-          roughness: 0.18,
-          metalness: 0.08,
-          clearcoat: 1,
-          clearcoatRoughness: 0.08,
-          transparent: true,
-          opacity: 0,
-          depthWrite: false,
-        }));
-        const stroke = new Mesh(geometry, material);
-        stroke.renderOrder = 5;
-        flowLogoStrokes.push(stroke);
-        flowLogoStrokeGeometries.push(geometry);
-        flowLogoStrokeMaterials.push(material);
-        flowLogoDrawGroup.add(stroke);
-      }
-      flowLogoDrawGroup.position.set(center.x, center.y + 0.25, 0.09);
-
       const taskLabelGeometry = track(new PlaneGeometry(0.43, 0.134));
+      const taskShellGeometry = track(createRoundedPanelGeometry(0.46, 0.148, 0.022, 0.025, 0.003));
+      taskShellMaterial = track(new MeshPhysicalMaterial({
+        color: 0x17323e,
+        emissive: 0x0e4655,
+        emissiveIntensity: 0.24,
+        roughness: 0.2,
+        metalness: 0.08,
+        clearcoat: 1,
+        clearcoatRoughness: 0.12,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
       for (let task = 0; task < FLOWE_TASKS.length; task += 1) {
         const [title, detail] = FLOWE_TASKS[task];
         const label = createInstrumentLabel(title, detail, {
@@ -460,6 +497,10 @@ export function createFloweEncounter(): ProjectEncounter {
         mesh.renderOrder = 4;
         taskLabels.push(mesh);
         taskLabelMaterials.push(label.material);
+        const shell = new Mesh(taskShellGeometry, taskShellMaterial);
+        shell.name = `flowe-task-shell-${task + 1}`;
+        shell.renderOrder = 3;
+        taskShells.push(shell);
       }
 
       for (const panel of FLOWE_FEATURE_PANELS) {
@@ -476,16 +517,36 @@ export function createFloweEncounter(): ProjectEncounter {
         mesh.renderOrder = 6;
         featurePanels.push(mesh);
         featurePanelMaterials.push(label.material);
+        const shellMaterial = track(new MeshPhysicalMaterial({
+          color: panel.state === 5 ? 0x1b5362 : 0x122f40,
+          emissive: panel.state === 5 ? 0x187187 : 0x0c4659,
+          emissiveIntensity: panel.state === 5 ? 0.42 : 0.25,
+          roughness: 0.16,
+          metalness: 0.06,
+          clearcoat: 1,
+          clearcoatRoughness: 0.08,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }));
+        const shell = new Mesh(
+          track(createRoundedPanelGeometry(0.49, 0.157, 0.026, 0.028, 0.003)),
+          shellMaterial,
+        );
+        shell.name = `${mesh.name}-shell`;
+        shell.renderOrder = 5;
+        featurePanelShells.push(shell);
+        featurePanelShellMaterials.push(shellMaterial);
       }
 
       lightingRig = new Group();
       lightingRig.name = "flowe-product-lighting";
       const ambient = new HemisphereLight(0xe9fbff, 0x071923, 1.45);
-      const key = new DirectionalLight(0xf4fdff, 2.3);
-      key.position.set(-1.5, 2.2, 2.8);
-      const rim = new PointLight(FLOWE_COLORS.current, 3.2, 5.5, 1.4);
-      rim.position.set(0.85, -0.2, 1.35);
-      lightingRig.add(ambient, key, rim);
+      flowKeyLight = new DirectionalLight(0xf4fdff, 2.3);
+      flowKeyLight.position.set(-1.5, 2.2, 2.8);
+      flowRimLight = new PointLight(FLOWE_COLORS.current, 3.2, 5.5, 1.4);
+      flowRimLight.position.set(0.85, -0.2, 1.35);
+      lightingRig.add(ambient, flowKeyLight, flowRimLight);
 
       for (let nudge = 0; nudge < FLOWE_COUNTS.probePool; nudge += 1) {
         nudges.push({
@@ -502,7 +563,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -519,10 +580,12 @@ export function createFloweEncounter(): ProjectEncounter {
       const groupT = smoothstep01((t - loop.groupStart) / (loop.groupFull - loop.groupStart));
       const focusT = smoothstep01((t - loop.focusStart) / (loop.focusFull - loop.focusStart));
       const contractT = smoothstep01((t - loop.contractStart) / (loop.contractFull - loop.contractStart));
-      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.008) / 0.18);
+      // The chapter first enters the viewport near 0.12. Keep the full draw
+      // inside the visible range so it never begins offscreen.
+      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.11) / 0.08);
       const identityReady = smoothstep01((logoDrawT - 0.76) / 0.24);
       const organizedGroupT = groupT * identityReady;
-      const taskAssemblyT = smoothstep01(identityReady * 0.7 + groupT * 0.4);
+      const taskAssemblyT = groupT;
       const visualScale = layoutMode === "mobile" ? 0.68 : 1;
       // Organization: motes settle, the water calms as the plan forms.
       const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
@@ -540,31 +603,13 @@ export function createFloweEncounter(): ProjectEncounter {
       );
 
       if (flowIdentityPlate && flowIdentityMaterial) {
-        flowIdentityMaterial.uniforms.uOpacity.value = logoPresence * (0.08 + identityReady * 0.88) * fade;
+        flowIdentityMaterial.uniforms.uOpacity.value = logoPresence * fade;
         flowIdentityMaterial.uniforms.uReveal.value = logoDrawT;
         flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : (1 - identityReady) * statePresence[0];
-        flowIdentityPlate.rotation.y = frame.reducedMotion ? -0.04 : -0.04 + Math.sin(frame.time * 0.24) * 0.018;
-        flowIdentityPlate.rotation.x = -0.035;
+        flowIdentityMaterial.uniforms.uTime.value = frame.time;
+        flowIdentityPlate.rotation.set(0, 0, 0);
         flowIdentityPlate.scale.setScalar(visualScale * (1.08 + statePresence[0] * 0.28 + statePresence[7] * 0.12));
         flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
-      }
-
-      if (flowLogoDrawGroup) {
-        flowLogoDrawGroup.position.set(center.x, center.y + 0.25, 0.09);
-        flowLogoDrawGroup.scale.setScalar(visualScale * (0.94 + statePresence[0] * 0.14));
-        flowLogoDrawGroup.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.22) * 0.012;
-        for (let strokeIndex = 0; strokeIndex < flowLogoStrokes.length; strokeIndex += 1) {
-          const strokeStart = strokeIndex * 0.18;
-          const strokeProgress = smoothstep01((logoDrawT - strokeStart) / Math.max(1 - strokeStart, 0.001));
-          const geometry = flowLogoStrokeGeometries[strokeIndex];
-          const indexCount = geometry.index?.count ?? 0;
-          geometry.setDrawRange(0, Math.floor(indexCount * strokeProgress / 3) * 3);
-          flowLogoStrokeMaterials[strokeIndex].opacity = logoPresence
-            * (0.62 + strokeProgress * 0.38)
-            * (1 - identityReady * 0.96)
-            * fade;
-          flowLogoStrokeMaterials[strokeIndex].emissiveIntensity = 0.28 + (1 - strokeProgress) * 1.1;
-        }
       }
 
       for (let panelIndex = 0; panelIndex < featurePanels.length; panelIndex += 1) {
@@ -575,9 +620,15 @@ export function createFloweEncounter(): ProjectEncounter {
         _pos.set(center.x + panel.x, center.y + panel.y + (1 - reveal) * 0.12, 0.2);
         if (visualScale < 1) _pos.sub(center).multiplyScalar(visualScale).add(center);
         featurePanels[panelIndex].position.copy(_pos);
+        featurePanelShells[panelIndex].position.copy(_pos).addScaledVector(_cardAxis, -0.018);
         featurePanels[panelIndex].rotation.z = (1 - reveal) * (panelIndex % 2 === 0 ? -0.035 : 0.035);
+        featurePanelShells[panelIndex].rotation.z = featurePanels[panelIndex].rotation.z;
         featurePanels[panelIndex].scale.setScalar(scale * (0.88 + reveal * 0.12));
+        featurePanelShells[panelIndex].scale.copy(featurePanels[panelIndex].scale);
         featurePanelMaterials[panelIndex].opacity = presence * fade;
+        featurePanelShellMaterials[panelIndex].opacity = presence * 0.78 * fade;
+        featurePanels[panelIndex].visible = presence > 0.001;
+        featurePanelShells[panelIndex].visible = presence > 0.001;
       }
 
       const focusTask = 2;
@@ -595,11 +646,26 @@ export function createFloweEncounter(): ProjectEncounter {
         }
         if (visualScale < 1) _pos.sub(center).multiplyScalar(visualScale).add(center);
         taskLabels[task].position.copy(_pos);
+        taskShells[task].position.copy(_pos).addScaledVector(_cardAxis, -0.018);
         taskLabels[task].rotation.z = (1 - reveal) * (task % 2 === 0 ? -0.12 : 0.12);
+        taskShells[task].rotation.z = taskLabels[task].rotation.z;
         const focusScale = task === focusTask ? 1 + focusT * 0.38 : 1 - focusT * 0.12;
         taskLabels[task].scale.setScalar((0.72 + reveal * 0.28) * focusScale * visualScale);
+        taskShells[task].scale.copy(taskLabels[task].scale);
         const focusOpacity = task === focusTask ? 1 : 1 - focusT * 0.88;
         taskLabelMaterials[task].opacity = reveal * focusOpacity * statePresence[4] * fade;
+        taskLabels[task].visible = taskLabelMaterials[task].opacity > 0.001;
+        taskShells[task].visible = taskLabelMaterials[task].opacity > 0.001;
+      }
+      if (taskShellMaterial) taskShellMaterial.opacity = statePresence[4] * 0.74 * fade;
+
+      if (flowKeyLight && flowRimLight) {
+        const focusLight = statePresence[5];
+        const logoLight = Math.max(statePresence[0], statePresence[7] * 0.7);
+        flowKeyLight.intensity = 1.9 + logoLight * 1.1 - focusLight * 0.35;
+        flowKeyLight.position.x = -1.5 + statePresence[2] * 0.45;
+        flowRimLight.intensity = 2.4 + focusLight * 2.8 + logoLight * 1.2;
+        flowRimLight.position.set(center.x + 0.72, center.y - 0.06 + focusLight * 0.2, 1.35);
       }
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
@@ -761,7 +827,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -772,7 +838,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
+        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -786,9 +852,9 @@ export function createFloweEncounter(): ProjectEncounter {
       taskLabelMaterials.length = 0;
       featurePanels.length = 0;
       featurePanelMaterials.length = 0;
-      flowLogoStrokes.length = 0;
-      flowLogoStrokeGeometries.length = 0;
-      flowLogoStrokeMaterials.length = 0;
+      featurePanelShells.length = 0;
+      featurePanelShellMaterials.length = 0;
+      taskShells.length = 0;
       driftAnchors.length = 0;
       clusterTargets.length = 0;
       clusterAngles.length = 0;
