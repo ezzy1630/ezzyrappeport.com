@@ -77,7 +77,7 @@ export const ETCH_COLORS = {
   fail: 0xd45b47,
   runnerUp: 0x8ea6b8,
   result: 0x7fd0e8,
-  dossier: 0x173942,
+  dossier: 0x8eb9c4,
   relax: 0x9fd8e2,
 } as const;
 

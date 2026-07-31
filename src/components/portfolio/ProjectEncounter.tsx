@@ -83,8 +83,7 @@ const ETCH_ANNOTATIONS = [
   { beat: 5, slot: "right-top", label: "Yosys 0.66", detail: "5485.2608 µm²" },
   { beat: 6, slot: "left-bottom", label: "Tool boundary", detail: "OpenROAD / DRC / LVS missing" },
   { beat: 6, slot: "right-top", label: "Honest state", detail: "physical signoff pending" },
-  { beat: 7, slot: "left-mid", label: "Proof dossier", detail: "claims linked to artifacts" },
-  { beat: 7, slot: "right-top", label: "Durable output", detail: "Markdown + JSON" },
+  { beat: 7, slot: "left-top", label: "Proof dossier", detail: "Markdown + JSON · linked artifacts" },
 ] as const;
 
 /**

@@ -188,6 +188,10 @@
     0 0.8rem 2.2rem rgb(4 41 52 / 18%);
 }
 
+.encounter[data-encounter="etch"] .sceneAnnotation[data-slot^="left"] {
+  left: clamp(0.8rem, 2.5%, 1.35rem);
+}
+
 .encounter[data-encounter="etch"] .sceneAnnotation strong {
   font-size: 0.7rem;
 }
@@ -579,6 +583,14 @@
     top: clamp(4.75rem, 10vh, 6rem);
     bottom: clamp(2.8rem, 6vh, 4rem);
     width: min(50vw, 43rem);
+  }
+
+  .encounter[data-encounter="etch"] .sceneAnnotations {
+    inset: 3rem 0 4.25rem;
+  }
+
+  .encounter[data-encounter="etch"] .sceneAnnotation {
+    max-width: 12rem;
   }
 
   .copy {

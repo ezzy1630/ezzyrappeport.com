@@ -156,12 +156,12 @@ export function createEtchEncounter(): ProjectEncounter {
   let dossierAssembly: Group | null = null;
   let dossierSheets: InstancedMesh | null = null;
   let dossierMaterial: MeshPhysicalMaterial | null = null;
+  let dossierOutline: LineSegments | null = null;
+  let dossierOutlineMaterial: LineBasicMaterial | null = null;
   let dossierRows: InstancedMesh | null = null;
   let dossierRowMaterial: MeshBasicMaterial | null = null;
   let dossierStatuses: InstancedMesh | null = null;
   let dossierStatusMaterial: MeshBasicMaterial | null = null;
-  const dossierLabels: Mesh[] = [];
-  const dossierLabelMaterials: MeshBasicMaterial[] = [];
   let resultMaterial: MeshPhysicalMaterial | null = null;
   let resultIdentityMaterial: ShaderMaterial | null = null;
   let latticeMaterial: LineBasicMaterial | null = null;
@@ -624,35 +624,47 @@ export function createEtchEncounter(): ProjectEncounter {
       resultAssembly.add(dieScrews);
       axisGroup.add(resultAssembly);
 
-      // The durable product is the proof dossier, not an implied fabricated
-      // chip. Layered sheets frame the verified die and stay visibly open.
+      // The durable product is a proof carrier around the verified die, not an
+      // implied fabricated chip. One quiet substrate and four evidence tracks
+      // keep the die as the focal object; DOM copy owns all small text.
       dossierAssembly = new Group();
       dossierAssembly.name = "etch-proof-dossier";
-      dossierAssembly.position.set(resultX + 0.09, 0.16, 0.08);
+      dossierAssembly.position.set(resultX + 0.03, 0.05, -0.03);
       dossierMaterial = track(new MeshPhysicalMaterial({
         color: ETCH_COLORS.dossier,
-        emissive: 0x183d48,
-        emissiveIntensity: 0.16,
-        roughness: 0.34,
-        metalness: 0.08,
-        clearcoat: 0.8,
+        emissive: 0x8fbfca,
+        emissiveIntensity: 0.08,
+        roughness: 0.5,
+        metalness: 0.14,
+        clearcoat: 0.42,
         transparent: true,
         opacity: 0,
         depthWrite: false,
         side: DoubleSide,
       }));
+      const dossierPanelGeometry = track(createRoundedPanelGeometry(1.08, 0.62, 0.008, 0.025, 0.005));
       dossierSheets = new InstancedMesh(
-        track(createRoundedPanelGeometry(0.94, 0.68, 0.012, 0.035, 0.006)),
+        dossierPanelGeometry,
         dossierMaterial,
-        3,
+        1,
       );
       dossierSheets.instanceMatrix.setUsage(DynamicDrawUsage);
-      for (let sheet = 0; sheet < 3; sheet += 1) {
-        _dieMatrix.makeRotationZ((sheet - 1) * 0.025);
-        _dieMatrix.setPosition((sheet - 1) * 0.025, (sheet - 1) * 0.025, -sheet * 0.018);
-        dossierSheets.setMatrixAt(sheet, _dieMatrix);
-      }
+      _dieMatrix.makeTranslation(0, 0, -0.035);
+      dossierSheets.setMatrixAt(0, _dieMatrix);
       dossierAssembly.add(dossierSheets);
+
+      dossierOutlineMaterial = track(new LineBasicMaterial({
+        color: 0xd2f1f5,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      dossierOutline = new LineSegments(
+        track(new EdgesGeometry(dossierPanelGeometry, 18)),
+        dossierOutlineMaterial,
+      );
+      dossierOutline.position.z = -0.032;
+      dossierAssembly.add(dossierOutline);
 
       dossierRowMaterial = track(new MeshBasicMaterial({
         color: 0xb7dce4,
@@ -667,12 +679,12 @@ export function createEtchEncounter(): ProjectEncounter {
       );
       dossierRows.instanceMatrix.setUsage(DynamicDrawUsage);
       for (let row = 0; row < 4; row += 1) {
-        const y = -0.05 - row * 0.075;
-        _dieMatrix.makeScale(0.54, 0.012, 1);
-        _dieMatrix.setPosition(-0.06, y, 0.078);
+        const y = 0.12 - row * 0.08;
+        _dieMatrix.makeScale(0.34, 0.009, 1);
+        _dieMatrix.setPosition(0.25, y, 0.025);
         dossierRows.setMatrixAt(row * 2, _dieMatrix);
-        _dieMatrix.makeScale(0.16 + row * 0.035, 0.012, 1);
-        _dieMatrix.setPosition(0.26, y, 0.079);
+        _dieMatrix.makeScale(0.08 + row * 0.016, 0.009, 1);
+        _dieMatrix.setPosition(0.48, y, 0.026);
         dossierRows.setMatrixAt(row * 2 + 1, _dieMatrix);
       }
       dossierAssembly.add(dossierRows);
@@ -690,34 +702,11 @@ export function createEtchEncounter(): ProjectEncounter {
       );
       dossierStatuses.instanceMatrix.setUsage(DynamicDrawUsage);
       for (let status = 0; status < 4; status += 1) {
-        _dieMatrix.makeTranslation(-0.39, -0.05 - status * 0.075, 0.09);
+        _dieMatrix.makeTranslation(0.04, 0.12 - status * 0.08, 0.04);
         dossierStatuses.setMatrixAt(status, _dieMatrix);
         dossierStatuses.setColorAt(status, new Color(status === 3 ? ETCH_COLORS.pending : ETCH_COLORS.pass));
       }
       dossierAssembly.add(dossierStatuses);
-
-      const dossierLabelGeometry = track(new PlaneGeometry(0.62, 0.135));
-      const dossierLabelData = [
-        ["PROOF DOSSIER", "Markdown + JSON"],
-        ["WINNER · A", "486 cells · BMC depth 32"],
-      ] as const;
-      for (let labelIndex = 0; labelIndex < dossierLabelData.length; labelIndex += 1) {
-        const [heading, detail] = dossierLabelData[labelIndex];
-        const instrument = createInstrumentLabel(heading, detail, {
-          accent: labelIndex === 0 ? "#79d8c9" : "#7fd0e8",
-          background: "rgba(5, 22, 29, 0.92)",
-          foreground: "rgba(242, 250, 251, 0.98)",
-          muted: "rgba(174, 205, 211, 0.94)",
-        });
-        track(instrument.texture);
-        track(instrument.material);
-        const label = new Mesh(dossierLabelGeometry, instrument.material);
-        label.position.set(0.06, labelIndex === 0 ? 0.245 : 0.09, 0.082);
-        label.renderOrder = 6;
-        dossierAssembly.add(label);
-        dossierLabels.push(label);
-        dossierLabelMaterials.push(instrument.material);
-      }
       axisGroup.add(dossierAssembly);
 
       const lightingRig = new Group();
@@ -994,12 +983,12 @@ export function createEtchEncounter(): ProjectEncounter {
           const resultX = layoutMode === "mobile"
             ? 0.5
             : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
-          resultAssembly.position.set(resultX - dossierScene * 0.46, dossierScene * 0.1, 0);
+          resultAssembly.position.set(resultX - dossierScene * 0.18, dossierScene * 0.03, 0.03);
           resultAssembly.rotation.y = (frame.reducedMotion ? 0.18 : Math.sin(frame.time * 0.28) * 0.22) + 0.18;
           resultAssembly.rotation.x = -0.22;
           const resultScale = layoutMode === "mobile"
             ? 0.3 + reveal * 0.62
-            : (0.42 + reveal * 0.66) * (1 - dossierScene * 0.4);
+            : (0.42 + reveal * 0.66) * (1 + dossierScene * 0.18);
           resultAssembly.scale.setScalar(resultScale);
         }
       }
@@ -1011,40 +1000,39 @@ export function createEtchEncounter(): ProjectEncounter {
           ? 0.5
           : gateStationX(ETCH_COUNTS.gates - 1, axisX0, ETCH_STAGE.gateSpacing) - 0.9;
         dossierAssembly.position.set(
-          resultX + (layoutMode === "mobile" ? 0.14 : 0.09),
-          0.16,
-          0.08,
+          resultX + (layoutMode === "mobile" ? 0.08 : 0.03),
+          0.05,
+          -0.03,
         );
-        dossierMaterial.opacity = dossierScene * 0.86 * fade;
-        if (dossierRowMaterial) dossierRowMaterial.opacity = dossierScene * 0.42 * fade;
+        dossierMaterial.opacity = dossierScene * 0.28 * fade;
+        if (dossierOutlineMaterial) dossierOutlineMaterial.opacity = dossierScene * 0.58 * fade;
+        if (dossierRowMaterial) dossierRowMaterial.opacity = dossierScene * 0.72 * fade;
         if (dossierStatusMaterial) dossierStatusMaterial.opacity = dossierScene * 0.95 * fade;
-        dossierAssembly.rotation.x = -0.08;
-        dossierAssembly.rotation.y = 0.08;
+        dossierAssembly.rotation.x = -0.04;
+        dossierAssembly.rotation.y = 0.04;
         dossierAssembly.scale.setScalar(
-          layoutMode === "mobile" ? 0.78 + dossierScene * 0.12 : 0.88 + dossierScene * 0.18,
+          layoutMode === "mobile" ? 0.84 + dossierScene * 0.12 : 0.96 + dossierScene * 0.18,
         );
+        if (dossierOutline) {
+          dossierOutline.scale.y = Math.max(smoothstep01(dossierScene), 1e-4);
+          dossierOutline.position.y = (1 - smoothstep01(dossierScene)) * -0.08;
+        }
         if (dossierSheets) {
-          for (let sheet = 0; sheet < 3; sheet += 1) {
-            const sheetReveal = smoothstep01((dossierScene - sheet * 0.08) / Math.max(1 - sheet * 0.08, 1e-6));
-            _dieMatrix.makeRotationZ((sheet - 1) * 0.035 * sheetReveal);
-            _dieMatrix.setPosition(
-              (sheet - 1) * 0.03 * sheetReveal,
-              (sheet - 1) * 0.025 - (1 - sheetReveal) * 0.12,
-              -sheet * 0.018,
-            );
-            dossierSheets.setMatrixAt(sheet, _dieMatrix);
-          }
+          const sheetReveal = smoothstep01(dossierScene);
+          _dieMatrix.makeScale(1, Math.max(sheetReveal, 1e-4), 1);
+          _dieMatrix.setPosition(0, (1 - sheetReveal) * -0.08, -0.035);
+          dossierSheets.setMatrixAt(0, _dieMatrix);
           dossierSheets.instanceMatrix.needsUpdate = true;
         }
         if (dossierRows) {
           for (let row = 0; row < 4; row += 1) {
             const rowReveal = smoothstep01((dossierScene - 0.18 - row * 0.08) / 0.58);
-            const y = -0.05 - row * 0.075;
-            _dieMatrix.makeScale(Math.max(0.54 * rowReveal, 1e-4), 0.012, 1);
-            _dieMatrix.setPosition(-0.33 + 0.27 * rowReveal, y, 0.078);
+            const y = 0.12 - row * 0.08;
+            _dieMatrix.makeScale(Math.max(0.34 * rowReveal, 1e-4), 0.009, 1);
+            _dieMatrix.setPosition(0.08 + 0.17 * rowReveal, y, 0.025);
             dossierRows.setMatrixAt(row * 2, _dieMatrix);
-            _dieMatrix.makeScale(Math.max((0.16 + row * 0.035) * rowReveal, 1e-4), 0.012, 1);
-            _dieMatrix.setPosition(0.17 + (0.09 + row * 0.0175) * rowReveal, y, 0.079);
+            _dieMatrix.makeScale(Math.max((0.08 + row * 0.016) * rowReveal, 1e-4), 0.009, 1);
+            _dieMatrix.setPosition(0.42 + 0.06 * rowReveal, y, 0.026);
             dossierRows.setMatrixAt(row * 2 + 1, _dieMatrix);
           }
           dossierRows.instanceMatrix.needsUpdate = true;
@@ -1053,14 +1041,10 @@ export function createEtchEncounter(): ProjectEncounter {
           for (let status = 0; status < 4; status += 1) {
             const statusReveal = smoothstep01((dossierScene - 0.24 - status * 0.07) / 0.48);
             _dieMatrix.makeScale(statusReveal, statusReveal, statusReveal);
-            _dieMatrix.setPosition(-0.39, -0.05 - status * 0.075, 0.09);
+            _dieMatrix.setPosition(0.04, 0.12 - status * 0.08, 0.04);
             dossierStatuses.setMatrixAt(status, _dieMatrix);
           }
           dossierStatuses.instanceMatrix.needsUpdate = true;
-        }
-        for (let label = 0; label < dossierLabelMaterials.length; label += 1) {
-          const staggered = smoothstep01((dossierScene - label * 0.12) / Math.max(1 - label * 0.12, 1e-6));
-          dossierLabelMaterials[label].opacity = staggered * fade;
         }
       }
 
@@ -1181,8 +1165,6 @@ export function createEtchEncounter(): ProjectEncounter {
       perturbations.length = 0;
       dieDetails.length = 0;
       dieDetailMaterials.length = 0;
-      dossierLabels.length = 0;
-      dossierLabelMaterials.length = 0;
       loaded = false;
     },
   };
