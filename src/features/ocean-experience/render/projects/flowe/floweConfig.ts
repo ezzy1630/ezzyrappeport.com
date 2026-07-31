@@ -9,14 +9,14 @@
  */
 
 export const FLOWE_LOOP = {
-  driftStart: 0.02,
+  driftStart: 0.12,
   driftFull: 0.3,
-  groupStart: 0.28,
-  groupFull: 0.62,
-  focusStart: 0.6,
-  focusFull: 0.88,
-  contractStart: 0.85,
-  contractFull: 0.97,
+  groupStart: 0.25,
+  groupFull: 0.58,
+  focusStart: 0.58,
+  focusFull: 0.78,
+  contractStart: 0.74,
+  contractFull: 0.91,
 } as const;
 
 export const FLOWE_COUNTS = {

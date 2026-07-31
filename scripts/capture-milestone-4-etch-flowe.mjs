@@ -194,10 +194,14 @@ const ETCH_BEATS = [
   { name: "07-proof-dossier", progress: 0.94 },
 ];
 const FLOWE_BEATS = [
-  { name: "00-drift", progress: 0.125 },
-  { name: "01-group", progress: 0.375 },
-  { name: "02-focus", progress: 0.625 },
-  { name: "03-contract", progress: 0.875 },
+  { name: "00-logo-draw", progress: 0.08 },
+  { name: "01-brain-dump", progress: 0.2 },
+  { name: "02-semantic-parse", progress: 0.32 },
+  { name: "03-course-context", progress: 0.44 },
+  { name: "04-daily-plan", progress: 0.56 },
+  { name: "05-focus-live-activity", progress: 0.69 },
+  { name: "06-offline-sync", progress: 0.82 },
+  { name: "07-morning-brief", progress: 0.94 },
 ];
 
 try {

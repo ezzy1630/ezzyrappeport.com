@@ -14,6 +14,7 @@
 
 import {
   AdditiveBlending,
+  CatmullRomCurve3,
   Color,
   DirectionalLight,
   DynamicDrawUsage,
@@ -34,6 +35,7 @@ import {
   SphereGeometry,
   SRGBColorSpace,
   TextureLoader,
+  TubeGeometry,
   Vector3,
 } from "three";
 import type {
@@ -61,6 +63,12 @@ function smoothstep01(value: number): number {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function scenePresence(value: number, start: number, end: number, feather = 0.035): number {
+  const enter = smoothstep01((value - start) / feather);
+  const exit = 1 - smoothstep01((value - end) / feather);
+  return Math.min(enter, exit);
 }
 
 type ProbeNudge = {
@@ -92,6 +100,42 @@ const FLOWE_TASKS = [
   ["Submit quiz", "due 11:59 PM"],
 ] as const;
 
+type FloweFeaturePanel = {
+  readonly state: number;
+  readonly title: string;
+  readonly detail: string;
+  readonly x: number;
+  readonly y: number;
+  readonly scale?: number;
+};
+
+const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
+  { state: 1, title: "BRAIN DUMP", detail: "break the history project into steps", x: 0, y: -0.08, scale: 1.34 },
+  { state: 1, title: "VOICE READY", detail: "text or speech · private by default", x: 0, y: -0.3, scale: 0.88 },
+  { state: 2, title: "TASK", detail: "revise history introduction", x: -0.47, y: -0.14 },
+  { state: 2, title: "EVENT", detail: "Chem lab · 4:00 PM", x: 0, y: -0.14 },
+  { state: 2, title: "FOCUS", detail: "study block · 50 min", x: 0.47, y: -0.14 },
+  { state: 2, title: "REVIEW", detail: "confirm before saving", x: 0, y: -0.37, scale: 0.9 },
+  { state: 3, title: "CANVAS", detail: "REST / ICS · 2 assignments due", x: -0.28, y: -0.15, scale: 1.05 },
+  { state: 3, title: "COURSE MATCH", detail: "Chem 1B · due today", x: 0.28, y: -0.15, scale: 1.05 },
+  { state: 5, title: "FOCUS LIVE ACTIVITY", detail: "50:00 · one calm block", x: 0, y: -0.28, scale: 1.28 },
+  { state: 6, title: "OFFLINE QUEUE", detail: "3 changes retained on device", x: -0.28, y: -0.16, scale: 1.04 },
+  { state: 6, title: "CONVEX SYNC", detail: "user-scoped · retry safe", x: 0.28, y: -0.16, scale: 1.04 },
+  { state: 7, title: "MORNING BRIEF", detail: "4 priorities · 2 events", x: 0, y: -0.16, scale: 1.28 },
+  { state: 7, title: "READY", detail: "today has a shape", x: 0, y: -0.38, scale: 0.86 },
+] as const;
+
+const FLOWE_STATE_WINDOWS = [
+  [0, 0.19],
+  [0.15, 0.3],
+  [0.27, 0.42],
+  [0.39, 0.54],
+  [0.51, 0.66],
+  [0.63, 0.79],
+  [0.76, 0.91],
+  [0.88, 1.01],
+] as const;
+
 export function createFloweEncounter(): ProjectEncounter {
   const root = new Vector3();
   let stage: Group | null = null;
@@ -119,8 +163,14 @@ export function createFloweEncounter(): ProjectEncounter {
   let indexMaterial: MeshBasicMaterial | null = null;
   let flowIdentityPlate: Mesh | null = null;
   let flowIdentityMaterial: ShaderMaterial | null = null;
+  let flowLogoDrawGroup: Group | null = null;
+  const flowLogoStrokes: Mesh[] = [];
+  const flowLogoStrokeGeometries: TubeGeometry[] = [];
+  const flowLogoStrokeMaterials: MeshPhysicalMaterial[] = [];
   const taskLabels: Mesh[] = [];
   const taskLabelMaterials: MeshBasicMaterial[] = [];
+  const featurePanels: Mesh[] = [];
+  const featurePanelMaterials: MeshBasicMaterial[] = [];
   let lightingRig: Group | null = null;
   const nudges: ProbeNudge[] = [];
 
@@ -159,8 +209,8 @@ export function createFloweEncounter(): ProjectEncounter {
         const taskRow = Math.floor(index / 3);
         const overflowRank = index - 9;
         clusterTargets.push(new Vector3(
-          primaryTask ? center.x - 0.3 + taskColumn * 0.3 : center.x + 0.43,
-          primaryTask ? center.y - 0.24 - taskRow * 0.14 : center.y - 0.18 - (overflowRank % 8) * 0.065,
+          primaryTask ? center.x - 0.48 + taskColumn * 0.48 : center.x + 0.64,
+          primaryTask ? center.y - 0.12 - taskRow * 0.2 : center.y - 0.12 - (overflowRank % 8) * 0.08,
           primaryTask ? 0.16 : 0.1 + (cluster % 2) * 0.008,
         ));
         clusterAngles.push(0);
@@ -349,7 +399,52 @@ export function createFloweEncounter(): ProjectEncounter {
       flowIdentityPlate.renderOrder = 3;
       flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
-      const taskLabelGeometry = track(new PlaneGeometry(0.31, 0.097));
+      // Literal logo construction. Three independent tubes follow the outer
+      // brain, inner e, and descending tail. drawRange is tied to scroll, so
+      // the mark is built rather than uncovered by a rectangular wipe.
+      flowLogoDrawGroup = new Group();
+      flowLogoDrawGroup.name = "flowe-logo-draw-system";
+      const logoPaths = [
+        [
+          [-0.42, 0.08], [-0.39, 0.3], [-0.2, 0.48], [0.08, 0.52],
+          [0.34, 0.4], [0.45, 0.17], [0.39, -0.02], [0.23, -0.09],
+        ],
+        [
+          [-0.25, 0.06], [-0.17, 0.28], [0.03, 0.34], [0.18, 0.23],
+          [0.15, 0.06], [-0.04, -0.06], [-0.18, -0.18], [-0.08, -0.31],
+          [0.15, -0.28], [0.31, -0.16],
+        ],
+        [
+          [0.31, -0.16], [0.38, -0.28], [0.27, -0.38], [0.12, -0.36],
+          [0.2, -0.48], [0.25, -0.6],
+        ],
+      ] as const;
+      for (const [strokeIndex, points] of logoPaths.entries()) {
+        const curve = new CatmullRomCurve3(points.map(([x, y]) => new Vector3(x, y, 0)));
+        const geometry = track(new TubeGeometry(curve, strokeIndex === 1 ? 104 : 72, 0.037, 8, false));
+        geometry.setDrawRange(0, 0);
+        const material = track(new MeshPhysicalMaterial({
+          color: 0xf3fbff,
+          emissive: strokeIndex === 1 ? 0x72d8ea : 0x4aa8cc,
+          emissiveIntensity: strokeIndex === 1 ? 0.48 : 0.34,
+          roughness: 0.18,
+          metalness: 0.08,
+          clearcoat: 1,
+          clearcoatRoughness: 0.08,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        }));
+        const stroke = new Mesh(geometry, material);
+        stroke.renderOrder = 5;
+        flowLogoStrokes.push(stroke);
+        flowLogoStrokeGeometries.push(geometry);
+        flowLogoStrokeMaterials.push(material);
+        flowLogoDrawGroup.add(stroke);
+      }
+      flowLogoDrawGroup.position.set(center.x, center.y + 0.25, 0.09);
+
+      const taskLabelGeometry = track(new PlaneGeometry(0.43, 0.134));
       for (let task = 0; task < FLOWE_TASKS.length; task += 1) {
         const [title, detail] = FLOWE_TASKS[task];
         const label = createInstrumentLabel(title, detail, {
@@ -365,6 +460,22 @@ export function createFloweEncounter(): ProjectEncounter {
         mesh.renderOrder = 4;
         taskLabels.push(mesh);
         taskLabelMaterials.push(label.material);
+      }
+
+      for (const panel of FLOWE_FEATURE_PANELS) {
+        const label = createInstrumentLabel(panel.title, panel.detail, {
+          accent: "rgba(94, 214, 232, 0.98)",
+          background: "rgba(5, 20, 31, 0.9)",
+          foreground: "rgba(244, 252, 255, 1)",
+          muted: "rgba(172, 207, 219, 0.96)",
+        });
+        track(label.texture);
+        track(label.material);
+        const mesh = new Mesh(track(new PlaneGeometry(0.46, 0.143)), label.material);
+        mesh.name = `flowe-state-${panel.state}-${panel.title.toLowerCase().replaceAll(" ", "-")}`;
+        mesh.renderOrder = 6;
+        featurePanels.push(mesh);
+        featurePanelMaterials.push(label.material);
       }
 
       lightingRig = new Group();
@@ -391,7 +502,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
+      const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -408,22 +519,65 @@ export function createFloweEncounter(): ProjectEncounter {
       const groupT = smoothstep01((t - loop.groupStart) / (loop.groupFull - loop.groupStart));
       const focusT = smoothstep01((t - loop.focusStart) / (loop.focusFull - loop.focusStart));
       const contractT = smoothstep01((t - loop.contractStart) / (loop.contractFull - loop.contractStart));
-      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.04) / 0.38);
-      const identityReady = smoothstep01((logoDrawT - 0.5) / 0.5);
+      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.008) / 0.18);
+      const identityReady = smoothstep01((logoDrawT - 0.76) / 0.24);
       const organizedGroupT = groupT * identityReady;
       const taskAssemblyT = smoothstep01(identityReady * 0.7 + groupT * 0.4);
-      const visualScale = layoutMode === "mobile" ? 0.58 : 1;
+      const visualScale = layoutMode === "mobile" ? 0.68 : 1;
       // Organization: motes settle, the water calms as the plan forms.
       const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
+      const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end));
+      const logoPresence = Math.max(statePresence[0], statePresence[7] * 0.82);
+      const fragmentScenePresence = Math.max(
+        statePresence[1],
+        statePresence[2],
+        statePresence[3],
+        statePresence[4],
+        statePresence[5],
+        statePresence[6],
+      );
+
       if (flowIdentityPlate && flowIdentityMaterial) {
-        flowIdentityMaterial.uniforms.uOpacity.value = (0.96 - contractT * 0.24) * fade;
+        flowIdentityMaterial.uniforms.uOpacity.value = logoPresence * (0.08 + identityReady * 0.88) * fade;
         flowIdentityMaterial.uniforms.uReveal.value = logoDrawT;
-        flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : 1 - identityReady;
+        flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : (1 - identityReady) * statePresence[0];
         flowIdentityPlate.rotation.y = frame.reducedMotion ? -0.04 : -0.04 + Math.sin(frame.time * 0.24) * 0.018;
         flowIdentityPlate.rotation.x = -0.035;
-        flowIdentityPlate.scale.setScalar(visualScale);
+        flowIdentityPlate.scale.setScalar(visualScale * (1.08 + statePresence[0] * 0.28 + statePresence[7] * 0.12));
+        flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
+      }
+
+      if (flowLogoDrawGroup) {
+        flowLogoDrawGroup.position.set(center.x, center.y + 0.25, 0.09);
+        flowLogoDrawGroup.scale.setScalar(visualScale * (0.94 + statePresence[0] * 0.14));
+        flowLogoDrawGroup.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.22) * 0.012;
+        for (let strokeIndex = 0; strokeIndex < flowLogoStrokes.length; strokeIndex += 1) {
+          const strokeStart = strokeIndex * 0.18;
+          const strokeProgress = smoothstep01((logoDrawT - strokeStart) / Math.max(1 - strokeStart, 0.001));
+          const geometry = flowLogoStrokeGeometries[strokeIndex];
+          const indexCount = geometry.index?.count ?? 0;
+          geometry.setDrawRange(0, Math.floor(indexCount * strokeProgress / 3) * 3);
+          flowLogoStrokeMaterials[strokeIndex].opacity = logoPresence
+            * (0.62 + strokeProgress * 0.38)
+            * (1 - identityReady * 0.96)
+            * fade;
+          flowLogoStrokeMaterials[strokeIndex].emissiveIntensity = 0.28 + (1 - strokeProgress) * 1.1;
+        }
+      }
+
+      for (let panelIndex = 0; panelIndex < featurePanels.length; panelIndex += 1) {
+        const panel = FLOWE_FEATURE_PANELS[panelIndex];
+        const presence = statePresence[panel.state];
+        const reveal = smoothstep01(presence * 1.3);
+        const scale = (panel.scale ?? 1) * visualScale;
+        _pos.set(center.x + panel.x, center.y + panel.y + (1 - reveal) * 0.12, 0.2);
+        if (visualScale < 1) _pos.sub(center).multiplyScalar(visualScale).add(center);
+        featurePanels[panelIndex].position.copy(_pos);
+        featurePanels[panelIndex].rotation.z = (1 - reveal) * (panelIndex % 2 === 0 ? -0.035 : 0.035);
+        featurePanels[panelIndex].scale.setScalar(scale * (0.88 + reveal * 0.12));
+        featurePanelMaterials[panelIndex].opacity = presence * fade;
       }
 
       const focusTask = 2;
@@ -445,14 +599,14 @@ export function createFloweEncounter(): ProjectEncounter {
         const focusScale = task === focusTask ? 1 + focusT * 0.38 : 1 - focusT * 0.12;
         taskLabels[task].scale.setScalar((0.72 + reveal * 0.28) * focusScale * visualScale);
         const focusOpacity = task === focusTask ? 1 : 1 - focusT * 0.88;
-        taskLabelMaterials[task].opacity = reveal * focusOpacity * (1 - contractT) * fade;
+        taskLabelMaterials[task].opacity = reveal * focusOpacity * statePresence[4] * fade;
       }
 
       // Fragments: drift → cluster (structured plan) → stream (focus) → index.
       if (fragments && fragmentMaterial) {
-        fragmentMaterial.opacity = fade * (0.62 + organization * 0.34);
+        fragmentMaterial.opacity = fade * fragmentScenePresence * (0.62 + organization * 0.34);
         if (fragmentAccentMaterial) {
-          fragmentAccentMaterial.opacity = fade * (0.18 + organization * 0.68);
+          fragmentAccentMaterial.opacity = fade * fragmentScenePresence * (0.18 + organization * 0.68);
         }
         for (let index = 0; index < FLOWE_COUNTS.fragments; index += 1) {
           const phase = fragmentPhase[index];
@@ -512,21 +666,22 @@ export function createFloweEncounter(): ProjectEncounter {
       // Current lines breathe in as grouping begins.
       for (let line = 0; line < currentLines.length; line += 1) {
         const breathe = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.6 + line) * 0.02;
-        currentMaterials[line].opacity = (organizedGroupT * 0.075 - contractT * 0.06) * fade;
+        currentMaterials[line].opacity = Math.max(0, organizedGroupT * 0.1 - contractT * 0.06) * fragmentScenePresence * fade;
         currentLines[line].rotation.z = 0.3 + organizedGroupT * 0.5 + breathe;
         currentLines[line].scale.setScalar(1 + breathe * 2);
       }
 
       // Focus lens: appears as the plan narrows.
       if (focusLens && focusMaterial) {
-        focusMaterial.opacity = (focusT * 0.16 - contractT * 0.12) * fade;
-        focusLens.scale.setScalar(0.72 - focusT * 0.12);
+        focusMaterial.opacity = statePresence[5] * 0.42 * fade;
+        focusLens.position.set(center.x, center.y - 0.19, 0.11);
+        focusLens.scale.setScalar((0.82 + statePresence[5] * 0.18) * visualScale);
         focusLens.rotation.z = frame.reducedMotion ? 0 : frame.time * 0.15;
       }
 
       // Index field: points of the contracted local index.
       if (indexField && indexMaterial) {
-        indexMaterial.opacity = contractT * 0.7 * fade;
+        indexMaterial.opacity = statePresence[6] * 0.78 * fade;
         for (let point = 0; point < FLOWE_COUNTS.indexPoints; point += 1) {
           const anchor = indexTargets[point % indexTargets.length];
           const col = point % 4;
@@ -546,7 +701,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
       // Motes settle: sink slightly and dim as organization increases.
       if (moteMaterial) {
-        moteMaterial.opacity = fade * (0.34 - organization * 0.22);
+        moteMaterial.opacity = fade * (0.2 + logoPresence * 0.26 + statePresence[1] * 0.16 - organization * 0.08);
       }
 
     },
@@ -606,7 +761,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
+      const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -617,7 +772,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels];
+        const objects = [lightingRig, flowIdentityPlate, flowLogoDrawGroup, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskLabels, ...featurePanels];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -629,6 +784,11 @@ export function createFloweEncounter(): ProjectEncounter {
       currentMaterials.length = 0;
       taskLabels.length = 0;
       taskLabelMaterials.length = 0;
+      featurePanels.length = 0;
+      featurePanelMaterials.length = 0;
+      flowLogoStrokes.length = 0;
+      flowLogoStrokeGeometries.length = 0;
+      flowLogoStrokeMaterials.length = 0;
       driftAnchors.length = 0;
       clusterTargets.length = 0;
       clusterAngles.length = 0;

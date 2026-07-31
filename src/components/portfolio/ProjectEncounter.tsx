@@ -40,10 +40,14 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Dossier", shortLabel: "Proof", detail: "Markdown + JSON", start: 0.88, end: 1, accent: "#5caec3" },
   ],
   flowe: [
-    { label: "Capture", detail: "Canvas + tasks", start: 0, end: 0.28 },
-    { label: "Organize", detail: "daily plan", start: 0.24, end: 0.52 },
-    { label: "Focus", detail: "one calm block", start: 0.48, end: 0.78 },
-    { label: "Index", detail: "offline local state", start: 0.74, end: 1 },
+    { label: "Awaken", shortLabel: "Mark", detail: "identity drawn in light", start: 0, end: 0.19, accent: "#8ee8f4" },
+    { label: "Dump", shortLabel: "Dump", detail: "voice + free-form input", start: 0.15, end: 0.3, accent: "#44b8d0" },
+    { label: "Parse", shortLabel: "Parse", detail: "tasks · events · focus", start: 0.27, end: 0.42, accent: "#5ac5d4" },
+    { label: "Context", shortLabel: "Class", detail: "Canvas + course context", start: 0.39, end: 0.54, accent: "#73c8de" },
+    { label: "Plan", shortLabel: "Plan", detail: "conflict-aware day", start: 0.51, end: 0.66, accent: "#5ea8d6" },
+    { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.63, end: 0.79, accent: "#92e5ec" },
+    { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.76, end: 0.91, accent: "#689ce0" },
+    { label: "Brief", shortLabel: "Brief", detail: "morning priorities", start: 0.88, end: 1, accent: "#b0edf3" },
   ],
   argyph: [
     { label: "Scan", detail: "repository reef", start: 0, end: 0.28 },
@@ -86,6 +90,25 @@ const ETCH_ANNOTATIONS = [
   { beat: 7, slot: "left-top", label: "Proof dossier", detail: "Markdown + JSON · linked artifacts" },
 ] as const;
 
+const FLOWE_ANNOTATIONS = [
+  { beat: 0, slot: "left-top", label: "FlowE identity", detail: "three authored strokes" },
+  { beat: 0, slot: "right-mid", label: "Neural current", detail: "brand resolves from signal" },
+  { beat: 1, slot: "left-mid", label: "Brain Dump", detail: "text or voice capture" },
+  { beat: 1, slot: "right-top", label: "Private input", detail: "student-owned context" },
+  { beat: 2, slot: "left-top", label: "Semantic parse", detail: "task · event · study block" },
+  { beat: 2, slot: "right-bottom", label: "Review before save", detail: "human confirmation" },
+  { beat: 3, slot: "left-bottom", label: "Course context", detail: "Canvas REST / ICS" },
+  { beat: 3, slot: "right-top", label: "Due-date match", detail: "Chem lab · 4:00 PM" },
+  { beat: 4, slot: "left-top", label: "Daily plan", detail: "six tasks · two complete" },
+  { beat: 4, slot: "right-mid", label: "Conflict aware", detail: "calendar + workload" },
+  { beat: 5, slot: "left-mid", label: "Focus session", detail: "Live Activity · 50:00" },
+  { beat: 5, slot: "right-top", label: "One calm block", detail: "everything else recedes" },
+  { beat: 6, slot: "left-bottom", label: "Offline queue", detail: "three changes retained" },
+  { beat: 6, slot: "right-top", label: "Convex sync", detail: "user-scoped retry" },
+  { beat: 7, slot: "left-top", label: "Morning briefing", detail: "four priorities · two events" },
+  { beat: 7, slot: "right-mid", label: "Ready state", detail: "plan survives the handoff" },
+] as const;
+
 /**
  * Semantic story surface for a 3D project encounter (plan §10.1).
  * The DOM owns the title, value line, role/status, proof points, and the
@@ -115,9 +138,13 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
             <span>Live system model</span>
             <span>Scroll-linked / {String(beats.length).padStart(2, "0")} states</span>
           </div>
-          {project.slug === "monkeyclaw" || project.slug === "etch" ? (
+          {project.slug === "monkeyclaw" || project.slug === "etch" || project.slug === "flowe" ? (
             <div className={styles.sceneAnnotations} aria-hidden="true">
-              {(project.slug === "monkeyclaw" ? MONKEYCLAW_ANNOTATIONS : ETCH_ANNOTATIONS).map((annotation, index) => {
+              {(project.slug === "monkeyclaw"
+                ? MONKEYCLAW_ANNOTATIONS
+                : project.slug === "etch"
+                  ? ETCH_ANNOTATIONS
+                  : FLOWE_ANNOTATIONS).map((annotation, index) => {
                 const beat = beats[annotation.beat];
                 return (
                   <span

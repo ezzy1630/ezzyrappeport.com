@@ -29,6 +29,12 @@
   min-height: 520vh;
 }
 
+/* FlowE now carries a complete product journey: mark, capture, parse,
+   context, plan, focus, sync, and briefing. Each state gets a readable hold. */
+.encounter[data-encounter="flowe"] {
+  min-height: 520vh;
+}
+
 
 .stage {
   position: sticky;
@@ -66,6 +72,16 @@
       color-mix(in oklab, var(--encounter-accent) 9%, transparent) 0 1px,
       transparent 1px 5.5rem
     );
+  transition: opacity 260ms ease-out;
+}
+
+/* During the measured Etch → FlowE handoff both sticky boxes briefly share
+   the viewport. Once FlowE owns the chapter, retire the previous editorial
+   frame so its proof rail cannot sit above the new logo construction. */
+:global(.portfolio-root[data-experience-chapter="flowe"])
+  .encounter[data-encounter="etch"]
+  .sceneFrame {
+  opacity: 0;
 }
 
 .encounter[data-encounter="monkeyclaw"] .sceneFrame {
@@ -199,6 +215,22 @@
 .encounter[data-encounter="etch"] .sceneAnnotation small {
   color: rgb(220 239 244 / 90%);
   font-size: 0.64rem;
+}
+
+.encounter[data-encounter="flowe"] .sceneAnnotation {
+  background: color-mix(in oklab, #061b29 92%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 14%),
+    0 0.8rem 2.2rem rgb(4 38 61 / 16%);
+}
+
+.encounter[data-encounter="flowe"] .sceneAnnotation strong {
+  font-size: 0.68rem;
+}
+
+.encounter[data-encounter="flowe"] .sceneAnnotation small {
+  color: rgb(218 240 246 / 90%);
+  font-size: 0.62rem;
 }
 
 .sceneAnnotation[data-slot="left-top"] { left: 2%; top: 10%; }
@@ -375,6 +407,36 @@
   line-height: 1.3;
   opacity: calc(var(--beat-active) * 0.96);
   transition: opacity 160ms ease-out;
+}
+
+.encounter[data-encounter="flowe"] .beat {
+  grid-template-columns: 1fr;
+  gap: 0.1rem;
+  padding: 0.5rem 0.38rem 0;
+  opacity: calc(0.3 + var(--beat-entered) * 0.3 + var(--beat-active) * 0.4);
+}
+
+.encounter[data-encounter="flowe"] .beatRail {
+  padding: 0.38rem 0 0.55rem;
+  background: color-mix(in oklab, #e7f5f9 84%, transparent);
+  backdrop-filter: blur(14px) saturate(0.86);
+}
+
+.encounter[data-encounter="flowe"] .beatIndex {
+  grid-row: auto;
+}
+
+.encounter[data-encounter="flowe"] .beat strong {
+  overflow: visible;
+  font-size: 0.62rem;
+  letter-spacing: 0.045em;
+  white-space: normal;
+}
+
+.encounter[data-encounter="flowe"] .beat small {
+  color: rgb(16 55 75 / 90%);
+  font-size: 0.59rem;
+  opacity: calc(var(--beat-active) * 0.96);
 }
 
 .beat[data-state="pending"] strong::after {
@@ -639,6 +701,10 @@
     min-height: 360vh;
   }
 
+  .encounter[data-encounter="flowe"] {
+    min-height: 430vh;
+  }
+
   .stage {
     /* Center the copy column so nothing clips under the nav on short
        viewports; the 3D core owns the upper field behind the scrim. */
@@ -722,6 +788,24 @@
   }
 
   .encounter[data-encounter="etch"] .beatLabelShort {
+    display: inline;
+  }
+
+  .encounter[data-encounter="flowe"] .beat {
+    padding-inline: 0.1rem;
+  }
+
+  .encounter[data-encounter="flowe"] .beat strong {
+    font-size: 0.48rem;
+    letter-spacing: 0.005em;
+    line-height: 1;
+  }
+
+  .encounter[data-encounter="flowe"] .beatLabelLong {
+    display: none;
+  }
+
+  .encounter[data-encounter="flowe"] .beatLabelShort {
     display: inline;
   }
 
