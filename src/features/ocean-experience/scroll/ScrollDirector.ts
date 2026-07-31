@@ -173,13 +173,13 @@ const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
   surface: 0,
   descent: 0,
   monkeyclaw: 0,
-  // Etch opens on seven dense proof states. Start only once its own sticky
-  // stage reaches the viewport so requirement/spec frames never render under
-  // MonkeyClaw's releasing frame.
-  etch: 0,
-  flowe: -0.5,
-  argyph: -0.5,
-  "charted-work": -0.35,
+  // A sticky article starts releasing one viewport before the next article's
+  // top. Flip the chapter on that same boundary so the outgoing scene cannot
+  // remain active while its semantic frame is already sliding offscreen.
+  etch: -1,
+  flowe: -1,
+  argyph: -1,
+  "charted-work": -1,
   about: -0.5,
   contact: -1,
 };

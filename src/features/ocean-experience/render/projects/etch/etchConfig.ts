@@ -19,10 +19,10 @@ export const ETCH_LOOP = {
   formalStart: 0.48,
   rankingStart: 0.61,
   physicalStart: 0.72,
-  dossierStart: 0.76,
+  dossierStart: 0.84,
   gatesStart: 0.35,
   gatesFull: 0.8,
-  relaxStart: 0.9,
+  relaxStart: 0.94,
   relaxFull: 0.99,
 } as const;
 
