@@ -108,6 +108,8 @@ export class EncounterHost {
     if (!state) {
       const stage = new Group();
       stage.name = `encounter-stage-${id}`;
+      const staleStage = this.scene.getObjectByName(stage.name);
+      if (staleStage) this.scene.remove(staleStage);
       stage.visible = false;
       stage.traverse((object) => object.layers.set(ENCOUNTER_LAYER));
       stage.layers.set(ENCOUNTER_LAYER);
@@ -178,6 +180,7 @@ export class EncounterHost {
       state.module.dispose();
       state.module = null;
     }
+    state.stage.clear();
     state.attached = false;
     state.stage.visible = false;
     state.fade = 0;
@@ -227,6 +230,9 @@ export class EncounterHost {
       }
 
       if (!state.attached) {
+        // A stage owns one module root. Clear any orphan left by an aborted
+        // load or hot replacement before the new module takes ownership.
+        state.stage.clear();
         state.module.attach(state.stage);
         state.stage.traverse((object) => object.layers.set(ENCOUNTER_LAYER));
         state.attached = true;

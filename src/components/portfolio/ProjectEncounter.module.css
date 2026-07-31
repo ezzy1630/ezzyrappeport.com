@@ -338,15 +338,22 @@
 .encounter[data-encounter="etch"] .beat {
   grid-template-columns: 1fr;
   gap: 0.12rem;
-  padding: 0.58rem 0.42rem 0;
+  padding: 0.48rem 0.42rem 0;
   color: #123d4a;
-  opacity: calc(0.66 + var(--beat-active) * 0.34);
+  opacity: calc(
+    0.28
+    + var(--beat-entered) * 0.32
+    + var(--beat-active) * 0.4
+  );
 }
 
 .encounter[data-encounter="etch"] .beatRail {
-  padding: 0.42rem 0 0.58rem;
-  background: color-mix(in oklab, #e6f4f7 88%, transparent);
-  box-shadow: 0 -0.65rem 1.8rem rgb(213 235 241 / 36%);
+  padding: 0.34rem 0 0.48rem;
+  background: color-mix(in oklab, #e6f4f7 82%, transparent);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 42%),
+    0 -0.55rem 1.6rem rgb(40 104 124 / 12%);
+  backdrop-filter: blur(14px) saturate(0.82);
 }
 
 .encounter[data-encounter="etch"] .beatIndex {
@@ -355,7 +362,7 @@
 
 .encounter[data-encounter="etch"] .beat strong {
   overflow: visible;
-  font-size: 0.66rem;
+  font-size: 0.64rem;
   letter-spacing: 0.055em;
   line-height: 1.15;
   text-overflow: clip;
@@ -364,7 +371,7 @@
 
 .encounter[data-encounter="etch"] .beat small {
   color: rgb(17 57 69 / 92%);
-  font-size: 0.64rem;
+  font-size: 0.61rem;
   line-height: 1.3;
   opacity: calc(var(--beat-active) * 0.96);
   transition: opacity 160ms ease-out;

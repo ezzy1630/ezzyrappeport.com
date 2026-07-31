@@ -1912,6 +1912,8 @@ const tests = [
     assert.match(hostSource, /shouldPreload/);
     assert.match(hostSource, /shouldEvict/);
     assert.match(hostSource, /visibilityTable/);
+    assert.match(hostSource, /state\.stage\.clear\(\)/);
+    assert.match(hostSource, /getObjectByName\(stage\.name\)/);
     // No competing scroll owner: the host only reads the director snapshot.
     assert.doesNotMatch(hostSource, /addEventListener\("scroll"/);
 

@@ -173,11 +173,10 @@ const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
   surface: 0,
   descent: 0,
   monkeyclaw: 0,
-  // Etch owns its incoming viewport as an Intent pre-roll. Its first state
-  // assembles while the sticky stage enters, then the remaining proof states
-  // begin once the stage is fully pinned. FlowE still takes ownership before
-  // Etch starts releasing, so neither seam can mismatch DOM and renderer.
-  etch: -1,
+  // Etch begins during the last third of the incoming handoff. Intent can
+  // assemble before the pin, then hold on a complete frame long enough to be
+  // read; starting a full viewport early made its only Intent frame cropped.
+  etch: -0.35,
   flowe: -1,
   argyph: -1,
   "charted-work": -1,
