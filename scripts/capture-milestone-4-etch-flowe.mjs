@@ -156,7 +156,7 @@ async function captureFrameTrace(page, seconds = 2) {
   }, seconds);
 }
 
-const browser = await launchChrome({ defaultViewport: null });
+const browser = await launchChrome({ defaultViewport: null, protocolTimeout: 120000 });
 const etchDir = join(outRoot, "etch");
 const floweDir = join(outRoot, "flowe");
 const seamsDir = join(outRoot, "seams");
@@ -197,13 +197,22 @@ const FLOWE_BEATS = [
   { name: "00a-logo-first-light", progress: 0.125 },
   { name: "00b-logo-draw", progress: 0.155 },
   { name: "00c-logo-formed", progress: 0.185 },
-  { name: "01-brain-dump", progress: 0.245 },
-  { name: "02-semantic-parse", progress: 0.355 },
-  { name: "03-course-context", progress: 0.475 },
-  { name: "04-daily-plan", progress: 0.595 },
-  { name: "05-focus-live-activity", progress: 0.72 },
-  { name: "06-offline-sync", progress: 0.85 },
-  { name: "07-morning-brief", progress: 0.96 },
+  { name: "01a-brain-dump-arrives", progress: 0.218 },
+  { name: "01b-calendar-check", progress: 0.272 },
+  { name: "02a-drafts-split", progress: 0.326 },
+  { name: "02b-review-ready", progress: 0.392 },
+  { name: "03a-context-links", progress: 0.438 },
+  { name: "03b-course-context", progress: 0.515 },
+  { name: "04a-plan-guides", progress: 0.548 },
+  { name: "04b-plan-populates", progress: 0.602 },
+  { name: "04c-plan-ready", progress: 0.648 },
+  { name: "05a-focus-handoff", progress: 0.71 },
+  { name: "05b-focus-live-activity", progress: 0.735 },
+  { name: "05c-focus-hold", progress: 0.775 },
+  { name: "06a-sync-contract", progress: 0.792 },
+  { name: "06b-offline-retry", progress: 0.858 },
+  { name: "07a-briefing-rises", progress: 0.908 },
+  { name: "07b-morning-brief", progress: 0.965 },
 ];
 
 try {

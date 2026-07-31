@@ -52,7 +52,7 @@ import {
   moteSeed,
 } from "./floweConfig.ts";
 import { createRoundedPanelGeometry } from "../shared/productGeometry.ts";
-import { createInstrumentLabel } from "../shared/instrumentLabel.ts";
+import { createFloweAppCard, type FloweCardKind } from "./floweAppCard.ts";
 
 function smoothstep01(value: number): number {
   const t = Math.max(0, Math.min(1, value));
@@ -67,6 +67,15 @@ function scenePresence(value: number, start: number, end: number, feather = 0.03
   const enter = smoothstep01((value - start) / feather);
   const exit = 1 - smoothstep01((value - end) / feather);
   return Math.min(enter, exit);
+}
+
+function stateProgress(value: number, start: number, end: number): number {
+  return smoothstep01((value - start) / Math.max(end - start, 0.001));
+}
+
+function staggeredReveal(progress: number, index: number, count: number): number {
+  const delay = count <= 1 ? 0 : index / count * 0.38;
+  return smoothstep01((progress - delay) / 0.48);
 }
 
 type ProbeNudge = {
@@ -85,17 +94,14 @@ const _cardAxis = new Vector3(0, 0, 1);
 const _focusTarget = new Vector3();
 const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
-const FLOWE_TASK_WIDTHS = [1.28, 0.94, 1.16, 1.02, 1.34, 0.88, 1.18, 0.9, 1.26] as const;
+const FLOWE_TASK_WIDTHS = [1.28, 1.04, 1.18, 0.94, 1.22, 1.06, 1.18, 0.9, 1.26] as const;
 const FLOWE_TASKS = [
-  ["Canvas", "2 assignments due"],
-  ["Chem lab", "today · 4:00 PM"],
-  ["Focus block", "50 minutes"],
-  ["Essay draft", "revise introduction"],
-  ["Daily plan", "6 tasks · 2 complete"],
-  ["Review cards", "18 remaining"],
-  ["Office hours", "tomorrow · 2:30"],
-  ["Study group", "library · 6:00"],
-  ["Submit quiz", "due 11:59 PM"],
+  { title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", kind: "study", badge: "STUDY PLAN", tone: "gold" },
+  { title: "Email Prof. Carter", detail: "Extension request", kind: "task", badge: "TASK" },
+  { title: "History focus hour", detail: "Find a free hour next week", kind: "calendar", badge: "TASK" },
+  { title: "Homework 3", detail: "12:00 PM · 10 pts", kind: "task", badge: "CANVAS" },
+  { title: "Intro Psych", detail: "8:00–9:35 AM", kind: "course", badge: "PSYC-2" },
+  { title: "Review drafts", detail: "Ready before saving", kind: "review", badge: "3 ITEMS" },
 ] as const;
 
 type FloweFeaturePanel = {
@@ -105,22 +111,25 @@ type FloweFeaturePanel = {
   readonly x: number;
   readonly y: number;
   readonly scale?: number;
+  readonly kind: FloweCardKind;
+  readonly badge?: string;
+  readonly tone?: "gold" | "teal";
 };
 
 const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
-  { state: 1, title: "BRAIN DUMP", detail: "break the history project into steps", x: 0, y: -0.08, scale: 1.34 },
-  { state: 1, title: "VOICE READY", detail: "text or speech · private by default", x: 0, y: -0.3, scale: 0.88 },
-  { state: 2, title: "TASK", detail: "revise history introduction", x: -0.47, y: -0.14 },
-  { state: 2, title: "EVENT", detail: "Chem lab · 4:00 PM", x: 0, y: -0.14 },
-  { state: 2, title: "FOCUS", detail: "study block · 50 min", x: 0.47, y: -0.14 },
-  { state: 2, title: "REVIEW", detail: "confirm before saving", x: 0, y: -0.37, scale: 0.9 },
-  { state: 3, title: "CANVAS", detail: "REST / ICS · 2 assignments due", x: -0.28, y: -0.15, scale: 1.05 },
-  { state: 3, title: "COURSE MATCH", detail: "Chem 1B · due today", x: 0.28, y: -0.15, scale: 1.05 },
-  { state: 5, title: "FOCUS LIVE ACTIVITY", detail: "50:00 · one calm block", x: 0, y: -0.28, scale: 1.28 },
-  { state: 6, title: "OFFLINE QUEUE", detail: "3 changes retained on device", x: -0.28, y: -0.16, scale: 1.04 },
-  { state: 6, title: "CONVEX SYNC", detail: "user-scoped · retry safe", x: 0.28, y: -0.16, scale: 1.04 },
-  { state: 7, title: "MORNING BRIEF", detail: "4 priorities · 2 events", x: 0, y: -0.16, scale: 1.28 },
-  { state: 7, title: "READY", detail: "today has a shape", x: 0, y: -0.38, scale: 0.86 },
+  { state: 1, title: "Brain Dump", detail: "Break the history project into steps", x: 0, y: -0.08, scale: 1.34, kind: "brain", badge: "INPUT" },
+  { state: 1, title: "Checking calendar", detail: "School context stays attached", x: 0, y: -0.31, scale: 0.9, kind: "calendar", badge: "WORKING" },
+  { state: 2, title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", x: -0.48, y: -0.14, kind: "study", badge: "STUDY PLAN", tone: "gold" },
+  { state: 2, title: "Email Prof. Carter", detail: "Extension request", x: 0, y: -0.14, kind: "task", badge: "TASK" },
+  { state: 2, title: "History focus hour", detail: "Find a free hour next week", x: 0.48, y: -0.14, kind: "calendar", badge: "TASK" },
+  { state: 2, title: "3 items drafted", detail: "Review before saving", x: 0, y: -0.38, scale: 0.94, kind: "review", badge: "CONFIRM" },
+  { state: 3, title: "Canvas deadlines", detail: "Homework 3 · 12:00 PM", x: -0.29, y: -0.16, scale: 1.06, kind: "task", badge: "CANVAS" },
+  { state: 3, title: "Intro Psych", detail: "PSYC-2 · 8:00–9:35 AM", x: 0.29, y: -0.16, scale: 1.06, kind: "course", badge: "COURSE" },
+  { state: 5, title: "Study for psych quiz", detail: "50:00 · Focus Live Activity", x: 0, y: -0.28, scale: 1.3, kind: "focus", badge: "FOCUS" },
+  { state: 6, title: "Offline queue", detail: "3 changes retained on device", x: -0.29, y: -0.17, scale: 1.05, kind: "sync", badge: "LOCAL" },
+  { state: 6, title: "Convex sync", detail: "User-scoped · retry safe", x: 0.29, y: -0.17, scale: 1.05, kind: "sync", badge: "SYNCED" },
+  { state: 7, title: "Good morning, Student!", detail: "Friday, 5 June · 0 tasks · 1 event", x: 0, y: -0.16, scale: 1.3, kind: "brain", badge: "BRIEFING" },
+  { state: 7, title: "Today", detail: "PSYC-2 · 8:00–9:35 AM", x: 0, y: -0.4, scale: 0.92, kind: "course", badge: "1 EVENT" },
 ] as const;
 
 const FLOWE_STATE_WINDOWS = [
@@ -557,8 +566,8 @@ export function createFloweEncounter(): ProjectEncounter {
       flowIdentityPlate.renderOrder = 3;
       flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
-      const taskLabelGeometry = track(new PlaneGeometry(0.47, 0.146));
-      const taskShellGeometry = track(createRoundedPanelGeometry(0.5, 0.161, 0.023, 0.026, 0.003));
+      const taskLabelGeometry = track(new PlaneGeometry(0.58, 0.181));
+      const taskShellGeometry = track(createRoundedPanelGeometry(0.612, 0.198, 0.027, 0.03, 0.003));
       taskShellMaterial = track(new MeshPhysicalMaterial({
         color: 0x17323e,
         emissive: 0x0e4655,
@@ -572,12 +581,11 @@ export function createFloweEncounter(): ProjectEncounter {
         depthWrite: false,
       }));
       for (let task = 0; task < FLOWE_TASKS.length; task += 1) {
-        const [title, detail] = FLOWE_TASKS[task];
-        const label = createInstrumentLabel(title, detail, {
-          accent: "rgba(117, 219, 232, 0.96)",
-          background: "rgba(8, 25, 32, 0.82)",
-          foreground: "rgba(241, 251, 252, 0.98)",
-          muted: "rgba(164, 198, 204, 0.94)",
+        const taskCard = FLOWE_TASKS[task];
+        const label = createFloweAppCard(taskCard.title, taskCard.detail, {
+          badge: taskCard.badge,
+          kind: taskCard.kind,
+          tone: "tone" in taskCard ? taskCard.tone : undefined,
         });
         track(label.texture);
         track(label.material);
@@ -593,11 +601,10 @@ export function createFloweEncounter(): ProjectEncounter {
       }
 
       for (const panel of FLOWE_FEATURE_PANELS) {
-        const label = createInstrumentLabel(panel.title, panel.detail, {
-          accent: "rgba(94, 214, 232, 0.98)",
-          background: "rgba(5, 20, 31, 0.9)",
-          foreground: "rgba(244, 252, 255, 1)",
-          muted: "rgba(172, 207, 219, 0.96)",
+        const label = createFloweAppCard(panel.title, panel.detail, {
+          badge: panel.badge,
+          kind: panel.kind,
+          tone: panel.tone,
         });
         track(label.texture);
         track(label.material);
@@ -607,10 +614,10 @@ export function createFloweEncounter(): ProjectEncounter {
         featurePanels.push(mesh);
         featurePanelMaterials.push(label.material);
         const shellMaterial = track(new MeshPhysicalMaterial({
-          color: panel.state === 5 ? 0x1b5362 : 0x122f40,
-          emissive: panel.state === 5 ? 0x187187 : 0x0c4659,
-          emissiveIntensity: panel.state === 5 ? 0.42 : 0.25,
-          roughness: 0.16,
+          color: panel.tone === "gold" ? 0x5c4221 : panel.state === 5 ? 0x18495a : 0x0c2440,
+          emissive: panel.tone === "gold" ? 0x6b481a : panel.state === 5 ? 0x145c6a : 0x082f42,
+          emissiveIntensity: panel.state === 5 ? 0.34 : 0.2,
+          roughness: 0.2,
           metalness: 0.06,
           clearcoat: 1,
           clearcoatRoughness: 0.08,
@@ -681,6 +688,10 @@ export function createFloweEncounter(): ProjectEncounter {
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
       const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end, 0.02));
+      const stateProgresses = FLOWE_STATE_WINDOWS.map(([start, end]) => {
+        const entranceEnd = start + (end - start) * 0.56;
+        return frame.reducedMotion ? 1 : stateProgress(t, start, entranceEnd);
+      });
       const logoPresence = Math.max(statePresence[0], statePresence[7] * 0.82);
       const fragmentScenePresence = Math.max(
         statePresence[1],
@@ -704,9 +715,27 @@ export function createFloweEncounter(): ProjectEncounter {
       for (let panelIndex = 0; panelIndex < featurePanels.length; panelIndex += 1) {
         const panel = FLOWE_FEATURE_PANELS[panelIndex];
         const presence = statePresence[panel.state];
-        const reveal = smoothstep01(presence * 1.3);
+        const statePanels = FLOWE_FEATURE_PANELS.filter((candidate) => candidate.state === panel.state);
+        const panelRank = FLOWE_FEATURE_PANELS.slice(0, panelIndex)
+          .filter((candidate) => candidate.state === panel.state).length;
+        const baseReveal = frame.reducedMotion
+          ? 1
+          : staggeredReveal(stateProgresses[panel.state], panelRank, statePanels.length);
+        const reveal = panel.state === 5 && !frame.reducedMotion
+          ? smoothstep01((stateProgresses[5] - 0.82) / 0.18)
+          : baseReveal;
         const scale = (panel.scale ?? 1) * visualScale;
-        _pos.set(center.x + panel.x, center.y + panel.y + (1 - reveal) * 0.12, 0.2);
+        const originX = panel.state === 2
+          ? 0
+          : panel.state === 3
+            ? (panelRank === 0 ? -0.08 : 0.08)
+            : 0;
+        const originY = panel.state === 7 ? -0.2 : panel.state >= 5 ? -0.24 : -0.1;
+        _pos.set(
+          center.x + originX + (panel.x - originX) * reveal,
+          center.y + originY + (panel.y - originY) * reveal,
+          0.13 + reveal * 0.07,
+        );
         if (visualScale < 1) _pos.sub(center).multiplyScalar(visualScale).add(center);
         featurePanels[panelIndex].position.copy(_pos);
         featurePanelShells[panelIndex].position.copy(_pos).addScaledVector(_cardAxis, -0.018);
@@ -714,15 +743,15 @@ export function createFloweEncounter(): ProjectEncounter {
         featurePanelShells[panelIndex].rotation.z = featurePanels[panelIndex].rotation.z;
         featurePanels[panelIndex].scale.setScalar(scale * (0.88 + reveal * 0.12));
         featurePanelShells[panelIndex].scale.copy(featurePanels[panelIndex].scale);
-        featurePanelMaterials[panelIndex].opacity = presence * fade;
-        featurePanelShellMaterials[panelIndex].opacity = presence * 0.78 * fade;
-        featurePanels[panelIndex].visible = presence > 0.001;
-        featurePanelShells[panelIndex].visible = presence > 0.001;
+        featurePanelMaterials[panelIndex].opacity = presence * reveal * fade;
+        featurePanelShellMaterials[panelIndex].opacity = presence * reveal * 0.68 * fade;
+        featurePanels[panelIndex].visible = presence * reveal > 0.001;
+        featurePanelShells[panelIndex].visible = presence * reveal > 0.001;
       }
 
       if (semanticLinks && semanticLinkMaterial) {
-        const parseReveal = smoothstep01(statePresence[2] * 1.25);
-        const contextReveal = smoothstep01(statePresence[3] * 1.25);
+        const parseReveal = frame.reducedMotion ? 1 : staggeredReveal(stateProgresses[2], 2, 4);
+        const contextReveal = frame.reducedMotion ? 1 : staggeredReveal(stateProgresses[3], 1, 2);
         const semanticPresence = Math.max(statePresence[2], statePresence[3]);
         for (let link = 0; link < 5; link += 1) {
           const isContextBridge = link === 4;
@@ -748,16 +777,16 @@ export function createFloweEncounter(): ProjectEncounter {
       }
 
       if (planGuides && planGuideMaterial) {
-        const planReveal = smoothstep01(statePresence[4] * 1.2);
+        const planReveal = stateProgresses[4];
         for (let guide = 0; guide < 4; guide += 1) {
           const vertical = guide === 3;
           _pos.set(
-            center.x + (vertical ? -0.72 : 0) * visualScale,
-            center.y + (vertical ? -0.32 : -0.12 - guide * 0.2) * visualScale,
+            center.x,
+            center.y + (vertical ? -0.305 : -0.19 - guide * 0.225) * visualScale,
             0.11,
           );
           _quat.setFromAxisAngle(_cardAxis, vertical ? Math.PI * 0.5 : 0);
-          _scale.set((vertical ? 0.53 : 1.28) * visualScale * planReveal, visualScale, 1);
+          _scale.set((vertical ? 0.57 : 1.32) * visualScale * planReveal, visualScale, 1);
           _matrix.compose(_pos, _quat, _scale);
           planGuides.setMatrixAt(guide, _matrix);
         }
@@ -780,7 +809,7 @@ export function createFloweEncounter(): ProjectEncounter {
           _quat.setFromAxisAngle(_cardAxis, angle);
           const activeSweep = frame.reducedMotion
             ? 1
-            : smoothstep01((focusT - tick / 16 * 0.34) / 0.66);
+            : smoothstep01((stateProgresses[5] - tick / 16 * 0.38) / 0.62);
           _scale.set((0.7 + activeSweep * 0.55) * visualScale, visualScale, 1);
           _matrix.compose(_pos, _quat, _scale);
           focusTicks.setMatrixAt(tick, _matrix);
@@ -793,7 +822,8 @@ export function createFloweEncounter(): ProjectEncounter {
       for (let orbit = 0; orbit < syncOrbits.length; orbit += 1) {
         const syncPresence = statePresence[6];
         syncOrbits[orbit].position.set(center.x, center.y - 0.2 * visualScale, 0.1);
-        syncOrbits[orbit].scale.setScalar(visualScale * (0.92 + syncPresence * 0.08));
+        const syncReveal = stateProgresses[6];
+        syncOrbits[orbit].scale.setScalar(visualScale * (0.72 + syncReveal * 0.28));
         syncOrbits[orbit].rotation.z = frame.reducedMotion
           ? orbit * 0.7
           : frame.time * (orbit === 0 ? 0.14 : -0.09) + orbit * 0.7;
@@ -803,22 +833,33 @@ export function createFloweEncounter(): ProjectEncounter {
 
       if (briefHalo && briefHaloMaterial) {
         const briefPresence = statePresence[7];
-        briefHalo.position.set(center.x, center.y + 0.24 * visualScale, 0.04);
-        briefHalo.scale.setScalar(visualScale * (0.9 + briefPresence * 0.1));
+        const briefReveal = stateProgresses[7];
+        briefHalo.position.set(center.x, center.y + (-0.18 + briefReveal * 0.42) * visualScale, 0.04);
+        briefHalo.scale.setScalar(visualScale * (0.72 + briefReveal * 0.28));
         briefHalo.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.22) * 0.035;
         briefHaloMaterial.opacity = briefPresence * 0.28 * fade;
         briefHalo.visible = briefPresence > 0.001;
       }
 
-      const focusTask = 2;
+      const focusTask = 0;
+      const focusHandoff = frame.reducedMotion
+        ? 1
+        : smoothstep01((stateProgresses[5] - 0.82) / 0.18);
       for (let task = 0; task < taskLabels.length; task += 1) {
-        const stagger = task * 0.035;
-        const reveal = smoothstep01((taskAssemblyT - stagger) / Math.max(0.72 - stagger, 0.001));
-        _pos.copy(clusterTargets[task]);
+        const reveal = frame.reducedMotion
+          ? 1
+          : staggeredReveal(stateProgresses[4], task, taskLabels.length);
+        const planColumn = task % 2;
+        const planRow = Math.floor(task / 2);
+        _pos.set(
+          center.x - 0.32 + planColumn * 0.64,
+          center.y - 0.08 - planRow * 0.225,
+          0.16,
+        );
         _pos.y += (1 - reveal) * 0.18;
         if (task === focusTask) {
           _focusTarget.set(center.x, center.y - 0.06, 0.24);
-          _pos.lerp(_focusTarget, focusT);
+          _pos.lerp(_focusTarget, stateProgresses[5]);
         } else {
           _pos.x += (task % 3 - 1) * focusT * 0.08;
           _pos.y -= focusT * 0.05;
@@ -832,11 +873,19 @@ export function createFloweEncounter(): ProjectEncounter {
         taskLabels[task].scale.setScalar((0.72 + reveal * 0.28) * focusScale * visualScale);
         taskShells[task].scale.copy(taskLabels[task].scale);
         const focusOpacity = task === focusTask ? 1 : 1 - focusT * 0.88;
-        taskLabelMaterials[task].opacity = reveal * focusOpacity * statePresence[4] * fade;
+        const taskScenePresence = task === focusTask
+          ? Math.max(statePresence[4], statePresence[5] * (1 - focusHandoff))
+          : statePresence[4];
+        taskLabelMaterials[task].opacity = reveal * focusOpacity * taskScenePresence * fade;
         taskLabels[task].visible = taskLabelMaterials[task].opacity > 0.001;
         taskShells[task].visible = taskLabelMaterials[task].opacity > 0.001;
       }
-      if (taskShellMaterial) taskShellMaterial.opacity = statePresence[4] * 0.74 * fade;
+      if (taskShellMaterial) {
+        taskShellMaterial.opacity = Math.max(
+          statePresence[4],
+          statePresence[5] * (1 - focusHandoff),
+        ) * 0.64 * fade;
+      }
 
       if (flowKeyLight && flowRimLight) {
         const focusLight = statePresence[5];

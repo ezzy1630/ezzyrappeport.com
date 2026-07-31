@@ -2114,6 +2114,10 @@ const tests = [
       new URL("../src/features/ocean-experience/render/projects/shared/instrumentLabel.ts", import.meta.url),
       "utf8",
     );
+    const floweAppCardSource = readFileSync(
+      new URL("../src/features/ocean-experience/render/projects/flowe/floweAppCard.ts", import.meta.url),
+      "utf8",
+    );
     assert.match(etchSceneSource, /etch-verified-fifo-die/);
     assert.match(etchSceneSource, /dieDetails/);
     assert.match(etchSceneSource, /diePins/);
@@ -2137,15 +2141,21 @@ const tests = [
     assert.match(floweSceneSource, /flowe-focus-tick-system/);
     assert.match(floweSceneSource, /flowe-sync-orbit-/);
     assert.match(floweSceneSource, /flowe-brief-halo/);
-    assert.match(floweSceneSource, /BRAIN DUMP/);
-    assert.match(floweSceneSource, /OFFLINE QUEUE/);
-    assert.match(floweSceneSource, /MORNING BRIEF/);
+    assert.match(floweSceneSource, /Brain Dump/);
+    assert.match(floweSceneSource, /Offline queue/);
+    assert.match(floweSceneSource, /Good morning, Student!/);
     assert.match(floweSceneSource, /flowe-brand-mark-plane/);
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
     assert.match(floweSceneSource, /uniform sampler2D uIdentity/);
     assert.match(floweSceneSource, /uReveal/);
-    assert.match(floweSceneSource, /Focus block/);
+    assert.match(floweSceneSource, /Study for psych quiz/);
     assert.match(floweSceneSource, /flowe-task-/);
+    assert.match(floweSceneSource, /staggeredReveal/);
+    assert.match(floweSceneSource, /focusHandoff/);
+    assert.match(floweAppCardSource, /rgba\(12, 36, 64/);
+    assert.match(floweAppCardSource, /#258392/);
+    assert.match(floweAppCardSource, /#CE9639/);
+    assert.match(floweAppCardSource, /drawIcon/);
     assert.doesNotMatch(floweSceneSource, /plannerInset/);
     assert.match(floweSceneSource, /const primaryTask = index < 9/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);
