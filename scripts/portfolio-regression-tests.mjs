@@ -2121,7 +2121,8 @@ const tests = [
     assert.match(etchSceneSource, /projects\/etch\/logo\.svg/);
     assert.match(etchSceneSource, /etch-gate-/);
     assert.match(etchSceneSource, /physical-signoff/);
-    assert.match(etchSceneSource, /const assemblyRetireAt = layoutMode === "mobile" \? 0\.35 : 0\.94/);
+    assert.match(etchSceneSource, /const dossierScene = scenePresence\(t, 0\.88, 1, stateFeather\)/);
+    assert.match(etchSceneSource, /dossierAssembly\.visible = dossierScene > 0\.001/);
     assert.match(etchSceneSource, /MeshPhysicalMaterial/);
     assert.doesNotMatch(floweSceneSource, /plannerBody/);
     assert.doesNotMatch(floweSceneSource, /TubeGeometry/);

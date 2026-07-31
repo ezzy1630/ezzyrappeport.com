@@ -124,8 +124,7 @@
   display: grid;
   min-width: 7.8rem;
   gap: 0.12rem;
-  padding: 0.52rem 0.62rem 0.48rem 0.76rem;
-  border-left: 2px solid var(--annotation-accent, var(--encounter-accent));
+  padding: 0.52rem 0.68rem 0.48rem 0.82rem;
   border-radius: 0.2rem;
   color: #effbff;
   background: color-mix(in oklab, #061a22 90%, transparent);
@@ -136,6 +135,22 @@
   scale: calc(0.96 + var(--annotation-active) * 0.04);
   translate: 0 calc((1 - var(--annotation-active)) * 0.3rem);
   transform-origin: left center;
+}
+
+.sceneAnnotation::before {
+  content: "";
+  position: absolute;
+  top: 0.64rem;
+  left: 0.38rem;
+  width: 0.22rem;
+  height: 0.22rem;
+  border-radius: 50%;
+  background: var(--annotation-accent, var(--encounter-accent));
+  box-shadow: 0 0 0.5rem color-mix(
+    in oklab,
+    var(--annotation-accent, var(--encounter-accent)) 70%,
+    transparent
+  );
 }
 
 .sceneAnnotation::after {
@@ -174,12 +189,12 @@
 }
 
 .encounter[data-encounter="etch"] .sceneAnnotation strong {
-  font-size: 0.68rem;
+  font-size: 0.7rem;
 }
 
 .encounter[data-encounter="etch"] .sceneAnnotation small {
   color: rgb(220 239 244 / 90%);
-  font-size: 0.61rem;
+  font-size: 0.64rem;
 }
 
 .sceneAnnotation[data-slot="left-top"] { left: 2%; top: 10%; }
@@ -345,7 +360,7 @@
 
 .encounter[data-encounter="etch"] .beat small {
   color: rgb(17 57 69 / 92%);
-  font-size: 0.61rem;
+  font-size: 0.64rem;
   line-height: 1.3;
   opacity: calc(var(--beat-active) * 0.96);
   transition: opacity 160ms ease-out;
@@ -642,7 +657,7 @@
   }
 
   .frameHeader {
-    font-size: 0.5rem;
+    font-size: 0.6rem;
     padding-inline: 0.45rem;
   }
 
@@ -678,7 +693,7 @@
   }
 
   .encounter[data-encounter="etch"] .beat strong {
-    font-size: 0.43rem;
+    font-size: 0.5rem;
     letter-spacing: 0.01em;
     line-height: 1;
   }

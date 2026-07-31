@@ -173,9 +173,10 @@ const ENCOUNTER_KNOT_OFFSET_VIEWPORTS: Readonly<Record<string, number>> = {
   surface: 0,
   descent: 0,
   monkeyclaw: 0,
-  // A sticky article starts releasing one viewport before the next article's
-  // top. Flip the chapter on that same boundary so the outgoing scene cannot
-  // remain active while its semantic frame is already sliding offscreen.
+  // Etch owns its incoming viewport as an Intent pre-roll. Its first state
+  // assembles while the sticky stage enters, then the remaining proof states
+  // begin once the stage is fully pinned. FlowE still takes ownership before
+  // Etch starts releasing, so neither seam can mismatch DOM and renderer.
   etch: -1,
   flowe: -1,
   argyph: -1,

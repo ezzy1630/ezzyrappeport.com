@@ -97,8 +97,11 @@ const INTENT_SHADER = {
     varying vec3 vNormal;
     varying vec3 vView;
     void main() {
-      float rim = pow(1.0 - abs(dot(normalize(vNormal), normalize(vView))), 2.2);
-      gl_FragColor = vec4(uColor * (rim * uIntensity + 0.03), 1.0);
+      float facing = abs(dot(normalize(vNormal), normalize(vView)));
+      float rim = pow(1.0 - facing, 2.2);
+      float facet = 0.24 + (1.0 - facing) * 0.18;
+      vec3 pressureColor = uColor * (facet + rim * 0.9);
+      gl_FragColor = vec4(pressureColor, (0.12 + rim * 0.62) * uIntensity);
     }
   `,
 };
@@ -129,6 +132,8 @@ export function createEtchEncounter(): ProjectEncounter {
   let axisGroup: Group | null = null;
   let intentMesh: Mesh | null = null;
   let intentMaterial: ShaderMaterial | null = null;
+  let intentShell: LineSegments | null = null;
+  let intentShellMaterial: LineBasicMaterial | null = null;
   const frameLines: LineSegments[] = [];
   const frameFills: Mesh[] = [];
   const frameMaterials: LineBasicMaterial[] = [];
@@ -211,15 +216,23 @@ export function createEtchEncounter(): ProjectEncounter {
           uIntensity: { value: 0 },
         },
         transparent: true,
-        blending: AdditiveBlending,
         depthWrite: false,
       }));
-      intentMesh = new Mesh(
-        track(new IcosahedronGeometry(ETCH_STAGE.intentRadius, 1)),
-        intentMaterial,
-      );
+      const intentGeometry = track(new IcosahedronGeometry(ETCH_STAGE.intentRadius, 1));
+      intentMesh = new Mesh(intentGeometry, intentMaterial);
       intentMesh.position.set(axisX0, 0, 0);
-      axisGroup.add(intentMesh);
+      intentShellMaterial = track(new LineBasicMaterial({
+        color: ETCH_COLORS.intent,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+      }));
+      intentShell = new LineSegments(
+        track(new EdgesGeometry(intentGeometry, 18)),
+        intentShellMaterial,
+      );
+      intentShell.position.copy(intentMesh.position);
+      axisGroup.add(intentMesh, intentShell);
 
       // Typed constraint planes crystallize the boundary.
       const frameGeometry = track(new EdgesGeometry(
@@ -230,18 +243,16 @@ export function createEtchEncounter(): ProjectEncounter {
       ));
       for (let plane = 0; plane < ETCH_COUNTS.constraintPlanes; plane += 1) {
         const material = track(new LineBasicMaterial({
-          color: ETCH_COLORS.constraint,
+          color: ETCH_COLORS.constraintFrame,
           transparent: true,
           opacity: 0,
-          blending: AdditiveBlending,
           depthWrite: false,
         }));
         const line = new LineSegments(frameGeometry, material);
         const fillMaterial = track(new MeshBasicMaterial({
-          color: ETCH_COLORS.constraint,
+          color: ETCH_COLORS.constraintFrame,
           transparent: true,
           opacity: 0,
-          blending: AdditiveBlending,
           depthWrite: false,
         }));
         const fill = new Mesh(fillGeometry, fillMaterial);
@@ -261,17 +272,17 @@ export function createEtchEncounter(): ProjectEncounter {
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.15, ETCH_STAGE.candidateSize * 1.12, 0.055, 0.03, 0.005)),
         track(createRoundedPanelGeometry(ETCH_STAGE.candidateSize * 1.35, ETCH_STAGE.candidateSize, 0.055, 0.03, 0.005)),
       ];
-      const candidateLabelGeometry = track(new PlaneGeometry(0.5, 0.12));
+      const candidateLabelGeometry = track(new PlaneGeometry(0.56, 0.135));
       const candidateCellGeometry = track(createRoundedPanelGeometry(0.058, 0.038, 0.012, 0.008, 0.002));
       for (let candidate = 0; candidate < ETCH_COUNTS.candidates; candidate += 1) {
         const material = track(new MeshPhysicalMaterial({
           color: ETCH_COLORS.candidate,
           emissive: 0x1d4654,
-          emissiveIntensity: 0.42,
-          roughness: 0.18,
-          metalness: 0.28,
-          clearcoat: 1,
-          clearcoatRoughness: 0.1,
+          emissiveIntensity: 0.18,
+          roughness: 0.34,
+          metalness: 0.18,
+          clearcoat: 0.55,
+          clearcoatRoughness: 0.2,
           transparent: true,
           opacity: 0,
           depthWrite: true,
@@ -281,7 +292,6 @@ export function createEtchEncounter(): ProjectEncounter {
           color: ETCH_COLORS.constraint,
           transparent: true,
           opacity: 0,
-          blending: AdditiveBlending,
           depthWrite: false,
         }));
         const cells = new InstancedMesh(candidateCellGeometry, cellMaterial, 6);
@@ -344,16 +354,15 @@ export function createEtchEncounter(): ProjectEncounter {
 
       // Verification gate light planes; the signoff gate stays an open frame.
       const gateGeometry = track(new EdgesGeometry(
-        new BoxGeometry(0.08, ETCH_STAGE.gateHeight, 0.06),
+        new BoxGeometry(0.12, ETCH_STAGE.gateHeight, 0.06),
       ));
-      const gateLabelGeometry = track(new PlaneGeometry(0.3, 0.09));
+      const gateLabelGeometry = track(new PlaneGeometry(0.38, 0.105));
       for (let gate = 0; gate < ETCH_COUNTS.gates; gate += 1) {
         const pending = !ETCH_GATES[gate].passed;
         const material = track(new LineBasicMaterial({
           color: pending ? ETCH_COLORS.pending : ETCH_COLORS.pass,
           transparent: true,
           opacity: 0,
-          blending: AdditiveBlending,
           depthWrite: false,
         }));
         const plane = new LineSegments(gateGeometry, material);
@@ -376,7 +385,11 @@ export function createEtchEncounter(): ProjectEncounter {
         track(label.material);
         const labelMesh = new Mesh(gateLabelGeometry, label.material);
         labelMesh.name = `etch-gate-${ETCH_GATES[gate].id}`;
-        labelMesh.position.set(plane.position.x, ETCH_STAGE.gateHeight * 0.58, 0.07);
+        labelMesh.position.set(
+          plane.position.x - (pending ? 0.26 : 0),
+          ETCH_STAGE.gateHeight * 0.58,
+          0.07,
+        );
         labelMesh.renderOrder = 4;
         axisGroup.add(labelMesh);
         gateLabels.push(labelMesh);
@@ -769,14 +782,14 @@ export function createEtchEncounter(): ProjectEncounter {
       const physicalT = smoothstep01((t - loop.physicalStart) / 0.12);
       const relaxT = smoothstep01((t - loop.relaxStart) / (loop.relaxFull - loop.relaxStart));
       const stateFeather = 0.032;
-      const intentScene = scenePresence(t, 0, 0.12, stateFeather);
-      const specScene = scenePresence(t, 0.12, 0.24, stateFeather);
-      const candidateScene = scenePresence(t, 0.24, 0.36, stateFeather);
-      const simulationScene = scenePresence(t, 0.36, 0.48, stateFeather);
-      const formalScene = scenePresence(t, 0.48, 0.6, stateFeather);
-      const rankScene = scenePresence(t, 0.6, 0.72, stateFeather);
-      const physicalScene = scenePresence(t, 0.72, 0.84, stateFeather);
-      const dossierScene = scenePresence(t, 0.84, 1, stateFeather);
+      const intentScene = scenePresence(t, 0, 0.2, stateFeather);
+      const specScene = scenePresence(t, 0.2, 0.32, stateFeather);
+      const candidateScene = scenePresence(t, 0.32, 0.44, stateFeather);
+      const simulationScene = scenePresence(t, 0.44, 0.56, stateFeather);
+      const formalScene = scenePresence(t, 0.56, 0.68, stateFeather);
+      const rankScene = scenePresence(t, 0.68, 0.78, stateFeather);
+      const physicalScene = scenePresence(t, 0.78, 0.88, stateFeather);
+      const dossierScene = scenePresence(t, 0.88, 1, stateFeather);
       const candidateStory = Math.max(candidateScene, simulationScene, formalScene, rankScene);
       const resultReveal = Math.max(physicalScene, dossierScene);
 
@@ -792,13 +805,23 @@ export function createEtchEncounter(): ProjectEncounter {
       // Intent volume: churns until constraints crystallize the boundary.
       if (intentMesh && intentMaterial) {
         const instability = 1 - constraintsT;
+        const intentPresence = Math.max(intentScene, specScene * 0.32);
+        intentMesh.visible = intentPresence > 0.001;
         intentMaterial.uniforms.uTime.value = frame.time;
         intentMaterial.uniforms.uInstability.value = instability;
-        intentMaterial.uniforms.uIntensity.value = (0.25 + intentT * 0.55) * fade
-          * Math.max(intentScene, specScene * 0.32);
+        intentMaterial.uniforms.uIntensity.value = (0.36 + intentT * 0.64) * fade
+          * intentPresence;
         intentMesh.scale.setScalar(0.55 + intentT * 0.45 + instability * 0.06);
         intentMesh.rotation.y = t * 0.9;
+        intentMesh.rotation.x = -0.12 + t * 0.24;
         intentMesh.position.x = axisX0 + candidatesT * 0.18;
+        if (intentShell && intentShellMaterial) {
+          intentShell.visible = intentPresence > 0.001;
+          intentShell.position.copy(intentMesh.position);
+          intentShell.rotation.copy(intentMesh.rotation);
+          intentShell.scale.copy(intentMesh.scale);
+          intentShellMaterial.opacity = (0.22 + instability * 0.28) * fade * intentPresence;
+        }
       }
 
       // Constraint planes converge onto the boundary, then hand off.
@@ -853,7 +876,7 @@ export function createEtchEncounter(): ProjectEncounter {
           mesh.position.y += (rankY - mesh.position.y) * rankScene;
           mesh.position.z += (0.1 - mesh.position.z) * rankScene;
         }
-        mesh.rotation.y = frame.time * 0.08 + candidate * 0.18;
+        mesh.rotation.y = t * 0.62 + candidate * 0.18;
         mesh.rotation.z = t * 0.16;
         const evidenceFacing = Math.max(formalScene, rankScene);
         if (evidenceFacing > 0) {
@@ -866,7 +889,7 @@ export function createEtchEncounter(): ProjectEncounter {
         if (falsified) mesh.position.y -= 0.08 * simulationEvidence;
         const verdictStrength = falsified ? 0.48 : runnerUp ? 0.72 : 1;
         material.opacity = form * 0.9 * fade * verdictStrength * candidatePresence;
-        candidateCellMaterials[candidate].opacity = material.opacity * 0.78;
+        candidateCellMaterials[candidate].opacity = material.opacity * 0.62;
         const rankScale = winner ? 1.68 : 0.98;
         const baseScale = falsified ? 0.82 : winner ? 1 + rankingT * 0.12 : 0.94;
         mesh.scale.setScalar(form * (baseScale + (rankScale - baseScale) * rankScene));
@@ -882,7 +905,7 @@ export function createEtchEncounter(): ProjectEncounter {
         const verdictScene = candidate === 1
           ? Math.max(simulationScene, formalScene * 0.28)
           : Math.max(formalScene, rankScene);
-        label.visible = verdictScene > 0.01;
+        label.visible = layoutMode === "desktop" && verdictScene > 0.01;
         label.position.set(
           mesh.position.x + (candidate === 1 ? 0.02 : 0),
           mesh.position.y + 0.155 + rankScene * 0.07,
@@ -927,15 +950,15 @@ export function createEtchEncounter(): ProjectEncounter {
           : 0;
         const gateScene = gateScenes[gate] ?? 0;
         gatePlanes[gate].visible = gateScene > 0.001;
-        gateLabels[gate].visible = gateScene > 0.001;
+        gateLabels[gate].visible = layoutMode === "desktop" && gateScene > 0.001;
         gateMaterials[gate].opacity = (
-          crossed ? 0.5 : passed ? 0.1 + leadTravel * 0.06 : pendingPulse
+          crossed ? 0.7 : passed ? 0.2 + leadTravel * 0.08 : pendingPulse + 0.08
         ) * fade * gateScene;
         gatePlanes[gate].scale.y = crossed ? 1.04 : 1;
         const gateReveal = smoothstep01((gatesT - gate * 0.08) / Math.max(1 - gate * 0.08, 1e-6));
         gateLabelMaterials[gate].opacity = gateReveal * gateScene
           * (passed ? 0.9 : 0.72 + pendingPulse) * fade;
-        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.76 : 1.02);
+        gateLabels[gate].scale.setScalar(layoutMode === "mobile" ? 0.68 : 1.12);
       }
 
       // Result: evidence-backed FIFO die held before the pending gate.

@@ -184,14 +184,14 @@ function check(name, ok, detail) {
 }
 
 const ETCH_BEATS = [
-  { name: "00-intent", progress: 0.09 },
-  { name: "01-design-spec", progress: 0.1875 },
-  { name: "02-candidates", progress: 0.3125 },
-  { name: "03-simulation", progress: 0.4375 },
-  { name: "04-formal", progress: 0.5625 },
-  { name: "05-rank", progress: 0.6875 },
-  { name: "06-physical-blocked", progress: 0.8125 },
-  { name: "07-proof-dossier", progress: 0.9 },
+  { name: "00-intent", progress: 0.195 },
+  { name: "01-design-spec", progress: 0.26 },
+  { name: "02-candidates", progress: 0.38 },
+  { name: "03-simulation", progress: 0.5 },
+  { name: "04-formal", progress: 0.62 },
+  { name: "05-rank", progress: 0.73 },
+  { name: "06-physical-blocked", progress: 0.83 },
+  { name: "07-proof-dossier", progress: 0.94 },
 ];
 const FLOWE_BEATS = [
   { name: "00-drift", progress: 0.125 },
