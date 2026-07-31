@@ -124,14 +124,14 @@ const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
 ] as const;
 
 const FLOWE_STATE_WINDOWS = [
-  [0, 0.19],
-  [0.15, 0.3],
-  [0.27, 0.42],
-  [0.39, 0.54],
-  [0.51, 0.66],
-  [0.63, 0.79],
-  [0.76, 0.91],
-  [0.88, 1.01],
+  [0, 0.22],
+  [0.2, 0.32],
+  [0.3, 0.43],
+  [0.41, 0.55],
+  [0.53, 0.67],
+  [0.65, 0.8],
+  [0.78, 0.92],
+  [0.9, 1.01],
 ] as const;
 
 export function createFloweEncounter(): ProjectEncounter {
@@ -159,6 +159,16 @@ export function createFloweEncounter(): ProjectEncounter {
   let focusMaterial: MeshBasicMaterial | null = null;
   let indexField: InstancedMesh | null = null;
   let indexMaterial: MeshBasicMaterial | null = null;
+  let semanticLinks: InstancedMesh | null = null;
+  let semanticLinkMaterial: MeshBasicMaterial | null = null;
+  let planGuides: InstancedMesh | null = null;
+  let planGuideMaterial: MeshBasicMaterial | null = null;
+  let focusTicks: InstancedMesh | null = null;
+  let focusTickMaterial: MeshBasicMaterial | null = null;
+  const syncOrbits: Mesh[] = [];
+  const syncOrbitMaterials: MeshBasicMaterial[] = [];
+  let briefHalo: Mesh | null = null;
+  let briefHaloMaterial: MeshBasicMaterial | null = null;
   let flowIdentityPlate: Mesh | null = null;
   let flowIdentityMaterial: ShaderMaterial | null = null;
   const taskLabels: Mesh[] = [];
@@ -339,6 +349,85 @@ export function createFloweEncounter(): ProjectEncounter {
       );
       indexField.instanceMatrix.setUsage(DynamicDrawUsage);
 
+      // State grammar. Each product step gets a distinct structural signal:
+      // parse links, plan guides, focus ticks, sync orbits, and a final halo.
+      semanticLinkMaterial = track(new MeshBasicMaterial({
+        color: 0x9fe9f2,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      semanticLinks = new InstancedMesh(
+        track(new PlaneGeometry(1, 0.006)),
+        semanticLinkMaterial,
+        5,
+      );
+      semanticLinks.name = "flowe-semantic-link-system";
+      semanticLinks.instanceMatrix.setUsage(DynamicDrawUsage);
+
+      planGuideMaterial = track(new MeshBasicMaterial({
+        color: 0x76cddd,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      planGuides = new InstancedMesh(
+        track(new PlaneGeometry(1, 0.005)),
+        planGuideMaterial,
+        4,
+      );
+      planGuides.name = "flowe-plan-guide-system";
+      planGuides.instanceMatrix.setUsage(DynamicDrawUsage);
+
+      focusTickMaterial = track(new MeshBasicMaterial({
+        color: 0xd5f8fb,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      focusTicks = new InstancedMesh(
+        track(new PlaneGeometry(0.055, 0.007)),
+        focusTickMaterial,
+        16,
+      );
+      focusTicks.name = "flowe-focus-tick-system";
+      focusTicks.instanceMatrix.setUsage(DynamicDrawUsage);
+
+      for (let orbit = 0; orbit < 2; orbit += 1) {
+        const material = track(new MeshBasicMaterial({
+          color: orbit === 0 ? 0x92dcea : 0x719fdf,
+          transparent: true,
+          opacity: 0,
+          blending: AdditiveBlending,
+          depthWrite: false,
+        }));
+        const mesh = new Mesh(
+          track(new RingGeometry(0.34 + orbit * 0.12, 0.345 + orbit * 0.12, 72, 1, 0, Math.PI * (1.28 + orbit * 0.22))),
+          material,
+        );
+        mesh.name = `flowe-sync-orbit-${orbit + 1}`;
+        mesh.renderOrder = 2;
+        syncOrbits.push(mesh);
+        syncOrbitMaterials.push(material);
+      }
+
+      briefHaloMaterial = track(new MeshBasicMaterial({
+        color: 0xb8f1f4,
+        transparent: true,
+        opacity: 0,
+        blending: AdditiveBlending,
+        depthWrite: false,
+      }));
+      briefHalo = new Mesh(
+        track(new RingGeometry(0.51, 0.516, 80, 1, Math.PI * 0.12, Math.PI * 1.76)),
+        briefHaloMaterial,
+      );
+      briefHalo.name = "flowe-brief-halo";
+      briefHalo.renderOrder = 2;
+
       const identityTexture = await new TextureLoader().loadAsync("/projects/flowe/app-icon.webp");
       if (context.signal.aborted || disposed) {
         identityTexture.dispose();
@@ -398,7 +487,7 @@ export function createFloweEncounter(): ProjectEncounter {
           void main() {
             vec4 source = texture2D(uIdentity, vUv);
             float luminance = dot(source.rgb, vec3(0.2126, 0.7152, 0.0722));
-            float mark = smoothstep(0.42, 0.78, luminance);
+            float mark = smoothstep(0.18, 0.58, luminance);
             float bestDistance = 10.0;
             float strokeOrder = 1.0;
 
@@ -450,7 +539,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
             float centerlineCoverage = 1.0 - smoothstep(0.095, 0.155, bestDistance);
             float ink = smoothstep(strokeOrder - 0.018, strokeOrder + 0.008, uReveal) * centerlineCoverage;
-            float completedMark = smoothstep(0.94, 1.0, uReveal);
+            float completedMark = smoothstep(0.9, 0.97, uReveal);
             float leadingEdge = (
               1.0 - smoothstep(0.012, 0.045, abs(strokeOrder - uReveal))
             ) * centerlineCoverage * uTracer * (0.88 + sin(uTime * 4.0) * 0.12);
@@ -468,8 +557,8 @@ export function createFloweEncounter(): ProjectEncounter {
       flowIdentityPlate.renderOrder = 3;
       flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
 
-      const taskLabelGeometry = track(new PlaneGeometry(0.43, 0.134));
-      const taskShellGeometry = track(createRoundedPanelGeometry(0.46, 0.148, 0.022, 0.025, 0.003));
+      const taskLabelGeometry = track(new PlaneGeometry(0.47, 0.146));
+      const taskShellGeometry = track(createRoundedPanelGeometry(0.5, 0.161, 0.023, 0.026, 0.003));
       taskShellMaterial = track(new MeshPhysicalMaterial({
         color: 0x17323e,
         emissive: 0x0e4655,
@@ -512,7 +601,7 @@ export function createFloweEncounter(): ProjectEncounter {
         });
         track(label.texture);
         track(label.material);
-        const mesh = new Mesh(track(new PlaneGeometry(0.46, 0.143)), label.material);
+        const mesh = new Mesh(track(new PlaneGeometry(0.51, 0.159)), label.material);
         mesh.name = `flowe-state-${panel.state}-${panel.title.toLowerCase().replaceAll(" ", "-")}`;
         mesh.renderOrder = 6;
         featurePanels.push(mesh);
@@ -530,7 +619,7 @@ export function createFloweEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const shell = new Mesh(
-          track(createRoundedPanelGeometry(0.49, 0.157, 0.026, 0.028, 0.003)),
+          track(createRoundedPanelGeometry(0.545, 0.176, 0.027, 0.03, 0.003)),
           shellMaterial,
         );
         shell.name = `${mesh.name}-shell`;
@@ -563,7 +652,7 @@ export function createFloweEncounter(): ProjectEncounter {
     attach(stageRoot) {
       if (!loaded || stage) return;
       stage = stageRoot;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, semanticLinks, planGuides, focusTicks, briefHalo, ...syncOrbits, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
       for (const object of objects) {
         if (object) stage.add(object);
       }
@@ -591,7 +680,7 @@ export function createFloweEncounter(): ProjectEncounter {
       const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
-      const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end));
+      const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end, 0.02));
       const logoPresence = Math.max(statePresence[0], statePresence[7] * 0.82);
       const fragmentScenePresence = Math.max(
         statePresence[1],
@@ -629,6 +718,96 @@ export function createFloweEncounter(): ProjectEncounter {
         featurePanelShellMaterials[panelIndex].opacity = presence * 0.78 * fade;
         featurePanels[panelIndex].visible = presence > 0.001;
         featurePanelShells[panelIndex].visible = presence > 0.001;
+      }
+
+      if (semanticLinks && semanticLinkMaterial) {
+        const parseReveal = smoothstep01(statePresence[2] * 1.25);
+        const contextReveal = smoothstep01(statePresence[3] * 1.25);
+        const semanticPresence = Math.max(statePresence[2], statePresence[3]);
+        for (let link = 0; link < 5; link += 1) {
+          const isContextBridge = link === 4;
+          const linkReveal = isContextBridge ? contextReveal : parseReveal;
+          const xOffset = link === 0 ? 0 : (link - 2) * 0.47;
+          _pos.set(
+            center.x + xOffset * visualScale,
+            center.y + (link === 0 ? -0.22 : isContextBridge ? -0.15 : -0.19) * visualScale,
+            0.12,
+          );
+          _quat.setFromAxisAngle(
+            _cardAxis,
+            link > 0 && !isContextBridge ? Math.PI * 0.5 : 0,
+          );
+          const linkLength = isContextBridge ? 0.58 : link === 0 ? 1.08 : 0.14;
+          _scale.set(linkLength * visualScale * linkReveal, visualScale, 1);
+          _matrix.compose(_pos, _quat, _scale);
+          semanticLinks.setMatrixAt(link, _matrix);
+        }
+        semanticLinks.instanceMatrix.needsUpdate = true;
+        semanticLinkMaterial.opacity = semanticPresence * 0.48 * fade;
+        semanticLinks.visible = semanticPresence > 0.001;
+      }
+
+      if (planGuides && planGuideMaterial) {
+        const planReveal = smoothstep01(statePresence[4] * 1.2);
+        for (let guide = 0; guide < 4; guide += 1) {
+          const vertical = guide === 3;
+          _pos.set(
+            center.x + (vertical ? -0.72 : 0) * visualScale,
+            center.y + (vertical ? -0.32 : -0.12 - guide * 0.2) * visualScale,
+            0.11,
+          );
+          _quat.setFromAxisAngle(_cardAxis, vertical ? Math.PI * 0.5 : 0);
+          _scale.set((vertical ? 0.53 : 1.28) * visualScale * planReveal, visualScale, 1);
+          _matrix.compose(_pos, _quat, _scale);
+          planGuides.setMatrixAt(guide, _matrix);
+        }
+        planGuides.instanceMatrix.needsUpdate = true;
+        planGuideMaterial.opacity = statePresence[4] * 0.34 * fade;
+        planGuides.visible = statePresence[4] > 0.001;
+      }
+
+      if (focusTicks && focusTickMaterial) {
+        const focusPresence = statePresence[5];
+        const focusCenterY = center.y - 0.19 * visualScale;
+        for (let tick = 0; tick < 16; tick += 1) {
+          const angle = tick / 16 * Math.PI * 2 - Math.PI * 0.5;
+          const radius = 0.47 * visualScale;
+          _pos.set(
+            center.x + Math.cos(angle) * radius,
+            focusCenterY + Math.sin(angle) * radius,
+            0.13,
+          );
+          _quat.setFromAxisAngle(_cardAxis, angle);
+          const activeSweep = frame.reducedMotion
+            ? 1
+            : smoothstep01((focusT - tick / 16 * 0.34) / 0.66);
+          _scale.set((0.7 + activeSweep * 0.55) * visualScale, visualScale, 1);
+          _matrix.compose(_pos, _quat, _scale);
+          focusTicks.setMatrixAt(tick, _matrix);
+        }
+        focusTicks.instanceMatrix.needsUpdate = true;
+        focusTickMaterial.opacity = focusPresence * 0.7 * fade;
+        focusTicks.visible = focusPresence > 0.001;
+      }
+
+      for (let orbit = 0; orbit < syncOrbits.length; orbit += 1) {
+        const syncPresence = statePresence[6];
+        syncOrbits[orbit].position.set(center.x, center.y - 0.2 * visualScale, 0.1);
+        syncOrbits[orbit].scale.setScalar(visualScale * (0.92 + syncPresence * 0.08));
+        syncOrbits[orbit].rotation.z = frame.reducedMotion
+          ? orbit * 0.7
+          : frame.time * (orbit === 0 ? 0.14 : -0.09) + orbit * 0.7;
+        syncOrbitMaterials[orbit].opacity = syncPresence * (0.4 - orbit * 0.08) * fade;
+        syncOrbits[orbit].visible = syncPresence > 0.001;
+      }
+
+      if (briefHalo && briefHaloMaterial) {
+        const briefPresence = statePresence[7];
+        briefHalo.position.set(center.x, center.y + 0.24 * visualScale, 0.04);
+        briefHalo.scale.setScalar(visualScale * (0.9 + briefPresence * 0.1));
+        briefHalo.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.22) * 0.035;
+        briefHaloMaterial.opacity = briefPresence * 0.28 * fade;
+        briefHalo.visible = briefPresence > 0.001;
       }
 
       const focusTask = 2;
@@ -827,7 +1006,7 @@ export function createFloweEncounter(): ProjectEncounter {
 
     detach() {
       if (!stage) return;
-      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
+      const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, semanticLinks, planGuides, focusTicks, briefHalo, ...syncOrbits, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
       for (const object of objects) {
         if (object && object.parent === stage) stage.remove(object);
       }
@@ -838,7 +1017,7 @@ export function createFloweEncounter(): ProjectEncounter {
       if (disposed) return;
       disposed = true;
       if (stage) {
-        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
+        const objects = [lightingRig, flowIdentityPlate, fragments, fragmentAccents, motes, focusLens, indexField, semanticLinks, planGuides, focusTicks, briefHalo, ...syncOrbits, ...currentLines, ...taskShells, ...taskLabels, ...featurePanelShells, ...featurePanels];
         for (const object of objects) {
           if (object && object.parent === stage) stage.remove(object);
         }
@@ -855,6 +1034,8 @@ export function createFloweEncounter(): ProjectEncounter {
       featurePanelShells.length = 0;
       featurePanelShellMaterials.length = 0;
       taskShells.length = 0;
+      syncOrbits.length = 0;
+      syncOrbitMaterials.length = 0;
       driftAnchors.length = 0;
       clusterTargets.length = 0;
       clusterAngles.length = 0;

@@ -2132,6 +2132,11 @@ const tests = [
     assert.doesNotMatch(floweSceneSource, /flowe-logo-draw-system/);
     assert.match(floweSceneSource, /considerSegment/);
     assert.match(floweSceneSource, /sampled logo remains the final alpha mask/);
+    assert.match(floweSceneSource, /flowe-semantic-link-system/);
+    assert.match(floweSceneSource, /flowe-plan-guide-system/);
+    assert.match(floweSceneSource, /flowe-focus-tick-system/);
+    assert.match(floweSceneSource, /flowe-sync-orbit-/);
+    assert.match(floweSceneSource, /flowe-brief-halo/);
     assert.match(floweSceneSource, /BRAIN DUMP/);
     assert.match(floweSceneSource, /OFFLINE QUEUE/);
     assert.match(floweSceneSource, /MORNING BRIEF/);

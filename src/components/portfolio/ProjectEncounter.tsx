@@ -40,14 +40,14 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Dossier", shortLabel: "Proof", detail: "Markdown + JSON", start: 0.88, end: 1, accent: "#5caec3" },
   ],
   flowe: [
-    { label: "Awaken", shortLabel: "Mark", detail: "identity drawn in light", start: 0, end: 0.19, accent: "#8ee8f4" },
-    { label: "Dump", shortLabel: "Dump", detail: "voice + free-form input", start: 0.15, end: 0.3, accent: "#44b8d0" },
-    { label: "Parse", shortLabel: "Parse", detail: "tasks · events · focus", start: 0.27, end: 0.42, accent: "#5ac5d4" },
-    { label: "Context", shortLabel: "Class", detail: "Canvas + course context", start: 0.39, end: 0.54, accent: "#73c8de" },
-    { label: "Plan", shortLabel: "Plan", detail: "conflict-aware day", start: 0.51, end: 0.66, accent: "#5ea8d6" },
-    { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.63, end: 0.79, accent: "#92e5ec" },
-    { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.76, end: 0.91, accent: "#689ce0" },
-    { label: "Brief", shortLabel: "Brief", detail: "morning priorities", start: 0.88, end: 1, accent: "#b0edf3" },
+    { label: "Awaken", shortLabel: "Mark", detail: "identity drawn in light", start: 0, end: 0.22, accent: "#8ee8f4" },
+    { label: "Dump", shortLabel: "Dump", detail: "voice + free-form input", start: 0.2, end: 0.32, accent: "#44b8d0" },
+    { label: "Parse", shortLabel: "Parse", detail: "tasks · events · focus", start: 0.3, end: 0.43, accent: "#5ac5d4" },
+    { label: "Context", shortLabel: "Class", detail: "Canvas + course context", start: 0.41, end: 0.55, accent: "#73c8de" },
+    { label: "Plan", shortLabel: "Plan", detail: "conflict-aware day", start: 0.53, end: 0.67, accent: "#5ea8d6" },
+    { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.65, end: 0.8, accent: "#92e5ec" },
+    { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.78, end: 0.92, accent: "#689ce0" },
+    { label: "Brief", shortLabel: "Brief", detail: "morning priorities", start: 0.9, end: 1, accent: "#b0edf3" },
   ],
   argyph: [
     { label: "Scan", detail: "repository reef", start: 0, end: 0.28 },
@@ -91,8 +91,8 @@ const ETCH_ANNOTATIONS = [
 ] as const;
 
 const FLOWE_ANNOTATIONS = [
-  { beat: 0, slot: "left-top", label: "FlowE identity", detail: "three authored strokes" },
-  { beat: 0, slot: "right-mid", label: "Neural current", detail: "brand resolves from signal" },
+  { beat: 0, slot: "left-top", label: "FlowE identity", detail: "exact source silhouette" },
+  { beat: 0, slot: "right-mid", label: "Drawn in light", detail: "four measured centerlines" },
   { beat: 1, slot: "left-mid", label: "Brain Dump", detail: "text or voice capture" },
   { beat: 1, slot: "right-top", label: "Private input", detail: "student-owned context" },
   { beat: 2, slot: "left-top", label: "Semantic parse", detail: "task · event · study block" },
@@ -100,7 +100,7 @@ const FLOWE_ANNOTATIONS = [
   { beat: 3, slot: "left-bottom", label: "Course context", detail: "Canvas REST / ICS" },
   { beat: 3, slot: "right-top", label: "Due-date match", detail: "Chem lab · 4:00 PM" },
   { beat: 4, slot: "left-top", label: "Daily plan", detail: "six tasks · two complete" },
-  { beat: 4, slot: "right-mid", label: "Conflict aware", detail: "calendar + workload" },
+  { beat: 4, slot: "right-mid", label: "Conflict-aware", detail: "calendar + workload" },
   { beat: 5, slot: "left-mid", label: "Focus session", detail: "Live Activity · 50:00" },
   { beat: 5, slot: "right-top", label: "One calm block", detail: "everything else recedes" },
   { beat: 6, slot: "left-bottom", label: "Offline queue", detail: "three changes retained" },
