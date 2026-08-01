@@ -63,9 +63,15 @@ function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function scenePresence(value: number, start: number, end: number, feather = 0.035): number {
-  const enter = smoothstep01((value - start) / feather);
-  const exit = 1 - smoothstep01((value - end) / feather);
+function scenePresence(
+  value: number,
+  start: number,
+  end: number,
+  enterFeather = 0.028,
+  exitFeather = 0.016,
+): number {
+  const enter = smoothstep01((value - start) / enterFeather);
+  const exit = 1 - smoothstep01((value - end) / exitFeather);
   return Math.min(enter, exit);
 }
 
@@ -110,37 +116,60 @@ type FloweFeaturePanel = {
   readonly detail: string;
   readonly x: number;
   readonly y: number;
+  readonly width?: number;
   readonly scale?: number;
   readonly kind: FloweCardKind;
   readonly badge?: string;
+  readonly lines?: readonly string[];
+  readonly status?: string;
   readonly tone?: "gold" | "teal";
 };
 
 const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
-  { state: 1, title: "Brain Dump", detail: "Break the history project into steps", x: 0, y: -0.08, scale: 1.34, kind: "brain", badge: "INPUT" },
-  { state: 1, title: "Checking calendar", detail: "School context stays attached", x: 0, y: -0.31, scale: 0.9, kind: "calendar", badge: "WORKING" },
-  { state: 2, title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", x: -0.48, y: -0.14, kind: "study", badge: "STUDY PLAN", tone: "gold" },
-  { state: 2, title: "Email Prof. Carter", detail: "Extension request", x: 0, y: -0.14, kind: "task", badge: "TASK" },
-  { state: 2, title: "History focus hour", detail: "Find a free hour next week", x: 0.48, y: -0.14, kind: "calendar", badge: "TASK" },
-  { state: 2, title: "3 items drafted", detail: "Review before saving", x: 0, y: -0.38, scale: 0.94, kind: "review", badge: "CONFIRM" },
-  { state: 3, title: "Canvas deadlines", detail: "Homework 3 · 12:00 PM", x: -0.29, y: -0.16, scale: 1.06, kind: "task", badge: "CANVAS" },
-  { state: 3, title: "Intro Psych", detail: "PSYC-2 · 8:00–9:35 AM", x: 0.29, y: -0.16, scale: 1.06, kind: "course", badge: "COURSE" },
-  { state: 5, title: "Study for psych quiz", detail: "50:00 · Focus Live Activity", x: 0, y: -0.28, scale: 1.3, kind: "focus", badge: "FOCUS" },
-  { state: 6, title: "Offline queue", detail: "3 changes retained on device", x: -0.29, y: -0.17, scale: 1.05, kind: "sync", badge: "LOCAL" },
-  { state: 6, title: "Convex sync", detail: "User-scoped · retry safe", x: 0.29, y: -0.17, scale: 1.05, kind: "sync", badge: "SYNCED" },
-  { state: 7, title: "Good morning, Student!", detail: "Friday, 5 June · 0 tasks · 1 event", x: 0, y: -0.16, scale: 1.3, kind: "brain", badge: "BRIEFING" },
-  { state: 7, title: "Today", detail: "PSYC-2 · 8:00–9:35 AM", x: 0, y: -0.4, scale: 0.92, kind: "course", badge: "1 EVENT" },
+  {
+    state: 1,
+    title: "What's on your mind?",
+    detail: "",
+    lines: ["psych quiz Friday", "email Prof. Carter", "history project"],
+    status: "Messy list captured · waiting to structure",
+    x: 0,
+    y: -0.16,
+    width: 0.64,
+    scale: 1.04,
+    kind: "brain",
+    badge: "NEURAL SLATE",
+  },
+  { state: 1, title: "Checking calendar", detail: "Read request · matched context", x: 0, y: -0.47, width: 0.52, scale: 0.9, kind: "calendar", badge: "WORKING" },
+  { state: 2, title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", x: -0.31, y: -0.1, width: 0.57, kind: "study", badge: "STUDY PLAN", tone: "gold" },
+  { state: 2, title: "Email Prof. Carter", detail: "Extension request", x: 0.31, y: -0.1, width: 0.57, kind: "task", badge: "TASK" },
+  { state: 2, title: "History focus hour", detail: "Find a free hour next week", x: 0, y: -0.31, width: 0.57, kind: "calendar", badge: "TASK" },
+  { state: 2, title: "3 items drafted", detail: "Review before saving to FlowE", x: 0, y: -0.5, width: 0.53, scale: 0.92, kind: "review", badge: "CONFIRM" },
+  { state: 3, title: "Canvas deadlines", detail: "Homework 3 · 12:00 PM", x: -0.31, y: -0.17, width: 0.58, kind: "task", badge: "CANVAS" },
+  { state: 3, title: "Intro Psych", detail: "PSYC-2 · 8:00–9:35 AM", x: 0.31, y: -0.17, width: 0.58, kind: "course", badge: "COURSE" },
+  { state: 5, title: "Study for psych quiz", detail: "50:00 · Focus Live Activity", x: 0, y: -0.28, width: 0.62, scale: 1.15, kind: "focus", badge: "FOCUS" },
+  { state: 6, title: "Saved on device", detail: "3 changes ready to retry", x: -0.31, y: -0.17, width: 0.58, kind: "sync", badge: "OFFLINE" },
+  { state: 6, title: "Convex sync", detail: "User-scoped · retry safe", x: 0.31, y: -0.17, width: 0.58, kind: "sync", badge: "SYNCED" },
+  { state: 7, title: "Good morning, Student!", detail: "Friday, 5 June · 0 tasks · 1 event", x: 0, y: -0.08, width: 0.66, scale: 1.06, kind: "brain", badge: "BRIEFING" },
+  { state: 7, title: "Today", detail: "PSYC-2 · 8:00–9:35 AM", x: -0.3, y: -0.31, width: 0.55, kind: "course", badge: "1 EVENT" },
+  { state: 7, title: "Focus", detail: "Study for psych quiz · 50 min", x: 0.3, y: -0.31, width: 0.55, kind: "focus", badge: "NEXT" },
+  { state: 7, title: "Keep the next move small", detail: "Momentum, not overload", x: 0, y: -0.51, width: 0.54, scale: 0.92, kind: "review", badge: "MOTIVATION" },
 ] as const;
+
+const FLOWE_PANEL_SEQUENCE = FLOWE_FEATURE_PANELS.map((panel, panelIndex) => ({
+  count: FLOWE_FEATURE_PANELS.filter((candidate) => candidate.state === panel.state).length,
+  rank: FLOWE_FEATURE_PANELS.slice(0, panelIndex)
+    .filter((candidate) => candidate.state === panel.state).length,
+}));
 
 const FLOWE_STATE_WINDOWS = [
   [0, 0.34],
-  [0.305, 0.39],
-  [0.37, 0.49],
-  [0.47, 0.58],
-  [0.53, 0.67],
-  [0.65, 0.8],
-  [0.78, 0.92],
-  [0.9, 1.01],
+  [0.305, 0.405],
+  [0.385, 0.5],
+  [0.48, 0.59],
+  [0.57, 0.69],
+  [0.675, 0.805],
+  [0.79, 0.92],
+  [0.905, 1.01],
 ] as const;
 
 export function createFloweEncounter(): ProjectEncounter {
@@ -613,11 +642,15 @@ export function createFloweEncounter(): ProjectEncounter {
         const label = createFloweAppCard(panel.title, panel.detail, {
           badge: panel.badge,
           kind: panel.kind,
+          lines: panel.lines,
+          status: panel.status,
           tone: panel.tone,
         });
         track(label.texture);
         track(label.material);
-        const mesh = new Mesh(track(new PlaneGeometry(0.51, 0.159)), label.material);
+        const panelWidth = panel.width ?? 0.55;
+        const panelHeight = panelWidth / label.aspectRatio;
+        const mesh = new Mesh(track(new PlaneGeometry(panelWidth, panelHeight)), label.material);
         mesh.name = `flowe-state-${panel.state}-${panel.title.toLowerCase().replaceAll(" ", "-")}`;
         mesh.renderOrder = 6;
         featurePanels.push(mesh);
@@ -635,7 +668,13 @@ export function createFloweEncounter(): ProjectEncounter {
           depthWrite: false,
         }));
         const shell = new Mesh(
-          track(createRoundedPanelGeometry(0.545, 0.176, 0.027, 0.03, 0.003)),
+          track(createRoundedPanelGeometry(
+            panelWidth + 0.035,
+            panelHeight + 0.017,
+            0.027,
+            0.03,
+            0.003,
+          )),
           shellMaterial,
         );
         shell.name = `${mesh.name}-shell`;
@@ -701,7 +740,7 @@ export function createFloweEncounter(): ProjectEncounter {
       const organization = smoothstep01(taskAssemblyT * 0.65 + focusT * 0.35);
       const idleAmp = frame.reducedMotion ? 0 : (1 - organization * 0.75);
 
-      const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end, 0.02));
+      const statePresence = FLOWE_STATE_WINDOWS.map(([start, end]) => scenePresence(t, start, end, 0.022));
       const stateProgresses = FLOWE_STATE_WINDOWS.map(([start, end]) => {
         const entranceEnd = start + (end - start) * 0.56;
         return frame.reducedMotion ? 1 : stateProgress(t, start, entranceEnd);
@@ -715,6 +754,12 @@ export function createFloweEncounter(): ProjectEncounter {
         statePresence[5],
         statePresence[6],
       );
+      const planCardProgress = frame.reducedMotion
+        ? 1
+        : smoothstep01((stateProgresses[4] - 0.18) / 0.82);
+      const focusHandoff = frame.reducedMotion
+        ? 1
+        : smoothstep01((stateProgresses[5] - 0.94) / 0.06);
 
       if (flowIdentityPlate && flowIdentityMaterial) {
         flowIdentityMaterial.uniforms.uOpacity.value = logoPresence * fade;
@@ -739,22 +784,35 @@ export function createFloweEncounter(): ProjectEncounter {
       for (let panelIndex = 0; panelIndex < featurePanels.length; panelIndex += 1) {
         const panel = FLOWE_FEATURE_PANELS[panelIndex];
         const presence = statePresence[panel.state];
-        const statePanels = FLOWE_FEATURE_PANELS.filter((candidate) => candidate.state === panel.state);
-        const panelRank = FLOWE_FEATURE_PANELS.slice(0, panelIndex)
-          .filter((candidate) => candidate.state === panel.state).length;
+        const { count: panelCount, rank: panelRank } = FLOWE_PANEL_SEQUENCE[panelIndex];
+        const panelProgress = panel.state === 6 && !frame.reducedMotion
+          ? smoothstep01((stateProgresses[6] - 0.25) / 0.75)
+          : panel.state === 7 && !frame.reducedMotion
+            ? smoothstep01((stateProgresses[7] - 0.28) / 0.72)
+            : stateProgresses[panel.state];
         const baseReveal = frame.reducedMotion
           ? 1
-          : staggeredReveal(stateProgresses[panel.state], panelRank, statePanels.length);
+          : staggeredReveal(panelProgress, panelRank, panelCount);
         const reveal = panel.state === 5 && !frame.reducedMotion
-          ? smoothstep01((stateProgresses[5] - 0.82) / 0.18)
+          ? focusHandoff
           : baseReveal;
         const scale = (panel.scale ?? 1) * visualScale;
-        const originX = panel.state === 2
-          ? 0
+        const originX = panel.state === 7
+          ? panel.x
           : panel.state === 3
             ? (panelRank === 0 ? -0.08 : 0.08)
             : 0;
-        const originY = panel.state === 7 ? -0.2 : panel.state >= 5 ? -0.24 : -0.1;
+        const originY = panel.state === 1
+          ? 0.14
+          : panel.state === 2
+            ? -0.16
+            : panel.state === 5
+              ? -0.06
+              : panel.state === 7
+                ? panel.y - 0.12
+                : panel.state === 6
+                  ? -0.22
+                : -0.12;
         _pos.set(
           center.x + originX + (panel.x - originX) * reveal,
           center.y + originY + (panel.y - originY) * reveal,
@@ -882,13 +940,10 @@ export function createFloweEncounter(): ProjectEncounter {
       }
 
       const focusTask = 0;
-      const focusHandoff = frame.reducedMotion
-        ? 1
-        : smoothstep01((stateProgresses[5] - 0.82) / 0.18);
       for (let task = 0; task < taskLabels.length; task += 1) {
         const reveal = frame.reducedMotion
           ? 1
-          : staggeredReveal(stateProgresses[4], task, taskLabels.length);
+          : staggeredReveal(planCardProgress, task, taskLabels.length);
         const planColumn = task % 2;
         const planRow = Math.floor(task / 2);
         _pos.set(

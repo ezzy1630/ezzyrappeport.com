@@ -2141,8 +2141,8 @@ const tests = [
     assert.match(floweSceneSource, /flowe-focus-tick-system/);
     assert.match(floweSceneSource, /flowe-sync-orbit-/);
     assert.match(floweSceneSource, /flowe-brief-halo/);
-    assert.match(floweSceneSource, /Brain Dump/);
-    assert.match(floweSceneSource, /Offline queue/);
+    assert.match(floweSceneSource, /What's on your mind/);
+    assert.match(floweSceneSource, /Saved on device/);
     assert.match(floweSceneSource, /Good morning, Student!/);
     assert.match(floweSceneSource, /flowe-brand-mark-plane/);
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
@@ -2155,10 +2155,12 @@ const tests = [
     assert.match(floweSceneSource, /flowe-task-/);
     assert.match(floweSceneSource, /staggeredReveal/);
     assert.match(floweSceneSource, /focusHandoff/);
-    assert.match(floweAppCardSource, /rgba\(12, 36, 64/);
+    assert.match(floweAppCardSource, /rgba\(1, 16, 36/);
     assert.match(floweAppCardSource, /#258392/);
     assert.match(floweAppCardSource, /#CE9639/);
     assert.match(floweAppCardSource, /drawIcon/);
+    assert.match(floweAppCardSource, /Messy list captured|options\.lines/);
+    assert.match(floweSceneSource, /FLOWE_PANEL_SEQUENCE/);
     assert.doesNotMatch(floweSceneSource, /plannerInset/);
     assert.match(floweSceneSource, /const primaryTask = index < 9/);
     assert.match(argyphSceneSource, /argyph-local-index-stack/);

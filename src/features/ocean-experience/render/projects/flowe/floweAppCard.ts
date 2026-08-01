@@ -18,17 +18,20 @@ export type FloweCardKind =
 export type FloweAppCardOptions = {
   readonly badge?: string;
   readonly kind: FloweCardKind;
+  readonly lines?: readonly string[];
+  readonly status?: string;
   readonly tone?: "gold" | "teal";
 };
 
 export type FloweAppCard = {
+  readonly aspectRatio: number;
   readonly material: MeshBasicMaterial;
   readonly texture: CanvasTexture;
 };
 
 const CARD = {
-  background: "rgba(12, 36, 64, 0.96)",
-  border: "rgba(147, 162, 139, 0.24)",
+  background: "rgba(1, 16, 36, 0.985)",
+  border: "rgba(70, 150, 162, 0.34)",
   gold: "#CE9639",
   muted: "#B6C1C8",
   teal: "#258392",
@@ -171,20 +174,20 @@ export function createFloweAppCard(
 ): FloweAppCard {
   const canvas = document.createElement("canvas");
   canvas.width = 640;
-  canvas.height = 200;
+  canvas.height = options.lines ? 340 : 200;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Unable to create FlowE app card");
 
   const accent = options.tone === "gold" ? CARD.gold : CARD.teal;
   context.clearRect(0, 0, canvas.width, canvas.height);
-  roundedRect(context, 5, 5, 630, 190, 32);
+  roundedRect(context, 5, 5, 630, canvas.height - 10, 32);
   context.fillStyle = CARD.background;
   context.fill();
   context.strokeStyle = CARD.border;
   context.lineWidth = 2;
   context.stroke();
 
-  drawIcon(context, options.kind, 66, 100, accent);
+  drawIcon(context, options.kind, 66, options.lines ? 68 : 100, accent);
 
   if (options.badge) {
     context.font = '700 19px "Helvetica Neue", Arial, sans-serif';
@@ -205,10 +208,34 @@ export function createFloweAppCard(
   context.textBaseline = "middle";
   context.fillStyle = CARD.text;
   context.font = '600 38px "Helvetica Neue", Arial, sans-serif';
-  context.fillText(title, 116, options.badge ? 88 : 76, 480);
-  context.fillStyle = CARD.muted;
-  context.font = '500 26px "Helvetica Neue", Arial, sans-serif';
-  context.fillText(detail, 116, options.badge ? 139 : 129, 480);
+  context.fillText(title, 116, options.lines ? 68 : options.badge ? 88 : 76, 480);
+
+  if (options.lines) {
+    context.strokeStyle = "rgba(70, 150, 162, 0.22)";
+    context.lineWidth = 1.5;
+    context.beginPath();
+    context.moveTo(36, 112);
+    context.lineTo(604, 112);
+    context.stroke();
+    context.fillStyle = CARD.text;
+    context.font = '500 30px "SFMono-Regular", Menlo, monospace';
+    options.lines.slice(0, 4).forEach((line, index) => {
+      context.fillText(line, 54, 151 + index * 43, 530);
+    });
+    if (options.status) {
+      context.fillStyle = accent;
+      context.beginPath();
+      context.arc(56, 309, 6, 0, Math.PI * 2);
+      context.fill();
+      context.fillStyle = CARD.muted;
+      context.font = '600 21px "Helvetica Neue", Arial, sans-serif';
+      context.fillText(options.status, 76, 309, 500);
+    }
+  } else {
+    context.fillStyle = CARD.muted;
+    context.font = '500 26px "Helvetica Neue", Arial, sans-serif';
+    context.fillText(detail, 116, options.badge ? 139 : 129, 480);
+  }
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
@@ -224,5 +251,5 @@ export function createFloweAppCard(
     depthWrite: false,
     toneMapped: false,
   });
-  return { material, texture };
+  return { aspectRatio: canvas.width / canvas.height, material, texture };
 }

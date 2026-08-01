@@ -40,14 +40,14 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Dossier", shortLabel: "Proof", detail: "Markdown + JSON", start: 0.88, end: 1, accent: "#5caec3" },
   ],
   flowe: [
-    { label: "Awaken", shortLabel: "Mark", detail: "trace · resolve · handoff", start: 0, end: 0.34, accent: "#8ee8f4" },
-    { label: "Dump", shortLabel: "Dump", detail: "text or voice → 3 drafts", start: 0.305, end: 0.39, accent: "#44b8d0" },
-    { label: "Parse", shortLabel: "Parse", detail: "2 tasks · 1 study session", start: 0.37, end: 0.49, accent: "#5ac5d4" },
-    { label: "Context", shortLabel: "Class", detail: "Canvas deadlines + PSYC-2", start: 0.47, end: 0.58, accent: "#73c8de" },
-    { label: "Plan", shortLabel: "Plan", detail: "today + this week", start: 0.53, end: 0.67, accent: "#5ea8d6" },
-    { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.65, end: 0.8, accent: "#92e5ec" },
-    { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.78, end: 0.92, accent: "#689ce0" },
-    { label: "Brief", shortLabel: "Brief", detail: "Today · Focus · motivation", start: 0.9, end: 1, accent: "#b0edf3" },
+    { label: "Awaken", shortLabel: "Mark", detail: "trace · resolve · handoff", start: 0, end: 0.305, accent: "#8ee8f4" },
+    { label: "Dump", shortLabel: "Dump", detail: "messy input → 3 drafts", start: 0.305, end: 0.385, accent: "#44b8d0" },
+    { label: "Parse", shortLabel: "Parse", detail: "2 tasks · 1 study session", start: 0.385, end: 0.48, accent: "#5ac5d4" },
+    { label: "Context", shortLabel: "Class", detail: "Canvas deadlines + PSYC-2", start: 0.48, end: 0.57, accent: "#73c8de" },
+    { label: "Plan", shortLabel: "Plan", detail: "today + this week", start: 0.57, end: 0.675, accent: "#5ea8d6" },
+    { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.675, end: 0.79, accent: "#92e5ec" },
+    { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.79, end: 0.905, accent: "#689ce0" },
+    { label: "Brief", shortLabel: "Brief", detail: "Today · Focus · motivation", start: 0.905, end: 1, accent: "#b0edf3" },
   ],
   argyph: [
     { label: "Scan", detail: "repository reef", start: 0, end: 0.28 },
@@ -93,8 +93,8 @@ const ETCH_ANNOTATIONS = [
 const FLOWE_ANNOTATIONS = [
   { beat: 0, slot: "left-top", label: "FlowE identity", detail: "exact source silhouette" },
   { beat: 0, slot: "right-mid", label: "Drawn in light", detail: "four measured centerlines" },
-  { beat: 1, slot: "left-mid", label: "Brain Dump", detail: "text or voice input" },
-  { beat: 1, slot: "right-top", label: "Checking calendar", detail: "school context attached" },
+  { beat: 1, slot: "left-mid", label: "Neural Slate", detail: "type the messy version first" },
+  { beat: 1, slot: "right-top", label: "Checking calendar", detail: "read · match · build" },
   { beat: 2, slot: "left-top", label: "3 items drafted", detail: "2 tasks · 1 study session" },
   { beat: 2, slot: "right-bottom", label: "Review before save", detail: "human confirmation" },
   { beat: 3, slot: "left-bottom", label: "Canvas deadlines", detail: "Homework 3 · 12:00 PM" },
@@ -103,10 +103,10 @@ const FLOWE_ANNOTATIONS = [
   { beat: 4, slot: "right-mid", label: "Workload-aware", detail: "calendar + course context" },
   { beat: 5, slot: "left-mid", label: "Study for psych quiz", detail: "Live Activity · 50:00" },
   { beat: 5, slot: "right-top", label: "One calm block", detail: "everything else recedes" },
-  { beat: 6, slot: "left-bottom", label: "Offline queue", detail: "three changes retained" },
+  { beat: 6, slot: "left-bottom", label: "Saved on device", detail: "three changes ready to retry" },
   { beat: 6, slot: "right-top", label: "Convex sync", detail: "user-scoped retry" },
   { beat: 7, slot: "left-top", label: "Good morning, Student!", detail: "Friday, 5 June" },
-  { beat: 7, slot: "right-mid", label: "Today", detail: "0 tasks · 1 event" },
+  { beat: 7, slot: "right-mid", label: "Today · Focus", detail: "one clear next move" },
 ] as const;
 
 /**
