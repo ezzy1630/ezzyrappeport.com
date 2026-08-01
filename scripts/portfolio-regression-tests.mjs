@@ -2148,6 +2148,9 @@ const tests = [
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
     assert.match(floweSceneSource, /uniform sampler2D uIdentity/);
     assert.match(floweSceneSource, /uReveal/);
+    assert.match(floweSceneSource, /uSettle/);
+    assert.match(floweSceneSource, /logoHandoffT/);
+    assert.match(floweSceneSource, /the finished mark never pops on/);
     assert.match(floweSceneSource, /Study for psych quiz/);
     assert.match(floweSceneSource, /flowe-task-/);
     assert.match(floweSceneSource, /staggeredReveal/);

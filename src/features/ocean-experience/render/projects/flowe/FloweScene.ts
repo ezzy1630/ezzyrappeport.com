@@ -133,10 +133,10 @@ const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
 ] as const;
 
 const FLOWE_STATE_WINDOWS = [
-  [0, 0.22],
-  [0.2, 0.32],
-  [0.3, 0.43],
-  [0.41, 0.55],
+  [0, 0.34],
+  [0.305, 0.39],
+  [0.37, 0.49],
+  [0.47, 0.58],
   [0.53, 0.67],
   [0.65, 0.8],
   [0.78, 0.92],
@@ -453,6 +453,7 @@ export function createFloweEncounter(): ProjectEncounter {
           uIdentity: { value: identityTexture },
           uOpacity: { value: 0 },
           uReveal: { value: 0 },
+          uSettle: { value: 0 },
           uTracer: { value: 0 },
           uTime: { value: 0 },
         },
@@ -467,6 +468,7 @@ export function createFloweEncounter(): ProjectEncounter {
           uniform sampler2D uIdentity;
           uniform float uOpacity;
           uniform float uReveal;
+          uniform float uSettle;
           uniform float uTracer;
           uniform float uTime;
           varying vec2 vUv;
@@ -547,14 +549,21 @@ export function createFloweEncounter(): ProjectEncounter {
             considerSegment(vUv, vec2(.625,.164), vec2(.648,.117), .950,1.000, bestDistance, strokeOrder);
 
             float centerlineCoverage = 1.0 - smoothstep(0.095, 0.155, bestDistance);
-            float ink = smoothstep(strokeOrder - 0.018, strokeOrder + 0.008, uReveal) * centerlineCoverage;
-            float completedMark = smoothstep(0.9, 0.97, uReveal);
-            float leadingEdge = (
-              1.0 - smoothstep(0.012, 0.045, abs(strokeOrder - uReveal))
-            ) * centerlineCoverage * uTracer * (0.88 + sin(uTime * 4.0) * 0.12);
-            float alpha = mark * max(max(ink, completedMark), leadingEdge) * uOpacity;
+            float ink = smoothstep(strokeOrder - 0.014, strokeOrder + 0.006, uReveal) * centerlineCoverage;
+            float tracerDistance = abs(strokeOrder - uReveal);
+            float tracerCore = (1.0 - smoothstep(0.006, 0.022, tracerDistance)) * centerlineCoverage;
+            float tracerHalo = (1.0 - smoothstep(0.018, 0.065, tracerDistance)) * centerlineCoverage;
+            float tracerBreath = 0.95 + sin(uTime * 1.25) * 0.05;
+            float leadingEdge = (tracerCore + tracerHalo * 0.42) * uTracer * tracerBreath;
+            // Settle is deliberately separate from reveal. The exact sampled
+            // silhouette resolves only after the traced tail completes, so
+            // the finished mark never pops on during the last stroke.
+            float resolvedMark = smoothstep(0.0, 1.0, uSettle);
+            float alpha = mark * max(max(ink, resolvedMark), leadingEdge) * uOpacity;
             if (alpha < 0.01) discard;
-            gl_FragColor = vec4(source.rgb + leadingEdge * vec3(0.08, 0.22, 0.28), alpha);
+            vec3 tracerLight = vec3(0.10, 0.24, 0.28) * tracerCore
+              + vec3(0.03, 0.12, 0.16) * tracerHalo;
+            gl_FragColor = vec4(source.rgb + tracerLight * uTracer, alpha);
           }
         `,
       }));
@@ -676,10 +685,15 @@ export function createFloweEncounter(): ProjectEncounter {
       const groupT = smoothstep01((t - loop.groupStart) / (loop.groupFull - loop.groupStart));
       const focusT = smoothstep01((t - loop.focusStart) / (loop.focusFull - loop.focusStart));
       const contractT = smoothstep01((t - loop.contractStart) / (loop.contractFull - loop.contractStart));
-      // The chapter first enters the viewport near 0.12. Keep the full draw
-      // inside the visible range so it never begins offscreen.
-      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.11) / 0.08);
-      const identityReady = smoothstep01((logoDrawT - 0.76) / 0.24);
+      // One signature gesture: trace the exact mark, resolve its full sampled
+      // silhouette, hold, then lift it into Brain Dump. Separate phases keep
+      // the final tail from being rushed or replaced by a completion pop.
+      const logoDrawT = frame.reducedMotion ? 1 : smoothstep01((t - 0.145) / 0.125);
+      const logoSettleT = frame.reducedMotion ? 1 : smoothstep01((t - 0.265) / 0.03);
+      const logoHandoffT = frame.reducedMotion
+        ? (t >= 0.305 ? 1 : 0)
+        : smoothstep01((t - 0.305) / 0.03);
+      const identityReady = logoSettleT;
       const organizedGroupT = groupT * identityReady;
       const taskAssemblyT = groupT;
       const visualScale = layoutMode === "mobile" ? 0.68 : 1;
@@ -705,11 +719,21 @@ export function createFloweEncounter(): ProjectEncounter {
       if (flowIdentityPlate && flowIdentityMaterial) {
         flowIdentityMaterial.uniforms.uOpacity.value = logoPresence * fade;
         flowIdentityMaterial.uniforms.uReveal.value = logoDrawT;
-        flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion ? 0 : (1 - identityReady) * statePresence[0];
+        flowIdentityMaterial.uniforms.uSettle.value = logoSettleT;
+        flowIdentityMaterial.uniforms.uTracer.value = frame.reducedMotion
+          ? 0
+          : (1 - smoothstep01((logoDrawT - 0.92) / 0.08)) * statePresence[0];
         flowIdentityMaterial.uniforms.uTime.value = frame.time;
         flowIdentityPlate.rotation.set(0, 0, 0);
-        flowIdentityPlate.scale.setScalar(visualScale * (1.08 + statePresence[0] * 0.28 + statePresence[7] * 0.12));
-        flowIdentityPlate.position.set(center.x, center.y + 0.24, 0.052);
+        const introLogoScale = 1.36 - logoHandoffT * 0.54;
+        const briefLogoScale = 1.2;
+        const useBriefPose = statePresence[7] > statePresence[0];
+        flowIdentityPlate.scale.setScalar(visualScale * (useBriefPose ? briefLogoScale : introLogoScale));
+        flowIdentityPlate.position.set(
+          center.x,
+          center.y + (useBriefPose ? 0.24 : 0.24 + logoHandoffT * 0.16),
+          0.052,
+        );
       }
 
       for (let panelIndex = 0; panelIndex < featurePanels.length; panelIndex += 1) {
@@ -834,11 +858,27 @@ export function createFloweEncounter(): ProjectEncounter {
       if (briefHalo && briefHaloMaterial) {
         const briefPresence = statePresence[7];
         const briefReveal = stateProgresses[7];
-        briefHalo.position.set(center.x, center.y + (-0.18 + briefReveal * 0.42) * visualScale, 0.04);
-        briefHalo.scale.setScalar(visualScale * (0.72 + briefReveal * 0.28));
-        briefHalo.rotation.z = frame.reducedMotion ? 0 : Math.sin(frame.time * 0.22) * 0.035;
-        briefHaloMaterial.opacity = briefPresence * 0.28 * fade;
-        briefHalo.visible = briefPresence > 0.001;
+        const drawHaloPresence = frame.reducedMotion
+          ? 0
+          : statePresence[0] * (0.18 + logoDrawT * 0.82) * (1 - logoSettleT * 0.86);
+        const useBriefHalo = briefPresence >= drawHaloPresence;
+        briefHalo.position.set(
+          center.x,
+          center.y + (useBriefHalo
+            ? (-0.18 + briefReveal * 0.42) * visualScale
+            : (0.24 + logoHandoffT * 0.16) * visualScale),
+          0.04,
+        );
+        briefHalo.scale.setScalar(visualScale * (useBriefHalo
+          ? 0.72 + briefReveal * 0.28
+          : 0.68 + logoDrawT * 0.34));
+        briefHalo.rotation.z = frame.reducedMotion
+          ? 0
+          : useBriefHalo
+            ? Math.sin(frame.time * 0.22) * 0.035
+            : -0.18 + logoDrawT * 0.36;
+        briefHaloMaterial.opacity = Math.max(briefPresence * 0.28, drawHaloPresence * 0.2) * fade;
+        briefHalo.visible = Math.max(briefPresence, drawHaloPresence) > 0.001;
       }
 
       const focusTask = 0;
