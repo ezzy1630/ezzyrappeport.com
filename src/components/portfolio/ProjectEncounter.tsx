@@ -47,7 +47,7 @@ const ENCOUNTER_BEATS: Readonly<Record<string, readonly EncounterBeat[]>> = {
     { label: "Plan", shortLabel: "Plan", detail: "today + this week", start: 0.57, end: 0.675, accent: "#5ea8d6" },
     { label: "Focus", shortLabel: "Focus", detail: "50-minute live block", start: 0.675, end: 0.79, accent: "#92e5ec" },
     { label: "Sync", shortLabel: "Sync", detail: "offline queue + retry", start: 0.79, end: 0.905, accent: "#689ce0" },
-    { label: "Brief", shortLabel: "Brief", detail: "Today · Focus · motivation", start: 0.905, end: 1, accent: "#b0edf3" },
+    { label: "Brief", shortLabel: "Brief", detail: "one next move", start: 0.905, end: 1, accent: "#b0edf3" },
   ],
   argyph: [
     { label: "Scan", detail: "repository reef", start: 0, end: 0.28 },
@@ -91,22 +91,14 @@ const ETCH_ANNOTATIONS = [
 ] as const;
 
 const FLOWE_ANNOTATIONS = [
-  { beat: 0, slot: "left-top", label: "FlowE identity", detail: "exact source silhouette" },
-  { beat: 0, slot: "right-mid", label: "Drawn in light", detail: "four measured centerlines" },
-  { beat: 1, slot: "left-mid", label: "Neural Slate", detail: "type the messy version first" },
-  { beat: 1, slot: "right-top", label: "Checking calendar", detail: "read · match · build" },
-  { beat: 2, slot: "left-top", label: "3 items drafted", detail: "2 tasks · 1 study session" },
-  { beat: 2, slot: "right-bottom", label: "Review before save", detail: "human confirmation" },
-  { beat: 3, slot: "left-bottom", label: "Canvas deadlines", detail: "Homework 3 · 12:00 PM" },
-  { beat: 3, slot: "right-top", label: "Course context", detail: "PSYC-2 · 8:00 AM" },
-  { beat: 4, slot: "left-top", label: "Daily plan", detail: "today + this week" },
-  { beat: 4, slot: "right-mid", label: "Workload-aware", detail: "calendar + course context" },
-  { beat: 5, slot: "left-mid", label: "Study for psych quiz", detail: "Live Activity · 50:00" },
-  { beat: 5, slot: "right-top", label: "One calm block", detail: "everything else recedes" },
-  { beat: 6, slot: "left-bottom", label: "Saved on device", detail: "three changes ready to retry" },
-  { beat: 6, slot: "right-top", label: "Convex sync", detail: "user-scoped retry" },
-  { beat: 7, slot: "left-top", label: "Good morning, Student!", detail: "Friday, 5 June" },
-  { beat: 7, slot: "right-mid", label: "Today · Focus", detail: "one clear next move" },
+  { beat: 0, slot: "left-top", label: "Identity", detail: "exact FlowE mark" },
+  { beat: 1, slot: "left-mid", label: "Messy in", detail: "Neural Slate" },
+  { beat: 2, slot: "right-top", label: "Three drafts", detail: "review first" },
+  { beat: 3, slot: "left-bottom", label: "Course-aware", detail: "Canvas + calendar" },
+  { beat: 4, slot: "right-mid", label: "Today, arranged", detail: "workload-aware" },
+  { beat: 5, slot: "left-mid", label: "One calm block", detail: "50:00" },
+  { beat: 6, slot: "right-top", label: "Offline-safe", detail: "saved → synced" },
+  { beat: 7, slot: "left-top", label: "Next move", detail: "morning brief" },
 ] as const;
 
 /**
@@ -135,8 +127,10 @@ export default function ProjectEncounter({ project, progress, total }: Props) {
         </div>
         <div className={styles.sceneFrame} aria-hidden="true">
           <div className={styles.frameHeader}>
-            <span>Live system model</span>
-            <span>Scroll-linked / {String(beats.length).padStart(2, "0")} states</span>
+            <span>{project.slug === "flowe" ? "Thought → focus" : "Live system model"}</span>
+            {project.slug === "flowe" ? null : (
+              <span>Scroll-linked / {String(beats.length).padStart(2, "0")} states</span>
+            )}
           </div>
           {project.slug === "monkeyclaw" || project.slug === "etch" || project.slug === "flowe" ? (
             <div className={styles.sceneAnnotations} aria-hidden="true">

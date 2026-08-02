@@ -2142,8 +2142,8 @@ const tests = [
     assert.match(floweSceneSource, /flowe-sync-orbit-/);
     assert.match(floweSceneSource, /flowe-brief-halo/);
     assert.match(floweSceneSource, /What's on your mind/);
-    assert.match(floweSceneSource, /Saved on device/);
-    assert.match(floweSceneSource, /Good morning, Student!/);
+    assert.match(floweSceneSource, /Saved/);
+    assert.match(floweSceneSource, /Good morning/);
     assert.match(floweSceneSource, /flowe-brand-mark-plane/);
     assert.match(floweSceneSource, /projects\/flowe\/app-icon\.webp/);
     assert.match(floweSceneSource, /uniform sampler2D uIdentity/);

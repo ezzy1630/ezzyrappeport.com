@@ -216,8 +216,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     slug: "flowe",
     index: "03",
     title: "FLOWE",
-    subtitle: "Intelligent Student App",
-    tagline: "A calm operating system for tasks, focus, Canvas, and daily planning.",
+    subtitle: "Student OS",
+    tagline: "Messy thoughts become one clear next move.",
     description:
       "FlowE is a SwiftUI productivity app for adults managing coursework and professional schedules. It combines task management, focus sessions, Canvas LMS sync, Apple Calendar integration, AI-driven planning, and lightweight gamification on top of a real-time Convex backend.",
     problem:
@@ -238,7 +238,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-flow",
     personality: "flowe",
     status: "Private build · public site",
-    proof: "SwiftUI client · Convex backend · Canvas sync · offline retry",
+    proof: "SwiftUI · Convex · Canvas · offline retry",
     cautionLabel: "Campaign visualization",
     media: {
       cover: {

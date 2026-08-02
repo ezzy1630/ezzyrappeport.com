@@ -61,7 +61,7 @@ async function collectMetrics(page) {
         return text.includes("A proven · 50-cycle sim · BMC depth 32 · Yosys 0.66")
           && text.includes("Physical signoff pending");
       })(),
-      floweProof: Boolean(document.querySelector('[data-encounter="flowe"]')?.textContent?.includes("SwiftUI client · Convex backend · Canvas sync · offline retry")),
+      floweProof: Boolean(document.querySelector('[data-encounter="flowe"]')?.textContent?.includes("SwiftUI · Convex · Canvas · offline retry")),
     };
   });
 }
@@ -214,7 +214,8 @@ const FLOWE_BEATS = [
   { name: "05b-focus-live-activity", progress: 0.755 },
   { name: "05c-focus-hold", progress: 0.775 },
   { name: "06a-sync-contract", progress: 0.81 },
-  { name: "06b-offline-retry", progress: 0.858 },
+  { name: "06b-saved-offline", progress: 0.84 },
+  { name: "06c-convex-synced", progress: 0.875 },
   { name: "07a-briefing-rises", progress: 0.94 },
   { name: "07b-morning-brief", progress: 0.965 },
 ];

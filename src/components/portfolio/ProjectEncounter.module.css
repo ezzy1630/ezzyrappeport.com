@@ -236,12 +236,10 @@
 
 .encounter[data-encounter="flowe"] .sceneAnnotation {
   --annotation-exit-rate: 220;
-  min-width: 8.7rem;
-  padding: 0.58rem 0.72rem 0.54rem 0.86rem;
-  background: color-mix(in oklab, #061b29 92%, transparent);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 14%),
-    0 0.8rem 2.2rem rgb(4 38 61 / 16%);
+  min-width: 0;
+  padding: 0.48rem 0.66rem 0.46rem 0.82rem;
+  background: color-mix(in oklab, #061b29 88%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 12%);
 }
 
 .encounter[data-encounter="flowe"] .sceneAnnotation strong {
@@ -250,9 +248,7 @@
 }
 
 .encounter[data-encounter="flowe"] .sceneAnnotation small {
-  color: rgb(218 240 246 / 90%);
-  font-size: 0.65rem;
-  line-height: 1.28;
+  display: none;
 }
 
 .sceneAnnotation[data-slot="left-top"] { left: 2%; top: 10%; }
@@ -433,13 +429,14 @@
 
 .encounter[data-encounter="flowe"] .beat {
   grid-template-columns: 1fr;
-  gap: 0.1rem;
-  padding: 0.5rem 0.38rem 0;
+  place-items: center;
+  gap: 0;
+  padding: 0.56rem 0.2rem 0;
   opacity: calc(0.3 + var(--beat-entered) * 0.3 + var(--beat-active) * 0.4);
 }
 
 .encounter[data-encounter="flowe"] .beatRail {
-  padding: 0.46rem 0 0.64rem;
+  padding: 0.34rem 0 0.58rem;
   background: color-mix(in oklab, #edf8fa 90%, transparent);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 58%),
@@ -448,21 +445,27 @@
 }
 
 .encounter[data-encounter="flowe"] .beatIndex {
-  grid-row: auto;
+  display: none;
 }
 
 .encounter[data-encounter="flowe"] .beat strong {
   overflow: visible;
-  font-size: 0.66rem;
-  letter-spacing: 0.045em;
-  white-space: normal;
+  font-size: 0.64rem;
+  letter-spacing: 0.055em;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .encounter[data-encounter="flowe"] .beat small {
-  color: rgb(16 55 75 / 90%);
-  font-size: 0.62rem;
-  line-height: 1.28;
-  opacity: calc(var(--beat-active) * 0.96);
+  display: none;
+}
+
+.encounter[data-encounter="flowe"] .beatLabelLong {
+  display: none;
+}
+
+.encounter[data-encounter="flowe"] .beatLabelShort {
+  display: inline;
 }
 
 .beat[data-state="pending"] strong::after {

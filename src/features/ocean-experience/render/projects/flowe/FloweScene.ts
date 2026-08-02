@@ -102,12 +102,10 @@ const _fragmentCool = new Color(FLOWE_COLORS.fragment);
 const _anchor: [number, number, number] = [0, 0, 0];
 const FLOWE_TASK_WIDTHS = [1.28, 1.04, 1.18, 0.94, 1.22, 1.06, 1.18, 0.9, 1.26] as const;
 const FLOWE_TASKS = [
-  { title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", kind: "study", badge: "STUDY PLAN", tone: "gold" },
-  { title: "Email Prof. Carter", detail: "Extension request", kind: "task", badge: "TASK" },
-  { title: "History focus hour", detail: "Find a free hour next week", kind: "calendar", badge: "TASK" },
-  { title: "Homework 3", detail: "12:00 PM · 10 pts", kind: "task", badge: "CANVAS" },
-  { title: "Intro Psych", detail: "8:00–9:35 AM", kind: "course", badge: "PSYC-2" },
-  { title: "Review drafts", detail: "Ready before saving", kind: "review", badge: "3 ITEMS" },
+  { title: "Psych quiz", detail: "2 Pomodoros", kind: "study", badge: "NEXT", tone: "gold" },
+  { title: "Email professor", detail: "Draft ready", kind: "task" },
+  { title: "History block", detail: "Next week", kind: "calendar" },
+  { title: "Homework 3", detail: "Noon", kind: "task", badge: "CANVAS" },
 ] as const;
 
 type FloweFeaturePanel = {
@@ -131,7 +129,7 @@ const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
     title: "What's on your mind?",
     detail: "",
     lines: ["psych quiz Friday", "email Prof. Carter", "history project"],
-    status: "Messy list captured · waiting to structure",
+    status: "Ready to sort",
     x: 0,
     y: -0.16,
     width: 0.64,
@@ -139,20 +137,18 @@ const FLOWE_FEATURE_PANELS: readonly FloweFeaturePanel[] = [
     kind: "brain",
     badge: "NEURAL SLATE",
   },
-  { state: 1, title: "Checking calendar", detail: "Read request · matched context", x: 0, y: -0.47, width: 0.52, scale: 0.9, kind: "calendar", badge: "WORKING" },
-  { state: 2, title: "Study for psych quiz", detail: "Due Jun 6 · 2 Pomodoros", x: -0.31, y: -0.1, width: 0.57, kind: "study", badge: "STUDY PLAN", tone: "gold" },
-  { state: 2, title: "Email Prof. Carter", detail: "Extension request", x: 0.31, y: -0.1, width: 0.57, kind: "task", badge: "TASK" },
-  { state: 2, title: "History focus hour", detail: "Find a free hour next week", x: 0, y: -0.31, width: 0.57, kind: "calendar", badge: "TASK" },
-  { state: 2, title: "3 items drafted", detail: "Review before saving to FlowE", x: 0, y: -0.5, width: 0.53, scale: 0.92, kind: "review", badge: "CONFIRM" },
-  { state: 3, title: "Canvas deadlines", detail: "Homework 3 · 12:00 PM", x: -0.31, y: -0.17, width: 0.58, kind: "task", badge: "CANVAS" },
-  { state: 3, title: "Intro Psych", detail: "PSYC-2 · 8:00–9:35 AM", x: 0.31, y: -0.17, width: 0.58, kind: "course", badge: "COURSE" },
-  { state: 5, title: "Study for psych quiz", detail: "50:00 · Focus Live Activity", x: 0, y: -0.28, width: 0.62, scale: 1.15, kind: "focus", badge: "FOCUS" },
-  { state: 6, title: "Saved on device", detail: "3 changes ready to retry", x: -0.31, y: -0.17, width: 0.58, kind: "sync", badge: "OFFLINE" },
-  { state: 6, title: "Convex sync", detail: "User-scoped · retry safe", x: 0.31, y: -0.17, width: 0.58, kind: "sync", badge: "SYNCED" },
-  { state: 7, title: "Good morning, Student!", detail: "Friday, 5 June · 0 tasks · 1 event", x: 0, y: -0.08, width: 0.66, scale: 1.06, kind: "brain", badge: "BRIEFING" },
-  { state: 7, title: "Today", detail: "PSYC-2 · 8:00–9:35 AM", x: -0.3, y: -0.31, width: 0.55, kind: "course", badge: "1 EVENT" },
-  { state: 7, title: "Focus", detail: "Study for psych quiz · 50 min", x: 0.3, y: -0.31, width: 0.55, kind: "focus", badge: "NEXT" },
-  { state: 7, title: "Keep the next move small", detail: "Momentum, not overload", x: 0, y: -0.51, width: 0.54, scale: 0.92, kind: "review", badge: "MOTIVATION" },
+  { state: 1, title: "Checking calendar", detail: "", x: 0, y: -0.47, width: 0.5, scale: 0.88, kind: "calendar" },
+  { state: 2, title: "Psych quiz", detail: "2 Pomodoros", x: -0.31, y: -0.13, width: 0.57, kind: "study", badge: "NEXT", tone: "gold" },
+  { state: 2, title: "Email professor", detail: "Draft ready", x: 0.31, y: -0.13, width: 0.57, kind: "task" },
+  { state: 2, title: "History block", detail: "Next week", x: 0, y: -0.36, width: 0.57, kind: "calendar" },
+  { state: 3, title: "Canvas", detail: "Homework 3 · noon", x: -0.31, y: -0.17, width: 0.58, kind: "task" },
+  { state: 3, title: "PSYC-2", detail: "8:00 AM", x: 0.31, y: -0.17, width: 0.58, kind: "course" },
+  { state: 5, title: "Psych quiz", detail: "50:00", x: 0, y: -0.28, width: 0.62, scale: 1.15, kind: "focus", badge: "FOCUS" },
+  { state: 6, title: "Saved", detail: "Offline", x: 0, y: -0.17, width: 0.6, kind: "sync" },
+  { state: 6, title: "Synced", detail: "Convex", x: 0, y: -0.17, width: 0.6, kind: "sync" },
+  { state: 7, title: "Good morning", detail: "Friday · 1 class", x: 0, y: -0.08, width: 0.66, scale: 1.06, kind: "brain" },
+  { state: 7, title: "Today", detail: "PSYC-2 · 8:00", x: -0.3, y: -0.31, width: 0.55, kind: "course" },
+  { state: 7, title: "Focus", detail: "Quiz · 50 min", x: 0.3, y: -0.31, width: 0.55, kind: "focus" },
 ] as const;
 
 const FLOWE_PANEL_SEQUENCE = FLOWE_FEATURE_PANELS.map((panel, panelIndex) => ({
@@ -796,6 +792,12 @@ export function createFloweEncounter(): ProjectEncounter {
         const reveal = panel.state === 5 && !frame.reducedMotion
           ? focusHandoff
           : baseReveal;
+        const syncSwap = frame.reducedMotion
+          ? 1
+          : smoothstep01((stateProgresses[6] - 0.78) / 0.18);
+        const panelPresence = panel.state === 6
+          ? presence * (panelRank === 0 ? 1 - syncSwap : syncSwap)
+          : presence;
         const scale = (panel.scale ?? 1) * visualScale;
         const originX = panel.state === 7
           ? panel.x
@@ -825,10 +827,10 @@ export function createFloweEncounter(): ProjectEncounter {
         featurePanelShells[panelIndex].rotation.z = featurePanels[panelIndex].rotation.z;
         featurePanels[panelIndex].scale.setScalar(scale * (0.88 + reveal * 0.12));
         featurePanelShells[panelIndex].scale.copy(featurePanels[panelIndex].scale);
-        featurePanelMaterials[panelIndex].opacity = presence * reveal * fade;
-        featurePanelShellMaterials[panelIndex].opacity = presence * reveal * 0.68 * fade;
-        featurePanels[panelIndex].visible = presence * reveal > 0.001;
-        featurePanelShells[panelIndex].visible = presence * reveal > 0.001;
+        featurePanelMaterials[panelIndex].opacity = panelPresence * reveal * fade;
+        featurePanelShellMaterials[panelIndex].opacity = panelPresence * reveal * 0.68 * fade;
+        featurePanels[panelIndex].visible = panelPresence * reveal > 0.001;
+        featurePanelShells[panelIndex].visible = panelPresence * reveal > 0.001;
       }
 
       if (semanticLinks && semanticLinkMaterial) {
