@@ -100,8 +100,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     slug: "monkeyclaw",
     index: "01",
     title: "MONKEYCLAW",
-    subtitle: "Multi-Agent Security System",
-    tagline: "Continuous red, blue, and purple-team security testing for agent runtimes.",
+    subtitle: "Autonomous Red / Purple / Blue Security Agent for NVIDIA NemoClaw",
+    tagline: "Attacks live sandboxes, proves and patches confirmed findings, then checks the defense was visible in NemoClaw telemetry.",
     description:
       "MonkeyClaw is a continuous security agent for NemoClaw and OpenClaw deployments. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
     problem:
@@ -113,7 +113,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     system:
       "Live multi-panel dashboard over an 18-zone attack map. Red to judge to repro to blue to purple loop with detection-as-pass gates.",
     evidence:
-      "Attack-blocked / detection-fired matrix, zero-credential demo path, 8 verifier gates, 1,051 tracked test functions, README badge coverage for 18 zones.",
+      "Detection-as-pass matrix, zero-credential demo path, 8 verifier gates, 1,000+ tests, and dual-axis coverage across 18 zones.",
     constraints:
       "Multi-contributor project. Demo runs without model credentials; live LLM paths remain optional and environment-gated.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
@@ -121,8 +121,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     role: "Lead Engineer & Contributor",
     accent: "blue-strong",
     personality: "monkeyclaw",
-    status: "Public repository · working demo",
-    proof: "18 seeded attack zones · 8 verifier gates · 1,051 tracked test functions",
+    status: "Public repository · zero-credential demo",
+    proof: "18 attack-surface zones · 8 verifier gates · 1,000+ tests",
     cautionLabel: "Multi-contributor project",
     media: {
       cover: {
@@ -216,8 +216,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     slug: "flowe",
     index: "03",
     title: "FLOWE",
-    subtitle: "Intelligent Student App",
-    tagline: "A calm operating system for tasks, focus, Canvas, and daily planning.",
+    subtitle: "Student OS",
+    tagline: "Messy thoughts become one clear next move.",
     description:
       "FlowE is a SwiftUI productivity app for adults managing coursework and professional schedules. It combines task management, focus sessions, Canvas LMS sync, Apple Calendar integration, AI-driven planning, and lightweight gamification on top of a real-time Convex backend.",
     problem:
@@ -238,7 +238,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-flow",
     personality: "flowe",
     status: "Private build · public site",
-    proof: "SwiftUI client · Convex backend · Canvas sync · offline retry",
+    proof: "SwiftUI · Convex · Canvas · offline retry",
     cautionLabel: "Campaign visualization",
     media: {
       cover: {
@@ -335,7 +335,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     index: "02",
     title: "ETCH",
     subtitle: "Verification-First Hardware Design",
-    tagline: "From natural-language intent to RTL evidence, gates, and proof dossiers.",
+    tagline: "Verification-first hardware design from intent to evidence.",
     description:
       "Etch is a local hardware-design cockpit that turns a natural-language requirement into a typed design spec, candidate RTL, independent verification artifacts, EDA gate results, correctness-first ranking, physical readiness records, and a proof dossier.",
     problem:
@@ -356,7 +356,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-medium",
     personality: "etch",
     status: "Public repository · local vertical slice",
-    proof: "Saved FIFO run · simulation pass · bounded-formal pass · signoff pending",
+    proof: "A proven · 50-cycle sim · BMC depth 32 · Yosys 0.66",
     cautionLabel: "Physical signoff pending",
     media: {
       cover: {

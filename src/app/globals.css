@@ -61,7 +61,10 @@ body {
   font-family: var(--font-general-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
+  /* clip (not hidden): hidden makes the element a scroll container and
+     silently defeats position: sticky for every descendant — the project
+     encounter stages rely on sticky chapter staging. */
+  overflow-x: clip;
 }
 
 @media (prefers-reduced-motion: reduce) {

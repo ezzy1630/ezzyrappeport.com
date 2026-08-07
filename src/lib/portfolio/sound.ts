@@ -3,13 +3,15 @@
 /**
  * Lazy WebAudio manager. Loads nothing until the user enables sound.
  * Soft underwater bed: filtered noise + a barely-there low swell.
- * Hard-off under MotionPolicy (OS reduced-motion or site motion-off).
- * Preference persists in localStorage.
+ * Sound stays independent from motion and persists through PreferenceStore.
  */
 
 import { readMotionPolicy } from "./motion-policy.ts";
-
-const STORAGE_KEY = "portfolio.sound.enabled";
+import {
+  getPreferencesSnapshot,
+  hydratePreferencesStore,
+  setPreferences,
+} from "../../features/ocean-experience/state/preferences-store.ts";
 
 type SoundKind = "ambient" | "press" | "ripple" | "hover" | "shockwave";
 
@@ -27,6 +29,7 @@ let ambientNodes: AudioNode[] = [];
 let enabled = false;
 let unlocked = false;
 let lastAmbientDepth = -1;
+let visibilityBound = false;
 
 function soundAllowedByPolicy() {
   return readMotionPolicy().soundAllowed;
@@ -38,8 +41,31 @@ function ensureContext() {
     const Ctx = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return null;
     audioCtx = new Ctx();
+    bindVisibilityLifecycle();
   }
   return audioCtx;
+}
+
+function onVisibilityChange() {
+  const ctx = audioCtx;
+  if (!ctx) return;
+  if (document.hidden) {
+    void ctx.suspend();
+  } else if (enabled && unlocked) {
+    void ctx.resume();
+  }
+}
+
+function bindVisibilityLifecycle() {
+  if (visibilityBound || typeof document === "undefined") return;
+  visibilityBound = true;
+  document.addEventListener("visibilitychange", onVisibilityChange);
+}
+
+function unbindVisibilityLifecycle() {
+  if (!visibilityBound || typeof document === "undefined") return;
+  visibilityBound = false;
+  document.removeEventListener("visibilitychange", onVisibilityChange);
 }
 
 function createNoiseBuffer(ctx: AudioContext, seconds = 3) {
@@ -270,12 +296,7 @@ function playTick(
 
 export function readSoundPreference(): boolean {
   if (typeof window === "undefined") return false;
-  if (!soundAllowedByPolicy()) return false;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return false;
-  }
+  return hydratePreferencesStore().sound;
 }
 
 export function setSoundEnabled(next: boolean) {
@@ -285,11 +306,7 @@ export function setSoundEnabled(next: boolean) {
     return false;
   }
   enabled = next;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, next ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
+  setPreferences({ sound: next });
   const ctx = ensureContext();
   if (!ctx) return false;
   if (next) {
@@ -324,12 +341,38 @@ export function playSound(kind: SoundKind, options: SoundPlayOptions = {}) {
 }
 
 export function initSoundFromStorage() {
-  if (readSoundPreference()) {
+  if (hydratePreferencesStore().sound) {
     // Do not autoplay: wait for a user gesture to unlock.
     enabled = true;
   }
 }
 
 export function isSoundEnabled() {
-  return enabled && soundAllowedByPolicy();
+  return enabled && getPreferencesSnapshot().sound && soundAllowedByPolicy();
+}
+
+/** Route/runtime teardown. Preference remains; WebAudio resources do not. */
+export function disposeSound(): void {
+  stopAmbient();
+  enabled = false;
+  unlocked = false;
+  unbindVisibilityLifecycle();
+  const ctx = audioCtx;
+  audioCtx = null;
+  if (ctx && ctx.state !== "closed") void ctx.close();
+}
+
+/** Translate bounded encounter hooks onto the existing restrained sound set. */
+export function playEncounterSoundEvents(events: readonly string[]): void {
+  for (const event of events) {
+    if (event === "gate-pass" || event === "telemetry-return") {
+      playSound("ripple", { intensity: 0.28 });
+    } else if (event === "gate-fail" || event === "judge-hit") {
+      playSound("press", { intensity: 0.52 });
+    } else if (event === "probe-pulse" || event === "deflect") {
+      playSound("shockwave", { intensity: 0.34 });
+    } else if (event === "current-rebalance") {
+      playSound("hover", { intensity: 0.2 });
+    }
+  }
 }

@@ -25,11 +25,13 @@ export default function LoadingVeil() {
     const failOpenTimer = window.setTimeout(finish, FAIL_OPEN_MS);
     if (document.documentElement.dataset.heroRenderer === "ready") finish();
     window.addEventListener("liquid-renderer-ready", finish, { once: true });
+    window.addEventListener("hero-renderer-failed", finish, { once: true });
 
     return () => {
       window.clearTimeout(failOpenTimer);
       window.clearTimeout(dismissalTimer);
       window.removeEventListener("liquid-renderer-ready", finish);
+      window.removeEventListener("hero-renderer-failed", finish);
     };
   }, []);
 

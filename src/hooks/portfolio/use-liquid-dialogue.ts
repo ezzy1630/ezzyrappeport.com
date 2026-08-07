@@ -8,6 +8,10 @@ import {
   liquidEmissionAllowed,
 } from "@/lib/portfolio/liquid-interaction";
 import { playSound } from "@/lib/portfolio/sound";
+import {
+  subscribeJourneyResize,
+  subscribeJourneyScroll,
+} from "@/features/ocean-experience/scroll/journey-scroll-bus";
 
 type PersistentSurfaceOptions = Readonly<{
   intervalMs?: number;
@@ -226,8 +230,8 @@ export function useLiquidPersistentSurface(
     const onViewportChange = () => setVisible(isElementInViewport(element));
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("liquid-renderer-ready", onRendererReady);
-    window.addEventListener("scroll", onViewportChange, { passive: true });
-    window.addEventListener("resize", onViewportChange, { passive: true });
+    const unsubscribeScroll = subscribeJourneyScroll(onViewportChange);
+    const unsubscribeResize = subscribeJourneyResize(onViewportChange);
 
     if (readyAtMount || rendererIsReady()) setVisible(visibleAtMount);
     else if (!observer) setVisible(true);
@@ -240,8 +244,8 @@ export function useLiquidPersistentSurface(
       observer?.disconnect();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("liquid-renderer-ready", onRendererReady);
-      window.removeEventListener("scroll", onViewportChange);
-      window.removeEventListener("resize", onViewportChange);
+      unsubscribeScroll();
+      unsubscribeResize();
     };
   }, [intervalMs, phaseOffsetMs, radius, reducedMotion, ref, strength]);
 }

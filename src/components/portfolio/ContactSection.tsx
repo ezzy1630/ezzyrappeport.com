@@ -26,7 +26,7 @@ export default function ContactSection() {
       <div className="contact-section__inner">
         <div className="contact-basin">
           <div className="contact-basin__copy" data-section-reveal>
-            <p className="contact-section__eyebrow">Contact</p>
+            <p className="contact-section__eyebrow">Contact / abyssal basin</p>
             <h2 id="contact-title" aria-label="Let’s build something that matters.">
               <span aria-hidden="true">Let’s build something</span>
               {" "}

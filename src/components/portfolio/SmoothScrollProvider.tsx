@@ -8,6 +8,8 @@ import {
   initScrollChoreography,
 } from "@/lib/portfolio/scroll-choreography";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
+import { getActiveScrollDirector } from "@/features/ocean-experience/scroll/active-scroll-director";
+import { setJourneyScrollWriter } from "@/features/ocean-experience/scroll/journey-scroll-writer";
 
 const SCROLL_CLOCK_ID = "smooth-scroll-lenis";
 
@@ -48,15 +50,9 @@ function bindNativeScrollFallback(options: {
   } = options;
   root.style.scrollBehavior = "auto";
   const last = { y: window.scrollY, time: performance.now(), velocity: 0 };
-  let frame = 0;
-
-  const onScroll = () => {
-    if (frame) return;
-    frame = window.requestAnimationFrame(() => {
-      frame = 0;
-      emitFromNativeScroll(last);
-    });
-  };
+  let unsubscribeDirector: (() => void) | null = null;
+  let pollId = 0;
+  let temporaryScrollBound = false;
 
   const afterStableLayout = () => {
     if (cancelled()) return;
@@ -65,8 +61,43 @@ function bindNativeScrollFallback(options: {
     alignmentTimers.push(window.setTimeout(() => alignHashBelowNavigation(), 700));
   };
 
+  const bindDirector = (): boolean => {
+    const director = getActiveScrollDirector();
+    if (!director || unsubscribeDirector) return Boolean(unsubscribeDirector);
+    unsubscribeDirector = director.subscribeSample(() => {
+      emitFromNativeScroll(last);
+    });
+    return true;
+  };
+
+  const detachTemporaryScroll = () => {
+    if (!temporaryScrollBound) return;
+    temporaryScrollBound = false;
+    window.removeEventListener("scroll", onTemporaryScroll);
+    if (pollId) {
+      window.clearInterval(pollId);
+      pollId = 0;
+    }
+  };
+
+  function onTemporaryScroll() {
+    emitFromNativeScroll(last);
+    if (bindDirector()) detachTemporaryScroll();
+  }
+
+  // Always emit immediately so liquid never starves before ScrollDirector mounts.
   emitFromNativeScroll(last);
-  window.addEventListener("scroll", onScroll, { passive: true });
+
+  if (!bindDirector()) {
+    // Temporary window listener until the sole ScrollDirector attaches, then detach.
+    temporaryScrollBound = true;
+    window.addEventListener("scroll", onTemporaryScroll, { passive: true });
+    pollId = window.setInterval(() => {
+      if (cancelled()) return;
+      if (bindDirector()) detachTemporaryScroll();
+    }, 50);
+  }
+
   if (window.location.hash) {
     void document.fonts.ready.then(afterStableLayout);
     if (document.readyState !== "complete") {
@@ -75,9 +106,9 @@ function bindNativeScrollFallback(options: {
   }
 
   return () => {
-    if (frame) window.cancelAnimationFrame(frame);
+    detachTemporaryScroll();
+    unsubscribeDirector?.();
     window.removeEventListener("load", afterStableLayout);
-    window.removeEventListener("scroll", onScroll);
     if (previousInlineScrollBehavior) {
       root.style.scrollBehavior = previousInlineScrollBehavior;
     } else {
@@ -132,6 +163,9 @@ export default function SmoothScrollProvider({
     };
 
     if (reducedMotion || !readMotionPolicy().choreographyAllowed) {
+      setJourneyScrollWriter((top) => {
+        window.scrollTo({ top, left: 0, behavior: "auto" });
+      });
       nativeCleanup = bindNativeScrollFallback({
         cancelled: () => cancelled,
         alignmentTimers,
@@ -143,6 +177,7 @@ export default function SmoothScrollProvider({
 
       return () => {
         cancelled = true;
+        setJourneyScrollWriter(null);
         if (alignmentFrame) window.cancelAnimationFrame(alignmentFrame);
         alignmentTimers.forEach((timer) => window.clearTimeout(timer));
         nativeCleanup?.();
@@ -186,6 +221,7 @@ export default function SmoothScrollProvider({
         const scrollImmediate = (top: number) => {
           lenis?.scrollTo(top, { immediate: true, force: true });
         };
+        setJourneyScrollWriter(scrollImmediate);
 
         const afterStableLayout = () => {
           if (cancelled) return;
@@ -247,7 +283,11 @@ export default function SmoothScrollProvider({
         removeLenisScroll?.();
         lenis?.destroy();
         lenis = null;
+        setJourneyScrollWriter(null);
         if (!cancelled) {
+          setJourneyScrollWriter((top) => {
+            window.scrollTo({ top, left: 0, behavior: "auto" });
+          });
           nativeCleanup = bindNativeScrollFallback({
             cancelled: () => cancelled,
             alignmentTimers,
@@ -265,6 +305,7 @@ export default function SmoothScrollProvider({
     return () => {
       cancelled = true;
       unsubscribeFrameClock(SCROLL_CLOCK_ID);
+      setJourneyScrollWriter(null);
       removeLenisScroll?.();
       lenis?.destroy();
       lenis = null;

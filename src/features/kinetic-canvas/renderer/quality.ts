@@ -1,6 +1,7 @@
 "use client";
 
 import { portfolioIdentity } from "@/lib/portfolio/identity";
+import { hydratePreferencesStore } from "@/features/ocean-experience/state/preferences-store";
 import {
   pixelBudgetedDpr,
   QUALITY_PIXEL_BUDGETS,
@@ -55,7 +56,7 @@ export function resolveKineticQuality(
   const memory = getDeviceMemory();
   const cores = navigator.hardwareConcurrency ?? 8;
   const lowPower = saveData || memory <= 2;
-  const tier = resolveQualityTier({
+  const automaticTier = resolveQualityTier({
     coarsePointer,
     anyFinePointer,
     saveData,
@@ -65,6 +66,12 @@ export function resolveKineticQuality(
     reducedMotion,
     staticMode: staticModeOverride,
   });
+  const preference = hydratePreferencesStore().quality;
+  const tier = automaticTier === "static" || reducedMotion
+    ? automaticTier
+    : preference === "auto"
+      ? automaticTier
+      : preference;
 
   const profiles: Record<KineticQualityTier, Omit<KineticQuality, "coarsePointer" | "reducedMotion" | "saveData" | "lowPower">> = {
     high: {

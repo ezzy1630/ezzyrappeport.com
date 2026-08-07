@@ -7,11 +7,16 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { accumulateFixedSteps } from "../src/features/kinetic-canvas/physics/fixedStep.ts";
 import { pointSegmentDistanceXY } from "../src/features/kinetic-canvas/physics/waterCoordinates.ts";
-import { exposureForDepth } from "../src/features/kinetic-canvas/renderer/underwater/assetUrls.ts";
+import {
+  HERO_GLB_URL,
+  HERO_MANIFEST_URL,
+  exposureForDepth,
+} from "../src/features/kinetic-canvas/renderer/underwater/assetUrls.ts";
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), "utf8");
 
 const kineticCanvasSource = read("../src/features/kinetic-canvas/KineticCanvas.tsx");
+const loadingVeilSource = read("../src/components/portfolio/LoadingVeil.tsx");
 const assetUrlsSource = read("../src/features/kinetic-canvas/renderer/underwater/assetUrls.ts");
 const configSource = read("../src/features/kinetic-canvas/renderer/underwater/config.ts");
 const qualitySource = read("../src/features/kinetic-canvas/renderer/quality.ts");
@@ -24,8 +29,21 @@ const tests = [
   ["assetUrls stays free of three.js", () => {
     assert.doesNotMatch(assetUrlsSource, /from ["']three["']/);
     assert.match(assetUrlsSource, /export const HERO_GLB_URL/);
+    assert.match(HERO_GLB_URL, /\?v=2$/);
+    assert.match(HERO_MANIFEST_URL, /\?v=2$/);
     assert.equal(typeof exposureForDepth(0), "number");
     assert.ok(exposureForDepth(0) > exposureForDepth(1));
+  }],
+
+  ["failed hero startup removes its canvas and releases the loading veil", () => {
+    assert.match(kineticCanvasSource, /cleanup\(\);[\s\S]*canvas\.remove\(\)/);
+    assert.match(kineticCanvasSource, /hero-renderer-failed/);
+    assert.match(loadingVeilSource, /hero-renderer-failed/);
+  }],
+
+  ["glyph material instances share render-target textures without ShaderMaterial.clone", () => {
+    assert.match(rendererSource, /makeGlyphMaterialInstance/);
+    assert.doesNotMatch(rendererSource, /material\.clone\(\)/);
   }],
 
   ["KineticCanvas warms GLB through assetUrls, not config", () => {

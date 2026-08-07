@@ -14,47 +14,9 @@ import {
   enableDeviceTiltFromGesture,
   setDeviceTiltAllowed,
 } from "@/lib/portfolio/device-tilt";
-import {
-  invalidateWorldMeasurement,
-  resolveDocumentWaterSection,
-} from "@/lib/portfolio/world-state";
 import LoadingVeil from "./LoadingVeil";
-
-/**
- * Bootstrap + layout-invalidation path for `data-water-section`.
- * Liquid physics also publishes the same value every frame; this keeps nav
- * correct before the clock starts and after content reflows.
- */
-function useWaterSection() {
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      document.documentElement.dataset.waterSection = resolveDocumentWaterSection();
-    };
-    const onScroll = () => {
-      if (!frame) frame = window.requestAnimationFrame(update);
-    };
-    const layoutRoot = document.querySelector<HTMLElement>(".content-layer");
-    const layoutObserver = typeof ResizeObserver === "undefined" || !layoutRoot
-      ? null
-      : new ResizeObserver(() => {
-          invalidateWorldMeasurement();
-          onScroll();
-        });
-    if (layoutObserver && layoutRoot) layoutObserver.observe(layoutRoot);
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-      window.cancelAnimationFrame(frame);
-      layoutObserver?.disconnect();
-      delete document.documentElement.dataset.waterSection;
-    };
-  }, []);
-}
+import OceanExperienceBridge from "@/features/ocean-experience/OceanExperienceBridge";
+import { setPreferences } from "@/features/ocean-experience/state/preferences-store";
 
 const FluidScene = dynamic(() => import("./FluidScene"), {
   ssr: false,
@@ -111,7 +73,6 @@ export default function PortfolioShell({
         "--world-calm": "0.25",
       } as CSSProperties
     : undefined;
-  useWaterSection();
   useLiquidHoverDialogue();
   useMagneticInteractions();
 
@@ -152,6 +113,8 @@ export default function PortfolioShell({
     setMotionPreference((current) => {
       const next = !(current ?? true);
       window.localStorage.setItem("portfolio-motion", next ? "on" : "off");
+      // Keep ocean-experience prefs in lockstep so M0 does not leave a dual source.
+      setPreferences({ motion: next ? "full" : "off" });
       return next;
     });
   };
@@ -177,6 +140,7 @@ export default function PortfolioShell({
           style={routeStyle}
         >
           <a className="skip-link" href="#main-content">Skip to content</a>
+          <OceanExperienceBridge />
           <ErrorBoundary>
             <FluidScene
               reducedMotion={motionReduced}

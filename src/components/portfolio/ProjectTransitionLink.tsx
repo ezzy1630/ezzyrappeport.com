@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { emitLiquidPress, emitLiquidWake, getLiquidPhysics } from "@/lib/portfolio/liquid-interaction";
 import { readMotionPolicy } from "@/lib/portfolio/motion-policy";
+import { shouldInterceptChapterHashClick } from "@/features/ocean-experience/navigation/chapter-hash-click";
 
 type DiveDirection = "forward" | "back";
 
@@ -15,7 +16,7 @@ type Props = Omit<ComponentProps<typeof Link>, "href"> & {
 };
 
 type DocumentWithViewTransition = Document & {
-  startViewTransition?: (callback: () => void) => void;
+  startViewTransition?: (callback: () => void) => ViewTransition;
 };
 
 const WATER_WIPE_MS = 720;
@@ -75,7 +76,18 @@ function runDiveNavigation(navigate: () => void): void {
     navigate();
     return;
   }
-  (document as DocumentWithViewTransition).startViewTransition?.(navigate);
+  try {
+    const transition = (document as DocumentWithViewTransition).startViewTransition?.(navigate);
+    // Browsers reject these promises when a transition is superseded (for
+    // example, a rapid click during the chapter wipe). Navigation is still
+    // valid; contain that visual-only rejection instead of surfacing an app
+    // error or stranding the link.
+    void transition?.ready.catch(() => undefined);
+    void transition?.updateCallbackDone.catch(() => undefined);
+    void transition?.finished.catch(() => undefined);
+  } catch {
+    navigate();
+  }
 }
 
 export function navigateWithDive(
@@ -134,6 +146,16 @@ export default function ProjectTransitionLink({
       onClick={(event) => {
         onClick?.(event);
         if (event.defaultPrevented) return;
+        // Plain left clicks only: modified clicks, middle clicks, new-tab
+        // targets, and downloads keep native browser behavior (§19).
+        const anchor = event.currentTarget;
+        if (!shouldInterceptChapterHashClick(event, {
+          target: anchor.target ?? "",
+          download: typeof anchor.download === "string" ? anchor.download : "",
+        })) {
+          pointerDownRef.current = false;
+          return;
+        }
 
         if (!pointerDownRef.current) {
           emitTransitionWake(event.currentTarget, transitionDirection);

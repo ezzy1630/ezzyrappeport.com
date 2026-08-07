@@ -21,25 +21,7 @@ export default function AboutSection() {
       aria-labelledby="about-title"
       data-depth-band="mid"
     >
-      <header className={styles.header} data-section-reveal>
-        <h2 id="about-title">Research taste. Production instincts.</h2>
-      </header>
-
       <div className={styles.layout}>
-        <div className={styles.story} data-depth-plane="0.45">
-          <blockquote>
-            {bio.quoteLines.map((line) => (
-              <span key={line}>{line}</span>
-            ))}
-          </blockquote>
-          <div className={styles.copy}>
-            {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
-            <p className={styles.signature}>
-              <span aria-hidden="true">ER</span>
-              <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
-            </p>
-          </div>
-        </div>
         <figure className={styles.portrait} data-depth-plane="1">
           <div className={styles.portraitFrame}>
             <Image
@@ -54,6 +36,25 @@ export default function AboutSection() {
           </div>
           <figcaption><MapPin aria-hidden="true" />{bio.location.title}</figcaption>
         </figure>
+
+        <article className={styles.story} data-depth-plane="0.45">
+          <header className={styles.header} data-section-reveal>
+            <p className={styles.kicker}>About / quiet thermocline</p>
+            <h2 id="about-title">Research taste. Production instincts.</h2>
+          </header>
+          <blockquote>
+            {bio.quoteLines.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </blockquote>
+          <div className={styles.copy}>
+            {bio.bodyParagraphs.slice(1).map((paragraph) => <p key={paragraph}>{paragraph}</p>)}
+            <p className={styles.signature}>
+              <span aria-hidden="true">ER</span>
+              <span><strong>{bio.name}</strong><small>{bio.taglineParts.join(" · ")}</small></span>
+            </p>
+          </div>
+        </article>
       </div>
 
       <ul className={styles.principles} aria-label="Operating principles" data-depth-plane="0.65">

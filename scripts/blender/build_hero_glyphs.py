@@ -72,6 +72,115 @@ TRACKING = 0.025
 LINE_SCALES = {0: 1.36, 1: 1.0}
 LINE_Y = {0: 0.58, 1: -0.55}
 
+# Milestone 1 per-letter authorship baselines (mirrors glyphAuthorship.ts).
+CHARACTER_BASE = {
+    "E": dict(density=1.08, mass_bias=1.0, buoyancy=0.92, drag=12.8, angular_drag=11.6,
+              flex_limit=0.012, max_travel_bias=1.0, max_tilt_deg=3.5, ior=1.492,
+              absorption_tint=(0.494, 0.784, 0.910), absorption_distance=0.84, roughness=0.009,
+              dispersion_scale=1.0, bubble_density=0.86, thickness_bias=0.0, caustic_response=1.0),
+    "Z": dict(density=1.02, mass_bias=0.94, buoyancy=0.98, drag=12.2, angular_drag=11.0,
+              flex_limit=0.014, max_travel_bias=1.05, max_tilt_deg=3.7, ior=1.486,
+              absorption_tint=(0.510, 0.796, 0.918), absorption_distance=0.88, roughness=0.0085,
+              dispersion_scale=1.05, bubble_density=0.78, thickness_bias=-0.01, caustic_response=1.04),
+    "Y": dict(density=1.05, mass_bias=0.98, buoyancy=0.95, drag=13.0, angular_drag=12.2,
+              flex_limit=0.013, max_travel_bias=1.08, max_tilt_deg=3.8, ior=1.495,
+              absorption_tint=(0.478, 0.772, 0.902), absorption_distance=0.80, roughness=0.0095,
+              dispersion_scale=1.08, bubble_density=0.9, thickness_bias=0.015, caustic_response=1.06),
+    "R": dict(density=1.1, mass_bias=1.06, buoyancy=0.9, drag=13.4, angular_drag=12.0,
+              flex_limit=0.011, max_travel_bias=0.96, max_tilt_deg=3.35, ior=1.498,
+              absorption_tint=(0.486, 0.776, 0.905), absorption_distance=0.79, roughness=0.0092,
+              dispersion_scale=0.96, bubble_density=0.88, thickness_bias=0.01, caustic_response=0.98),
+    "A": dict(density=1.14, mass_bias=1.18, buoyancy=0.86, drag=14.0, angular_drag=12.8,
+              flex_limit=0.01, max_travel_bias=0.92, max_tilt_deg=3.15, ior=1.505,
+              absorption_tint=(0.470, 0.760, 0.895), absorption_distance=0.74, roughness=0.01,
+              dispersion_scale=0.92, bubble_density=0.94, thickness_bias=0.02, caustic_response=0.95),
+    "P": dict(density=1.07, mass_bias=1.02, buoyancy=0.93, drag=13.1, angular_drag=11.8,
+              flex_limit=0.012, max_travel_bias=0.98, max_tilt_deg=3.45, ior=1.49,
+              absorption_tint=(0.500, 0.788, 0.912), absorption_distance=0.83, roughness=0.0088,
+              dispersion_scale=1.02, bubble_density=0.84, thickness_bias=0.005, caustic_response=1.02),
+    "O": dict(density=1.12, mass_bias=1.14, buoyancy=0.88, drag=13.8, angular_drag=13.4,
+              flex_limit=0.009, max_travel_bias=0.9, max_tilt_deg=3.05, ior=1.502,
+              absorption_tint=(0.462, 0.752, 0.888), absorption_distance=0.72, roughness=0.0098,
+              dispersion_scale=0.9, bubble_density=1.0, thickness_bias=0.025, caustic_response=0.93),
+    "T": dict(density=1.03, mass_bias=0.96, buoyancy=0.97, drag=12.5, angular_drag=11.2,
+              flex_limit=0.013, max_travel_bias=1.04, max_tilt_deg=3.6, ior=1.488,
+              absorption_tint=(0.508, 0.794, 0.916), absorption_distance=0.86, roughness=0.0086,
+              dispersion_scale=1.06, bubble_density=0.8, thickness_bias=-0.005, caustic_response=1.05),
+}
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
+
+
+def _hash_seed(glyph_index: int, identity: str) -> float:
+    hash_value = 2166136261
+    hash_value ^= glyph_index + 1
+    hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    for character in identity:
+        hash_value ^= ord(character)
+        hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    return hash_value / 0xFFFFFFFF
+
+
+def glyph_authorship(
+    glyph_index: int,
+    character: str,
+    object_node_name: str,
+    bounds: dict,
+    scale: float,
+) -> dict:
+    base = CHARACTER_BASE[character]
+    seed = _hash_seed(glyph_index, object_node_name)
+    instance_bias = 0.96 + ((glyph_index * 37) % 9) * 0.011 + (seed - 0.5) * 0.02
+    width = max(0.001, (bounds["max"][0] - bounds["min"][0]) * scale)
+    height = max(0.001, (bounds["max"][1] - bounds["min"][1]) * scale)
+    depth = max(0.001, (bounds["max"][2] - bounds["min"][2]) * scale)
+    volume = width * height * depth
+    mass = _clamp((0.68 + volume * 4.05) * base["mass_bias"] * instance_bias, 0.58, 1.72)
+    inertia_scale = 1 + (seed - 0.5) * 0.04
+    inertia = [
+        round(mass * (height * height + depth * depth) / 12 * inertia_scale, 4),
+        round(mass * (width * width + depth * depth) / 12 * inertia_scale, 4),
+        round(mass * (width * width + height * height) / 12 * inertia_scale, 4),
+    ]
+    half = (width * 0.5, height * 0.5, depth * 0.5)
+    max_travel = _clamp(max(0.034, half[0] * 0.55) * base["max_travel_bias"], 0.03, 0.085)
+    return {
+        "physics": {
+            "density": round(base["density"] * (0.985 + seed * 0.03), 3),
+            "mass": round(mass, 4),
+            "inertia": inertia,
+            "buoyancy": round(base["buoyancy"] * (0.97 + seed * 0.06), 3),
+            "drag": round(base["drag"] * (0.97 + seed * 0.05), 3),
+            "angular_drag": round(base["angular_drag"] * (0.97 + seed * 0.05), 3),
+            "flex_limit": round(base["flex_limit"], 4),
+            "max_travel": round(max_travel, 4),
+            "max_tilt_deg": round(base["max_tilt_deg"] + (seed - 0.5) * 0.25, 3),
+            "max_depth": round(0.105 + (1 - base["buoyancy"]) * 0.02, 4),
+            "max_linear_speed": round(0.78 + base["buoyancy"] * 0.08, 3),
+            "center_of_mass": [0.0, 0.0, round((seed - 0.5) * 0.012, 4)],
+            "collision_proxy": {
+                "half_extents": [round(half[0] * 0.92, 4), round(half[1] * 0.92, 4), round(half[2] * 0.92, 4)],
+            },
+        },
+        "optics": {
+            "ior": round(base["ior"] + (seed - 0.5) * 0.008, 4),
+            "absorption_tint": [
+                round(_clamp(base["absorption_tint"][0] + (seed - 0.5) * 0.02, 0.42, 0.56), 4),
+                round(_clamp(base["absorption_tint"][1] + (seed - 0.5) * 0.015, 0.72, 0.84), 4),
+                round(_clamp(base["absorption_tint"][2] + (seed - 0.5) * 0.01, 0.86, 0.94), 4),
+            ],
+            "absorption_distance": round(base["absorption_distance"] * (0.96 + seed * 0.08), 4),
+            "roughness": round(_clamp(base["roughness"] + (seed - 0.5) * 0.0015, 0.007, 0.014), 4),
+            "dispersion_scale": round(base["dispersion_scale"] * (0.94 + seed * 0.12), 3),
+            "bubble_density": round(_clamp(base["bubble_density"] * (0.9 + seed * 0.2), 0.55, 1.15), 3),
+            "bubble_seed": round(seed * 97.13 + glyph_index * 3.17, 4),
+            "thickness_bias": round(base["thickness_bias"] + (seed - 0.5) * 0.01, 4),
+            "caustic_response": round(base["caustic_response"] * (0.96 + seed * 0.08), 3),
+        },
+    }
+
 
 def parse_args() -> argparse.Namespace:
     argv = sys.argv[sys.argv.index("--") + 1 :] if "--" in sys.argv else []
@@ -961,6 +1070,7 @@ def main() -> None:
         objects.append(obj)
 
         bounds = mesh_bounds(unique_meshes[char])
+        authorship = glyph_authorship(index, char, name, bounds, uniform_scale)
         manifest.append(
             {
                 "glyph_index": index,
@@ -985,6 +1095,8 @@ def main() -> None:
                 },
                 "triangle_count": triangle_count(unique_meshes[char]),
                 "shared_geometry_identifier": geometry_id,
+                "physics": authorship["physics"],
+                "optics": authorship["optics"],
             }
         )
 
@@ -1003,7 +1115,15 @@ def main() -> None:
 
     payload = {
         "asset": "EZZY RAPPEPORT independently addressable inflated glyphs",
-        "version": 1,
+        "version": 2,
+        "medium": {
+            "name": "water",
+            "ior": 1.333,
+        },
+        "authorship": {
+            "milestone": 1,
+            "note": "Per-letter physics and optical variation; geometry from inflated Inter Tight v2.",
+        },
         "font": {
             "family": "Inter Tight",
             "weight": 900,

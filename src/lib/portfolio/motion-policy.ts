@@ -50,7 +50,9 @@ export function createMotionPolicy(input: {
     siteMotionEnabled: input.siteMotionEnabled,
     effectsAllowed: allowed,
     liquidAllowed: allowed,
-    soundAllowed: allowed,
+    // Sound has its own explicit, muted-by-default preference. Reduced motion
+    // limits visual movement; it must not silently override that choice.
+    soundAllowed: true,
     choreographyAllowed: allowed,
   };
 }

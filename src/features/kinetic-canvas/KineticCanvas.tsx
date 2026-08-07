@@ -6,6 +6,10 @@ import {
   getLiquidPhysics,
 } from "./input/liquidInput";
 import { resolveKineticQuality } from "./renderer/quality";
+import {
+  getPreferencesSnapshot,
+  subscribePreferences,
+} from "@/features/ocean-experience/state/preferences-store";
 import { HERO_GLB_URL } from "./renderer/underwater/assetUrls";
 import {
   crossfadeMsForVisit,
@@ -91,6 +95,7 @@ export default function KineticCanvas({
     let cleanup = () => {};
     let rendererCanvas: HTMLCanvasElement | null = null;
     let unsubscribePhysics: (() => void) | null = null;
+    let unsubscribePreferences: (() => void) | null = null;
     let startTimer = 0;
     let idleCallback = 0;
     let crossfadeTimer = 0;
@@ -162,6 +167,7 @@ export default function KineticCanvas({
         try {
           const markReady = () => {
             if (disposed || generation !== startGeneration) return;
+            delete container.dataset.rendererError;
             setBoot("hiddenFrame");
             // One complete hidden frame is already rendered by onReady; begin crossfade.
             requestAnimationFrame(() => {
@@ -200,7 +206,15 @@ export default function KineticCanvas({
             container.dataset.rendererError = message.slice(0, 240);
             container.dataset.fluid = "failed";
             setBoot("failed");
+            // A partially initialized canvas may contain only the dark optical
+            // plate. Remove and dispose it immediately so semantic DOM + the
+            // authored poster remain visible on every asset/shader failure.
+            cleanup();
+            cleanup = () => {};
+            canvas.remove();
+            if (rendererCanvas === canvas) rendererCanvas = null;
             if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+            window.dispatchEvent(new Event("hero-renderer-failed"));
           };
 
           if (shouldEarlyFetchGlb(quality.tier, quality.saveData)) {
@@ -238,6 +252,7 @@ export default function KineticCanvas({
           container.dataset.fluid = "failed";
           setBoot("failed");
           if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
+          window.dispatchEvent(new Event("hero-renderer-failed"));
         }
       })().finally(() => {
         if (generation === startGeneration) startInFlight = null;
@@ -283,6 +298,22 @@ export default function KineticCanvas({
 
     queueRendererStart();
 
+    let activeQualityPreference = getPreferencesSnapshot().quality;
+    unsubscribePreferences = subscribePreferences(() => {
+      const next = getPreferencesSnapshot().quality;
+      if (next === activeQualityPreference || disposed) return;
+      activeQualityPreference = next;
+      startGeneration += 1;
+      startInFlight = null;
+      clearBootTimers();
+      cleanup();
+      cleanup = () => {};
+      rendererCanvas?.remove();
+      rendererCanvas = null;
+      setBoot("poster");
+      queueRendererStart();
+    });
+
     return () => {
       disposed = true;
       startGeneration += 1;
@@ -290,6 +321,7 @@ export default function KineticCanvas({
       startInFlight = null;
       cleanup();
       unsubscribePhysics?.();
+      unsubscribePreferences?.();
       if (heroNameRef.current) delete document.documentElement.dataset.heroRenderer;
       rendererCanvas?.remove();
       delete container.dataset.fluid;

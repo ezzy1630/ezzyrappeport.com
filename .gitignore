@@ -12,7 +12,11 @@ node_modules
 
 # testing
 /coverage
-/.verification/
+/.verification/*
+!/.verification/milestone-0/
+!/.verification/milestone-0/**
+!/.verification/milestone-1/
+!/.verification/milestone-1/**
 /.impeccable/
 .tmp/
 /tmp/
