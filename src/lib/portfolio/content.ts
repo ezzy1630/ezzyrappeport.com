@@ -759,6 +759,13 @@ export function caseMooringDepth(slug: ProjectSlug): number {
   return 0.22;
 }
 
+/** Work-in-progress marker shown in the nav HUD. Bump `version` as the site lands. */
+export const buildStatus = {
+  label: "BETA",
+  version: "v0.9",
+  note: "Work in progress — still being built.",
+};
+
 export const nav = {
   brand: "ER",
   fullName: portfolioIdentity.displayName,

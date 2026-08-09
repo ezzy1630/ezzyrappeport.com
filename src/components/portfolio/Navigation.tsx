@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Gauge, Menu, Volume2, VolumeX, Waves, X } from "lucide-react";
-import { bio, nav } from "@/lib/portfolio/content";
+import { bio, buildStatus, nav } from "@/lib/portfolio/content";
 import { subscribeFrameClock, unsubscribeFrameClock } from "@/lib/portfolio/frame-clock";
 import {
   isCasePathname,
@@ -267,26 +267,34 @@ export default function Navigation({ motionEnabled, onToggleMotion }: Props) {
       data-nav-theme={navTheme}
       data-case={isCaseRoute ? "true" : "false"}
     >
-      <Link
-        href="/#top"
-        className="site-nav-brand"
-        data-liquid-hover
-        aria-label={`${nav.fullName} home`}
-      >
-        <span className="site-nav-monogram">
-          <Image
-            src="/assets/ezzy-headshot.jpg"
-            alt=""
-            width={46}
-            height={46}
-            sizes="46px"
-            priority
-            className="site-nav-headshot"
-            draggable={false}
-          />
+      <div className="site-nav-lede">
+        <Link
+          href="/#top"
+          className="site-nav-brand"
+          data-liquid-hover
+          aria-label={`${nav.fullName} home`}
+        >
+          <span className="site-nav-monogram">
+            <Image
+              src="/assets/ezzy-headshot.jpg"
+              alt=""
+              width={46}
+              height={46}
+              sizes="46px"
+              priority
+              className="site-nav-headshot"
+              draggable={false}
+            />
+          </span>
+          <span className="site-nav-name">{nav.fullName}</span>
+        </Link>
+
+        <span className="site-nav-build" title={buildStatus.note}>
+          <i aria-hidden="true" />
+          <span>{buildStatus.label}</span>
+          <em>{buildStatus.version}</em>
         </span>
-        <span className="site-nav-name">{nav.fullName}</span>
-      </Link>
+      </div>
 
       <nav ref={linksRef} className="site-nav-links" aria-label="Primary navigation">
         {nav.links.map((link) => {

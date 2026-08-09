@@ -617,7 +617,7 @@ export function createFloweEncounter(): ProjectEncounter {
       for (let task = 0; task < FLOWE_TASKS.length; task += 1) {
         const taskCard = FLOWE_TASKS[task];
         const label = createFloweAppCard(taskCard.title, taskCard.detail, {
-          badge: taskCard.badge,
+          badge: "badge" in taskCard ? taskCard.badge : undefined,
           kind: taskCard.kind,
           tone: "tone" in taskCard ? taskCard.tone : undefined,
         });
