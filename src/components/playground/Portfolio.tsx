@@ -3,10 +3,9 @@ import Link from "next/link";
 import { ArrowUpRight, ArrowDown, MapPin } from "lucide-react";
 import { bio, projects } from "@/lib/portfolio/content";
 import WaterHero from "../water-study/WaterHero";
-import { additionalWork, featuredPresentation } from "./catalog";
+import { additionalWork, featuredPresentation, featuredSlugs } from "./catalog";
 import styles from "./Portfolio.module.css";
 
-const featuredSlugs = ["monkeyclaw", "flowe", "etch", "argyph"] as const;
 const featured = featuredSlugs.flatMap((slug) => {
   const project = projects.find((entry) => entry.slug === slug);
   return project ? [{ project, presentation: featuredPresentation[slug] }] : [];
@@ -22,6 +21,7 @@ export default function Portfolio() {
       <a className={styles.skip} href="#projects">
         Skip to projects
       </a>
+      <WaterHero />
       <header className={styles.navigation}>
         <a
           className={styles.identity}
@@ -46,8 +46,7 @@ export default function Portfolio() {
         </a>
       </header>
       <main id="main-content">
-        <section className={styles.hero} aria-labelledby="portfolio-title">
-          <WaterHero />
+        <section className={styles.hero} aria-labelledby="portfolio-title" data-water-hero>
           <h1 id="portfolio-title" className="sr-only">
             Ezzy Rappeport
           </h1>
@@ -89,35 +88,35 @@ export default function Portfolio() {
               AI systems, developer tools,
               <br />
               and things I wanted to exist.
+              <span className={styles.interactionHint}>Drag a project. Click to explore.</span>
             </p>
           </div>
           <div className={styles.projectGrid}>
             {featured.map(({ project, presentation }, index) => (
               <Link
-                prefetch={false}
                 key={project.slug}
                 href={`/project/${project.slug}`}
                 className={styles.project}
                 data-water-surface
+                data-water-featured
+                data-depth={index % 2 === 0 ? "near" : "far"}
                 aria-labelledby={`${project.slug}-title`}
               >
                 <div
                   className={styles.projectVisual}
                   data-project={project.slug}
+                  data-water-visual
                 >
                   <Image
                     src={presentation.cover}
                     alt={presentation.alt}
+                    quality={90}
                     fill
-                    sizes="(max-width: 600px) 88vw, (max-width: 1440px) 44vw, 620px"
+                    sizes="(max-width: 800px) 88vw, (max-width: 1440px) 58vw, 840px"
                   />
-                  <span className={styles.mediaLabel}>
-                    {presentation.mediaLabel}
-                  </span>
-                  <span className={styles.openProject} aria-hidden="true">
-                    <ArrowUpRight size={22} />
-                  </span>
                 </div>
+                <div className={styles.projectCopy}>
+                <p className={styles.projectKind}>{presentation.mediaLabel}</p>
                 <div className={styles.projectHeading}>
                   <h3 id={`${project.slug}-title`}>{project.title}</h3>
                   <span aria-hidden="true">0{index + 1}</span>
@@ -130,6 +129,7 @@ export default function Portfolio() {
                     View case study{" "}
                     <ArrowUpRight size={15} aria-hidden="true" />
                   </span>
+                </div>
                 </div>
               </Link>
             ))}
@@ -184,7 +184,6 @@ export default function Portfolio() {
           <div className={styles.catalog}>
             {otherProjects.map((project) => (
               <Link
-                prefetch={false}
                 href={`/project/${project.slug}`}
                 key={project.slug}
                 data-water-surface
@@ -241,11 +240,14 @@ export default function Portfolio() {
           </div>
         </section>
         <footer id="contact" className={styles.footer}>
+          <div className={styles.contactOpening}>
           <p className={styles.eyebrow}>HAVE SOMETHING IN MIND?</p>
           <a className={styles.hello} href={`mailto:${bio.email}`}>
             Let’s make it happen.
             <ArrowUpRight />
           </a>
+          <a className={styles.email} href={`mailto:${bio.email}`}>{bio.email}</a>
+          </div>
           <div className={styles.footerBottom}>
             <span>© {new Date().getFullYear()} Ezzy Rappeport</span>
             <div>

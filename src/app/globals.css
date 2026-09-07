@@ -29,6 +29,9 @@
 }
 
 :root {
+  --portfolio-paper: #f3f7fa;
+  --portfolio-line: #dce4eb;
+  --portfolio-ease: cubic-bezier(.22, 1, .36, 1);
   --radius: 16px;
   --background: var(--rv-pearl);
   --foreground: var(--rv-ink);

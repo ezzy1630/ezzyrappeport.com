@@ -23,3 +23,15 @@ export function addWake(field:WaterField,x:number,y:number,vx:number,vy:number,d
   field.disturb(x+wakeX-wakeY*.6,y+wakeY+wakeX*.6,strength*.42,.18);
   field.disturb(x+wakeX+wakeY*.6,y+wakeY-wakeX*.6,strength*.42,.18);
 }
+
+/** A solid's leading shoulders displace water across its width, with a trailing trough. */
+export function addBodyWake(field:WaterField,x:number,y:number,vx:number,vy:number,width:number,dt:number){
+  const speed=Math.hypot(vx,vy);
+  if(speed<.04)return;
+  const nx=vx/speed,ny=vy/speed;
+  const span=Math.min(.55,width*.30);
+  const strength=Math.min(.065,speed*.025)*Math.min(dt,.04)*60;
+  field.disturb(x+nx*.18-ny*span,y+ny*.18+nx*span,strength,.26);
+  field.disturb(x+nx*.18+ny*span,y+ny*.18-nx*span,strength,.26);
+  addWake(field,x-nx*.20,y-ny*.20,vx,vy,dt);
+}

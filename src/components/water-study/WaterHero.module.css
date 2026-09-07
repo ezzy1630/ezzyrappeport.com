@@ -1,3 +1,65 @@
-.hero{position:absolute;inset:0;isolation:isolate}.world{position:absolute;inset:0;background:#c4d0e0 url('/assets/hero/reference-water-v1.webp') center/cover}.poster{position:absolute;inset:0;z-index:0}.poster img{position:absolute;left:50%;top:50%;width:100%;height:auto;transform:translate(-50%,-50%);mask-image:linear-gradient(transparent 17%,#000 22%,#000 74%,transparent 88%)}.world canvas{position:relative;z-index:1;display:block;width:100%;height:100%}.fallback{position:absolute;right:3%;bottom:24px;font-size:11px}.fallback button{font:inherit;background:#fff;border:0;padding:10px}.sceneOptions{position:absolute;right:2%;top:82px;font-size:11px;z-index:6}.sceneOptions summary{cursor:pointer;padding:10px;list-style:none;color:#293950}.sceneOptions summary::after{content:' +'}.sceneOptions[open] summary::after{content:' −'}.controls{position:absolute;right:0;top:100%;width:180px;display:grid;padding:8px;background:#f6f8fcf5;border:1px solid #7388a040;box-shadow:0 12px 32px #273d4915;border-radius:10px}.controls button,.controls a{font:inherit;text-align:left;color:inherit;background:transparent;border:0;padding:12px;cursor:pointer;min-height:44px}.controls button:hover{background:#dce5ef}.touch{display:none}@media(pointer:coarse){.touch{display:block}}@media(max-width:700px){.sceneOptions{top:72px}}
+.hero { display: contents; }
+.world {
+  position: fixed; inset: 0; z-index: -2; pointer-events: none;
+  background: linear-gradient(160deg, #bbd4df, #dcebf0);
+}
+.poster {
+  position: absolute; inset: 0 0 auto; z-index: -1;
+  height: max(720px, 100svh); max-height: 1120px; pointer-events: none;
+  transition: opacity .7s var(--portfolio-ease);
+}
+.poster img { width: 100%; height: 100%; object-fit: cover; }
+.hero[data-ready="true"] .poster { opacity: 0; }
+.world canvas { display: block; width: 100%; height: 100%; opacity: 0; transition: opacity .7s var(--portfolio-ease); }
+.world[data-ready="true"] canvas { opacity: 1; }
+.world canvas:focus-visible { outline: 2px solid #426eec; outline-offset: -6px; }
+/* One viewport veil, never a section edge: water remains continuous behind the whole page. */
+.veil {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, #f3f7fa00 44%, #f3f7fa20 64%, #f3f7faad 100%);
+  opacity: calc(1 - var(--world-depth, 0) * .55);
+}
+.hint {
+  position: absolute; top: 110px; left: 6.7%; pointer-events: none;
+  font-size: 12px; color: #415975; opacity: .8;
+}
+.fallback { position: fixed; right: 24px; bottom: 24px; z-index: 10; padding: 12px; border-radius: 12px; background: #f3f7faed; font-size: 11px; color: #405169; }
+.fallback button { font: inherit; background: #fff; border: 0; border-radius: 8px; padding: 12px; margin-top: 8px; min-height: 44px; }
+.sceneOptions { position: fixed; right: 24px; bottom: 24px; font-size: 12px; z-index: 20; }
+.sceneOptions summary {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  padding: 11px 15px; list-style: none; color: #293950; min-height: 44px;
+  border: 1px solid #ffffffc7; border-radius: 100px;
+  background: #f3f7faed; box-shadow: 0 4px 20px #264a6818;
+  transition: background .2s, transform .2s;
+}
+.motionDot { width: 6px; height: 6px; border-radius: 50%; background: #426eec; box-shadow: 0 0 0 3px #426eec12; }
+.hero[data-paused="true"] .motionDot { background: #8190a2; box-shadow: none; }
+.sceneOptions summary::-webkit-details-marker { display: none; }
+.sceneOptions summary:hover { background: #fff; transform: translateY(-2px); }
+.sceneOptions summary::after { content: ' +'; margin-left: 4px; }
+.sceneOptions[open] summary::after { content: ' −'; }
+.sceneOptions summary:focus-visible { outline: 3px solid #426eec; outline-offset: 4px; }
+.controls { position: absolute; right: 0; bottom: calc(100% + 8px); width: 200px; display: grid; padding: 8px; background: #f6f8fcf5; border: 1px solid #7388a040; box-shadow: 0 12px 32px #273d4915; border-radius: 14px; }
+.controls button, .controls a { font: inherit; text-align: left; color: inherit; background: transparent; border: 0; border-radius: 7px; padding: 12px; cursor: pointer; min-height: 44px; }
+.controls button:hover { background: #dce5ef; }
+.controls button:disabled { opacity: .45; cursor: default; }
+.touch { display: none; }
+@media (pointer: coarse) { .touch { display: block; } .hint { display: none; } }
+@media (max-width: 900px) { .poster { height: max(760px, 100svh); max-height: none; } }
+@media (max-width: 600px) { .sceneOptions { right: 16px; bottom: 16px; } .hint { top: 100px; left: 6%; font-size: 11px; } }
+@media (prefers-reduced-motion: reduce) { .world canvas, .poster { transition: none; } }
 
-.world canvas:focus-visible{outline:2px solid #426eec;outline-offset:-6px}
+/* The opening resolves through light, with content available throughout startup. */
+.world canvas, .poster { transition-duration: 1.1s; }
+@media (prefers-reduced-motion: reduce) { .world canvas, .poster { transition: none; } }
+.arrivalLight {
+  position: absolute; top: 0; left: 0; right: 0; height: max(760px, 100svh);
+  z-index: -1; pointer-events: none; opacity: 0;
+  background: radial-gradient(ellipse at 45% 35%, #f6fbff8c, #e7f5ff00 72%);
+}
+@keyframes lightArrival { from { opacity: .85; } to { opacity: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  .hero[data-ready="true"] .arrivalLight { animation: lightArrival 1.4s ease-out both; }
+  .hero[data-paused="true"] .arrivalLight { animation: none; }
+}

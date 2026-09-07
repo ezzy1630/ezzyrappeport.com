@@ -7,6 +7,7 @@ export class WaterField {
   private readonly next: Float32Array;
   readonly pixels: Uint8Array;
   private readonly encodePixels: boolean;
+  private readonly waveSpeed: number;
   private debt = 0;
   private activeFor = 0;
   private dx = 1;
@@ -14,8 +15,9 @@ export class WaterField {
   private width = 5.1;
   private depth = 3;
 
-  constructor(columns = 96, rows = 80, encodePixels = true) {
+  constructor(columns = 96, rows = 80, encodePixels = true, waveSpeed = .9) {
     this.encodePixels = encodePixels;
+    this.waveSpeed = waveSpeed;
     this.columns = columns;
     this.rows = rows;
     this.height = new Float32Array(columns * rows);
@@ -114,7 +116,7 @@ export class WaterField {
     this.debt = Math.min(this.debt + Math.max(0, elapsed), 0.05);
     // CFL bound protects unusually wide/short responsive canvases too.
     const speedSquared = Math.min(
-      0.81,
+      this.waveSpeed ** 2,
       0.4 / (step * step * (1 / this.dx ** 2 + 1 / this.dy ** 2)),
     );
     while (this.debt + 1e-9 >= step) {

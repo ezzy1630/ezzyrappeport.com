@@ -5,12 +5,12 @@ export const waterWarp = {xAmplitude:.24,xFrequency:.72,xRate:.12,yAmplitude:.18
 
 // Shared spectral components: incommensurate directions avoid a repeating cell lattice.
 export const waterWaves = [
-  {x:5.7,y:2.1,amplitude:.018,rate:-.61},
-  {x:-3.2,y:6.3,amplitude:.014,rate:-.47},
-  {x:8.1,y:-2.7,amplitude:.007,rate:.38},
-  {x:1.3,y:4.9,amplitude:.010,rate:.29},
-  {x:-6.4,y:-1.1,amplitude:.008,rate:-.34},
-  {x:2.8,y:-8.3,amplitude:.005,rate:.51},
+  {x:1.15,y:.48,amplitude:.047,rate:-.38},
+  {x:-.65,y:1.72,amplitude:.025,rate:-.46},
+  {x:5.7,y:2.1,amplitude:.018,rate:-.72},
+  {x:-3.2,y:6.3,amplitude:.013,rate:-.63},
+  {x:8.1,y:-2.7,amplitude:.005,rate:.84},
+  {x:2.8,y:-8.3,amplitude:.004,rate:.94},
 ] as const;
 
 /** Shared with the optical shader and refracted pointer picking. */

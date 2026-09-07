@@ -2,12 +2,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ArrowRight } from "lucide-react";
 import { type Project, projects, bio } from "@/lib/portfolio/content";
+import { featuredSlugs } from "@/components/playground/catalog";
+import WaterHero from "@/components/water-study/WaterHero";
 import SystemDiagram from "@/components/portfolio/diagrams/SystemDiagram";
 import styles from "./CaseStudy.module.css";
 
 export default function ProjectDetail({ project }: { project: Project }) {
-  const index = projects.findIndex((item) => item.slug === project.slug);
-  const next = projects[(index + 1) % projects.length];
+  // Continue in the same order as the homepage gallery, then the remaining work.
+  const featured = new Set<string>(featuredSlugs);
+  const ordered = [
+    ...featuredSlugs.flatMap(slug => projects.filter(item => item.slug === slug)),
+    ...projects.filter(item => !featured.has(item.slug)),
+  ];
+  const index = ordered.findIndex((item) => item.slug === project.slug);
+  const next = ordered[(index + 1) % ordered.length];
   const gallery = (project.media.gallery ?? []).filter(
     (asset) => !asset.src.endsWith("architecture.svg"),
   );
@@ -15,7 +23,8 @@ export default function ProjectDetail({ project }: { project: Project }) {
     (asset) => !asset.src.endsWith(".svg") && asset.width / asset.height > 1.2,
   );
   return (
-    <div className={styles.page}>
+    <div className={styles.page} data-water-world>
+      <WaterHero showTitle={false} />
       <a className={styles.skip} href="#overview">
         Skip to project details
       </a>
@@ -59,7 +68,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
             </div>
           </dl>
           {leadImage && (
-            <figure className={styles.leadImage}>
+            <figure className={styles.leadImage} data-water-surface>
               <a
                 href={leadImage.src}
                 target="_blank"
@@ -113,7 +122,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
               {gallery
                 .filter((asset) => asset !== leadImage)
                 .map((asset) => (
-                  <figure key={asset.src}>
+                  <figure key={asset.src} data-water-surface>
                     <a
                       href={asset.src}
                       target="_blank"

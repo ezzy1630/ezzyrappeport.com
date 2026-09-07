@@ -57,6 +57,13 @@ export function createHeroDiagnostics(canvas: HTMLCanvasElement, gl: WebGL2Rende
     });
   };
   return {
+    resetSamples() {
+      for (const mode of ['active','idle'] as const) {
+        samples[mode].cpu.length = samples[mode].interval.length = samples[mode].gpu.length = 0;
+      }
+      if (pending) gl.deleteQuery(pending.query);
+      pending = undefined; previous = 0; previousMode = undefined;
+    },
     beginGpu(mode: Mode) {
       if (!timer) return;
       if (pending && gl.getQueryParameter(pending.query, gl.QUERY_RESULT_AVAILABLE)) {

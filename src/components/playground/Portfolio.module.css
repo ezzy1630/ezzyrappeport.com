@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 1.7%;
+  padding: 20px 4%;
   font-size: 14px;
 }
 .identity {
@@ -71,15 +71,17 @@
 }
 .hero {
   position: relative;
-  height: max(680px, 100svh);
+  height: max(720px, 100svh);
   max-height: 1120px;
   background: transparent;
   overflow: hidden;
 }
-.hero:has([data-touch-mode="true"]) { touch-action: none; }
+/* The water owns the viewport; page content keeps ordinary document scrolling. */
+.portfolio[data-water-hover="true"] .hero { cursor: grab; }
+.portfolio[data-water-dragging="true"], .portfolio[data-surface-dragging="true"], .portfolio[data-surface-dragging="true"] a { cursor: grabbing; user-select: none; }
 .heroBottom {
   position: absolute;
-  bottom: 10%;
+  bottom: 9%;
   left: 6.7%;
   right: 6.7%;
   display: flex;
@@ -106,8 +108,10 @@
   font-weight: 600;
 }
 .intro {
-  font-size: clamp(14px, 1.05vw, 17px);
-  margin: 14px 0 19px;
+  font-size: clamp(16px, 1.2vw, 19px);
+  margin: 14px 0 24px;
+  line-height: 1.6;
+  color: #405169;
 }
 .primary {
   background: var(--blue);
@@ -115,10 +119,10 @@
   display: inline-flex;
   align-items: center;
   gap: 16px;
-  font-size: 12px;
-  min-height: 44px;
+  font-size: 14px;
+  min-height: 48px;
   border-radius: 100px;
-  padding: 10px 16px;
+  padding: 12px 22px;
   box-shadow: 0 7px 24px #3862df26;
   transition:
     transform 0.2s,
@@ -149,14 +153,14 @@
 .work {
   max-width: 1440px;
   margin: auto;
-  padding: 105px 5% 100px;
+  padding: 64px 6.7% 100px;
   scroll-margin-top: 30px;
 }
 .sectionHeading {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  margin-bottom: 44px;
+  margin-bottom: 52px;
 }
 .eyebrow {
   font:
@@ -264,14 +268,15 @@
 .projectGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 52px 26px;
+  gap: 64px 36px;
 }
 .projectVisual {
   position: relative;
   aspect-ratio: 1.25;
   background: #eef1f5;
-  border-radius: 6px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px #1824380a;
 }
 .projectVisual img {
   object-fit: contain;
@@ -321,7 +326,7 @@
   margin-top: 20px;
 }
 .projectHeading h3 {
-  font-size: 23px;
+  font-size: clamp(25px, 2.4vw, 34px);
   letter-spacing: -0.03em;
   font-weight: 500;
 }
@@ -426,7 +431,8 @@
 }
 .about {
   padding: 90px max(6.7%, calc((100vw - 1296px) / 2));
-  background: #eaf3f9d4;
+  background: linear-gradient(180deg, #eff7fadb, #e5eef4d6);
+  border-top: 1px solid #dce4e9;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 70px;
@@ -459,7 +465,7 @@
 }
 .footer {
   padding: 95px 6.7% 30px;
-  background: #dcebf4b8;
+  background: linear-gradient(180deg, #e5eef4d6, #d8e7f0bb);
 }
 .hello {
   font-size: clamp(32px, 5.6vw, 80px);
@@ -507,7 +513,7 @@
     display: none;
   }
   .hero {
-    height: 850px;
+    height: max(760px, 100svh);
     max-height: none;
   }
   .heroBottom {
@@ -549,8 +555,7 @@
     display: none !important;
   }
   .hero {
-    height: 780px;
-    min-height: 100svh;
+    height: max(760px, 100svh);
   }
   .heroBottom {
     left: 6%;
@@ -678,35 +683,147 @@
   }
 }
 
-/* Surfaces sit within the same water world; the pointer light shares its input. */
-.project {
-  position: relative;
-  display: block;
-  padding: 18px 18px 24px;
-  border: 1px solid #ffffffc7;
-  border-radius: 18px;
-  background: #f6fbfee8;
-  box-shadow: 0 18px 50px #264a681a;
+/* Quiet frames keep the actual work visually separate from the interactive water. */
+.project { position: relative; display: block; min-width: 0; }
+.projectVisual { transition: box-shadow .35s; }
+.project:hover .projectVisual, .project:focus-visible .projectVisual {
+  box-shadow: 0 16px 36px #264a6818;
 }
-.projectVisual { border-radius: 10px; }
 .spotlight { position: relative; border: 1px solid #ffffff80; border-radius: 16px; }
-.catalog { padding: 8px 24px; border-radius: 16px; background: #f6fbfedb; }
+.catalog { border-bottom: 1px solid #dce2e9; }
 .catalog > a { position: relative; }
+.navigation nav a { position: relative; }
+.navigation nav a::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 5px; height: 1px;
+  background: currentColor; transform: scaleX(0); transform-origin: left;
+  transition: transform .25s;
+}
+.navigation nav a:hover::after, .navigation nav a:focus-visible::after { transform: scaleX(1); }
+.hello { width: fit-content; }
+.hello svg, .spotlightTop svg, .catalog svg { transition: transform .3s; }
+.hello:hover svg, .spotlight:hover .spotlightTop svg, .catalog a:hover svg { transform: translate(4px, -4px); }
+@media (max-width: 600px) {
+  .heroBottom { bottom: 10%; }
+  .projectVisual { aspect-ratio: 1.12; }
+  .projectGrid { gap: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .portfolio *, .portfolio *::before, .portfolio *::after { transition: none !important; }
+}
+
+/* Floating panels expose the same water behind every section. */
+.project {
+  padding: 18px 18px 24px;
+  border: 1px solid #ffffffb8;
+  border-radius: 22px;
+  background: #f3f8fbe8;
+  box-shadow: 0 12px 32px #264a681a, inset 0 1px 0 #fff;
+}
+.portfolio [data-water-surface] { transform-origin: center; }
 .portfolio [data-water-surface]::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  opacity: 0;
-  background: radial-gradient(350px circle at var(--light-x, 50%) var(--light-y, 50%), #ffffff4a, transparent 75%);
-  box-shadow: inset 0 0 0 1px #ffffffa8;
-  transition: opacity .25s;
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(550px circle at var(--light-x, 50%) var(--light-y, 50%), #ffffff42, transparent 65%);
+  box-shadow: inset 0 0 0 1px #ffffffa8; opacity: 0; transition: opacity .18s;
 }
 .portfolio [data-water-lit="true"]::after { opacity: 1; }
-.portfolio[data-water-hover="true"] { cursor: grab; }
-.portfolio[data-water-dragging="true"] { cursor: grabbing; }
+.catalog { padding: 0 24px; background: #f3f8fbe8; border-radius: 16px; }
+.catalog > a { border-radius: 6px; }
+.sectionHeading, .latestHeading, .moreHeading { text-shadow: 0 1px 18px #f3f7fa; }
 @media (max-width: 600px) {
   .project { padding: 12px 12px 20px; }
-  .catalog { padding-inline: 18px; }
+  .catalog { padding-inline: 16px; }
 }
+
+.portfolio [data-water-surface] { -webkit-user-drag: none; }
+
+.interactionHint { display: block; margin-top: 10px; font-size: 12px; color: #3157a5; }
+@media (pointer: coarse), (prefers-reduced-motion: reduce) { .interactionHint { display: none; } }
+
+/* Each project has its own reading moment within the continuous water scene. */
+.projectGrid { display: flex; flex-direction: column; gap: clamp(100px, 14vh, 170px); }
+.project {
+  display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+  align-items: center; gap: clamp(28px, 4vw, 64px); padding: 0;
+  border: 0; border-radius: 24px; background: transparent; box-shadow: none;
+}
+.project:nth-child(even) { grid-template-columns: minmax(260px, 1fr) minmax(0, 1.65fr); }
+.project:nth-child(even) .projectVisual { order: 2; }
+.projectVisual {
+  aspect-ratio: 1.25; border-radius: 22px;
+  border: 1px solid #ffffffa8;
+  box-shadow: 0 28px 65px #14395120, 0 2px 5px #14395112;
+  opacity: 1;
+  transition: opacity .35s, box-shadow .6s;
+}
+.project[data-depth="far"] .projectVisual { box-shadow: 0 42px 85px #1439511c, 0 4px 16px #1439510c; }
+.project:focus-visible .projectVisual, .project:hover .projectVisual { opacity: 1; }
+.projectCopy { padding: 16px 8px; border-radius: 0; background: transparent; border: 0; }
+.projectCopy > .projectKind { font: 10px var(--font-geist-mono), monospace; letter-spacing: .07em; color: #3a5367; margin: 0 0 24px; text-transform: uppercase; }
+.projectCopy > p { text-shadow: 0 1px 14px #eff8fc99; }
+.projectVisual[data-project="monkeyclaw"], .projectVisual[data-project="flowe"] {
+  background: transparent; border-color: transparent; box-shadow: none;
+}
+.projectVisual[data-project="monkeyclaw"] img { mix-blend-mode: multiply; padding: 75px; }
+.projectVisual[data-project="flowe"] img { padding: 16px; }
+.projectVisual[data-project="etch"], .projectVisual[data-project="argyph"] {
+  border: 1px solid #cce5ef8c; border-radius: 12px;
+  box-shadow: 0 26px 50px #123d542c, 0 1px 0 #ffffffad, inset 0 0 0 1px #ffffff24;
+}
+.project:hover .projectVisual[data-project="monkeyclaw"], .project:hover .projectVisual[data-project="flowe"] { box-shadow: none; }
+.projectCopy .projectMeta { border-top-color: #56778c40; padding-top: 20px; }
+.projectCopy .readCase { font-size: 13px; color: #254da0; }
+.projectHeading { margin-top: 0; gap: 16px; }
+.projectHeading h3 { font-size: clamp(24px, 2.55vw, 36px); }
+.projectCopy > p { color: #41536a; font-size: 17px; line-height: 1.65; margin: 20px 0; }
+.projectCopy > .projectResult { font-size: 13px; color: #57677b; margin: 20px 0 26px; }
+.projectMeta { font-size: 11px; align-items: flex-start; }
+.projectVisual img { padding: 28px; }
+.projectVisual[data-project="etch"] { aspect-ratio: 1.4; }
+.projectVisual[data-project="etch"] img { padding: 16px; }
+.projectVisual[data-project="flowe"] { aspect-ratio: 1.15; }
+.projectVisual[data-project="flowe"] img { padding: 30px 24px; }
+.projectVisual[data-project="argyph"] { aspect-ratio: 1.3; }
+.latestHeading { margin-top: clamp(120px, 18vh, 200px); }
+.about { background: linear-gradient(180deg, #e7f1f600, #eff7fad1 28%, #eff7fad1 72%, #eff7fa00); border-top: 0; padding-block: 120px; }
+.footer { background: linear-gradient(180deg, #eff7fa00, #f5fafc28); padding: 80px 6.7% 30px; }
+.contactOpening { min-height: min(62svh, 640px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.contactOpening .eyebrow { color: #526a7d; margin-bottom: 28px; }
+.hello { font-size: clamp(38px, 6.5vw, 94px); max-width: 1100px; justify-content: center; }
+.email { font-size: 15px; margin-top: 32px; padding: 8px 0; color: #456079; border-bottom: 1px solid #708fa066; }
+.email:hover { color: #274eba; }
+.footerBottom { margin-top: 45px; padding-bottom: 50px; }
+@keyframes heroArrival { from { opacity: .35; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: no-preference) {
+  .portfolio:has([data-ready="true"]) .heroBottom { animation: heroArrival 1s var(--portfolio-ease) both; }
+  .portfolio:has([data-paused="true"]) .heroBottom { animation: none; }
+}
+@media (max-width: 1000px) {
+  .project, .project:nth-child(even) { grid-template-columns: minmax(0, 1.25fr) minmax(250px, 1fr); gap: 24px; }
+  .projectCopy { padding: 16px 4px; }
+}
+@media (max-width: 800px) {
+  .project, .project:nth-child(even) { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .project:nth-child(even) .projectVisual { order: 0; }
+  .projectVisual { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+  .projectCopy { padding: 28px 0 0; }
+  .projectVisual { border-radius: 12px; }
+  .projectVisual[data-project="monkeyclaw"] { aspect-ratio: 1.35; }
+  .projectCopy > .projectKind { margin-bottom: 16px; }
+  .projectGrid { gap: 88px; }
+  .projectVisual[data-project="flowe"] { aspect-ratio: 1.1; }
+  .projectVisual[data-project="monkeyclaw"] img { padding: 0; }
+  .about { padding-block: 80px; }
+  .contactOpening { min-height: 58svh; }
+  .hello { gap: 14px; font-size: clamp(38px, 8vw, 60px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .projectVisual { opacity: 1; }
+  .heroBottom { animation: none; }
+}
+.project[data-water-surface]::after { content: none; }
+.projectVisual::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: radial-gradient(550px circle at var(--light-x, 50%) var(--light-y, 50%), #ffffff24, transparent 65%);
+  opacity: 0; transition: opacity .2s;
+}
+.project[data-water-lit="true"] .projectVisual::after { opacity: 1; }

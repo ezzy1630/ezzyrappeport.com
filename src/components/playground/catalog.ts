@@ -1,3 +1,5 @@
+export const featuredSlugs = ["monkeyclaw", "flowe", "etch", "argyph"] as const;
+
 /** Public project summaries verified against repository READMEs on 2026-09-06. */
 export const additionalWork = [
   {

@@ -7,14 +7,20 @@
     "mobile": [
       390,
       844
+    ],
+    "tablet": [
+      768,
+      1024
     ]
   },
   "sources": {
-    "src/components/water-study/scene.ts": "81f8117f42e02a3a29f572d9a9af0066bcc234ce83089ca971ad720f315b53e4",
-    "src/components/water-study/optics.ts": "2d5b0f19daafee39cb3a640a211c006c4feaeb9ab4e8e453fb75738513f06b18",
-    "src/components/water-study/environment.ts": "e1e3fe7e3e4261397dfc9c71c000186e92cc0a159a8c84513510b09d020f6a70",
-    "src/components/water-study/surface.ts": "87184582382d3ff03da6be323db22079068d5961e68d776c6ab7f572f9cce1a5",
+    "src/components/water-study/scene.ts": "5925c6ba6aa4a7b57bc2d9cc8a6ed213ae7ae67872a3441eb8d60af18f55e680",
+    "src/components/water-study/optics.ts": "2d32a09877fad3481ac42bf630762e83254cb1d5fa43d3f83814d6bac161241e",
+    "src/components/water-study/environment.ts": "bc61e56532f70cc062fbe59c8c92c65f5b5b58151320e4eb11d040d4ba128795",
+    "src/components/water-study/surface.ts": "2ec0e8388e688322a22a4bce6c0b88ec4a7238263fc750aebdfd7140a2480021",
     "public/assets/hero/playground-glyphs.glb": "931723f3eedd1fd79acbd8cb9ad4601036435a0e45730b25bdd82cd205b9c8cf",
-    "public/assets/hero/reference-water-v1.webp": "b895ad76877b06244b3ad9434d44ba4facf4c77e260604921555ea54a803a1ad"
+    "src/components/water-study/field-texture.ts": "30c48e2371f0e86e8e401493508b3c5f4e69555bfd59f9beff14adce3f805f78",
+    "src/components/water-study/dynamics.ts": "5b9ce1511e62d72142c311bf9ae653ce9fde5d3a348e5f83bfdba6c1ba2713ad",
+    "src/components/playground/water-field.ts": "e7339afe49b4b902ae5278ccdd147bc8cf8d24e1bd180ae591213e65d7dc6ae4"
   }
 }

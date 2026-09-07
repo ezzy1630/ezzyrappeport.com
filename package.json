@@ -20,6 +20,7 @@
     "resume:pdf": "node scripts/print-resume-pdf.mjs",
     "capture:m3": "node scripts/capture-milestone-3-monkeyclaw.mjs",
     "capture:m4": "node scripts/capture-milestone-4-etch-flowe.mjs",
+    "test:water": "node --experimental-strip-types scripts/water-study-tests.mjs && node --experimental-strip-types scripts/water-interaction-tests.mjs",
     "test:playground": "node scripts/playground-tests.mjs && node scripts/water-field-tests.mjs",
     "assets:hero-poster": "node scripts/encode-hero-poster.mjs"
   },
