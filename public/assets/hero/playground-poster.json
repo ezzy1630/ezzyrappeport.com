@@ -1,0 +1,25 @@
+{
+  "renderer": "Three.js live hero at rest",
+  "width": 1600,
+  "height": 780,
+  "worldWidth": 5.1,
+  "cameraDistance": 8,
+  "alphaBounds": {
+    "minX": 115,
+    "minY": 169,
+    "maxX": 1484,
+    "maxY": 610
+  },
+  "bytes": 130254,
+  "sources": {
+    "src/components/playground/glass-material.ts": "cd52da5d3461a7b249bfb05e0e7221a4ca11be9c1a817ee0b9d9c17c4bf04d64",
+    "src/components/playground/glass-scene.ts": "413bd49a176b787581f5b2cdf863fae650694850cba040082db7f7551a46e646",
+    "src/components/playground/hero-camera.ts": "dcaf982d84ba3120a710c02fafdfb6e19fd198051b84d1f96cb6a7aaa9f09e79",
+    "src/components/playground/water-canopy.ts": "bf4b5c16e6719d5115b466588ae533e9d9964f17f1128eafe4537deda8fc9d29",
+    "public/assets/water/shallow-desktop-v1.webp": "336ab81dd7313802262e12e6edd9eafe220b4dc2b86a1aed23a91d02f88b1d19",
+    "src/components/playground/glass-contact.ts": "c3238866a8e8507bd25626befac13b988325a924aa1bd603a6daca2b490b5318",
+    "src/components/playground/glass-studio.ts": "1801be65fcbf17cc4359e27e140115e5080e33c64bfd6b139c347d64ffd5d34d",
+    "src/components/playground/water-shader.ts": "984fc0e7e076f039526111f59dd48ad2e39905398f92a41752c3bba2ea4ddfc5",
+    "public/assets/hero/playground-glyphs.glb": "931723f3eedd1fd79acbd8cb9ad4601036435a0e45730b25bdd82cd205b9c8cf"
+  }
+}

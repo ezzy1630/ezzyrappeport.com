@@ -1,0 +1,66 @@
+{
+  "glb_bytes": 698780,
+  "nodes": 13,
+  "meshes": 8,
+  "geometry": [
+    {
+      "name": "Smooth cast E",
+      "triangles": 4800,
+      "signed_volume": 0.03521784767508507,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast Z",
+      "triangles": 4800,
+      "signed_volume": 0.03440023958683014,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast Y",
+      "triangles": 4800,
+      "signed_volume": 0.02543909102678299,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast R",
+      "triangles": 4800,
+      "signed_volume": 0.04643818736076355,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast A",
+      "triangles": 4800,
+      "signed_volume": 0.03923334181308746,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast P",
+      "triangles": 4800,
+      "signed_volume": 0.03979862853884697,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast O",
+      "triangles": 4800,
+      "signed_volume": 0.048858415335416794,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    },
+    {
+      "name": "Smooth cast T",
+      "triangles": 4800,
+      "signed_volume": 0.024419555440545082,
+      "nonmanifold_edges": 0,
+      "exported_normals_follow_outward_faces": true
+    }
+  ],
+  "visible_triangles": 62400,
+  "max_transform_or_bounds_error": 0.0,
+  "all_checks_passed": true
+}

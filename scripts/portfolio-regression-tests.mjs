@@ -592,18 +592,6 @@ const tests = [
     assert.doesNotMatch(revampCssSource, /html\[data-water-section="(?:about|contact|case)"\]\s+\.fluid-canvas/);
     assert.doesNotMatch(revampCssSource, /background-image:\s*url\("\/assets\/water\/(?:mid-depth|deep-basin)/);
   }],
-  ["Case-study routes use the shared water grammar", () => {
-    assert.match(projectDetailSource, /CaseArrivalWater/);
-    assert.match(projectDetailSource, /routeMode="case"/);
-    assert.match(projectDetailSource, /data-liquid-hover/);
-    assert.match(transitionLinkSource, /emitLiquidWake/);
-    assert.match(transitionLinkSource, /transitionDirection/);
-    assert.match(portfolioShellSource, /data-route=\{routeMode\}/);
-    assert.match(revampCssSource, /portfolio-root\[data-route="case"\]/);
-    assert.match(worldStateSource, /CASE_MOORING_DEPTH/);
-    assert.match(worldStateSource, /lightForDepth\(CASE_MOORING_DEPTH\)/);
-    assert.doesNotMatch(worldStateSource, /light: 0\.16/);
-  }],
   ["Retina 4K stays inside the high pixel budget", () => {
     const dpr = pixelBudgetedDpr(2560, 1440, 2, 2, 6_000_000);
     assert.ok(dpr <= 1.28);
@@ -670,7 +658,7 @@ const tests = [
     assert.match(kineticCanvasSource, /breachTimer/);
     assert.match(kineticCanvasSource, /resolveEffectiveReducedMotion/);
     assert.match(kineticCanvasSource, /from "\.\/renderer\/underwater\/assetUrls"/);
-    assert.match(projectDetailSource, /CaseEvidenceRail|evidenceRail|railSticky|case-system/);
+    assert.match(projectDetailSource, /id="evidence"/);
     assert.match(caseEvidenceRailSource, /evidenceRail|railSticky|case-system/);
     assert.match(projectDetailSource, /SystemDiagram/);
     assert.match(systemDiagramSource, /prefers-reduced-motion|useReducedMotion|data-drawn/);

@@ -224,19 +224,22 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 html {
-  /* Keep anchors clear of the fixed nav chrome (64–72px band). */
-  --nav-clearance: clamp(4rem, 5vw, 4.5rem);
-  scroll-padding-top: calc(var(--nav-clearance) + 1.5rem);
   scroll-behavior: smooth;
 }
 
-#projects,
-#about,
-#contact {
+html:has(.portfolio-root) {
+  /* Keep anchors clear of the fixed nav chrome (64–72px band). */
+  --nav-clearance: clamp(4rem, 5vw, 4.5rem);
+  scroll-padding-top: calc(var(--nav-clearance) + 1.5rem);
+}
+
+.portfolio-root #projects,
+.portfolio-root #about,
+.portfolio-root #contact {
   scroll-margin-top: calc(var(--nav-clearance) + 1.75rem);
 }
 
-#contact { scroll-margin-top: -6rem; }
+.portfolio-root #contact { scroll-margin-top: -6rem; }
 
 body {
   background: var(--rv-pearl);

@@ -11,7 +11,14 @@ const geistMono = localFont({
   variable: "--font-geist-mono",
   display: "swap",
   adjustFontFallback: false,
-  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
+  fallback: [
+    "ui-monospace",
+    "SFMono-Regular",
+    "Menlo",
+    "Monaco",
+    "Consolas",
+    "monospace",
+  ],
 });
 
 const generalSans = localFont({
@@ -42,7 +49,14 @@ export const metadata: Metadata = {
   title: "Ezzy Rappeport - Software Engineer • AI Systems • Founder",
   description:
     "Multi-agent systems, humane AI, and tools that compound impact. Building from Los Angeles and Santa Cruz.",
-  keywords: ["Ezzy Rappeport", "AI", "multi-agent", "software engineer", "founder", "portfolio"],
+  keywords: [
+    "Ezzy Rappeport",
+    "AI",
+    "multi-agent",
+    "software engineer",
+    "founder",
+    "portfolio",
+  ],
   authors: [{ name: "Ezzy Rappeport" }],
   alternates: { canonical: "/" },
   openGraph: {
@@ -96,11 +110,6 @@ export default function RootLayout({
                 "https://instagram.com/ezzy1630",
               ],
             }),
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `try{if(typeof console!=="undefined"&&console.log){console.log("%cEzzy Rappeport","font-weight:700;font-size:14px;color:#0066ff");console.log("You found the deep end. The water is custom WebGL2. Dive into /project/monkeyclaw or hold Keep diving at the floor.");}}catch(e){}`,
           }}
         />
         {children}

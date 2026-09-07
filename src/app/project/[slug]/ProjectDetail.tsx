@@ -1,210 +1,160 @@
 import Image from "next/image";
-import type { CSSProperties } from "react";
-import {
-  bio,
-  caseMooringDepth,
-  projectDepthBand,
-  type Project,
-  projects,
-} from "@/lib/portfolio/content";
-import PortfolioShell from "@/components/portfolio/PortfolioShell";
-import CaseArrivalWater from "@/components/portfolio/CaseArrivalWater";
-import CaseEvidenceRail from "@/components/portfolio/CaseEvidenceRail";
-import CaseDescentNav from "@/components/portfolio/CaseDescentNav";
-import ProjectTransitionLink from "@/components/portfolio/ProjectTransitionLink";
-import ProjectIdentity from "@/components/portfolio/ProjectIdentity";
+import Link from "next/link";
+import { ArrowLeft, ArrowUpRight, ArrowRight } from "lucide-react";
+import { type Project, projects, bio } from "@/lib/portfolio/content";
 import SystemDiagram from "@/components/portfolio/diagrams/SystemDiagram";
-import styles from "./ProjectDetail.module.css";
+import styles from "./CaseStudy.module.css";
 
-type Props = {
-  project: Project;
-};
-
-const linkKindLabels = {
-  source: "Source",
-  site: "Live site",
-  releases: "Releases",
-} as const;
-
-function isArchitectureAsset(src: string) {
-  return /architecture\.svg$/i.test(src);
-}
-
-export default function ProjectDetail({ project }: Props) {
-  const projectIndex = projects.findIndex((candidate) => candidate.slug === project.slug);
-  const previous = projects[(projectIndex - 1 + projects.length) % projects.length];
-  const next = projects[(projectIndex + 1) % projects.length];
-  const gallery = (project.media.gallery ?? []).filter((asset) => !isArchitectureAsset(asset.src));
-  const proofItems = project.proof
-    .split("·")
-    .map((item) => item.trim())
-    .filter(Boolean);
-  const depth = caseMooringDepth(project.slug);
-
+export default function ProjectDetail({ project }: { project: Project }) {
+  const index = projects.findIndex((item) => item.slug === project.slug);
+  const next = projects[(index + 1) % projects.length];
+  const gallery = (project.media.gallery ?? []).filter(
+    (asset) => !asset.src.endsWith("architecture.svg"),
+  );
+  const leadImage = gallery.find(
+    (asset) => !asset.src.endsWith(".svg") && asset.width / asset.height > 1.2,
+  );
   return (
-    <PortfolioShell heroName={false} routeMode="case">
-      <div className="content-layer">
-        <main
-          id="main-content"
-          className={styles.page}
-          data-project={project.slug}
-          data-accent={project.accent}
-          data-depth={depth}
-          data-band={projectDepthBand(project.slug)}
-          data-water-section="case"
-          style={
-            {
-              "--case-depth": String(depth),
-              "--project-scale": project.mediaPresentation.scale,
-              "--project-offset-y": project.mediaPresentation.offsetY,
-              viewTransitionName: `project-${project.slug}`,
-            } as CSSProperties
-          }
-        >
-          <article>
-          <CaseArrivalWater accent={project.accent} depth={depth} />
-
-          <ProjectTransitionLink href="/#projects" className={styles.back} transitionDirection="back">
-            <span aria-hidden="true">←</span>
-            Back to selected work
-          </ProjectTransitionLink>
-
-          <header className={styles.hero}>
-            <div className={styles.heroHeading}>
-              <p className={styles.eyebrow}>{project.subtitle}</p>
-              <h1>{project.title}</h1>
-              <p className={styles.tagline}>{project.tagline}</p>
-            </div>
-
-            <dl className={styles.meta}>
-              <div><dt>Role</dt><dd>{project.role}</dd></div>
-              <div><dt>Year</dt><dd>{project.year}</dd></div>
-              <div><dt>Status</dt><dd>{project.status}</dd></div>
-            </dl>
-
-            <figure className={styles.heroMark} data-liquid-hover aria-label={`${project.title} identity`}>
-              <ProjectIdentity
-                slug={project.slug}
-                media={project.media.cover}
-                className={styles.heroIdentity}
-              />
-            </figure>
-          </header>
-
-          <section className={styles.proofBand} aria-label="Verified project evidence">
-            {proofItems.map((item) => (
-              <p key={item}>{item}</p>
+    <div className={styles.page}>
+      <a className={styles.skip} href="#overview">
+        Skip to project details
+      </a>
+      <header className={styles.nav}>
+        <Link href="/#projects">
+          <ArrowLeft size={18} /> All projects
+        </Link>
+        <Link href="/">EZZY RAPPEPORT</Link>
+        <a href={`mailto:${bio.email}`}>
+          Get in touch <ArrowUpRight size={16} />
+        </a>
+      </header>
+      <main id="main-content">
+        <header className={styles.hero}>
+          <p className={styles.meta}>
+            {project.year} / {project.role}
+          </p>
+          <h1>{project.title}</h1>
+          <p className={styles.tagline}>{project.tagline}</p>
+          <div className={styles.links}>
+            {project.verifiedLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {link.label}
+                <ArrowUpRight size={17} />
+              </a>
             ))}
-          </section>
-
-          {project.slug === "nexarad" || project.cautionLabel ? (
-            <p className={styles.clinicalNote} role="note">
-              {project.slug === "nexarad"
-                ? "Demo / Research / Not for Clinical Use"
-                : project.cautionLabel}
-            </p>
-          ) : null}
-
-          <CaseEvidenceRail
-            problem={project.problem}
-            system={project.system}
-            evidence={project.evidence}
-            outcome={project.outcome}
-          />
-
-          <section className={styles.diagramSection} aria-label="System diagram">
-            <SystemDiagram diagram={project.diagram} accent={project.accent} />
-          </section>
-
-          <section className={styles.caseBody} aria-labelledby="case-story-title">
-            <aside className={styles.overview}>
-              <p className={styles.sectionLabel}>Overview</p>
-              <h2 id="case-story-title">What shipped</h2>
+          </div>
+          <dl className={styles.facts}>
+            <div>
+              <dt>Status</dt>
+              <dd>{project.status}</dd>
+            </div>
+            <div>
+              <dt>Built with</dt>
+              <dd>{project.stack.join(" / ")}</dd>
+            </div>
+          </dl>
+          {leadImage && (
+            <figure className={styles.leadImage}>
+              <a
+                href={leadImage.src}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={`Open full-size image: ${leadImage.alt}`}
+              >
+                <Image
+                  src={leadImage.src}
+                  alt={leadImage.alt}
+                  width={leadImage.width}
+                  height={leadImage.height}
+                  sizes="(max-width: 700px) 88vw, 84vw"
+                  priority
+                />
+              </a>
+              <figcaption>
+                {leadImage.caption} <span>Open full size ↗</span>
+              </figcaption>
+            </figure>
+          )}
+        </header>
+        <div className={styles.body}>
+          <aside aria-label="Project sections">
+            <p>IN THIS PROJECT</p>
+            <a href="#overview">Overview</a>
+            <a href="#approach">Approach</a>
+            <a href="#evidence">Evidence</a>
+            <a href="#outcome">Outcome</a>
+          </aside>
+          <article>
+            <section id="overview" tabIndex={-1}>
+              <h2>The idea</h2>
               <p>{project.description}</p>
-              {project.cautionLabel ? <p className={styles.caution}>{project.cautionLabel}</p> : null}
-
-              <ul className={styles.stack} aria-label="Technology stack">
-                {project.stack.map((technology) => (
-                  <li key={technology}>{technology}</li>
-                ))}
-              </ul>
-
-              {project.verifiedLinks.length > 0 ? (
-                <div className={styles.links} aria-label="Verified project links">
-                  {project.verifiedLinks.map((link) => (
+              <h3>The problem</h3>
+              <p>{project.problem}</p>
+            </section>
+            <section id="approach">
+              <h2>How it works</h2>
+              <p>{project.approach}</p>
+              <div className={styles.diagram}>
+                <SystemDiagram
+                  diagram={project.diagram}
+                  accent={project.accent}
+                />
+              </div>
+              <p>{project.system}</p>
+            </section>
+            <section id="evidence">
+              <h2>The work</h2>
+              <p>{project.evidence}</p>
+              {gallery
+                .filter((asset) => asset !== leadImage)
+                .map((asset) => (
+                  <figure key={asset.src}>
                     <a
-                      key={link.href}
-                      href={link.href}
+                      href={asset.src}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={`Open full-size image: ${asset.alt}`}
                     >
-                      <span>{linkKindLabels[link.kind]}</span>
-                      <span>{link.label}</span>
-                      <span aria-hidden="true">↗</span>
-                    </a>
-                  ))}
-                </div>
-              ) : null}
-            </aside>
-
-            <div className={styles.chapters}>
-              <section className={styles.chapter}>
-                <h3>Approach</h3>
-                <p>{project.approach}</p>
-              </section>
-              <section className={styles.chapter}>
-                <h3>Constraints</h3>
-                <p>{project.constraints}</p>
-              </section>
-            </div>
-          </section>
-
-          {gallery.length > 0 ? (
-            <section className={styles.gallery} aria-labelledby="case-gallery-title">
-              <header>
-                <p className={styles.sectionLabel}>Evidence</p>
-                <h2 id="case-gallery-title">Inside the system</h2>
-              </header>
-              <div className={styles.galleryGrid}>
-                {gallery.map((asset, index) => (
-                  <figure
-                    key={asset.src}
-                    className={styles.galleryItem}
-                    data-wide={index === 0 && gallery.length > 1 ? "true" : "false"}
-                  >
-                    <div className={styles.galleryMedia}>
                       <Image
                         src={asset.src}
                         alt={asset.alt}
                         width={asset.width}
                         height={asset.height}
-                        sizes={index === 0 ? "100vw" : "(max-width: 760px) 100vw, 50vw"}
-                        className={styles.galleryImage}
-                        priority={index === 0}
-                        unoptimized={asset.src.endsWith(".svg")}
+                        sizes="(max-width: 700px) 90vw, 65vw"
                       />
-                    </div>
-                    {asset.caption ? <figcaption>{asset.caption}</figcaption> : null}
+                    </a>
+                    {asset.caption && <figcaption>{asset.caption}</figcaption>}
                   </figure>
                 ))}
-              </div>
+              <p className={styles.proof}>{project.proof}</p>
             </section>
-          ) : null}
-
-          <CaseDescentNav
-            previous={{ slug: previous.slug, title: previous.title, tagline: previous.tagline }}
-            next={{ slug: next.slug, title: next.title, tagline: next.tagline }}
-          />
-
-          <footer className={styles.footer}>
-            <p>© {new Date().getFullYear()} {bio.name}</p>
-            <a href={`mailto:${bio.email}`} aria-label={`Email ${bio.name} at ${bio.email}`}>
-              {bio.emailLabel}
-            </a>
-          </footer>
+            <section id="outcome">
+              <h2>Where it stands</h2>
+              <p>{project.outcome}</p>
+              <h3>{project.cautionLabel || "Scope and constraints"}</h3>
+              <p>{project.constraints}</p>
+            </section>
           </article>
-        </main>
-      </div>
-    </PortfolioShell>
+        </div>
+        <Link className={styles.next} href={`/project/${next.slug}`}>
+          <span>Next project</span>
+          <h2>
+            {next.title}
+            <ArrowRight />
+          </h2>
+        </Link>
+      </main>
+      <footer>
+        <Link href="/#projects">All projects</Link>
+        <a href={`mailto:${bio.email}`}>
+          Let’s talk <ArrowUpRight size={16} />
+        </a>
+      </footer>
+    </div>
   );
 }

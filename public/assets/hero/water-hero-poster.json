@@ -1,0 +1,20 @@
+{
+  "viewports": {
+    "desktop": [
+      1440,
+      810
+    ],
+    "mobile": [
+      390,
+      844
+    ]
+  },
+  "sources": {
+    "src/components/water-study/scene.ts": "81f8117f42e02a3a29f572d9a9af0066bcc234ce83089ca971ad720f315b53e4",
+    "src/components/water-study/optics.ts": "2d5b0f19daafee39cb3a640a211c006c4feaeb9ab4e8e453fb75738513f06b18",
+    "src/components/water-study/environment.ts": "e1e3fe7e3e4261397dfc9c71c000186e92cc0a159a8c84513510b09d020f6a70",
+    "src/components/water-study/surface.ts": "87184582382d3ff03da6be323db22079068d5961e68d776c6ab7f572f9cce1a5",
+    "public/assets/hero/playground-glyphs.glb": "931723f3eedd1fd79acbd8cb9ad4601036435a0e45730b25bdd82cd205b9c8cf",
+    "public/assets/hero/reference-water-v1.webp": "b895ad76877b06244b3ad9434d44ba4facf4c77e260604921555ea54a803a1ad"
+  }
+}
