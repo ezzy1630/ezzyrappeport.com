@@ -9,7 +9,7 @@ import styles from "./ChartedWork.module.css";
 
 /**
  * Charted Work (plan §11) — every project remains directly reachable.
- * A bathymetric chart of the whole body of work: seven semantic markers at
+ * A bathymetric chart of the whole body of work: eight semantic markers at
  * authored coordinates, one summary surface driven equally by hover and
  * keyboard focus, and a plain readable list on mobile. Entirely DOM/SVG —
  * the chart stays complete and useful with WebGL absent or failed.
@@ -17,6 +17,7 @@ import styles from "./ChartedWork.module.css";
 
 /** Authored chart coordinates (percent of the bathymetric map). */
 const CHART_COORDINATES: Record<ProjectSlug, { x: number; y: number }> = {
+  downright: { x: 14, y: 50 },
   monkeyclaw: { x: 22, y: 32 },
   etch: { x: 38, y: 24 },
   flowe: { x: 55, y: 38 },
@@ -40,7 +41,7 @@ export default function ChartedWork() {
       data-depth-band="mid"
     >
       <header className={styles.header} data-section-reveal>
-        <p className={styles.kicker}>Index / all seven projects</p>
+        <p className={styles.kicker}>Index / all eight projects</p>
         <h3 id="charted-work-title" className={styles.title}>Charted Work</h3>
         <p className={styles.intro}>
           Every project on one map — anchored encounters and the rest of the

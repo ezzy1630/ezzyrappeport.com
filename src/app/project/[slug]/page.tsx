@@ -49,7 +49,7 @@ export default async function ProjectPage({ params }: Props) {
     name: project.title,
     description: project.tagline,
     applicationCategory: "DeveloperApplication",
-    operatingSystem: "Web",
+    operatingSystem: project.slug === "downright" ? "macOS" : "Web",
     image: project.media.cover?.src
       ? `https://www.ezzyrappeport.com${project.media.cover.src}`
       : undefined,

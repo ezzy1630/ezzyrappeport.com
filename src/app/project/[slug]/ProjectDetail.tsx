@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, ArrowUpRight, ArrowRight } from "lucide-react";
 import { type Project, projects, bio } from "@/lib/portfolio/content";
-import { featuredSlugs } from "@/components/playground/catalog";
+import { featuredPresentation, featuredSlugs } from "@/components/playground/catalog";
 import WaterHero from "@/components/water-study/WaterHero";
 import SystemDiagram from "@/components/portfolio/diagrams/SystemDiagram";
 import styles from "./CaseStudy.module.css";
@@ -16,9 +16,11 @@ export default function ProjectDetail({ project }: { project: Project }) {
   ];
   const index = ordered.findIndex((item) => item.slug === project.slug);
   const next = ordered[(index + 1) % ordered.length];
-  const gallery = (project.media.gallery ?? []).filter(
+  const gallery = (project.media.gallery ?? [project.media.cover]).filter(
     (asset) => !asset.src.endsWith("architecture.svg"),
   );
+  const presentation = featuredSlugs.find(slug => slug === project.slug);
+  const illustration = presentation ? featuredPresentation[presentation] : undefined;
   const leadImage = gallery.find(
     (asset) => !asset.src.endsWith(".svg") && asset.width / asset.height > 1.2,
   );
@@ -42,8 +44,11 @@ export default function ProjectDetail({ project }: { project: Project }) {
           <p className={styles.meta}>
             {project.year} / {project.role}
           </p>
-          <h1>{project.title}</h1>
-          <p className={styles.tagline}>{project.tagline}</p>
+          <div className={styles.titleRow}>
+            {illustration && <Image className={styles.projectMark} src={illustration.cover} alt="" width={80} height={80} sizes="80px" />}
+            <h1>{project.title}</h1>
+          </div>
+          <p className={styles.tagline}>{illustration?.purpose ?? project.tagline}</p>
           <div className={styles.links}>
             {project.verifiedLinks.map((link) => (
               <a
@@ -68,7 +73,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
             </div>
           </dl>
           {leadImage && (
-            <figure className={styles.leadImage} data-water-surface>
+            <figure className={styles.leadImage}>
               <a
                 href={leadImage.src}
                 target="_blank"
@@ -122,7 +127,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
               {gallery
                 .filter((asset) => asset !== leadImage)
                 .map((asset) => (
-                  <figure key={asset.src} data-water-surface>
+                  <figure key={asset.src}>
                     <a
                       href={asset.src}
                       target="_blank"

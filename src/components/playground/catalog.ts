@@ -1,25 +1,18 @@
-export const featuredSlugs = ["monkeyclaw", "flowe", "etch", "argyph"] as const;
+export const featuredSlugs = ["downright", "monkeyclaw", "flowe", "etch", "argyph"] as const;
 
-/** Public project summaries verified against repository READMEs on 2026-09-06. */
+/** Public project summaries verified against repository READMEs on 2026-09-07. */
 export const additionalWork = [
-  {
-    name: "Downright",
-    description:
-      "A native Mac Markdown editor. Beautiful documents, exact source editing, and Finder previews.",
-    category: "macOS · Open source",
-    href: "https://downright.cc",
-  },
   {
     name: "Terminus",
     description:
-      "A coding-agent workspace with an inspectable runtime and a Rust execution kernel.",
+      "A coding-agent workspace built around a Rust execution kernel, scoped tools, and verification. Still in development.",
     category: "Developer tools · In development",
     href: "https://github.com/ezzy1630/Terminus",
   },
   {
     name: "CoOps",
     description:
-      "A workspace for company agent teams, with typed handoffs, human approvals, and traceable receipts.",
+      "Department agents hand work across permission boundaries, with human approvals and traceable receipts.",
     category: "AI systems · In development",
     href: "https://github.com/ezzy1630/CoOps",
   },
@@ -48,37 +41,44 @@ export const additionalWork = [
 
 /** Gallery copy is drawn from the longer case studies in portfolio/content.ts. */
 export const featuredPresentation = {
+  downright: {
+    cover: "/projects/downright/app-icon.png",
+    alt: "Downright sculpted cream and blue app icon",
+    mediaLabel: "macOS · Available now",
+    purpose: "Markdown, treated like a Mac document.",
+    delivered: "A native editor and reader for the files you already own. Exact source, thoughtful typography, and Finder previews.",
+  },
   monkeyclaw: {
-    cover: "/projects/monkeyclaw/logo.webp",
-    alt: "MonkeyClaw monkey and wordmark",
-    mediaLabel: "Security tooling · Project identity",
+    cover: "/projects/marks/monkeyclaw.svg",
+    alt: "MonkeyClaw geometric monkey mark",
+    mediaLabel: "Agent security",
     purpose:
-      "A security agent that attacks a sandbox, reproduces findings, and checks that the defense actually noticed.",
+      "Tests agent sandboxes, reproduces failures, and checks that defenses leave evidence.",
     delivered:
       "A working CLI and seeded demo, with eight verification gates across the security loop.",
   },
   flowe: {
-    cover: "/projects/flowe/structured-plan-campaign.webp",
-    alt: "FlowE campaign artwork showing coursework arranged into a structured plan",
-    mediaLabel: "iOS · Campaign visualization",
+    cover: "/projects/flowe/app-icon.webp",
+    alt: "FlowE sculpted silver app icon",
+    mediaLabel: "iOS · Planning & focus",
     purpose:
-      "An iOS home for coursework, calendars, and focus. Messy thoughts become one clear next move.",
+      "Coursework, calendars, and focus in one iOS app. Start with a brain dump; leave with a plan for today.",
     delivered:
       "A native SwiftUI build with Canvas sync, real-time tasks, and offline retry.",
   },
   etch: {
-    cover: "/projects/etch/intent-ui.webp",
-    alt: "Etch workbench accepting a synchronous FIFO hardware requirement",
-    mediaLabel: "Hardware design · Interface capture",
+    cover: "/projects/marks/etch.svg",
+    alt: "Etch faceted silver pen-nib mark",
+    mediaLabel: "Hardware design",
     purpose:
-      "From a hardware requirement to a design you can inspect, with verification evidence at every step.",
+      "AI-assisted hardware design where generated RTL earns its way through verification.",
     delivered:
       "A saved FIFO design run with simulation, bounded-formal checks, and a proof dossier. Physical signoff pending.",
   },
   argyph: {
-    cover: "/projects/argyph/argyph-identity.webp",
-    alt: "Argyph identity artwork showing its local code intelligence index",
-    mediaLabel: "Developer tools · Project identity",
+    cover: "/projects/marks/argyph.svg",
+    alt: "Argyph faceted blue A mark",
+    mediaLabel: "Developer tools",
     purpose:
       "Useful codebase context for coding agents, through one local MCP server. No cloud account required.",
     delivered:

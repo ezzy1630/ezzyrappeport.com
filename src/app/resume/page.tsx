@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { bio, projects } from "@/lib/portfolio/content";
 import { portfolioIdentity } from "@/lib/portfolio/identity";
-import PortfolioShell from "@/components/portfolio/PortfolioShell";
+import { featuredPresentation, featuredSlugs } from "@/components/playground/catalog";
 import styles from "./resume.module.css";
 
 export const metadata: Metadata = {
@@ -11,86 +11,56 @@ export const metadata: Metadata = {
   alternates: { canonical: "/resume" },
 };
 
-const skills = [
-  "Multi-agent systems",
-  "TypeScript / React / Next.js",
-  "Python",
-  "WebGL / GLSL",
-  "Systems design",
-  "Verification & evals",
-  "Product engineering",
-  "Founder / 0→1",
-];
+const skills = ["TypeScript / React / Next.js", "Rust", "Python", "Swift / SwiftUI", "Agent systems", "Verification & evals", "WebGL / GLSL"];
 
 export default function ResumePage() {
   return (
-    <PortfolioShell heroName={false} routeMode="index">
-      <main id="main-content" className={styles.page} data-depth-band="surface">
-        <div className={styles.toolbar} data-print-hide>
-          <Link href="/" className={styles.back}>
-            ← Surface
-          </Link>
-          <a href="/resume.pdf" className={styles.download} download>
-            Download PDF
-          </a>
-        </div>
-
+    <div className={styles.document}>
+      <a className={styles.skip} href="#main-content">Skip to résumé</a>
+      <div className={styles.toolbar}>
+        <Link href="/">← Ezzy Rappeport</Link>
+        <a href="/resume.pdf" download>Download PDF ↗</a>
+      </div>
+      <main id="main-content" className={styles.page}>
         <header className={styles.header}>
-          <p className={styles.eyebrow}>{portfolioIdentity.role}</p>
+          <p className={styles.eyebrow}>Software Engineer / AI Systems / Founder</p>
           <h1>{bio.name}</h1>
           <p className={styles.lede}>{bio.heroSentence}</p>
-          <p className={styles.meta}>
+          <div className={styles.meta}>
             <a href={`mailto:${bio.email}`}>{bio.email}</a>
             <span>{bio.location.subtitle}</span>
-            <a href={portfolioIdentity.domain} target="_blank" rel="noopener noreferrer">
-              ezzyrappeport.com
-            </a>
-          </p>
+            <a href={portfolioIdentity.domain}>ezzyrappeport.com</a>
+            <a href="https://github.com/ezzy1630">GitHub / ezzy1630</a>
+          </div>
         </header>
-
         <section className={styles.block} aria-labelledby="resume-summary">
-          <h2 id="resume-summary">Summary</h2>
-          <p>{bio.bodyParagraphs[1]}</p>
+          <h2 id="resume-summary">About</h2>
+          <p>I build across product interfaces and the systems behind them, with a focus on agent tooling, native software, and verification. Based in California and open to software and AI opportunities.</p>
         </section>
-
         <section className={styles.block} aria-labelledby="resume-projects">
           <h2 id="resume-projects">Selected work</h2>
           <ul className={styles.projects}>
-            {projects.map((project) => (
-              <li key={project.slug}>
-                <div className={styles.projectHead}>
-                  <h3>{project.title}</h3>
-                  <span>{project.year}</span>
-                </div>
-                <p className={styles.role}>{project.role}</p>
-                <p>{project.outcome}</p>
-                <p className={styles.proof}>{project.proof}</p>
-              </li>
-            ))}
+            {featuredSlugs.map(slug => {
+              const project = projects.find(item => item.slug === slug)!;
+              const presentation = featuredPresentation[slug];
+              return (
+                <li key={slug}>
+                  <div className={styles.projectHead}>
+                    <h3><Link href={`/project/${slug}`}>{project.title}</Link></h3>
+                    <span>{project.role} · {project.year}</span>
+                  </div>
+                  <p>{presentation.purpose}</p>
+                  <p className={styles.proof}>{presentation.delivered}</p>
+                </li>
+              );
+            })}
           </ul>
         </section>
-
         <section className={styles.block} aria-labelledby="resume-skills">
-          <h2 id="resume-skills">Skills</h2>
-          <ul className={styles.skills}>
-            {skills.map((skill) => (
-              <li key={skill}>{skill}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className={styles.block} aria-labelledby="resume-principles">
-          <h2 id="resume-principles">Working principles</h2>
-          <ul className={styles.principles}>
-            {bio.principles.map((principle) => (
-              <li key={principle.title}>
-                <strong>{principle.title}</strong>
-                <span>{principle.description}</span>
-              </li>
-            ))}
-          </ul>
+          <h2 id="resume-skills">Tools &amp; practice</h2>
+          <ul className={styles.skills}>{skills.map(skill => <li key={skill}>{skill}</li>)}</ul>
         </section>
       </main>
-    </PortfolioShell>
+    </div>
   );
 }

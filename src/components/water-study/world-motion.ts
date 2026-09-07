@@ -115,10 +115,10 @@ export function createWorldMotion(root: HTMLElement, sample: (x: number, y: numb
         if (!visible) { if(item.moving){item.element.style.removeProperty('will-change');item.moving=false;} continue; }
         if (!item.entered) {
           item.entered = true;
-          // Animate the image inside its floating surface so arrival and buoyancy compose.
+          // Fade only: entrance transforms must not replace the authored icon centering.
           const visual = item.element.querySelector('img');
           if (visual) {
-            const animation = visual.animate([{ opacity: .25, transform: `translate3d(${item.featured?(item.depth<1?18:-18):0}px,${item.featured?42:24}px,0) scale(${item.featured?(item.depth<1?.94:.97):.98})` }, { opacity: 1, transform: 'none' }], {
+            const animation = visual.animate([{ opacity: .25 }, { opacity: 1 }], {
               duration: item.featured ? 1000 : 650, easing: 'cubic-bezier(.16,1,.3,1)',
             });
             reveals.add(animation); animation.onfinish = () => reveals.delete(animation);

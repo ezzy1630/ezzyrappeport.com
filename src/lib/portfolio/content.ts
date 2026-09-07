@@ -1,6 +1,7 @@
 import { portfolioIdentity } from "./identity";
 
 export type ProjectSlug =
+  | "downright"
   | "monkeyclaw"
   | "etch"
   | "flowe"
@@ -97,9 +98,51 @@ export type Project = {
 
 const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   {
-    slug: "monkeyclaw",
+    slug: "downright",
     index: "01",
-    title: "MONKEYCLAW",
+    title: "Downright",
+    subtitle: "Native Markdown for macOS",
+    tagline: "Ordinary Markdown files, at home on the Mac.",
+    description:
+      "A native editor and reader built with AppKit and TextKit 2. Documents stay in their original folders, with exact Markdown source preserved.",
+    problem:
+      "Reading comfortably and editing precisely should work on the same file, without an import step or a separate library.",
+    approach:
+      "I built the document interface around native text storage, then extended the experience into Finder with Quick Look previews and thumbnails.",
+    outcome:
+      "Downright is free and open source, distributed as a signed and notarized DMG for macOS 14 and later.",
+    system:
+      "Document and Source views preserve selection and position. External changes can be reviewed while protecting unsaved local edits.",
+    evidence:
+      "The product capture shows native rendering of code, math, tables, tasks, footnotes, and Mermaid diagrams. Source and releases are public.",
+    constraints:
+      "Reading, editing, search, review, and export run locally. No account is required.",
+    stack: ["Swift", "AppKit", "TextKit 2", "Quick Look", "Sparkle"],
+    year: "2026",
+    role: "Independent Developer",
+    accent: "blue-medium",
+    personality: "downright",
+    status: "Published · macOS",
+    proof: "Exact source · Finder integration · offline editing",
+    media: {
+      cover: {
+        src: "/projects/downright/editor-showcase.png",
+        alt: "Downright document view rendering Markdown with code, math, a table, a task, and a Mermaid diagram",
+        width: 2940,
+        height: 1912,
+        caption: "The native document view from Downright’s public renderer showcase.",
+      },
+    },
+    verifiedLinks: [
+      { kind: "site", label: "Visit Downright", href: "https://downright.cc/" },
+      { kind: "source", label: "View source", href: "https://github.com/ezzy1630/Downright" },
+      { kind: "releases", label: "View releases", href: "https://github.com/ezzy1630/Downright/releases" },
+    ],
+  },
+  {
+    slug: "monkeyclaw",
+    index: "02",
+    title: "MonkeyClaw",
     subtitle: "Autonomous Red / Purple / Blue Security Agent for NVIDIA NemoClaw",
     tagline: "Attacks live sandboxes, proves and patches confirmed findings, then checks the defense was visible in NemoClaw telemetry.",
     description:
@@ -109,11 +152,11 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     approach:
       "I built a five-stage loop: red-team ideation across 18 attack-surface zones, programmatic and semantic judging, repro and root-cause analysis, blue-team patch generation, and purple-team detection-as-pass verification. The demo path runs with zero model credentials against a planted victim.",
     outcome:
-      "The repo ships a working CLI, seeded demo, live multi-panel dashboard on :8787, eight verifier gates, attack coverage tracking, Telegram alert paths, and a regression model that treats silent controls as incomplete defenses.",
+      "The public repository includes a working CLI, a seeded demo, a dashboard, and eight verification gates. The central rule is that a defense must both stop an attack and leave evidence that it noticed.",
     system:
-      "Live multi-panel dashboard over an 18-zone attack map. Red to judge to repro to blue to purple loop with detection-as-pass gates.",
+      "The dashboard follows each finding through the loop. Verification checks prevention and observability separately, so a silent control cannot look like a complete defense.",
     evidence:
-      "Detection-as-pass matrix, zero-credential demo path, 8 verifier gates, 1,000+ tests, and dual-axis coverage across 18 zones.",
+      "The repository documents a deterministic demo against a planted victim, a detection-as-pass matrix, and eight verifier gates. The demo can be rehearsed without model credentials.",
     constraints:
       "Multi-contributor project. Demo runs without model credentials; live LLM paths remain optional and environment-gated.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
@@ -122,7 +165,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-strong",
     personality: "monkeyclaw",
     status: "Public repository · zero-credential demo",
-    proof: "18 attack-surface zones · 8 verifier gates · 1,000+ tests",
+    proof: "Seeded demo · eight verification gates · prevention and observability",
     cautionLabel: "Multi-contributor project",
     media: {
       cover: {
@@ -151,8 +194,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "velox",
-    index: "04",
-    title: "VELOX",
+    index: "05",
+    title: "Velox",
     subtitle: "Agent-First Browser",
     tagline: "A Chromium browser where research agents work in visible tabs.",
     description:
@@ -214,8 +257,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "flowe",
-    index: "03",
-    title: "FLOWE",
+    index: "04",
+    title: "FlowE",
     subtitle: "Student OS",
     tagline: "Messy thoughts become one clear next move.",
     description:
@@ -225,13 +268,13 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     approach:
       "I built the iOS app with MVVM, dependency injection, offline mutation retry, Clerk auth, Canvas REST and ICS ingestion, EventKit, push notifications, analytics, and Convex schema/functions for tasks, events, Canvas data, wallets, and sync.",
     outcome:
-      "The repo has a generated Xcode project, production-shaped config boundaries, local Convex workflows, Canvas sync validation, authentication paths, widgets and Live Activities targets, and simulator build commands for the current iOS app.",
+      "The native iOS build brings task planning, Canvas sync, focus sessions, widgets, and Live Activities into one workflow. The public site explains the product; the app remains a private build.",
     system:
-      "Brain dump to structured plan to focus loop, surfaced through real iPhone frames and campaign footage.",
+      "A brain dump becomes organized tasks and deadlines. The daily plan helps choose what to work on, and focus sessions stay connected to those tasks.",
     evidence:
-      "Native mobile frames and existing campaign videos where real footage exists; muted loops only. Canvas OAuth stays disabled at launch while ICS/REST sync paths ship.",
+      "The implementation includes SwiftUI screens, a real-time task backend, calendar integration, and retry support for offline changes. The image below is campaign artwork illustrating the planning idea.",
     constraints:
-      "Calm operating system for tasks and focus, not a generic productivity collage.",
+      "Availability is limited to the private build. Campaign artwork shows the product direction and is not evidence of a public App Store release.",
     stack: ["SwiftUI", "Convex", "TypeScript", "Clerk", "Canvas LMS", "EventKit"],
     year: "2026",
     role: "Founder & CEO",
@@ -253,7 +296,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
           alt: "FlowE campaign visualization of a course-aware structured plan",
           width: 1080,
           height: 1920,
-          caption: "A course-aware plan composed from deadlines and study context.",
+          caption: "Campaign illustration of a course-aware plan, not an app screenshot.",
         },
         {
           src: "/projects/flowe/app-icon.webp",
@@ -273,18 +316,18 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "nexarad",
-    index: "06",
-    title: "NEXARAD",
+    index: "07",
+    title: "NexaRad",
     subtitle: "Evidence-Linked Radiology",
     tagline: "Evidence-linked imaging workflows with strict non-clinical demo boundaries.",
     description:
-      "NexaRad is a production-shaped foundation for radiology workflow software: backend-owned auth, tenant isolation, local DICOM services, object storage, structured findings, verifier-gated reports, and AWS-first infrastructure boundaries.",
+      "NexaRad is a research foundation for radiology workflow software: backend-owned auth, tenant isolation, local DICOM services, object storage, structured findings, verifier-gated reports, and AWS-first infrastructure boundaries.",
     problem:
       "Medical imaging demos often skip the hard parts: PHI boundaries, DICOM plumbing, tenant isolation, object storage, report provenance, and clear labeling when something is research-only rather than clinical software.",
     approach:
       "I built a local stack with web, API, OHIF, Orthanc, MinIO, Alembic migrations, seeded non-PHI studies, synthetic upload smoke tests, demo/research safety defaults, and a rule that browser clients only call the NexaRad API.",
     outcome:
-      "The founder-ready walkthrough can boot the full local demo (`make up`), seed visible research-only studies and draft reports, rehearse uploads, and keep AI providers and PHI disabled by default (`ALLOW_PHI=false`).",
+      "The local walkthrough uses synthetic studies and draft reports to exercise the workflow. Patient data and external AI providers are disabled by default.",
     system:
       "OHIF/product frame with synthetic DICOM evidence and report provenance across Orthanc and MinIO.",
     evidence:
@@ -332,8 +375,8 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "etch",
-    index: "02",
-    title: "ETCH",
+    index: "03",
+    title: "Etch",
     subtitle: "Verification-First Hardware Design",
     tagline: "Verification-first hardware design from intent to evidence.",
     description:
@@ -345,18 +388,18 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     outcome:
       "The saved vertical slice carries a synchronous FIFO through typed specs, three candidates, independent oracle artifacts, simulation and bounded-formal gates, Yosys 0.66 metrics, explicit missing-tool states, and Markdown/JSON proof dossiers. Physical signoff remains pending.",
     system:
-      "FIFO to arbiter to AXI-lite to DMA to cache to RV32I to accelerator to SoC ladder with verification gates.",
+      "The completed example is a synchronous FIFO. Larger hardware designs belong to the roadmap; each would need its own verification evidence.",
     evidence:
-      "Saved FIFO run dossier, Yosys 0.66 synth metrics, sim and bounded-formal pass records, and verification-gate sequence as the architecture story.",
+      "The saved FIFO dossier records simulation, bounded-formal checks, and synthesis results. Missing tools and pending physical signoff remain visible alongside the completed checks.",
     constraints:
-      "Hardware proof is staged; claims track the verified ladder, not aspirational silicon.",
+      "Simulation and bounded-formal results apply to the saved example and its checked bounds. They do not establish foundry signoff or a fabricated chip.",
     stack: ["Python", "FastAPI", "React", "Electron", "Yosys", "Verilator"],
     year: "2026",
     role: "Founder & Engineer",
     accent: "blue-medium",
     personality: "etch",
     status: "Public repository · local vertical slice",
-    proof: "A proven · 50-cycle sim · BMC depth 32 · Yosys 0.66",
+    proof: "Saved FIFO example · simulation · bounded-formal checks · synthesis",
     cautionLabel: "Physical signoff pending",
     media: {
       cover: {
@@ -392,10 +435,10 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "argyph",
-    index: "05",
-    title: "ARGYPH",
+    index: "06",
+    title: "Argyph",
     subtitle: "Local-First Code Intelligence",
-    tagline: "One read-only MCP server for grep, symbols, semantic search, and repo packing.",
+    tagline: "Local code context for agents: text, symbols, semantic search, and repository packing.",
     description:
       "Argyph is a local binary that gives coding agents bounded codebase context without cloud accounts or API keys. Its ask-first retrieval router combines text search, a tree-sitter symbol graph, semantic search, and token-budgeted repository packing behind one MCP endpoint.",
     problem:
@@ -403,20 +446,20 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     approach:
       "I built a tiered Rust index that becomes useful immediately: file inventory first, symbol and structural indexes next, then local embeddings in the background. Queries return bounded spans and disclose index coverage so the caller knows what evidence was available.",
     outcome:
-      "Argyph ships as a read-only MCP server and CLI through npm, crates.io, Homebrew, and release binaries, with incremental indexing and nineteen tools across retrieval, symbols, packing, and local memory.",
+      "Argyph is released as an MCP server and CLI through npm, crates.io, Homebrew, and downloadable binaries. Nineteen tools cover retrieval, symbols, repository packing, and local memory.",
     system:
-      "Three-tier local index behind one ask-first MCP endpoint. Lead claim: stop wiring six MCP servers.",
+      "One local index serves exact text matches, structural questions, and semantic retrieval. Results return source spans rather than asking the agent to trust an unsupported summary.",
     evidence:
-      "Tier-zero indexing under a second, benchmark evidence, 19 read-only tools (`ask` through `memory_forget`) across npm/crates/Homebrew.",
+      "The public v1.0.4 release includes platform binaries and a desktop extension. The repository documents the nineteen tools, indexing stages, and retrieval behavior.",
     constraints:
-      "Local-first read-only tools; no write-path claims without explicit user action. `locate_smart` stays opt-in and disabled by default.",
+      "Retrieval runs locally. Indexing and memory tools maintain local state, so the full server should not be described as read-only. Semantic retrieval depends on index coverage.",
     stack: ["Rust", "MCP", "Tree-sitter", "LanceDB", "ONNX Runtime", "SQLite"],
     year: "2026",
     role: "Creator & Engineer",
     accent: "blue-medium",
     personality: "argyph",
     status: "Public release · v1.0.4",
-    proof: "19 read-only tools · tiered local index · npm, crates.io, and Homebrew",
+    proof: "19 tools · tiered local index · public v1.0.4 release",
     media: {
       cover: {
         src: "/projects/argyph/argyph-identity.webp",
@@ -432,22 +475,22 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
   },
   {
     slug: "mathpilot",
-    index: "07",
-    title: "MATHPILOT",
+    index: "08",
+    title: "MathPilot",
     subtitle: "Private Calculus Mastery Engine",
-    tagline: "A local-first macOS study cockpit for Calculus 1 and 2.",
+    tagline: "A calculus study app that connects diagnosis, practice, and review.",
     description:
-      "MathPilot diagnoses a learner's level, tracks mastery on a prerequisite graph, recommends the next useful step, and keeps progress on the Mac. Practice, cumulative review, homework help, symbolic checking, and optional Codex coaching live in one native desktop workflow.",
+      "MathPilot diagnoses a learner's level, tracks mastery on a prerequisite graph, recommends the next useful step, and keeps progress on the Mac. Practice, cumulative review, homework help, symbolic checking, and optional Codex coaching live in one desktop workflow.",
     problem:
       "Calculus learners are often forced to assemble videos, generic chat, homework tools, and spaced repetition themselves. Those tools rarely share a mastery model or preserve a private, durable learning history.",
     approach:
       "I combined a Tauri desktop shell, React interface, SQLite persistence, FSRS review scheduling, MathLive typesetting, bundled Python and SymPy, Vision OCR, and deterministic offline fallbacks. Optional Codex features use the local CLI rather than an in-app API key.",
     outcome:
-      "The repository includes 613 curated Calc 1/2 problems (production banks around 600-760 per course), a native macOS build, diagnostic and practice loops, mastery and review systems, local homework analysis, ~246 unit tests, and ~26 end-to-end tests across 7 Playwright specs.",
+      "The macOS app connects a calculus problem bank, diagnostic sessions, practice, scheduled review, and local homework analysis. Learning history stays on the Mac; optional AI coaching supplements the offline tools.",
     system:
-      "Mastery graph plus diagnostic loop plus FSRS review plus symbolic checking in one native Mac cockpit.",
+      "A prerequisite graph connects diagnostic results to practice recommendations. Scheduled review revisits earlier material, while SymPy checks supported symbolic answers locally.",
     evidence:
-      "613 curated problems, ~246 unit tests, ~26 end-to-end tests, local SymPy checking, optional Codex via local CLI.",
+      "The public repository includes the calculus bank, diagnostic and review flows, local SymPy checking, and automated tests. Optional coaching uses the local Codex CLI.",
     constraints:
       "Private local-first learning history; optional Codex uses local CLI, not an in-app API key.",
     stack: ["Tauri", "React", "TypeScript", "SQLite", "SymPy", "FSRS"],
@@ -456,7 +499,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     accent: "blue-flow",
     personality: "mathpilot",
     status: "Public repository · macOS app",
-    proof: "613 curated problems · ~246 unit tests · ~26 end-to-end tests",
+    proof: "Calculus 1 and 2 · local symbolic checks · scheduled review",
     media: {
       cover: {
         src: "/projects/mathpilot/app-icon.svg",
@@ -472,6 +515,14 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
 ];
 
 export const projectMediaPresentation = {
+  downright: {
+    aspectRatio: "2940 / 1912",
+    fit: "contain",
+    scale: "1",
+    position: "center",
+    offsetY: "0%",
+    wellColor: "#191815",
+  },
   monkeyclaw: {
     aspectRatio: "1 / 1",
     fit: "contain",
@@ -531,6 +582,25 @@ export const projectMediaPresentation = {
 } satisfies Record<ProjectSlug, ProjectMediaPresentation>;
 
 export const projectDiagrams: Record<ProjectSlug, ProjectDiagram> = {
+  downright: {
+    title: "One file, native surfaces",
+    caption: "Markdown remains authoritative across the editor and Finder.",
+    width: 920,
+    height: 320,
+    nodes: [
+      { id: "file", label: "Markdown file", x: 40, y: 120, kind: "store" },
+      { id: "text", label: "Text storage", x: 250, y: 120, kind: "stage" },
+      { id: "document", label: "Document", x: 470, y: 40, kind: "io" },
+      { id: "source", label: "Source", x: 470, y: 200, kind: "io" },
+      { id: "finder", label: "Quick Look", x: 690, y: 120, kind: "io" },
+    ],
+    edges: [
+      { from: "file", to: "text", emphasis: true },
+      { from: "text", to: "document", emphasis: true },
+      { from: "text", to: "source", emphasis: true },
+      { from: "file", to: "finder", label: "preview" },
+    ],
+  },
   monkeyclaw: {
     title: "Continuous security loop",
     caption: "Red ideation across 18 zones feeds judge, repro, blue patches, and purple detection-as-pass gates.",
@@ -661,7 +731,7 @@ export const projectDiagrams: Record<ProjectSlug, ProjectDiagram> = {
     nodes: [
       { id: "diag", label: "Diagnostic", x: 40, y: 110, kind: "io" },
       { id: "graph", label: "Mastery graph", x: 230, y: 110, kind: "store", detail: "prereqs" },
-      { id: "practice", label: "Practice", x: 430, y: 110, kind: "stage", detail: "613" },
+      { id: "practice", label: "Practice", x: 430, y: 110, kind: "stage", detail: "calculus" },
       { id: "fsrs", label: "FSRS review", x: 630, y: 40, kind: "stage" },
       { id: "sympy", label: "SymPy check", x: 630, y: 180, kind: "gate", detail: "local" },
     ],
@@ -676,7 +746,7 @@ export const projectDiagrams: Record<ProjectSlug, ProjectDiagram> = {
   },
 };
 
-export const projectOrder: ProjectSlug[] = ["monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
+export const projectOrder: ProjectSlug[] = ["downright", "monkeyclaw", "etch", "flowe", "velox", "argyph", "nexarad", "mathpilot"];
 
 export const projects: Project[] = projectOrder.map((slug) => {
   const project = projectRecords.find((candidate) => candidate.slug === slug);
@@ -698,9 +768,9 @@ export const bio = {
     "making the system trustworthy, useful, and real.",
   ],
   bodyParagraphs: [
-    "I build AI systems, developer tools, and product software, from multi-agent security to intelligent student workflows.",
-    "I care about multi-agent systems, humane AI, and tools that compound impact rather than extract attention. My work lives between research and production: turning promising ideas into inspectable, dependable software.",
-    "I'm based between Los Angeles and Santa Cruz, building across agent security, code intelligence, education, radiology research, and hardware design.",
+    "I like building the whole thing: the interface someone uses, the system behind it, and the checks that tell me it works.",
+    "That has led me from agent security and code search to a native Markdown editor and an app for planning schoolwork. I’m interested in AI that helps people do useful work, with decisions they can understand and results they can check.",
+    "I’m based between Los Angeles and Santa Cruz, and open to software and AI opportunities.",
   ],
   principles: [
     {
@@ -739,6 +809,7 @@ export const bio = {
 export type ProjectLayoutFamily = "full-bleed" | "split" | "offset-rail" | "immersive";
 
 export const projectLayoutFamily: Record<ProjectSlug, ProjectLayoutFamily> = {
+  downright: "split",
   monkeyclaw: "split",
   etch: "split",
   flowe: "offset-rail",
@@ -763,7 +834,7 @@ export function caseMooringDepth(slug: ProjectSlug): number {
 export const buildStatus = {
   label: "BETA",
   version: "v0.9",
-  note: "Work in progress — still being built.",
+  note: "Work in progress. Still being built.",
 };
 
 export const nav = {

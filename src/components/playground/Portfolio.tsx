@@ -82,93 +82,57 @@ export default function Portfolio() {
           <div className={styles.sectionHeading}>
             <div>
               <p className={styles.eyebrow}>01 / SELECTED WORK</p>
-              <h2 id="work-title">Ideas, made real.</h2>
+              <h2 id="work-title">Selected projects.</h2>
             </div>
             <p>
               AI systems, developer tools,
               <br />
-              and things I wanted to exist.
-              <span className={styles.interactionHint}>Drag a project. Click to explore.</span>
+              built from the interface down.
+              <span className={styles.interactionHint}>Drag the artwork. Explore the case study.</span>
             </p>
           </div>
           <div className={styles.projectGrid}>
             {featured.map(({ project, presentation }, index) => (
-              <Link
+              <article
                 key={project.slug}
-                href={`/project/${project.slug}`}
                 className={styles.project}
-                data-water-surface
-                data-water-featured
                 data-depth={index % 2 === 0 ? "near" : "far"}
                 aria-labelledby={`${project.slug}-title`}
               >
-                <div
+                <Link
+                  href={`/project/${project.slug}`}
                   className={styles.projectVisual}
                   data-project={project.slug}
-                  data-water-visual
+                  data-water-surface
+                  data-water-featured
+                  data-depth={index % 2 === 0 ? "near" : "far"}
+                  aria-label={`Explore ${project.title}`}
                 >
                   <Image
                     src={presentation.cover}
                     alt={presentation.alt}
                     quality={90}
                     fill
-                    sizes="(max-width: 800px) 88vw, (max-width: 1440px) 58vw, 840px"
+                    sizes="(max-width: 800px) 46vw, 30vw"
                   />
-                </div>
+                </Link>
                 <div className={styles.projectCopy}>
-                <p className={styles.projectKind}>{presentation.mediaLabel}</p>
-                <div className={styles.projectHeading}>
-                  <h3 id={`${project.slug}-title`}>{project.title}</h3>
-                  <span aria-hidden="true">0{index + 1}</span>
+                  <p className={styles.projectKind}>{presentation.mediaLabel}</p>
+                  <div className={styles.projectHeading}>
+                    <h3 id={`${project.slug}-title`}><Link href={`/project/${project.slug}`}>{project.title}</Link></h3>
+                    <span aria-hidden="true">0{index + 1}</span>
+                  </div>
+                  <p>{presentation.purpose}</p>
+                  <p className={styles.projectResult}>{presentation.delivered}</p>
+                  <div className={styles.projectMeta}>
+                    <span>{project.role}</span>
+                    <Link className={styles.readCase} href={`/project/${project.slug}`}>
+                      View project{" "}
+                      <ArrowUpRight size={15} aria-hidden="true" />
+                    </Link>
+                  </div>
                 </div>
-                <p>{presentation.purpose}</p>
-                <p className={styles.projectResult}>{presentation.delivered}</p>
-                <div className={styles.projectMeta}>
-                  <span>{project.role}</span>
-                  <span className={styles.readCase}>
-                    View case study{" "}
-                    <ArrowUpRight size={15} aria-hidden="true" />
-                  </span>
-                </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-          <div className={styles.latestHeading}>
-            <h3>From my workbench</h3>
-            <p>More software I’m building in the open.</p>
-          </div>
-          <div className={styles.spotlights}>
-            {additionalWork.slice(0, 2).map((project, i) => (
-              <a
-                key={project.name}
-                className={styles.spotlight}
-                data-water-surface
-                href={project.href}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div className={styles.spotlightTop}>
-                  <span>
-                    {i === 0 ? "NATIVE MAC SOFTWARE" : "BUILDING IN THE OPEN"}
-                  </span>
-                  <ArrowUpRight size={25} />
-                </div>
-                <h3>
-                  {project.name}
-                  <span>{i === 0 ? "↓" : "_"}</span>
-                </h3>
-                <p>{project.description}</p>
-                <div className={styles.spotlightBottom}>
-                  <small>{project.category}</small>
-                  <span>
-                    {project.name === "Downright"
-                      ? "Visit site"
-                      : "Explore source"}{" "}
-                    <ArrowUpRight size={14} aria-hidden="true" />
-                  </span>
-                </div>
-              </a>
+              </article>
             ))}
           </div>
           <div className={styles.moreHeading}>
@@ -186,20 +150,18 @@ export default function Portfolio() {
               <Link
                 href={`/project/${project.slug}`}
                 key={project.slug}
-                data-water-surface
               >
                 <h4>{project.title}</h4>
                 <p>{project.tagline}</p>
                 <ArrowUpRight size={20} />
               </Link>
             ))}
-            {additionalWork.slice(2).map((project) => (
+            {additionalWork.map((project) => (
               <a
                 href={project.href}
                 target="_blank"
                 rel="noopener noreferrer"
                 key={project.name}
-                data-water-surface
               >
                 <h4>
                   {project.name}
@@ -234,7 +196,7 @@ export default function Portfolio() {
             <p>{bio.bodyParagraphs[0]}</p>
             <p>{bio.bodyParagraphs[1]}</p>
             <p>{bio.bodyParagraphs[2]}</p>
-            <a href="/resume.pdf" target="_blank" rel="noopener noreferrer">
+            <a href="/resume">
               View résumé <ArrowUpRight size={18} />
             </a>
           </div>

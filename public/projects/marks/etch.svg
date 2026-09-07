@@ -1,0 +1,19 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Etch logo</title>
+  <desc id="desc">A white and silver angular pen nib forming a lightning bolt on a transparent field.</desc>
+
+  <g stroke="#7594aa" stroke-linejoin="round" stroke-width="5">
+    <path d="M692 126 563 157 418 461 497 421Z" fill="#ddeaf0"/>
+    <path d="M692 126 588 315 508 444 497 421Z" fill="#f8fcff"/>
+    <path d="M662 178 584 455 537 519 499 468Z" fill="#a9c3d5"/>
+    <path d="M418 461 499 468 537 519 565 578 512 622Z" fill="#7697b0"/>
+    <path d="M376 531 464 479 512 622 437 655Z" fill="#d7e7f2"/>
+    <path d="M376 531 336 861 437 655Z" fill="#f8fcff"/>
+    <path d="M512 622 565 578 494 711 411 800Z" fill="#f8fcff"/>
+    <path d="M437 655 512 622 411 800 336 861Z" fill="#b5ccdf"/>
+  </g>
+  <path d="M337 861 418 686" stroke="#7594aa" stroke-width="23" stroke-linecap="round"/>
+  <circle cx="409" cy="690" r="31" fill="#476276"/>
+  <path d="M418 461 499 468 662 178" fill="none" stroke="#7594aa" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M537 519 584 455 662 178" fill="none" stroke="#7594aa" stroke-width="4" stroke-linejoin="round"/>
+</svg>
