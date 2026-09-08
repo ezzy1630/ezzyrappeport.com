@@ -102,7 +102,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     index: "01",
     title: "Downright",
     subtitle: "Native Markdown for macOS",
-    tagline: "Ordinary Markdown files, at home on the Mac.",
+    tagline: "Comfortable to read. Precise to edit.",
     description:
       "A native editor and reader built with AppKit and TextKit 2. Documents stay in their original folders, with exact Markdown source preserved.",
     problem:
@@ -119,7 +119,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
       "Reading, editing, search, review, and export run locally. No account is required.",
     stack: ["Swift", "AppKit", "TextKit 2", "Quick Look", "Sparkle"],
     year: "2026",
-    role: "Independent Developer",
+    role: "Creator & Engineer",
     accent: "blue-medium",
     personality: "downright",
     status: "Published · macOS",
@@ -144,15 +144,15 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
     index: "02",
     title: "MonkeyClaw",
     subtitle: "Autonomous Red / Purple / Blue Security Agent for NVIDIA NemoClaw",
-    tagline: "Attacks live sandboxes, proves and patches confirmed findings, then checks the defense was visible in NemoClaw telemetry.",
+    tagline: "A security finding you can follow.",
     description:
       "MonkeyClaw is a continuous security agent for NemoClaw and OpenClaw deployments. It generates attack ideas, executes them against live or mocked sandboxes, judges the result, reproduces confirmed findings, proposes patches, and checks that the defense was observable in telemetry instead of silently passing.",
     problem:
       "Agent runtimes can read source, run shell commands, call tools, and touch the network. A one-time audit cannot keep up with changing prompts, skills, permissions, and sandbox behavior, and a blocked attack is still risky if no detection fired.",
     approach:
-      "I built a five-stage loop: red-team ideation across 18 attack-surface zones, programmatic and semantic judging, repro and root-cause analysis, blue-team patch generation, and purple-team detection-as-pass verification. The demo path runs with zero model credentials against a planted victim.",
+      "My contributions focused on native telemetry ingestion, deterministic demo and reproduction plumbing, and the evidence dashboard. The wider five-stage security loop is a team project.",
     outcome:
-      "The public repository includes a working CLI, a seeded demo, a dashboard, and eight verification gates. The central rule is that a defense must both stop an attack and leave evidence that it noticed.",
+      "The public repository includes a working CLI, a seeded demo, a dashboard, and eight verification gates. The detection oracle distinguishes prevention from observability; end-to-end patch verification has additional scope boundaries.",
     system:
       "The dashboard follows each finding through the loop. Verification checks prevention and observability separately, so a silent control cannot look like a complete defense.",
     evidence:
@@ -161,7 +161,7 @@ const projectRecords: Omit<Project, "mediaPresentation" | "diagram">[] = [
       "Multi-contributor project. Demo runs without model credentials; live LLM paths remain optional and environment-gated.",
     stack: ["Python", "NVIDIA Nemotron", "SQLite", "FastAPI", "pytest", "OpenClaw"],
     year: "2026",
-    role: "Lead Engineer & Contributor",
+    role: "Engineering Contributor",
     accent: "blue-strong",
     personality: "monkeyclaw",
     status: "Public repository · zero-credential demo",
@@ -768,8 +768,8 @@ export const bio = {
     "making the system trustworthy, useful, and real.",
   ],
   bodyParagraphs: [
-    "I like building the whole thing: the interface someone uses, the system behind it, and the checks that tell me it works.",
-    "That has led me from agent security and code search to a native Markdown editor and an app for planning schoolwork. I’m interested in AI that helps people do useful work, with decisions they can understand and results they can check.",
+    "I build product interfaces and the systems that make their behavior understandable.",
+    "In Downright, that means preserving a person’s source text through reading, editing, and external changes. On MonkeyClaw, my work connected native telemetry, transcript replay, and a dashboard that keeps evidence in view. Those are different products, but the details that preserve trust matter in both.",
     "I’m based between Los Angeles and Santa Cruz, and open to software and AI opportunities.",
   ],
   principles: [

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowUpRight, ArrowDown, MapPin } from "lucide-react";
 import { bio, projects } from "@/lib/portfolio/content";
 import WaterHero from "../water-study/WaterHero";
+import { FindingRecord } from "@/components/case-study/Editorial";
 import { additionalWork, featuredPresentation, featuredSlugs } from "./catalog";
 import styles from "./Portfolio.module.css";
 
@@ -85,9 +86,9 @@ export default function Portfolio() {
               <h2 id="work-title">Selected projects.</h2>
             </div>
             <p>
-              AI systems, developer tools,
+              Native software and agent systems.
               <br />
-              built from the interface down.
+              The decisions behind the work.
               <span className={styles.interactionHint}>Drag the artwork. Explore the case study.</span>
             </p>
           </div>
@@ -95,10 +96,13 @@ export default function Portfolio() {
             {featured.map(({ project, presentation }, index) => (
               <article
                 key={project.slug}
+                id={`project-${project.slug}`}
                 className={styles.project}
+                data-layout={project.slug === "downright" ? "product" : project.slug === "monkeyclaw" ? "evidence" : "identity"}
                 data-depth={index % 2 === 0 ? "near" : "far"}
                 aria-labelledby={`${project.slug}-title`}
               >
+                <div className={styles.projectStage}>
                 <Link
                   href={`/project/${project.slug}`}
                   className={styles.projectVisual}
@@ -113,9 +117,15 @@ export default function Portfolio() {
                     alt={presentation.alt}
                     quality={90}
                     fill
-                    sizes="(max-width: 800px) 46vw, 30vw"
+                    sizes={project.slug === "downright" || project.slug === "monkeyclaw" ? "160px" : "(max-width: 800px) 46vw, 30vw"}
                   />
                 </Link>
+                {project.slug === "downright" && <figure className={styles.productPreview}>
+                  <Link href="/project/downright" aria-label="Read how Downright's editor was built"><Image src="/projects/downright/editor-showcase.png" alt="Downright's actual native document view" width={2940} height={1912} sizes="(max-width: 800px) 88vw, 48vw" /></Link>
+                  <figcaption><span>Inside the editor</span>One source buffer. Reading, editing, and Finder.</figcaption>
+                </figure>}
+                {project.slug === "monkeyclaw" && <div className={styles.evidencePreview}><FindingRecord compact /></div>}
+                </div>
                 <div className={styles.projectCopy}>
                   <p className={styles.projectKind}>{presentation.mediaLabel}</p>
                   <div className={styles.projectHeading}>
@@ -127,7 +137,7 @@ export default function Portfolio() {
                   <div className={styles.projectMeta}>
                     <span>{project.role}</span>
                     <Link className={styles.readCase} href={`/project/${project.slug}`}>
-                      View project{" "}
+                      {project.slug === "downright" ? "Inside the editor" : project.slug === "monkeyclaw" ? "Follow the finding" : "View project"}{" "}
                       <ArrowUpRight size={15} aria-hidden="true" />
                     </Link>
                   </div>
@@ -150,6 +160,7 @@ export default function Portfolio() {
               <Link
                 href={`/project/${project.slug}`}
                 key={project.slug}
+                id={`project-${project.slug}`}
               >
                 <h4>{project.title}</h4>
                 <p>{project.tagline}</p>

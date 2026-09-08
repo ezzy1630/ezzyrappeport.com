@@ -5,6 +5,8 @@ import { type Project, projects, bio } from "@/lib/portfolio/content";
 import { featuredPresentation, featuredSlugs } from "@/components/playground/catalog";
 import WaterHero from "@/components/water-study/WaterHero";
 import SystemDiagram from "@/components/portfolio/diagrams/SystemDiagram";
+import DownrightStory, { DownrightOpening } from "@/components/case-study/DownrightStory";
+import MonkeyClawStory, { MonkeyClawOpening } from "@/components/case-study/MonkeyClawStory";
 import styles from "./CaseStudy.module.css";
 
 export default function ProjectDetail({ project }: { project: Project }) {
@@ -16,6 +18,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
   ];
   const index = ordered.findIndex((item) => item.slug === project.slug);
   const next = ordered[(index + 1) % ordered.length];
+  const editorial = project.slug === "downright" || project.slug === "monkeyclaw";
   const gallery = (project.media.gallery ?? [project.media.cover]).filter(
     (asset) => !asset.src.endsWith("architecture.svg"),
   );
@@ -25,14 +28,14 @@ export default function ProjectDetail({ project }: { project: Project }) {
     (asset) => !asset.src.endsWith(".svg") && asset.width / asset.height > 1.2,
   );
   return (
-    <div className={styles.page} data-water-world>
+    <div className={styles.page} data-water-world data-story={editorial ? project.slug : undefined}>
       <WaterHero showTitle={false} />
       <a className={styles.skip} href="#overview">
         Skip to project details
       </a>
       <header className={styles.nav}>
-        <Link href="/#projects">
-          <ArrowLeft size={18} /> All projects
+        <Link href={`/#project-${project.slug}`}>
+          <ArrowLeft size={18} /> Back to work
         </Link>
         <Link href="/">EZZY RAPPEPORT</Link>
         <a href={`mailto:${bio.email}`}>
@@ -40,7 +43,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
         </a>
       </header>
       <main id="main-content">
-        <header className={styles.hero}>
+        {project.slug === "downright" ? <DownrightOpening project={project} /> : project.slug === "monkeyclaw" ? <MonkeyClawOpening project={project} /> : <header className={styles.hero}>
           <p className={styles.meta}>
             {project.year} / {project.role}
           </p>
@@ -94,8 +97,8 @@ export default function ProjectDetail({ project }: { project: Project }) {
               </figcaption>
             </figure>
           )}
-        </header>
-        <div className={styles.body}>
+        </header>}
+        {project.slug === "downright" ? <DownrightStory /> : project.slug === "monkeyclaw" ? <MonkeyClawStory /> : <div className={styles.body}>
           <aside aria-label="Project sections">
             <p>IN THIS PROJECT</p>
             <a href="#overview">Overview</a>
@@ -154,9 +157,9 @@ export default function ProjectDetail({ project }: { project: Project }) {
               <p>{project.constraints}</p>
             </section>
           </article>
-        </div>
+        </div>}
         <Link className={styles.next} href={`/project/${next.slug}`}>
-          <span>Next project</span>
+          <span>{project.slug === "downright" ? "Next: from native documents to inspectable agent systems" : project.slug === "monkeyclaw" ? "Next: from system evidence to everyday planning" : "Next project"}</span>
           <h2>
             {next.title}
             <ArrowRight />
@@ -164,7 +167,7 @@ export default function ProjectDetail({ project }: { project: Project }) {
         </Link>
       </main>
       <footer>
-        <Link href="/#projects">All projects</Link>
+        <Link href={`/#project-${project.slug}`}>Back to {project.title} in selected work</Link>
         <a href={`mailto:${bio.email}`}>
           Let’s talk <ArrowUpRight size={16} />
         </a>

@@ -46,7 +46,7 @@ export const featuredPresentation = {
     alt: "Downright sculpted cream and blue app icon",
     mediaLabel: "macOS · Available now",
     purpose: "Markdown, treated like a Mac document.",
-    delivered: "A native editor and reader for the files you already own. Exact source, thoughtful typography, and Finder previews.",
+    delivered: "I built the native document experience, exact-source editing, and Finder integration.",
   },
   monkeyclaw: {
     cover: "/projects/marks/monkeyclaw.svg",
@@ -55,7 +55,7 @@ export const featuredPresentation = {
     purpose:
       "Tests agent sandboxes, reproduces failures, and checks that defenses leave evidence.",
     delivered:
-      "A working CLI and seeded demo, with eight verification gates across the security loop.",
+      "My contributions: native telemetry ingestion, transcript replay, and the evidence dashboard. Follow one recorded demo finding.",
   },
   flowe: {
     cover: "/projects/flowe/app-icon.webp",

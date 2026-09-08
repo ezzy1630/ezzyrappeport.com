@@ -14,7 +14,7 @@
 - Home: `src/app/page.tsx` → `src/components/playground/Portfolio.tsx`. Its styles live in `src/components/playground/Portfolio.module.css`; inspect `src/app/layout.tsx` for global styles and metadata.
 - Content: `src/lib/portfolio/content.ts` owns existing case-study facts and bio; `src/components/playground/catalog.ts` adds gallery projects and presentation.
 - Water scene: `src/components/water-study/WaterHero.tsx` loads `scene.ts`; `world-motion.ts` owns artwork motion, and the shared spring/contact/pressure-field primitives live in `src/components/playground/`.
-- Case studies: `src/app/project/[slug]/page.tsx`, `ProjectDetail.tsx`, and `CaseStudy.module.css`. Resume: `src/app/resume/`.
+- Case studies: `src/app/project/[slug]/page.tsx`, `ProjectDetail.tsx`, and `CaseStudy.module.css`. Downright/MonkeyClaw stories and reusable presentation components live in `src/components/case-study/`; `src/lib/portfolio/story-evidence.ts` pins their public evidence. Resume: `src/app/resume/`.
 - Hero assets: `public/assets/hero/`; editable Blender sources: `assets/blender/playground/`; generation tools: `scripts/blender/`. Preserve source scenes and keep intermediate renders outside the repo.
 - Older renderers remain in `src/components/playground/GlassHero.tsx`, `glass-scene.ts`, `src/features/kinetic-canvas/`, and `src/features/ocean-experience/`. Verify actual imports before changing them or treating historical capture scripts as homepage checks.
 

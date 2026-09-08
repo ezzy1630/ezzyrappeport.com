@@ -20,6 +20,7 @@ paths = [
     "/resume",
 ]
 assets = set()
+pages = {}
 if urlparse(origin).hostname in {"127.0.0.1", "localhost"}:
     urlopen = build_opener(ProxyHandler({})).open
 
@@ -36,8 +37,9 @@ class Page(HTMLParser):
         self.headings += tag == "h1"
         if "id" in attrs:
             self.ids.add(attrs["id"])
-        if tag == "a" and attrs.get("href", "").startswith("#"):
-            self.anchors.append(attrs["href"][1:])
+        href = attrs.get("href", "")
+        if tag == "a" and href.startswith(("#", "/")) and urlparse(href).fragment:
+            self.anchors.append(href)
         if tag == "img":
             assert "alt" in attrs, "Image has no alt attribute"
             if attrs.get("src", "").startswith("/"):
@@ -53,9 +55,16 @@ for path in paths:
         page = Page()
         page.feed(response.read().decode())
         assert page.headings == 1, (path, "Expected one main heading", page.headings)
-        assert all(anchor in page.ids for anchor in page.anchors), (
-            path,
-            "Broken section anchor",
+        pages[path] = page
+
+# Return-to-project links cross route boundaries. Validate the destination IDs
+# against rendered HTML, including the fallback pages and supporting work.
+for path, page in pages.items():
+    for href in page.anchors:
+        target = urlparse(urljoin(urljoin(origin, path), href))
+        assert target.path in pages, (path, "Unknown anchor route", href)
+        assert target.fragment in pages[target.path].ids, (
+            path, "Broken destination anchor", href,
         )
 
 assets.update(
@@ -64,6 +73,7 @@ assets.update(
         "/assets/hero/silver-studio.hdr",
         "/assets/hero/playground-title.webp",
         "/resume.pdf",
+        "/projects/downright/editor-demo.mp4",
     ]
 )
 for path in sorted(assets):
@@ -79,5 +89,5 @@ except HTTPError as error:
 else:
     raise AssertionError("Unknown project must return 404")
 print(
-    f"PASS {len(paths)} routes, local section anchors, {len(assets)} image/script/download assets, and unknown-project 404. HTTP only; no visual or interaction claims."
+    f"PASS {len(paths)} routes, local and return-to-project anchors, {len(assets)} image/script/download assets, and unknown-project 404. HTTP only; no visual or interaction claims."
 )

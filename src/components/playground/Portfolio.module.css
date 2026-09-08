@@ -35,11 +35,21 @@
 .sectionHeading > p { font-size: 16px; line-height: 1.65; color: var(--portfolio-muted); margin-bottom: 5px; }
 .interactionHint { display: block; margin-top: 10px; font-size: 12px; color: #254da0; }
 .projectGrid { display: flex; flex-direction: column; gap: var(--portfolio-section); }
-.project { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); align-items: center; gap: clamp(28px, 4vw, 56px); min-height: 420px; position: relative; min-width: 0; }
+.project { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr); align-items: center; gap: clamp(28px, 4vw, 56px); min-height: 420px; position: relative; min-width: 0; scroll-margin-top: 54px; }
 .project:first-child { min-height: 500px; }
 .project:nth-child(even) { grid-template-columns: minmax(280px, 1fr) minmax(0, 1.35fr); }
-.project:nth-child(even) .projectVisual { order: 2; }
+.project:nth-child(even) .projectStage { order: 2; }
 .projectVisual { --object-size: 59%; --object-angle: -6deg; display: block; position: relative; aspect-ratio: 1.35; border-radius: 24px; background: transparent; transform-origin: center; -webkit-user-drag: none; touch-action: pan-y; }
+.projectStage { position: relative; min-width: 0; }
+.project[data-layout="product"] .projectStage, .project[data-layout="evidence"] .projectStage { padding-top: 76px; }
+.project[data-layout="product"] .projectVisual, .project[data-layout="evidence"] .projectVisual { position: absolute; z-index: 2; top: -28px; right: 10px; width: 180px; aspect-ratio: 1; --object-size: 80%; }
+.project[data-layout="evidence"] .projectVisual { --object-size: 92%; right: -4px; }
+.productPreview { position: relative; margin: 0; }
+.productPreview > a { display: block; border-radius: 12px; background: #141819; overflow: hidden; box-shadow: 0 24px 46px #183b5128; }
+.productPreview img { display: block; width: 100%; height: auto; }
+.productPreview figcaption { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 12px; line-height: 1.7; color: var(--portfolio-muted); }
+.productPreview figcaption > span { font: 10px/1.7 var(--font-geist-mono), monospace; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+.evidencePreview { position: relative; }
 /* Center the object independently of the spring transform on its link. */
 .projectVisual img { padding: 0; width: var(--object-size) !important; height: auto !important; aspect-ratio: 1; inset: 50% auto auto 50% !important; object-fit: contain; transform: translate(-50%, -50%) rotate(var(--object-angle)); filter: drop-shadow(12px 26px 16px #143b4930); pointer-events: none; }
 .projectVisual[data-project="downright"] { --object-size: 49%; --object-angle: -8deg; }
@@ -70,7 +80,7 @@
 .moreHeading h3 { font-size: 25px; font-weight: 500; letter-spacing: -.03em; }
 .moreHeading a, .aboutCopy a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 14px; }
 .catalog { padding: 8px 24px; background: #f3f8fbf2; border-radius: 16px; }
-.catalog > a { position: relative; display: grid; grid-template-columns: 210px 1fr 24px; align-items: center; gap: 28px; padding: 24px 0; border-top: 1px solid var(--portfolio-line); transition: color .2s; }
+.catalog > a { scroll-margin-top: 54px; position: relative; display: grid; grid-template-columns: 210px 1fr 24px; align-items: center; gap: 28px; padding: 24px 0; border-top: 1px solid var(--portfolio-line); transition: color .2s; }
 .catalog > a:first-child { border-top: 0; }
 .catalog > a:hover { color: var(--portfolio-accent); }
 .catalog h4 { font-size: 18px; font-weight: 500; }
@@ -103,7 +113,11 @@
 }
 @media (max-width: 800px) {
   .project, .project:first-child, .project:nth-child(even) { grid-template-columns: minmax(0, 1fr); min-height: 0; gap: 0; }
-  .project:nth-child(even) .projectVisual { order: 0; }
+  .project:nth-child(even) .projectStage { order: 0; }
+  .project[data-layout="product"] .projectStage, .project[data-layout="evidence"] .projectStage { margin-bottom: 32px; padding-top: 64px; }
+  .project[data-layout="product"] .projectVisual, .project[data-layout="evidence"] .projectVisual { width: 140px; top: -20px; right: 0; }
+  .productPreview figcaption { display: block; }
+  .productPreview figcaption > span { display: block; margin-bottom: 4px; }
   .projectCopy { max-width: none; padding-top: 12px; }
   .projectCopy::before { inset: -25px -30px; }
   .projectResult { max-width: 45ch; }
